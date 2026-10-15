@@ -1,0 +1,682 @@
+// Jax App schema (§16, D5). Conventions:
+// - IDs are UUIDv7 (time-ordered, not guessable enough to matter; never rely on ID secrecy).
+// - Geography columns are Unsupported(...) and written via parameterized raw SQL (src/server/db/geo.ts).
+// - "Exactly one of" rules for polymorphic targets/authors are CHECK constraints in migration SQL.
+// - Timestamps are timestamptz.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETED
+}
+
+enum SessionKind {
+  MOBILE
+  ADMIN
+}
+
+enum EmailTokenPurpose {
+  VERIFY_EMAIL
+  PASSWORD_RESET
+  EMAIL_CHANGE
+}
+
+enum GuestStatus {
+  ACTIVE
+  EXPIRED
+  BANNED
+}
+
+enum AuthorKind {
+  USER
+  GUEST
+}
+
+enum ContentStatus {
+  VISIBLE
+  HELD_FOR_REVIEW
+  REMOVED // by moderation
+  DELETED // by author
+}
+
+enum PlaceStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DUPLICATE
+  MERGED
+}
+
+enum PhotoStatus {
+  PENDING_UPLOAD
+  PROCESSING
+  ACTIVE
+  REJECTED
+  REMOVED
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  THREAT
+  HATE
+  DOXXING
+  SEXUAL_CONTENT
+  CHILD_SAFETY
+  IMPERSONATION
+  SCAM
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
+enum ModerationActionType {
+  NOTE
+  WARN
+  SUSPEND
+  BAN
+  UNBAN
+  REMOVE_CONTENT
+  RESTORE_CONTENT
+  ADJUST_RATE_LIMIT
+  LOCATION_RESTRICT
+}
+
+enum DeletionStatus {
+  REQUESTED
+  PROCESSING
+  COMPLETED
+}
+
+enum LocationCheckResult {
+  ALLOWED
+  DENIED
+}
+
+// ──────────────────────── Identity & sessions ────────────────────────
+
+model User {
+  id                 String        @id @default(uuid(7)) @db.Uuid
+  username           String        @db.VarChar(20)
+  usernameNormalized String        @unique @db.VarChar(20)
+  usernameChangedAt  DateTime?     @db.Timestamptz(3)
+  /// Private. Stored lowercased. Never in public responses.
+  email              String        @unique @db.VarChar(254)
+  emailVerifiedAt    DateTime?     @db.Timestamptz(3)
+  /// argon2id hash. Never in any response.
+  passwordHash       String
+  /// Private (§4.2). Never in public responses.
+  birthYear          Int           @db.SmallInt
+  role               Role          @default(USER)
+  status             AccountStatus @default(ACTIVE)
+  suspendedUntil     DateTime?     @db.Timestamptz(3)
+  deletedAt          DateTime?     @db.Timestamptz(3)
+  tosAcceptedAt      DateTime      @db.Timestamptz(3)
+  tosVersion         String        @db.VarChar(20)
+  adultConfirmedAt   DateTime      @db.Timestamptz(3)
+  /// Admin TOTP secret, encrypted at rest (D4).
+  totpSecretEnc      String?
+  totpEnabledAt      DateTime?     @db.Timestamptz(3)
+  /// User-chosen radii in miles; null = config default. Clamped server-side (P2.15).
+  generalRadiusMiles  Float?
+  businessRadiusMiles Float?
+  createdAt          DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime      @updatedAt @db.Timestamptz(3)
+
+  profile          Profile?
+  sessions         Session[]
+  emailTokens      EmailToken[]
+  usernameHistory  UsernameHistory[]
+  generalPosts     GeneralPost[]
+  businessPosts    BusinessPost[]
+  comments         Comment[]
+  votes            Vote[]
+  photos           Photo[]
+  favorites        FavoritePlace[]
+  achievements     UserAchievement[]
+  submissions      BusinessSubmission[] @relation("Submitter")
+  reviewedSubs     BusinessSubmission[] @relation("Reviewer")
+  reportsMade      Report[]             @relation("Reporter")
+  reportsAgainst   Report[]             @relation("ReportedUser")
+  reportsResolved  Report[]             @relation("ReportResolver")
+  blocking         UserBlock[]          @relation("Blocker")
+  blockedBy        UserBlock[]          @relation("Blocked")
+  modActionsTaken  ModerationAction[]   @relation("ModActor")
+  modActionsOnMe   ModerationAction[]   @relation("ModTargetUser")
+  auditLogs        AdminAuditLog[]
+  deletions        AccountDeletion[]
+  locationChecks   LocationCheck[]
+  configUpdates    AppConfiguration[]
+
+  @@index([status])
+}
+
+model UsernameHistory {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  userId     String   @db.Uuid
+  username   String   @db.VarChar(20)
+  changedAt  DateTime @default(now()) @db.Timestamptz(3)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, changedAt])
+}
+
+/// Server-managed opaque sessions (D3). Only the SHA-256 of the token is stored.
+model Session {
+  id            String      @id @default(uuid(7)) @db.Uuid
+  tokenHash     String      @unique @db.Char(64)
+  userId        String      @db.Uuid
+  kind          SessionKind
+  /// Admin sessions only: hash of the CSRF token (D3).
+  csrfTokenHash String?     @db.Char(64)
+  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
+  lastUsedAt    DateTime    @default(now()) @db.Timestamptz(3)
+  expiresAt     DateTime    @db.Timestamptz(3)
+  revokedAt     DateTime?   @db.Timestamptz(3)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+/// Single-use email tokens (verification, reset, email change). Hashed (D10).
+model EmailToken {
+  id        String            @id @default(uuid(7)) @db.Uuid
+  userId    String            @db.Uuid
+  purpose   EmailTokenPurpose
+  tokenHash String            @unique @db.Char(64)
+  /// EMAIL_CHANGE only: the address being verified.
+  newEmail  String?           @db.VarChar(254)
+  createdAt DateTime          @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime          @db.Timestamptz(3)
+  usedAt    DateTime?         @db.Timestamptz(3)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+}
+
+/// Server-issued installation ID (§6.2, P2.7). Not a hardware identifier.
+model Installation {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  lastSeenAt      DateTime  @default(now()) @db.Timestamptz(3)
+  bannedAt        DateTime? @db.Timestamptz(3)
+  integrityStatus String?   @db.VarChar(32)
+
+  guestSessions  GuestSession[]
+  modActions     ModerationAction[]
+  locationChecks LocationCheck[]
+}
+
+model GuestSession {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  tokenHash      String      @unique @db.Char(64)
+  installationId String      @db.Uuid
+  status         GuestStatus @default(ACTIVE)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  lastActiveAt   DateTime    @default(now()) @db.Timestamptz(3)
+  /// lastActiveAt + guest.inactivityDays, recomputed on activity.
+  expiresAt      DateTime    @db.Timestamptz(3)
+  bannedAt       DateTime?   @db.Timestamptz(3)
+  installation   Installation @relation(fields: [installationId], references: [id])
+
+  comments       Comment[]
+  reports        Report[]
+  modActions     ModerationAction[]
+  locationChecks LocationCheck[]
+
+  @@index([installationId])
+  @@index([status, expiresAt])
+}
+
+model Profile {
+  userId        String   @id @db.Uuid
+  bio           String?  @db.VarChar(300)
+  avatarPhotoId String?  @unique @db.Uuid
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatarPhoto   Photo?   @relation("Avatar", fields: [avatarPhotoId], references: [id], onDelete: SetNull)
+}
+
+// ───────────────────────────── Location ─────────────────────────────
+
+/// The eligible service area polygon (D15: Duval County). Swappable.
+model ServiceArea {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  key           String   @unique @db.VarChar(50)
+  name          String
+  sourceUrl     String
+  sourceVersion String
+  license       String
+  active        Boolean  @default(true)
+  geom          Unsupported("geography(MultiPolygon, 4326)")?
+  importedAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([geom], type: Gist)
+}
+
+/// Precise location audit (D7). Restricted access; purged after location retention (D14).
+model LocationCheck {
+  id             String              @id @default(uuid(7)) @db.Uuid
+  userId         String?             @db.Uuid
+  guestSessionId String?             @db.Uuid
+  installationId String?             @db.Uuid
+  action         String              @db.VarChar(40)
+  point          Unsupported("geography(Point, 4326)")?
+  accuracyMeters Float
+  readingAt      DateTime            @db.Timestamptz(3)
+  receivedAt     DateTime            @default(now()) @db.Timestamptz(3)
+  result         LocationCheckResult
+  reason         String?             @db.VarChar(40)
+  user           User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guestSession   GuestSession?       @relation(fields: [guestSessionId], references: [id], onDelete: Cascade)
+  installation   Installation?       @relation(fields: [installationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, receivedAt])
+  @@index([guestSessionId, receivedAt])
+  @@index([receivedAt])
+}
+
+// ──────────────────────────── Directory ────────────────────────────
+
+model BusinessPlace {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  name           String      @db.VarChar(200)
+  nameNormalized String      @db.VarChar(200)
+  category       String      @db.VarChar(60)
+  address        String?     @db.VarChar(300)
+  latitude       Float
+  longitude      Float
+  /// Generated from latitude/longitude in raw SQL on write.
+  location       Unsupported("geography(Point, 4326)")?
+  status         PlaceStatus @default(ACTIVE)
+  sourceName     String      @db.VarChar(40)
+  sourceId       String      @db.VarChar(100)
+  attribution    String?     @db.VarChar(200)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
+
+  posts       BusinessPost[]
+  favorites   FavoritePlace[]
+  submissions BusinessSubmission[]
+
+  @@unique([sourceName, sourceId])
+  @@index([location], type: Gist)
+  @@index([nameNormalized(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([status, category])
+}
+
+model BusinessSubmission {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  submitterId    String           @db.Uuid
+  name           String           @db.VarChar(200)
+  nameNormalized String           @db.VarChar(200)
+  category       String           @db.VarChar(60)
+  address        String?          @db.VarChar(300)
+  latitude       Float
+  longitude      Float
+  location       Unsupported("geography(Point, 4326)")?
+  notes          String?          @db.VarChar(1000)
+  status         SubmissionStatus @default(PENDING)
+  decisionReason String?          @db.VarChar(500)
+  reviewerId     String?          @db.Uuid
+  reviewedAt     DateTime?        @db.Timestamptz(3)
+  /// Place created on approval, or the existing place it was merged into.
+  placeId        String?          @db.Uuid
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
+  submitter      User             @relation("Submitter", fields: [submitterId], references: [id])
+  reviewer       User?            @relation("Reviewer", fields: [reviewerId], references: [id])
+  place          BusinessPlace?   @relation(fields: [placeId], references: [id])
+
+  modActions ModerationAction[]
+
+  @@index([status, createdAt])
+  @@index([submitterId, createdAt])
+  @@index([location], type: Gist)
+}
+
+model FavoritePlace {
+  userId    String        @db.Uuid
+  placeId   String        @db.Uuid
+  createdAt DateTime      @default(now()) @db.Timestamptz(3)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  place     BusinessPlace @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, placeId])
+  @@index([placeId])
+}
+
+// ─────────────────────────── Discussions ───────────────────────────
+
+/// General feed post (§7.1). Registered users only, so the author is always a User.
+model GeneralPost {
+  id           String        @id @default(uuid(7)) @db.Uuid
+  authorId     String        @db.Uuid
+  body         String        @db.VarChar(2000)
+  /// Coarsened (~100 m grid) point assigned by the server (D7). Never the raw reading.
+  location     Unsupported("geography(Point, 4326)")?
+  status       ContentStatus @default(VISIBLE)
+  score        Int           @default(0)
+  upCount      Int           @default(0)
+  downCount    Int           @default(0)
+  commentCount Int           @default(0)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+  editedAt     DateTime?     @db.Timestamptz(3)
+  author       User          @relation(fields: [authorId], references: [id])
+
+  comments   Comment[]
+  votes      Vote[]
+  photos     Photo[]
+  reports    Report[]
+  modActions ModerationAction[]
+
+  @@index([location], type: Gist)
+  @@index([status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([authorId, createdAt(sort: Desc)])
+}
+
+/// Business room post (§7.2). Always tied to one canonical place.
+model BusinessPost {
+  id           String        @id @default(uuid(7)) @db.Uuid
+  placeId      String        @db.Uuid
+  authorId     String        @db.Uuid
+  body         String        @db.VarChar(2000)
+  status       ContentStatus @default(VISIBLE)
+  score        Int           @default(0)
+  upCount      Int           @default(0)
+  downCount    Int           @default(0)
+  commentCount Int           @default(0)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+  editedAt     DateTime?     @db.Timestamptz(3)
+  place        BusinessPlace @relation(fields: [placeId], references: [id])
+  author       User          @relation(fields: [authorId], references: [id])
+
+  comments   Comment[]
+  votes      Vote[]
+  photos     Photo[]
+  reports    Report[]
+  modActions ModerationAction[]
+
+  @@index([placeId, status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([authorId, createdAt(sort: Desc)])
+}
+
+/// Comment on exactly one post (CHECK). Author is a User or a Guest (authorKind).
+/// authorGuestId may become null after guest data purge; authorKind keeps the GUEST label (§16).
+model Comment {
+  id              String        @id @default(uuid(7)) @db.Uuid
+  generalPostId   String?       @db.Uuid
+  businessPostId  String?       @db.Uuid
+  parentCommentId String?       @db.Uuid
+  depth           Int           @default(0) @db.SmallInt
+  authorKind      AuthorKind
+  authorUserId    String?       @db.Uuid
+  authorGuestId   String?       @db.Uuid
+  body            String        @db.VarChar(1000)
+  status          ContentStatus @default(VISIBLE)
+  score           Int           @default(0)
+  upCount         Int           @default(0)
+  downCount       Int           @default(0)
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+  editedAt        DateTime?     @db.Timestamptz(3)
+  generalPost     GeneralPost?  @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
+  businessPost    BusinessPost? @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
+  parent          Comment?      @relation("Thread", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         Comment[]     @relation("Thread")
+  authorUser      User?         @relation(fields: [authorUserId], references: [id])
+  authorGuest     GuestSession? @relation(fields: [authorGuestId], references: [id], onDelete: SetNull)
+
+  votes      Vote[]
+  reports    Report[]
+  modActions ModerationAction[]
+
+  @@index([generalPostId, createdAt, id])
+  @@index([businessPostId, createdAt, id])
+  @@index([parentCommentId])
+  @@index([authorUserId, createdAt(sort: Desc)])
+  @@index([authorGuestId])
+  @@index([authorKind, createdAt])
+}
+
+/// One vote per (voter, target) regardless of direction (D6). Value is +1 or -1 (CHECK).
+model Vote {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  voterId        String        @db.Uuid
+  generalPostId  String?       @db.Uuid
+  businessPostId String?       @db.Uuid
+  commentId      String?       @db.Uuid
+  value          Int           @db.SmallInt
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
+  voter          User          @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  generalPost    GeneralPost?  @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
+  businessPost   BusinessPost? @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
+  comment        Comment?      @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([voterId, generalPostId])
+  @@unique([voterId, businessPostId])
+  @@unique([voterId, commentId])
+}
+
+/// Image record. Bytes live in object storage only (§12).
+model Photo {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  uploaderId     String        @db.Uuid
+  /// Random key in the private media bucket (set after processing).
+  storageKey     String?       @unique @db.VarChar(200)
+  quarantineKey  String?       @unique @db.VarChar(200)
+  status         PhotoStatus   @default(PENDING_UPLOAD)
+  mimeType       String?       @db.VarChar(40)
+  width          Int?
+  height         Int?
+  bytes          Int?
+  generalPostId  String?       @db.Uuid
+  businessPostId String?       @db.Uuid
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  processedAt    DateTime?     @db.Timestamptz(3)
+  removedAt      DateTime?     @db.Timestamptz(3)
+  uploader       User          @relation(fields: [uploaderId], references: [id])
+  generalPost    GeneralPost?  @relation(fields: [generalPostId], references: [id], onDelete: SetNull)
+  businessPost   BusinessPost? @relation(fields: [businessPostId], references: [id], onDelete: SetNull)
+  avatarOf       Profile?      @relation("Avatar")
+
+  reports    Report[]
+  modActions ModerationAction[]
+
+  @@index([uploaderId, createdAt])
+  @@index([generalPostId])
+  @@index([businessPostId])
+  @@index([status, createdAt])
+}
+
+// ─────────────────────────── Achievements ───────────────────────────
+
+model Achievement {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  key         String   @unique @db.VarChar(50)
+  name        String   @db.VarChar(80)
+  description String   @db.VarChar(300)
+  icon        String   @db.VarChar(50)
+  criteria    Json
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  awards UserAchievement[]
+}
+
+model UserAchievement {
+  userId        String      @db.Uuid
+  achievementId String      @db.Uuid
+  awardedAt     DateTime    @default(now()) @db.Timestamptz(3)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  @@id([userId, achievementId])
+}
+
+// ──────────────────────── Safety & moderation ────────────────────────
+
+/// Report against exactly one target (CHECK). Reporter is a User or Guest (CHECK).
+model Report {
+  id              String        @id @default(uuid(7)) @db.Uuid
+  reporterUserId  String?       @db.Uuid
+  reporterGuestId String?       @db.Uuid
+  generalPostId   String?       @db.Uuid
+  businessPostId  String?       @db.Uuid
+  commentId       String?       @db.Uuid
+  photoId         String?       @db.Uuid
+  reportedUserId  String?       @db.Uuid
+  reason          ReportReason
+  details         String?       @db.VarChar(1000)
+  status          ReportStatus  @default(OPEN)
+  resolvedById    String?       @db.Uuid
+  resolvedAt      DateTime?     @db.Timestamptz(3)
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  reporterUser    User?         @relation("Reporter", fields: [reporterUserId], references: [id], onDelete: SetNull)
+  reporterGuest   GuestSession? @relation(fields: [reporterGuestId], references: [id], onDelete: SetNull)
+  generalPost     GeneralPost?  @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
+  businessPost    BusinessPost? @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
+  comment         Comment?      @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  photo           Photo?        @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  reportedUser    User?         @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  resolvedBy      User?         @relation("ReportResolver", fields: [resolvedById], references: [id])
+
+  modActions ModerationAction[]
+
+  @@index([status, createdAt])
+  @@index([generalPostId])
+  @@index([businessPostId])
+  @@index([commentId])
+  @@index([photoId])
+  @@index([reportedUserId])
+}
+
+model UserBlock {
+  blockerId String   @db.Uuid
+  blockedId String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+/// Every moderation decision: reason, time, admin, target (§10.3).
+model ModerationAction {
+  id                   String               @id @default(uuid(7)) @db.Uuid
+  adminId              String               @db.Uuid
+  action               ModerationActionType
+  reason               String               @db.VarChar(1000)
+  /// Internal only. Never in public responses.
+  internalNote         String?              @db.VarChar(2000)
+  durationHours        Int?
+  expiresAt            DateTime?            @db.Timestamptz(3)
+  targetUserId         String?              @db.Uuid
+  targetGuestId        String?              @db.Uuid
+  targetInstallationId String?              @db.Uuid
+  generalPostId        String?              @db.Uuid
+  businessPostId       String?              @db.Uuid
+  commentId            String?              @db.Uuid
+  photoId              String?              @db.Uuid
+  submissionId         String?              @db.Uuid
+  reportId             String?              @db.Uuid
+  createdAt            DateTime             @default(now()) @db.Timestamptz(3)
+  admin                User                 @relation("ModActor", fields: [adminId], references: [id])
+  targetUser           User?                @relation("ModTargetUser", fields: [targetUserId], references: [id])
+  targetGuest          GuestSession?        @relation(fields: [targetGuestId], references: [id], onDelete: SetNull)
+  targetInstallation   Installation?        @relation(fields: [targetInstallationId], references: [id])
+  generalPost          GeneralPost?         @relation(fields: [generalPostId], references: [id], onDelete: SetNull)
+  businessPost         BusinessPost?        @relation(fields: [businessPostId], references: [id], onDelete: SetNull)
+  comment              Comment?             @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  photo                Photo?               @relation(fields: [photoId], references: [id], onDelete: SetNull)
+  submission           BusinessSubmission?  @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  report               Report?              @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([targetUserId, createdAt])
+  @@index([targetGuestId])
+  @@index([targetInstallationId])
+  @@index([adminId, createdAt])
+}
+
+model AdminAuditLog {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  adminId    String   @db.Uuid
+  action     String   @db.VarChar(60)
+  targetType String   @db.VarChar(40)
+  targetId   String?  @db.VarChar(64)
+  metadata   Json?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  admin      User     @relation(fields: [adminId], references: [id])
+
+  @@index([createdAt])
+  @@index([adminId, createdAt])
+  @@index([targetType, targetId])
+}
+
+model AccountDeletion {
+  id          String         @id @default(uuid(7)) @db.Uuid
+  userId      String         @db.Uuid
+  status      DeletionStatus @default(REQUESTED)
+  requestedAt DateTime       @default(now()) @db.Timestamptz(3)
+  /// When PII purge becomes due (requestedAt + retention, D14).
+  purgeAfter  DateTime       @db.Timestamptz(3)
+  completedAt DateTime?      @db.Timestamptz(3)
+  user        User           @relation(fields: [userId], references: [id])
+
+  @@index([status, purgeAfter])
+  @@index([userId])
+}
+
+// ──────────────────────── Config & infrastructure ────────────────────────
+
+/// Server-authoritative settings (§7, §18). Keys match CONFIG_DEFAULTS in @jax/shared.
+model AppConfiguration {
+  key         String   @id @db.VarChar(80)
+  value       Json
+  description String?  @db.VarChar(300)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  updatedById String?  @db.Uuid
+  updatedBy   User?    @relation(fields: [updatedById], references: [id])
+}
+
+/// Fixed-window rate-limit counters (D8).
+model RateLimitCounter {
+  key         String   @db.VarChar(200)
+  windowStart DateTime @db.Timestamptz(3)
+  count       Int      @default(0)
+  expiresAt   DateTime @db.Timestamptz(3)
+
+  @@id([key, windowStart])
+  @@index([expiresAt])
+}

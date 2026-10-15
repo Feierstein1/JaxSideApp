@@ -43,3 +43,6 @@ Thumbs.db
 
 # Local Docker volumes
 .docker-data/
+
+# Generated Prisma client (rebuilt by postinstall)
+apps/server/src/generated/

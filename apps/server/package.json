@@ -1,0 +1,40 @@
+{
+  "name": "@jax/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:test:reset": "node scripts/reset-test-db.mjs"
+  },
+  "dependencies": {
+    "@jax/shared": "*",
+    "@next/env": "16.4.1",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "next": "16.4.1",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.23.1",
+    "@types/react": "~19.2.0",
+    "@types/react-dom": "~19.2.0",
+    "prisma": "^7.10.0",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.4"
+  }
+}

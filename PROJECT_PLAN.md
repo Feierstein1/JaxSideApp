@@ -21,8 +21,8 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 ## Current status
 
-**Phase:** 0 — Decisions & environment (no code yet)
-**Next action:** `git init` (P0.4), then Phase 1, starting with P1.1 (scaffolding) and P1.2 (docker-compose).
+**Phase:** 1 — Repository & Foundation (scaffolding and database done; authentication next)
+**Next action:** P1.13 (register) → P1.14 → P1.15 → P1.18 → P1.19. Also please answer Q12 (guest votes/reports) before Phase 4, and review D22–D27.
 **Last updated:** 2026-10-14
 
 ---
@@ -43,13 +43,14 @@ Questions marked **BLOCKING** must be answered before the phase listed. Each has
 - [x] **Q4 — Who can comment on a general post? (BLOCKING Phase 3)** → Answered: within 1 mi of the post (D20)
   §7.1 says the author must be within the radius of "the relevant discussion area." For a comment, is that area the **post's** location or the commenter's current feed?
   *Recommendation:* Measure from the post's stored location. You can comment if you are within the general maximum radius (1 mi) of where the post was made.
-- [ ] **Q5 — Local development environment (BLOCKING Phase 1)**
+- [x] **Q5 — Local development environment (BLOCKING Phase 1)** → Docker Desktop; `docker compose up` verified 2026-10-14 (P1.2)
   This machine runs Windows 10 Home. PostGIS and S3-compatible storage are easiest to run locally with Docker Desktop (PostGIS plus MinIO containers).
   *Recommendation:* Use Docker Desktop with WSL2. Confirm it is installed and running. Alternative: a free hosted Postgres with PostGIS (Supabase or Neon) as the dev database.
   *Checked 2026-10-14:* Docker 29.1.3 is installed, but the engine was not running. Node v22 ✓, npm 10.9 ✓, pnpm not installed, Git 2.26 (2020; recommend updating).
 - [ ] **Q6 — Email delivery (BLOCKING Phase 1 password reset)**
   Password reset (§4.1) and email changes (§14) require sending email.
   *Recommendation:* In development, log emails to the console or use Mailpit in Docker. Pick a provider later (Resend, Postmark, or SES). Should registration require email verification? I recommend yes; it is cheap protection against abuse.
+  *Update 2026-10-14:* Development is unblocked. Mailpit runs in docker-compose and email verification is accepted (D11). Only the **production provider** is still open, and it isn't needed until launch.
 - [x] **Q7 — Package manager / repo layout (BLOCKING Phase 1)** → Answered: npm workspaces (D21), layout per D1
   *Recommendation:* A pnpm workspace monorepo:
   `apps/mobile` (Expo), `apps/server` (one Next.js app that serves **both** the REST API and the admin portal), `packages/shared` (zod schemas, types, constants).
@@ -65,6 +66,9 @@ Questions marked **BLOCKING** must be answered before the phase listed. Each has
   *Recommendation:* For the MVP, require a **map pin** (the address is optional text), so no geocoder is needed. Add one later.
 - [ ] **Q11 — Legal / policy text**
   The spec needs a Terms of Service, Privacy Policy, Community Guidelines, and retention policy. I can draft placeholders, but **an attorney should review them before any public launch.** See risks R3 and R4.
+- [ ] **Q12 — Can guests vote? Can guests file reports? (BLOCKING Phase 4)**
+  §5 lists guest capabilities as browse and comment only, so voting isn't included. §5 also says guests "cannot bypass … reporting", which is unclear: it could mean they can be reported, or that they can report.
+  *Recommendation:* Guests **cannot vote** (keeps vote totals tied to accountable accounts) but **can report** content (safety reports should be easy for anyone who can see content). The schema already supports this: `Vote.voterId` is a required User, and `Report` allows a guest reporter.
 
 ---
 
@@ -114,6 +118,12 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D19 | **Accepted** 2026-10-14 | **Business rooms are location-only for reading too.** Viewing a business's discussion requires a fresh verified location within the business radius (≤ 0.3 mi). The directory and search still list places and basic info (name, category, distance) so users can find them, but discussion content is locked until they're nearby. Favorites save the place, not remote access | User decision ("strictly location-based, for now"); overrides §7.3 read-only browsing for business rooms. May relax later |
 | D20 | **Accepted** 2026-10-14 | Commenting on a general post requires being within the general max radius (1 mi) of the post's stored location | Q4 answered |
 | D21 | **Accepted** 2026-10-14 | Package manager = **npm workspaces** | Q7 answered; already installed, no Expo config workarounds |
+| D22 | Proposed 2026-10-14 | The age screen's "current year" is the calendar year in **America/New_York**, so the cutoff moves at local midnight on Jan 1 | §4.2 doesn't name a timezone; Jacksonville is Eastern. Tested at the UTC/Eastern boundary |
+| D23 | Proposed 2026-10-14 | Usernames: 3–20 characters, ASCII letters/digits/underscore, unique case-insensitively (`usernameNormalized`). Reserved list blocks impersonating names (admin, moderator, guest, support, jax, …) | §4.3 gives no format rules; the reserved list protects the GUEST label and staff names |
+| D24 | Proposed 2026-10-14 | Passwords: 10–128 characters, no composition rules (NIST 800-63B style). The maximum length bounds argon2 cost | §4.1 gives no policy |
+| D25 | **Accepted** 2026-10-14 | Local S3 = **SeaweedFS** (pinned image) instead of MinIO. The app uses only the generic S3 API, so production can use any S3-compatible service | MinIO no longer publishes community Docker images (pull fails). Dev-only tool change |
+| D26 | **Accepted** 2026-10-14 | Versions: Next 16.4, React 19.2.3 (Expo 57's pin, shared across the workspace), Expo SDK 57, Prisma 7.10 with the `pg` driver adapter, **TypeScript 6.0** (not 7), zod 4, Vitest 5 | typescript-eslint doesn't support TS 7 yet; one React version avoids duplicate-React bugs in a hoisted monorepo; Prisma's `latest` tag is an 8.0 RC, so the stable 7.10 is used |
+| D27 | **Accepted** 2026-10-14 | Test runs apply migrations with `migrate deploy` and clear data with TRUNCATE on a DB whose name must end in `_test`. A full rebuild (`db:test:reset`) is run by a human | Prisma 7 blocks `migrate reset` from AI agents without explicit user consent. This design is also safer for CI |
 
 ---
 
@@ -121,29 +131,29 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 
 - [x] **P0.1** Answer the blocking questions Q1, Q2, Q4, Q7 (Q5 = Docker; pending engine start, P0.6)
 - [x] **P0.2** Accept or modify proposed decisions D1–D14 (all accepted 2026-10-14)
-- [ ] **P0.3** Install and verify tools: Node LTS, pnpm (or npm), Git, Docker Desktop, Expo tooling, Android Studio emulator and/or a physical device
-- [ ] **P0.4** `git init`, `.gitignore` (including `.env*` except `.env.example`), first commit
+- [~] **P0.3** Install and verify tools: Node 22 ✓, npm 10 ✓, Git ✓, Docker Desktop ✓, Expo tooling ✓ (Android bundle exports). *Left:* Android emulator and/or physical device (Q8)
+- [x] **P0.4** `git init` (branch `main`), `.gitignore` (including `.env*` except `.env.example`), first commit `0a9a6d5`
 - [x] **P0.5** Repo copied to `C:\Users\kenfe\Projects\JaxApp` (2026-10-14). The old OneDrive copy can be deleted once you've confirmed the new one
 - [x] **P0.6** Docker engine responding to `docker info` (verified 2026-10-14; the earlier error was temporary). Existing containers `php-afsb` and `mariadb-afsb` run alongside; check for port conflicts in P1.2. (Git update dropped: 2.26 is fine; only `git init -b` is missing, which has a simple workaround)
-- [ ] **Phase gate:** All blocking questions answered; environment runs `docker compose up` successfully
+- [x] **Phase gate:** All blocking questions answered; environment runs `docker compose up` successfully (2026-10-14. Q6's production provider is deferred; dev uses Mailpit)
 
 ## Phase 1 — Repository & Foundation (§21 P1, §3, §4.1, §4.2, §16, §17)
 
 **Scaffolding**
-- [ ] **P1.1** Monorepo workspace, root TS config, ESLint and Prettier, shared scripts (`dev`, `test`, `lint`, `typecheck`)
-- [ ] **P1.2** `docker-compose.yml`: PostGIS, MinIO (S3), Mailpit (dev email)
-- [ ] **P1.3** `apps/server` Next.js app; health endpoint; structured logger (no PII)
-- [ ] **P1.4** `apps/mobile` Expo + Expo Router + TypeScript; API client; secure token storage (`expo-secure-store`)
-- [ ] **P1.5** `packages/shared`: zod schemas with `.strict()` (rejects unexpected fields, §17), shared constants
-- [ ] **P1.6** `.env.example` with placeholders only; env validation at server boot 🔒
-- [ ] **P1.7** Vitest setup with an isolated test database; CI-ready `test` script
+- [x] **P1.1** Monorepo workspace, root TS config, ESLint and Prettier, shared scripts (`dev`, `test`, `lint`, `typecheck`)
+- [x] **P1.2** `docker-compose.yml`: PostGIS 17/3.5 (port 5433, plus a `jax_test` DB), **SeaweedFS** S3 (D25), Mailpit. Localhost-only ports; healthchecks; credentials from `.env`
+- [x] **P1.3** `apps/server` Next.js app; `GET /api/v1/health` (DB check, 503 when down); pino logger with PII redaction (tested); `route()` wrapper returns generic 500s without internals (tested)
+- [x] **P1.4** `apps/mobile` Expo 57 + Expo Router + TypeScript; typed API client (tested: bearer token, error mapping, 401 clears token); token in `expo-secure-store`; placeholder home calls `/health`
+- [x] **P1.5** `packages/shared`: `z.strictObject` auth schemas (tests reject `role`/`status`/`id` smuggling), config defaults, username rules (D23), age helpers (D22)
+- [x] **P1.6** `.env.example` with placeholders only; env validation at server boot 🔒 (negative tests: missing values, short secrets, `.env.example` placeholders rejected, values never echoed in errors)
+- [x] **P1.7** Vitest with an isolated `jax_test` database (D27); guard refuses non-`_test` DBs (tested); `npm test` runs all workspaces
 
 **Database**
-- [ ] **P1.8** Prisma configured; PostGIS extension enabled in the first migration
-- [ ] **P1.9** Initial schema for all §16 entities (per D5): User, Session, GuestSession, Profile, AppConfiguration, AdminAuditLog, etc.
-- [ ] **P1.10** Geometry columns and GiST indexes via raw-SQL migration (Prisma `Unsupported("geography")`)
-- [ ] **P1.11** `AppConfiguration` seeded with radius defaults and limits (§7 table), age offset (19), rate limits, guest TTL
-- [ ] **P1.12** Seed script for dev data (idempotent)
+- [x] **P1.8** Prisma 7.10 configured (`prisma.config.ts`, `pg` adapter); `postgis` + `pg_trgm` extensions in the first migration
+- [x] **P1.9** Initial schema for all §16 entities (per D5), plus Session, EmailToken, Installation, UsernameHistory, ServiceArea, LocationCheck and RateLimitCounter. CHECK constraints for exactly-one target/author, vote value, required geography, no self-block. Integration tests prove each constraint rejects bad data
+- [x] **P1.10** Geography columns via `Unsupported("geography")` with GiST indexes; trigram GIN index on place names. Drift check: `migrate dev` produces an empty migration, so the hand-written CHECKs persist
+- [x] **P1.11** `AppConfiguration` seeded from `CONFIG_DEFAULTS` (§7 radius table, age offset 19, location freshness/accuracy, guest TTLs, session lengths, rate limits). Seeding never overwrites admin-edited values (tested). `getConfig()` treats the DB as authoritative, with a typed fallback (tested)
+- [~] **P1.12** Idempotent seed (tested: running twice gives the same counts): config, achievement definitions, 5 dev places. *Left:* dev users, added after P1.13 (needs argon2)
 
 **Authentication (§4.1, §4.2)**
 - [ ] **P1.13** Register: username (normalized and unique), email (private), password (argon2id), birth year, ToS acceptance, 18+ confirmation 🔒
@@ -327,9 +337,9 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [ ] Backend + admin portal source
 - [ ] Prisma schema + migrations
 - [ ] Seed + directory import scripts (idempotent)
-- [ ] `.env.example` (placeholders only)
-- [ ] `docs/SETUP.md` — local development
-- [ ] `docs/TESTING.md` — how to run tests
+- [x] `.env.example` (placeholders only)
+- [~] `docs/SETUP.md` — local development (services, DB workflow; extend as features land)
+- [~] `docs/TESTING.md` — how to run tests (test DB guard; extend as suites land)
 - [ ] `docs/API.md` — endpoint reference
 - [ ] `docs/DATA_SOURCES.md` — attribution and refresh steps
 - [ ] `docs/ARCHITECTURE.md`
@@ -350,6 +360,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 | R5 | Scope is large for an MVP | Strict phase gates; achievements are optional (§13); defer the guest upgrade path |
 | R6 | Repo inside OneDrive → sync and lock problems with node_modules | P0.5 |
 | R7 | OSM data quality / completeness for Jacksonville | Community submissions fill the gaps; admin can correct entries |
+| R8 | `npm audit`: 4 high advisories in `mysql2`, pulled in only by the `prisma` CLI (dev dependency). The app never connects to MySQL | The audit's suggested fix is a downgrade to Prisma 6, so it was not applied. Recheck when Prisma 7.x patches the dependency (P7.3) |
 
 ---
 
@@ -367,3 +378,5 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-14 | Phase 0 | Q1–Q3 answered → D15–D18 accepted, D6 confirmed. Added P3.1a (location-gated reads), P0.6. Env check: Docker installed (engine off), Node 22, npm 10, no pnpm, Git 2.26 |
 | 2026-10-14 | Phase 0 | D1–D14 accepted. D19 (business rooms location-only for reads), D20 (Q4), D21 (npm). Added P3.2a. All blocking decisions resolved |
 | 2026-10-14 | P0.5 / P0.6 | Files copied to the new folder. Docker Desktop open, but the engine returns HTTP 500 to `docker info` (WSL2 docker-desktop distro running). Git update not needed |
+| 2026-10-14 | P0.4, Phase 0 gate | Git repo initialized (`main`); Phase 0 gate passed |
+| 2026-10-14 | P1.1–P1.11, P1.12 partial | Monorepo, compose services, Next server (health, logger, env validation), Expo Router app (API client, secure store), shared schemas, Prisma 7 schema for all §16 entities with CHECK constraints, seed. 56 tests pass (shared 19, server 32, mobile 5); typecheck, lint and prettier clean; Android bundle exports. Added D22–D27, Q12, R8 |

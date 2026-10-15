@@ -1,0 +1,10 @@
+node_modules
+.next
+.expo
+dist
+coverage
+package-lock.json
+apps/server/src/generated
+docs/SPEC.md
+PROJECT_PLAN.md
+apps/server/prisma/migrations
