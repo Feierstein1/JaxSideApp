@@ -20,10 +20,10 @@ import {
 } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
-import { categoryLabel, formatDistance } from '@/format';
+import { categoryLabel, formatDistance, plural } from '@/format';
 import { getFreshReading } from '@/location/device';
 import { OsmAttribution } from '@/places/Attribution';
-import { Button, styles } from '@/ui';
+import { Button, Chip, Segmented, styles } from '@/ui';
 
 interface SearchResponse {
   places: PlaceSummary[];
@@ -159,7 +159,7 @@ export default function PlacesScreen() {
                   key={p.id}
                   coordinate={{ latitude: p.latitude, longitude: p.longitude }}
                   title={p.name}
-                  description={`${categoryLabel(p.category)} · ${formatDistance(p.distanceMeters)} · tap to open`}
+                  description={`${categoryLabel(p.category)} · ${formatDistance(p.distanceMeters)} · ${plural(p.postCount, 'post')}`}
                   pinColor={p.isFavorite ? BRAND.gold : BRAND.teal}
                   onCalloutPress={() => openPlace(p)}
                 />
@@ -200,6 +200,15 @@ export default function PlacesScreen() {
                 {categoryLabel(item.category)} · {formatDistance(item.distanceMeters)}
                 {item.withinRoomRadius ? ' · You’re here' : ''}
               </Text>
+              <Text
+                style={{
+                  color: item.postCount > 0 ? COLORS.primary : COLORS.textMuted,
+                  fontSize: 13,
+                  marginTop: 2,
+                }}
+              >
+                {item.postCount > 0 ? plural(item.postCount, 'post') : 'No posts yet'}
+              </Text>
             </Pressable>
           )}
           onEndReached={() => {
@@ -218,81 +227,6 @@ export default function PlacesScreen() {
           }
         />
       )}
-    </View>
-  );
-}
-
-/** Category filter chip: gold with black text when active (D33). */
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={{
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        marginRight: 8,
-        marginBottom: 8,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: active ? COLORS.accent : COLORS.border,
-        backgroundColor: active ? COLORS.accent : COLORS.background,
-      }}
-    >
-      <Text style={{ color: active ? COLORS.onAccent : COLORS.text, fontWeight: '600' }}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-/** Small segmented control: teal with white text when selected. */
-function Segmented({
-  options,
-  value,
-  onChange,
-}: {
-  options: { key: string; label: string }[];
-  value: string;
-  onChange: (key: string) => void;
-}) {
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        borderWidth: 1,
-        borderColor: COLORS.primary,
-        borderRadius: 8,
-        overflow: 'hidden',
-      }}
-    >
-      {options.map((o) => {
-        const active = o.key === value;
-        return (
-          <Pressable
-            key={o.key}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange(o.key)}
-            style={{
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              backgroundColor: active ? COLORS.primary : COLORS.background,
-            }}
-          >
-            <Text
-              style={{
-                color: active ? COLORS.onPrimary : COLORS.primary,
-                fontWeight: '600',
-                fontSize: 13,
-              }}
-            >
-              {o.label}
-            </Text>
-          </Pressable>
-        );
-      })}
     </View>
   );
 }

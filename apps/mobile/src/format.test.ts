@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryLabel, formatDistance } from './format';
+import { categoryLabel, formatDistance, plural, timeAgo } from './format';
 
 describe('formatDistance', () => {
   it.each([
@@ -22,5 +22,26 @@ describe('categoryLabel', () => {
     ['car_dealer', 'Car dealer'],
   ])('%s → %s', (c, out) => {
     expect(categoryLabel(c)).toBe(out);
+  });
+});
+
+describe('timeAgo', () => {
+  const now = Date.parse('2026-10-15T12:00:00Z');
+  it.each([
+    ['2026-10-15T11:59:30Z', 'now'],
+    ['2026-10-15T11:55:00Z', '5m'],
+    ['2026-10-15T09:00:00Z', '3h'],
+    ['2026-10-13T12:00:00Z', '2d'],
+    ['2026-10-01T12:00:00Z', 'Oct 1'],
+  ])('%s → %s', (iso, out) => {
+    expect(timeAgo(iso, now)).toBe(out);
+  });
+});
+
+describe('plural', () => {
+  it('handles one and many', () => {
+    expect(plural(1, 'post')).toBe('1 post');
+    expect(plural(0, 'post')).toBe('0 posts');
+    expect(plural(12, 'comment')).toBe('12 comments');
   });
 });

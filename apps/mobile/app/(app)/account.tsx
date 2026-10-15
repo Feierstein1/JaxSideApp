@@ -5,6 +5,7 @@ import { COLORS, CONFIG_DEFAULTS } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
+import { EmailCodeCard } from '@/auth/EmailCodeCard';
 import { categoryLabel } from '@/format';
 import { Button, styles } from '@/ui';
 
@@ -17,7 +18,7 @@ interface Favorite {
   category: string;
 }
 
-/** P2.15 radius preferences, P2.14 favorites, and sign-out. No location needed here (D16). */
+/** Email confirmation, P2.15 radius preferences, P2.14 favorites, and sign-out (the only place for it). No location needed here (D16). */
 export default function AccountScreen() {
   const { state, signOut, refresh } = useAuth();
   const [favorites, setFavorites] = useState<Favorite[]>([]);
@@ -54,6 +55,7 @@ export default function AccountScreen() {
     <ScrollView contentContainerStyle={styles.screen}>
       <Text style={styles.title}>{user.username}</Text>
       <Text style={styles.muted}>{user.email} (private)</Text>
+      {!user.emailVerified ? <EmailCodeCard email={user.email} /> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <Text style={[styles.label, { marginTop: 20 }]}>Feed radius</Text>

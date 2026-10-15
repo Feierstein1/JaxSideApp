@@ -14,3 +14,18 @@ export function categoryLabel(category: string): string {
   const words = category.replace(/_/g, ' ');
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
+
+/** "now", "5m", "3h", "2d", "Oct 4" (older than a week). */
+export function timeAgo(iso: string, now: number = Date.now()): string {
+  const s = Math.max(0, (now - Date.parse(iso)) / 1000);
+  if (s < 60) return 'now';
+  if (s < 3600) return `${Math.floor(s / 60)}m`;
+  if (s < 86_400) return `${Math.floor(s / 3600)}h`;
+  if (s < 7 * 86_400) return `${Math.floor(s / 86_400)}d`;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/** "1 post", "12 posts". */
+export function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? '' : 's'}`;
+}

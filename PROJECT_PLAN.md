@@ -21,8 +21,8 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 ## Current status
 
-**Phase:** 2 — Location & Directory (Phase 1 complete 2026-10-15)
-**Next action:** User tries Places (list, filters, sort, map), place page and favorites, and Account on the phone → check P2.16 and the Phase 2 gate. Then Phase 3 (discussions).
+**Phase:** 3 — Core Discussions (server done and tested; app screens built)
+**Next action:** User tries the feed, posting, comments, votes and a place room on the phone → check P3.11 and the Phase 3 gate. Map view isn't showing on the user's Android phone (P2.16): waiting for the user's description to diagnose.
 **Last updated:** 2026-10-14
 
 ---
@@ -137,6 +137,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D38 | **Accepted** 2026-10-15 | Impossible-travel thresholds: **refuse** above 1,000 km/h over at least 5 km (15-minute restriction); **flag only** above 160 km/h over at least 2 km. Distance is reduced by both readings' accuracy; only readings from the last 2 hours are compared. All configurable | User asked for a gentle beta version. The ~300 mph threshold first discussed would block real air travelers (Atlanta → Jacksonville is ~500 km/h gate to gate), so refusing is reserved for physically impossible speeds |
 | D39 | **Accepted** 2026-10-15 | Directory: search and place info need a fresh in-Duval location (D16) but no radius (D19); registered users only (guests are limited to the general feed, §5). Favorites rank as if 4× closer (`directory.favoriteDistanceFactor`) | §9.2: favorites "appear prominently … without replacing geographic relevance entirely" |
 | D40 | **Accepted** 2026-10-15 | Places tab = a **filterable, sortable nearby list** with an optional **map view** of the same results. Filters: 8 category groups shared by app and server (`CATEGORY_GROUPS`). Sorts: nearest (default), A–Z, favorites first, best match when searching. Map: `react-native-maps`, up to 50 pins per request | User: "a list of businesses nearby … sorted by different filters"; a map is a nice extra (Q9) |
+| D41 | **Accepted** 2026-10-15 | Discussion details: reading a general post needs only an in-Duval location (D16) while commenting/voting needs 1 mi (D20); replies nest at most 3 deep; deleted comments stay as "[deleted]" placeholders; editing/deleting your own content needs no location; places carry a `postCount` counter updated in the same transaction (shown on place rows); "Top" = score within 7 days; feed pages of 15 | User asked for post counts on places, paginated sleek feeds and visible comments/votes; keeps reads cheap and threads readable |
 
 ---
 
@@ -199,24 +200,24 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [x] **P2.13** `POST /places/search`: typo-tolerant name match (pg_trgm) or nearest first; category filter; favorites rank as if 4× closer (D39); pagination; inside Duval required (D16, D19). `POST /places/:id` detail. Tested: ordering, typos, favorites boost without overriding distance, paging without duplicates, inactive hidden, outside → 403 🔒
 - [x] **P2.14** Favorites: `PUT`/`DELETE /places/:id/favorite` (idempotent, unique (user, place), capped at 200), `GET /me/favorites`. Tested: own list only (IDOR), cap, unknown/inactive → 404 🔒
 - [x] **P2.15** `PATCH /me/preferences`: radii clamped to the configured min/max (§7). Tested: over max → max, under min → min, invalid/extra fields → 400 🔒
-- [~] **P2.16** App: Home / Places / Account tabs. Places (D40): search, **List / Map** switch (map centers on the user, up to 50 pins, teal or gold for favorites, tap the label to open), category chips (8 groups), sort (Nearest / A–Z / Favorites first; best match while searching); place detail with favorite toggle and the D19 "get within 0.3 mi" note; Account radius choices and favorites list; OSM attribution. Android and iOS bundles export; running Metro builds it. *Left:* user tries Places / Map / Account on the phone
-- [ ] **Phase gate:** Location tests pass; import run twice gives the same count; search works on device
+- [~] **P2.16** Places list, filters, sort, place page, favorites and Account confirmed on the user's phone ("I like the design"). *Left:* **the map view doesn't appear on the user's Android phone** (Google Maps in Expo Go); diagnosing
+- [x] **Phase gate:** Location tests pass; import run twice gives the same count; search works on device (2026-10-15: user confirmed Places on the phone; the map view is tracked under P2.16)
 
 ## Phase 3 — Core Discussions (§7.1, §7.2, §7.3, §8)
 
-- [ ] **P3.1** General posts: create (location-validated, server assigns the coarsened point), read nearby feed centered on the user's verified location 🔒
-- [ ] **P3.1a** Read endpoints (feed, post detail, comments, business rooms) require a fresh in-boundary location. Out-of-area or no-location callers get a "location required" response, and the mobile app shows only profile/settings (D16) 🔒
-- [ ] **P3.2** Business rooms: business posts tied to a canonical `BusinessPlace`; business-radius validation on **reads and writes** (D19) 🔒 ✅DV2
-- [ ] **P3.2a** Mobile: a place outside the radius shows its info card plus "Get within 0.3 mi to view this discussion" (D19)
-- [ ] **P3.3** Comments and replies (threaded, depth-limited), on both post types; radius rule per Q4 🔒 ✅DV3
-- [ ] **P3.4** Votes per D6; unique constraint; server-maintained score; vote-change and remove 🔒 ✅DV4 ✅DV5
-- [ ] **P3.5** Cursor pagination `(createdAt, id)`; tests for no duplicates or skips with concurrent inserts ✅DV6
-- [ ] **P3.6** Sorting: newest, plus a simple "top/hot" score (time-decayed votes)
-- [ ] **P3.7** Every write endpoint checks: auth, schema, rate limit, location, ownership. Test table enumerates every write route 🔒 ✅L5 ✅L6
-- [ ] **P3.8** Author edit and delete own content (soft-delete); IDOR tests 🔒
-- [ ] **P3.9** Blocked users' content hidden from the blocker (depends on P5.2; stub filter now)
-- [ ] **P3.10** XSS-safe rendering: plain text only, links not auto-executed; admin portal escapes all UGC 🔒
-- [ ] **P3.11** Mobile: general feed (default landing), post detail with comments, business room screen, compose screens, clear UI separation between the two
+- [x] **P3.1** General posts at the author's coarsened point (server-assigned, D7); feed around the reader within their radius (preference clamped to 1 mi); verified email required to post (D11). Tested 🔒
+- [x] **P3.1a** Feed, post detail and comment lists need a fresh in-Duval reading; business rooms need 0.3 mi (D19). Outside → `403` with the reason; the app shows it. Tested 🔒
+- [x] **P3.2** Business rooms: posts tied to a canonical place; reading, posting, commenting and voting all need 0.3 mi (D19). Place `postCount` kept in the same transaction (D41). Tested 🔒 ✅DV2
+- [x] **P3.2a** Place page: info card + "Get within 0.3 mi of this place to see and join its discussion" when out of range; the room's posts when in range
+- [x] **P3.3** Threaded comments and replies on both post types (max depth 3, a reply's parent must be on the same post); general comments within 1 mi of the post (D20). Deleted comments stay as placeholders. Tested 🔒 ✅DV3
+- [x] **P3.4** Votes per D6: one row per (voter, item), set/change/repeat/clear, totals changed only by deltas in the same transaction under a per-(voter, item) lock (six simultaneous taps count once). Client totals rejected. Tested 🔒 ✅DV4 ✅DV5
+- [x] **P3.5** Cursor pagination by (createdAt, id); tested: 20 posts, 3 added mid-scroll, second page has exactly the remaining 5; tampered cursor → 400 ✅DV6
+- [x] **P3.6** Sorts: New (default), and Top (by score within 7 days, `feed.topWindowDays`). A time-decayed "hot" score can come later if Top feels stale
+- [x] **P3.7** `test/write-routes.test.ts`: a table of all 34 write endpoints that **fails if a new one isn't listed**; checks 401 without a session, 400 for smuggled fields (`role`, `userId`), 403 from outside Duval, 404 for someone else's content. Mutation-checked (comment/vote radius) 🔒 ✅L5 ✅L6
+- [x] **P3.8** Authors edit (marked "edited") and soft-delete their own posts and comments; anyone else gets 404. Tested 🔒
+- [x] **P3.9** Block filter applied to feed, rooms, post detail and comments, in both directions (tested with `UserBlock` rows). The block/unblock UI comes in P5.2
+- [x] **P3.10** Plain text only: bodies stored and returned exactly as typed (tested with `<script>`), rendered with `<Text>` (never HTML, no auto-linking); control characters rejected. Admin portal escaping is part of P5 🔒
+- [~] **P3.11** App: Home = area feed (cards with teal accent; author, time, distance; body; up/down votes; comment count), New / Top this week, infinite scroll and pull to refresh, gold + button, "No posts in this area yet. Start the conversation!"; post screen with threaded comments, reply and delete; compose; place pages show their room (gold accent) or the 0.3 mi message; place rows show post counts; email confirmation moved to Account; sign-out only in Account; Duval status removed from Home. *Left:* user tries it on the phone
 - [ ] **Phase gate:** End-to-end posting and voting on device in both contexts; location-bypass test suite green
 
 ## Phase 4 — Guests & Profiles (§4.3, §4.4, §5, §14)
@@ -304,8 +305,8 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [x] L2 — Inside Jax but outside the radius → blocked (P2.4 ✓)
 - [x] L3 — Valid user in radius → allowed (P2.4 ✓)
 - [x] L4 — Stale, malformed, or inaccurate readings rejected (P2.4 ✓)
-- [ ] L5 — Tampered coordinates or user IDs can't bypass (P3.7, P7.2)
-- [ ] L6 — Read-only browsing never enables writes (P3.7)
+- [~] L5 — Tampered coordinates or user IDs can't bypass (P3.7 ✓ `write-routes.test.ts`; full bypass pass in P7.2)
+- [x] L6 — Read-only browsing never enables writes (P3.7 ✓)
 
 **Accounts & guests**
 - [ ] A1 — Identity persists across username changes (P4.9)
@@ -317,12 +318,12 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [ ] A7 — Deletion hides the profile and runs the retention workflow (P4.12)
 
 **Discussions & voting**
-- [ ] DV1 — General and business discussions are distinct (P3.1, P3.2)
-- [ ] DV2 — Business posts tied to a canonical place (P3.2)
-- [ ] DV3 — Replies appear under the correct parent (P3.3)
-- [ ] DV4 — No duplicate votes (P3.4)
-- [ ] DV5 — Server-side vote totals (P3.4)
-- [ ] DV6 — Pagination: no duplicates or skips (P3.5)
+- [x] DV1 — General and business discussions are distinct (P3.1, P3.2 ✓ `discussions.test.ts`)
+- [x] DV2 — Business posts tied to a canonical place (P3.2 ✓)
+- [x] DV3 — Replies appear under the correct parent (P3.3 ✓)
+- [x] DV4 — No duplicate votes (P3.4 ✓)
+- [x] DV5 — Server-side vote totals (P3.4 ✓)
+- [x] DV6 — Pagination: no duplicates or skips (P3.5 ✓)
 
 **Directory & admin**
 - [ ] D1 — Import is idempotent (P2.11)
@@ -412,3 +413,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-15 | P2.10, P2.11 (real data) | First real import: 4,351 OSM features → 3,742 Duval places (517 outside the county, 92 duplicates). Re-import from the saved download: 0 inserted, 0 updated, 3,742 unchanged (D1 holds on real data). Seed fixture places now only fill an empty directory; the 5 dev fixtures were set inactive in the dev DB |
 | 2026-10-15 | P2 live check | Live check over Wi-Fi found the new location routes returning 500: `import.meta.dirname` is undefined inside the Next.js bundle (the tests call handlers directly and missed it). Fixed by resolving the boundary path at call time and moving file reading out of route-imported code. Added `npm run verify` (typecheck + lint + tests + production build). Live: status eligible, nearby list and "publix" search return real places |
 | 2026-10-15 | P2.9 ✓, D40, Q9 | User confirmed the location flow on the phone. A "500" while loading turned out to be Metro started before new packages were installed (fixed by restarting with --clear; SETUP note). Added category groups, sort options, map limit (server, tested) and a List / Map Places screen with chips and sort (`react-native-maps`). 307 tests + production build pass; Android and iOS bundles export; live check of filters OK |
+| 2026-10-15 | Phase 2 gate, Phase 3 | User confirmed Places on the phone (map view not showing: open under P2.16). Phase 3 server: feed, posts, threaded comments, votes, business rooms, edit/delete, block filter, and a write-route table test (34 endpoints). App: feed Home, post screen with comments, compose, place rooms, post counts; email code moved to Account. Live check on the dev server: post → feed → comment → vote → room post → count. 414 tests + production build pass. One test run hung in setup and didn't reproduce (3 reruns passed) |

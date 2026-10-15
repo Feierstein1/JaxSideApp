@@ -34,6 +34,9 @@ export const COLORS = {
 
   placeholder: '#6B6B6B', // 5.3:1 on white (input hints)
   border: '#8A8A8A', // 3.4:1 on white (input outlines need 3:1)
+  cardBorder: '#E3E3E3', // decorative card edge (not a control, so no contrast minimum)
+  shadow: BRAND.black,
+  surfaceMuted: '#F4F5F6', // page background behind cards
   // Functional colors outside the brand palette, kept for clarity and accessibility.
   error: '#B00020', // 7.3:1 on white
 } as const;

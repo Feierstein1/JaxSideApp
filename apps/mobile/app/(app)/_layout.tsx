@@ -34,9 +34,10 @@ export default function AppLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="(home)"
         options={{
-          title: 'Jax',
+          headerShown: false,
+          title: 'Home',
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
         }}

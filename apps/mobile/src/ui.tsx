@@ -169,3 +169,86 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
 });
+
+/** Category filter chip: gold with black text when active (D33). */
+export function Chip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      style={{
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        marginRight: 8,
+        marginBottom: 8,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: active ? COLORS.accent : COLORS.border,
+        backgroundColor: active ? COLORS.accent : COLORS.background,
+      }}
+    >
+      <Text style={{ color: active ? COLORS.onAccent : COLORS.text, fontWeight: '600' }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Small segmented control: teal with white text when selected. */
+export function Segmented({
+  options,
+  value,
+  onChange,
+}: {
+  options: { key: string; label: string }[];
+  value: string;
+  onChange: (key: string) => void;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        borderWidth: 1,
+        borderColor: COLORS.primary,
+        borderRadius: 8,
+        overflow: 'hidden',
+      }}
+    >
+      {options.map((o) => {
+        const active = o.key === value;
+        return (
+          <Pressable
+            key={o.key}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            onPress={() => onChange(o.key)}
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              backgroundColor: active ? COLORS.primary : COLORS.background,
+            }}
+          >
+            <Text
+              style={{
+                color: active ? COLORS.onPrimary : COLORS.primary,
+                fontWeight: '600',
+                fontSize: 13,
+              }}
+            >
+              {o.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
