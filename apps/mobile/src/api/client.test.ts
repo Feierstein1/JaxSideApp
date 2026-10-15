@@ -30,6 +30,19 @@ describe('api client', () => {
     expect(init.body).toBe('{"a":1}');
   });
 
+  it('sends the installation token header when the app has one (P2.7)', async () => {
+    const fetchFn = vi.fn(async () => jsonResponse(200, {}));
+    const api = createApiClient({
+      baseUrl: 'http://x',
+      tokenStore: memoryStore(),
+      fetchFn,
+      getInstallationToken: async () => 'inst-token',
+    });
+    await api.get('/h');
+    const [, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
+    expect((init.headers as Record<string, string>)['X-Installation-Token']).toBe('inst-token');
+  });
+
   it('omits Authorization when signed out', async () => {
     const fetchFn = vi.fn(async () => jsonResponse(200, {}));
     const api = createApiClient({ baseUrl: 'http://x', tokenStore: memoryStore(), fetchFn });

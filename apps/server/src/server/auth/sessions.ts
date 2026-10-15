@@ -7,12 +7,25 @@ const DAY_MS = 86_400_000;
 /** Don't write lastUsedAt on every request; once an hour is enough for sliding expiry. */
 const TOUCH_INTERVAL_MS = 3_600_000;
 
-export async function createSession(userId: string, kind: SessionKind, now = new Date()) {
+export async function createSession(
+  userId: string,
+  kind: SessionKind,
+  now = new Date(),
+  installationId: string | null = null,
+) {
   const days = await getConfig('session.mobileDays');
   const token = generateToken();
   const expiresAt = new Date(now.getTime() + days * DAY_MS);
   await db.session.create({
-    data: { userId, kind, tokenHash: hashToken(token), expiresAt, createdAt: now, lastUsedAt: now },
+    data: {
+      userId,
+      kind,
+      tokenHash: hashToken(token),
+      expiresAt,
+      createdAt: now,
+      lastUsedAt: now,
+      installationId,
+    },
   });
   return { token, expiresAt };
 }

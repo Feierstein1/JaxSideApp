@@ -12,3 +12,10 @@ export const secureTokenStore: TokenStore = {
   set: (token) => SecureStore.setItemAsync(KEY, token),
   clear: () => SecureStore.deleteItemAsync(KEY),
 };
+
+/** P2.7 installation token. Kept across sign-outs (it identifies the install, not the user). */
+export const installationStore: TokenStore = {
+  get: () => SecureStore.getItemAsync('jax.installation'),
+  set: (token) => SecureStore.setItemAsync('jax.installation', token),
+  clear: () => SecureStore.deleteItemAsync('jax.installation'),
+};

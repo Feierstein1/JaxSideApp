@@ -7,7 +7,8 @@ import {
   type LoginRequest,
   type RegisterRequest,
 } from '@jax/shared';
-import type { EmailTokenPurpose } from '@/generated/prisma/client';
+import type { EmailTokenPurpose, Installation } from '@/generated/prisma/client';
+import { assertInstallationNotBanned } from '../installations';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { getEnv } from '../env';
@@ -38,6 +39,8 @@ const MINUTE_MS = 60_000;
 export interface RequestContext {
   /** Keyed hash of the client IP (see client-ip.ts). */
   ipSubject: string;
+  /** The app installation making the request, if it sent its token (P2.7). */
+  installation?: Installation | null;
   now?: Date;
 }
 
@@ -227,6 +230,7 @@ export async function register(input: RegisterRequest, ctx: RequestContext) {
     ],
     now,
   );
+  assertInstallationNotBanned(ctx.installation ?? null);
   // The birth year is used here and never stored (D36).
   const ageCutoffYear = await assertAgeEligible(input.birthYear, now);
 
@@ -305,6 +309,7 @@ export async function login(input: LoginRequest, ctx: RequestContext) {
   // normal sign-ins, and a user who knows their password isn't locked out.
   await assertUnder(ipRule, now);
   await assertUnder(accountRule, now);
+  assertInstallationNotBanned(ctx.installation ?? null);
 
   const fail = async () => {
     await hit(ipRule.key, ipRule.windowSeconds, now);
@@ -331,7 +336,12 @@ export async function login(input: LoginRequest, ctx: RequestContext) {
   // Correct password: now it's safe to say the account is banned or suspended.
   assertAccountUsable(user, now);
 
-  const { token, expiresAt } = await createSession(user.id, 'MOBILE', now);
+  const { token, expiresAt } = await createSession(
+    user.id,
+    'MOBILE',
+    now,
+    ctx.installation?.id ?? null,
+  );
   return {
     token,
     expiresAt: expiresAt.toISOString(),

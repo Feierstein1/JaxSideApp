@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { api, onUnauthorized } from '@/api';
+import { api, ensureInstallation, onUnauthorized } from '@/api';
 import type { LoginResponse, MeUser } from '@/api/types';
 import { secureTokenStore } from './secure-token-store';
 
@@ -24,6 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading' });
 
   const refresh = useCallback(async () => {
+    // Register this install first (once). If the server is unreachable, carry on;
+    // the next launch retries.
+    await ensureInstallation().catch(() => undefined);
     if (!(await secureTokenStore.get())) {
       setState({ status: 'signedOut' });
       return;

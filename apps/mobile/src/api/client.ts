@@ -28,7 +28,11 @@ export interface ApiClientOptions {
   fetchFn?: FetchFn;
   /** Called when the server rejects the session, so the app can return to sign-in. */
   onUnauthorized?: () => void;
+  /** P2.7: the installation token, sent on every request once the app has one. */
+  getInstallationToken?: () => Promise<string | null>;
 }
+
+export const INSTALLATION_HEADER = 'X-Installation-Token';
 
 export function createApiClient(opts: ApiClientOptions) {
   const fetchFn = opts.fetchFn ?? fetch;
@@ -39,6 +43,8 @@ export function createApiClient(opts: ApiClientOptions) {
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     const token = await opts.tokenStore.get();
     if (token) headers.Authorization = `Bearer ${token}`;
+    const installation = await opts.getInstallationToken?.();
+    if (installation) headers[INSTALLATION_HEADER] = installation;
 
     let res: Response;
     try {
