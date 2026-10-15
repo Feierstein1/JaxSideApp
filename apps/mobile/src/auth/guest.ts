@@ -8,12 +8,17 @@ import { useAuth } from './AuthContext';
 export function useGuest() {
   const { state, signOut } = useAuth();
   const isGuest = state.status === 'guest';
+  const canComment = state.status !== 'guest' || state.guest.canComment;
   function promptAccount(what: string) {
-    Alert.alert('Create a free account', `Guests can read and comment. To ${what}, sign up.`, [
-      { text: 'Not now', style: 'cancel' },
-      // Leaves guest mode; the guest identity stays on this install for later.
-      { text: 'Sign up or sign in', onPress: () => void signOut() },
-    ]);
+    Alert.alert(
+      'Create a free account',
+      `Guests can browse posts in their area. To ${what}, sign up.`,
+      [
+        { text: 'Not now', style: 'cancel' },
+        // Leaves guest mode; the guest identity stays on this install for later.
+        { text: 'Sign up or sign in', onPress: () => void signOut() },
+      ],
+    );
   }
-  return { isGuest, promptAccount };
+  return { isGuest, canComment, promptAccount };
 }

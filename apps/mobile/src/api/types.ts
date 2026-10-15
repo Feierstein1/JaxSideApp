@@ -27,6 +27,8 @@ export interface GuestStatus {
   expiresAt: string;
   daysLeft: number;
   expiringSoon: boolean;
+  /** D51: whether guests may comment right now (server setting). */
+  canComment: boolean;
 }
 
 export type SessionResponse =

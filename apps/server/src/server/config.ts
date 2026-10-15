@@ -4,7 +4,9 @@ import { logger } from './logger';
 
 type ConfigValue<K extends ConfigKey> = (typeof CONFIG_DEFAULTS)[K] extends number
   ? number
-  : (typeof CONFIG_DEFAULTS)[K];
+  : (typeof CONFIG_DEFAULTS)[K] extends boolean
+    ? boolean
+    : (typeof CONFIG_DEFAULTS)[K];
 
 const CACHE_TTL_MS = 30_000;
 let cache: { values: Map<string, unknown>; loadedAt: number } | undefined;

@@ -168,6 +168,29 @@ describe('what guests can do (P4.2)', () => {
     expect(asMember.raw).not.toContain(guestRow.installationId);
   });
 
+  // 🔒 D51: admins can make guests read-only; the server refuses, not just the app.
+  it('when guest.commentsEnabled is false, guests can read but not comment', async () => {
+    await db.appConfiguration.create({ data: { key: 'guest.commentsEnabled', value: false } });
+    invalidateConfigCache();
+    const g = await guestToken();
+    const c = await call(commentPOST as H, 'POST', {
+      token: g,
+      id: postId,
+      body: { reading: reading(), body: 'hi from a guest' },
+    });
+    expect(c.status).toBe(403);
+    expect(c.body.error.code).toBe('GUEST_NOT_ALLOWED');
+    const s = await call(sessionGET as H, 'GET', { token: g });
+    expect(s.body.guest.canComment).toBe(false);
+    const read = await call(postDetailPOST as H, 'POST', {
+      token: g,
+      id: postId,
+      body: { reading: reading() },
+    });
+    expect(read.status).toBe(200);
+    expect(await db.comment.count()).toBe(0);
+  });
+
   it('guest comments have their own, lower limit (4th in a minute is 429)', async () => {
     const g = await guestToken();
     for (let i = 0; i < 3; i++) {

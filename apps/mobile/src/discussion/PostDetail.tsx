@@ -37,7 +37,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<CommentView>();
   const [sending, setSending] = useState(false);
-  const { isGuest } = useGuest();
+  const { isGuest, canComment, promptAccount } = useGuest();
 
   const load = useCallback(async () => {
     setError(undefined);
@@ -136,7 +136,9 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
             key={c.id}
             c={c}
             onReply={
-              c.depth < MAX_DEPTH && c.status === 'visible' ? () => setReplyTo(c) : undefined
+              canComment && c.depth < MAX_DEPTH && c.status === 'visible'
+                ? () => setReplyTo(c)
+                : undefined
             }
             onDelete={
               c.isMine && !isGuest && c.status === 'visible'
@@ -149,8 +151,14 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
         {error ? <Text style={[styles.error, { marginHorizontal: 16 }]}>{error}</Text> : null}
       </ScrollView>
 
+      {!canComment ? (
+        <View style={{ padding: 10, backgroundColor: COLORS.background }}>
+          <Button title="Sign up to comment" onPress={() => promptAccount('comment')} />
+        </View>
+      ) : null}
       <View
         style={{
+          display: canComment ? 'flex' : 'none',
           borderTopWidth: 1,
           borderTopColor: COLORS.cardBorder,
           backgroundColor: COLORS.background,

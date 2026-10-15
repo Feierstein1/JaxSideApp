@@ -111,7 +111,16 @@ export async function touchGuest(g: LiveGuest, now = new Date()) {
 
 /** What the app shows a guest about their session (P4.4 expiry warning). */
 export async function guestStatus(g: GuestSession, now = new Date()) {
-  const warnDays = await getConfig('guest.expiryWarningDays');
+  const [warnDays, canComment] = await Promise.all([
+    getConfig('guest.expiryWarningDays'),
+    getConfig('guest.commentsEnabled'),
+  ]);
   const daysLeft = Math.max(0, Math.ceil((g.expiresAt.getTime() - now.getTime()) / DAY_MS));
-  return { expiresAt: g.expiresAt.toISOString(), daysLeft, expiringSoon: daysLeft <= warnDays };
+  return {
+    expiresAt: g.expiresAt.toISOString(),
+    daysLeft,
+    expiringSoon: daysLeft <= warnDays,
+    // UX hint only; commentCreate checks the setting itself (D51).
+    canComment,
+  };
 }

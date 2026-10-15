@@ -1,6 +1,7 @@
 import type { CONFIG_DEFAULTS } from '@jax/shared';
 
 export const CONFIG_DESCRIPTIONS: Partial<Record<keyof typeof CONFIG_DEFAULTS, string>> = {
+  'guest.commentsEnabled': 'Guests may comment on area posts (false = guests are read-only, D51)',
   'radius.general.maxMiles': 'Largest general-feed radius a user may choose (§7)',
   'radius.business.maxMiles': 'Largest business-room radius (§7, D19)',
   'age.birthYearOffset': 'Eligible if birthYear <= currentYear - offset (§4.2)',

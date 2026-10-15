@@ -70,6 +70,8 @@ export const CONFIG_DEFAULTS = {
   'guest.inactivityDays': 30,
   'guest.expiryWarningDays': 5,
   'guest.commentVisibleDays': 365,
+  /** D51: guests may comment on area posts. Set false to make guests read-only. */
+  'guest.commentsEnabled': true,
 
   // §4.3 usernames
   'username.changeCooldownDays': 30,

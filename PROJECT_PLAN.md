@@ -21,8 +21,8 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 ## Current status
 
-**Phase:** 4 — Guests & Profiles (started 2026-10-15; Phase 3 gate pending only the on-device vote/comment check)
-**Next action:** User tests guest mode and the new Account screens on the phone (Phase 4 gate). Then Phase 5 (moderation & admin).
+**Phase:** 5 — Moderation & Administration (started 2026-10-15; Phase 3 gate pending only the on-device vote/comment check)
+**Next action:** Phase 5: reports (P5.1), then rate-limit review (P5.3) and text screening (P5.4).
 **Last updated:** 2026-10-15
 
 ---
@@ -64,7 +64,7 @@ Questions marked **BLOCKING** must be answered before the phase listed. Each has
 - [ ] **Q10 — Geocoding of submitted addresses (§9.3)**
   Turning a typed address into coordinates needs a geocoder. The public Nominatim service has strict usage limits.
   *Recommendation:* For the MVP, require a **map pin** (the address is optional text), so no geocoder is needed. Add one later.
-- [ ] **Q11 — Legal / policy text** *(drafts written 2026-10-15, P4.13; attorney review still needed)*
+- [x] **Q11 — Legal / policy text** → Answered: beta policy text written (P4.13) and used as-is; legal review is **not a blocker** (D52)
   The spec needs a Terms of Service, Privacy Policy, Community Guidelines, and retention policy. I can draft placeholders, but **an attorney should review them before any public launch.** See risks R3 and R4.
 - [x] **Q12 — Can guests vote? Can guests file reports? (BLOCKING Phase 4)** → Answered: no voting; reports allowed, with report rate limits for **all** users (D28)
   §5 lists guest capabilities as browse and comment only, so voting isn't included. §5 also says guests "cannot bypass … reporting", which is unclear: it could mean they can be reported, or that they can report.
@@ -150,6 +150,8 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D48 | **Accepted** 2026-10-15 | Account deletion (P4.12): password + typing DELETE. Immediately: status DELETED, all sessions revoked, bio and favorites removed, profile 404, posts show "deleted user". After 30 days (unless `legalHoldAt` is set): email ciphertext, data key and email hash destroyed (crypto-shred, D37), username freed as `deleted_<random>`, location checks and email tokens deleted. Banned accounts can't sign in to delete themselves, so their email hash stays for ban enforcement | Implements D14/D37 and the user's request to keep data only for legal reasons |
 | D49 | **Accepted** 2026-10-15 | Public profiles show username, bio, join date, post count and the person's recent **area (general) posts near the viewer**; business posts and comments aren't listed. Viewing needs an in-Duval reading like the feed (D16). Blocking (P5.2) built now with profiles: block/unblock from a profile, list in Settings | Avoids revealing where someone hangs out (business rooms) while still giving context. P5.2 was needed for the Settings screen (P4.11) |
 | D50 | **Accepted** 2026-10-15 | P4.7 guest-to-registered upgrade: **deferred**. Guests sign up normally; their guest comments stay as GUEST | Linking a guest to an account adds risk (a shared phone's guest history would join someone's account) for little benefit. Revisit after launch |
+| D51 | **Accepted** 2026-10-15 | **What a guest is:** someone who wants to use the app right away with very limited access, **not** an out-of-town user. Guests follow the same in-Duval location rules as everyone (D16). They browse area posts; for now they may also comment, but `guest.commentsEnabled` (server setting, default on) turns guests **read-only** without an app update. Never top-level posts, votes or business rooms | User decision. The user may take commenting away later; the switch is enforced by the server and the app hides the comment box when off |
+| D52 | **Accepted** 2026-10-15 | Policy text (Q11): the written Terms, Privacy, Guidelines and Retention pages are used **as-is for the beta**, labeled "Beta". A lawyer's review is optional and the user's call before a wide public launch; it does not block any phase | User: doesn't want a blocker for a beta. Not legally required to have a lawyer write them; it's risk reduction (R3, R4) |
 | D43 | **Accepted** 2026-10-15 | The signed-in username shows in the top bar on every screen, with an eye button that hides it **on that device's screen only** (stored on the device). Posts still show the username to others | User request. Screen-privacy toggle, not anonymous posting. **Confirmed by the user 2026-10-15** |
 
 ---
@@ -237,7 +239,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 
 **Guests**
 - [x] **P4.1** Guest session creation tied to an installation ID; rate-limited 🔒 (D44, `guests.test.ts`). App: "Continue as guest" on sign-in
-- [x] **P4.2** Guest permissions: read the general feed, comment on general posts, and report (D28). Server rejects guest top-level posts, **votes**, business-room actions, uploads, and achievements 🔒 ✅A3. Tested: posts, votes, rooms, directory and account endpoints → 403 GUEST_NOT_ALLOWED. Upload/achievement endpoints don't exist yet (P6) and must use `requireUser`. App hides Places, and votes/new post show a sign-up prompt. Guest reports come with P5.1
+- [x] **P4.2** Guest permissions: read the general feed, comment on general posts (switchable, D51), and report (D28). Server rejects guest top-level posts, **votes**, business-room actions, uploads, and achievements 🔒 ✅A3. Tested: posts, votes, rooms, directory and account endpoints → 403 GUEST_NOT_ALLOWED. Upload/achievement endpoints don't exist yet (P6) and must use `requireUser`. App hides Places, and votes/new post show a sign-up prompt. Guest reports come with P5.1
 - [x] **P4.3** **GUEST** label on content; internal ID never exposed 🔒 (tested; the top bar shows GUEST)
 - [x] **P4.4** Guest inactivity tracked server-side; expire after 30 days; expiry warning in the UI ✅A4 (`expiringSoon` 5 days ahead; banner on Home and in Account)
 - [x] **P4.5** Guest comments visible for one year, then **hard-deleted** by a scheduled job, skipping items under moderation or legal hold (D17) ✅A5. Blanked if it has replies (D45)
@@ -250,8 +252,8 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [x] **P4.10** Email change (re-verify) and password change (revoke other sessions) 🔒 (D47)
 - [x] **P4.11** Settings screen: radius, favorites, blocked users, my reports and their status, ToS and privacy links, location-permission guidance, logout. "My reports" is a placeholder until reports exist (P5.1); delete account is linked here
 - [x] **P4.12** Account deletion: immediate login and posting disable, sessions revoked, profile hidden, `AccountDeletion` record, purge job per D14/D37 (crypto-shred after 30 days unless under legal hold; keep the email hash for banned accounts) 🔒 ✅A6 ✅A7 (D48)
-- [x] **P4.13** In-app policy pages: guest expiry, deletion, and content retention (§5.1). Terms, Privacy, Guidelines and Data Retention in `@jax/shared/policies.ts`, shown in the app (Account, and from sign-up) and on the web at `/legal/<key>`. **Drafts: attorney review needed (Q11)**
-- [~] **Phase gate:** Guest restriction tests green; deletion workflow verified end to end. *2026-10-15:* guest and deletion/purge tests green (server). Waiting for the on-phone check
+- [x] **P4.13** In-app policy pages: guest expiry, deletion, and content retention (§5.1). Terms, Privacy, Guidelines and Data Retention in `@jax/shared/policies.ts`, shown in the app (Account, and from sign-up) and on the web at `/legal/<key>`. Beta text, used as-is (D52)
+- [x] **Phase gate:** Guest restriction tests green; deletion workflow verified end to end. *2026-10-15:* guest and deletion/purge tests green; guest mode confirmed on the phone by the user, who approved Phase 5
 
 ## Phase 5 — Moderation & Administration (§10, §11, §9.3)
 
@@ -430,3 +432,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-15 | P2.16, D42, D43, P4.8 (early) | User feedback: map shows a black box with the Google logo (Google key rejected in Expo Go) → Map hidden on Android, Q13 opened. Button padding fixed globally. Username + hide-on-screen toggle in every top bar. Account split into Profile (view, bio edit) and Settings tabs. New `PATCH /me/profile` (the write-route table test flagged it until listed). 422 tests + build pass |
 | 2026-10-15 | D43, Q13, P3.11 | User confirmed D43 (screen-only hiding). Q13 deferred, free map preferred. Posting in the area feed and in a business room confirmed on the phone |
 | 2026-10-15 | Phase 4 (P4.1–P4.13, P5.2 early, D44–D50) | Server: guest sessions (one per install, token rotation, ban carry-over), guest feed/comments with lower limits, expiry + 180-day purge, 1-year guest comment removal; username/email/password change; account deletion with 30-day crypto-shred (legal hold respected); public profiles; blocking; draft policy text served in the app and at `/legal/*`. App: Continue as guest (Places hidden, sign-up prompts for votes/posts, GUEST in top bar, expiry banner), tap a name for a profile with Block, Account settings screens (username, email with code, password, blocked users, policies, location help, delete account). 400 server tests + 28 app tests, production build and Android bundle pass. One verify run hung during tests and passed on rerun |
+| 2026-10-15 | D51, D52, Phase 4 gate | User: guests are "use it right away with limited access", not out-of-town users (already true: same Duval rules). Guest commenting kept for now behind a server switch `guest.commentsEnabled` (bypass test: 403 when off; app hides the comment box). Policy text used as-is for beta, no lawyer blocker (Q11 closed). Phase 4 gate checked; Phase 5 started |

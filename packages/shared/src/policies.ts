@@ -1,8 +1,8 @@
 /**
  * In-app policy text (P4.13, §5.1). Plain text, shown by the app and the web pages.
  *
- * DRAFT: written from the app's actual behavior and recorded decisions (D11–D41), not
- * by a lawyer. An attorney must review before any public launch (Q11, risks R3/R4).
+ * Beta text, written from the app's actual behavior and recorded decisions. Used as-is
+ * for the beta (D52); an optional legal review can happen before a wide public launch.
  */
 
 export interface PolicySection {
@@ -20,8 +20,8 @@ export const POLICY_KEYS = ['terms', 'privacy', 'guidelines', 'retention'] as co
 export type PolicyKey = (typeof POLICY_KEYS)[number];
 
 const DRAFT: PolicySection = {
-  heading: 'Draft',
-  body: 'This is a draft for testing. It has not been reviewed by a lawyer yet and will be updated before Jax launches publicly.',
+  heading: 'Beta',
+  body: 'Jax is in beta. These policies may change as the app grows; we’ll update the date above when they do.',
 };
 const UPDATED = '2026-10-15';
 
@@ -133,7 +133,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       },
       {
         heading: 'Guest mode',
-        body: 'A guest session expires after 30 days without use. Guest comments are shown for one year from when they were posted, then deleted, except when they are part of an open report. Data about an expired guest session is deleted after 180 days, except for banned guests, which are kept so the ban stays in effect.',
+        body: 'Guests can browse without an account. A guest session expires after 30 days without use. If guests are allowed to comment, guest comments are shown for one year from when they were posted, then deleted, except when they are part of an open report. Data about an expired guest session is deleted after 180 days, except for banned guests, which are kept so the ban stays in effect.',
       },
       {
         heading: 'Deleting your account',

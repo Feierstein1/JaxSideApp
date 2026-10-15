@@ -273,7 +273,8 @@ function GuestAccount() {
         </Text>
       </View>
       <Text style={[styles.body, { marginTop: 8 }]}>
-        Guests can read the area feed and comment, shown as GUEST. To start posts, vote, use
+        Guests can browse posts in their area
+        {guest.canComment ? ' and comment (shown as GUEST)' : ''}. To start posts, vote, use
         business discussions and keep a profile, create a free account.
       </Text>
       <Button title="Sign up or sign in" onPress={() => void signOut()} />

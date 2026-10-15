@@ -19,6 +19,7 @@ import {
 } from '@jax/shared';
 import { requireActor, requireUser, type Actor } from '../auth/require-actor';
 import { db } from '../db';
+import { getConfig } from '../config';
 import { ApiError } from '../http';
 import {
   assertLocationEligible,
@@ -234,6 +235,9 @@ export function commentCreate(kind: DiscussionKind) {
       kind === 'general'
         ? await requireActor(req, VERIFIED)
         : { kind: 'user', user: (await requireUser(req, VERIFIED)).user };
+    if (actor.kind === 'guest' && !(await getConfig('guest.commentsEnabled'))) {
+      throw new ApiError(403, 'GUEST_NOT_ALLOWED', 'Create a free account to comment.');
+    }
     const postId = await idFrom(ctx);
     const input = await parseBody(req, createCommentSchema);
     const rules: [string, ConfigKey, number][] =
