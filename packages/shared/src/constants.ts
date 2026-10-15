@@ -29,6 +29,8 @@ export const CONFIG_DEFAULTS = {
   // §6.2 location reading validation
   'location.maxAgeSeconds': 60,
   'location.maxAccuracyMeters': 100,
+  /** Readings stamped this far in the future (device clock ahead) are refused. */
+  'location.maxClockSkewSeconds': 30,
 
   // §5.1 / D17 guests
   'guest.inactivityDays': 30,

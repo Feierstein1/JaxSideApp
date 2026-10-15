@@ -14,7 +14,9 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
-    "db:test:reset": "node scripts/reset-test-db.mjs"
+    "db:test:reset": "node scripts/reset-test-db.mjs",
+    "fetch:boundary": "tsx scripts/boundary/fetch-duval.ts",
+    "import:boundary": "tsx --env-file=../../.env scripts/boundary/import-service-area.ts"
   },
   "dependencies": {
     "@jax/shared": "*",
@@ -31,12 +33,16 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@types/geojson": "^7946.0.16",
     "@types/node": "^22.0.0",
     "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "@types/react": "~19.2.0",
     "@types/react-dom": "~19.2.0",
+    "@types/shapefile": "^0.6.4",
+    "fflate": "^0.8.3",
     "prisma": "^7.10.0",
+    "shapefile": "^0.6.6",
     "tsx": "^4.23.15",
     "vitest": "^5.0.4"
   }

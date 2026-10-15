@@ -8,3 +8,4 @@ apps/server/src/generated
 docs/SPEC.md
 PROJECT_PLAN.md
 apps/server/prisma/migrations
+apps/server/data

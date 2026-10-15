@@ -2,12 +2,14 @@
  * Idempotent seed (P1.11, P1.12). Safe to run repeatedly.
  * - AppConfiguration: inserts missing keys; never overwrites values an admin has changed.
  * - Achievements: upserts definitions.
+ * - Service area: the Duval County boundary (P2.2, D15), from the committed GeoJSON.
  * - Dev places: only outside production.
  */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { CONFIG_DEFAULTS, TOS_VERSION } from '@jax/shared';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { hashPassword } from '../src/server/auth/crypto';
+import { importServiceArea, readBoundaryFile } from '../src/server/location/service-area';
 import { ACHIEVEMENTS, CONFIG_DESCRIPTIONS, DEV_PLACES, DEV_USERS } from './seed-data';
 
 export interface SeedOptions {
@@ -24,6 +26,8 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
       update: {},
     });
   }
+
+  await importServiceArea(db, readBoundaryFile());
 
   for (const a of ACHIEVEMENTS) {
     const data = { name: a.name, description: a.description, icon: a.icon, criteria: a.criteria };
@@ -91,6 +95,7 @@ async function main() {
       config: await db.appConfiguration.count(),
       achievements: await db.achievement.count(),
       places: await db.businessPlace.count(),
+      serviceAreas: await db.serviceArea.count(),
       users: await db.user.count(),
     };
     console.log('seed complete', counts);

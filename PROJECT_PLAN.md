@@ -22,7 +22,7 @@ This file tracks progress, decisions and open questions. Update it whenever work
 ## Current status
 
 **Phase:** 2 — Location & Directory (Phase 1 complete 2026-10-15)
-**Next action:** P2.1: source the Duval County boundary polygon and record it in `docs/DATA_SOURCES.md`, then P2.2 (import) and P2.3 (`assertLocationEligible`). UI work follows `docs/UI_DESIGN.md` (D33).
+**Next action:** P2.5 (purge job for 30-day location audit), P2.6 (impossible-travel detection), P2.7 (installation ID), then the directory import (P2.10+).
 **Last updated:** 2026-10-14
 
 ---
@@ -130,6 +130,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D31 | **Accepted** 2026-10-15 | Email confirmation and password reset happen **in the app** with a 6-digit code from the email. The same email also carries a link (browser fallback for computers, or when the app is not installed). Code and link share one single-use token. Codes: 15-minute expiry, dead after 5 wrong guesses, 20 wrong guesses per IP per 15 min, stored as an HMAC with the server secret. Unknown email, wrong code and expired code give the same error. Tapping the link will open the app once App Links / Universal Links exist (P7.10, D30) | User wants verification and reset inside the app. Codes work in Expo Go today with no domain; links still cover email read on a computer |
 | D32 | **Accepted** 2026-10-15 | Amends D24: a new password can't start or end with whitespace (signup, reset). Sign-in trims edge whitespace from the typed password. Spaces inside a password are still allowed | Phone keyboards can add an invisible trailing space, so the password saved and the one typed later differ. Refusing edge spaces when a password is set makes trimming at sign-in safe |
 | D33 | **Accepted** 2026-10-15 | **Color scheme = Jacksonville Jaguars team colors + white:** gold `#D8A328`, teal `#136677`, black `#000000`, old gold `#9E7A2C`, white `#FFFFFF`. Defined once in `@jax/shared` (`BRAND`, semantic `COLORS`); screens never hard-code hex values. Readability rules: teal + white for primary actions; gold always with black text; never gold text on white or white on gold. A test enforces contrast. Palette only: no Jaguars/NFL names, logos or affiliation. Full notes: `docs/UI_DESIGN.md` | User request, with reference image. Contrast rules keep the gold readable (gold on white is only 2.3:1) |
+| D34 | **Accepted** 2026-10-15 | Location-check details (within D7): freshness is measured against the **server** clock, with a 30 s allowance for a phone clock running ahead (`LOCATION_CLOCK_SKEW` explains the fix). Android's `mocked` flag means denial. The comment/vote radius is measured from the post's stored (~100 m-rounded) point. Audit failure: a denial still returns its real reason, but an allowed check that can't be audited is refused (fail closed) | Spec gives no values. Server time can't be faked by the client; fail-closed keeps every location-restricted action traceable |
 
 ---
 
@@ -175,11 +176,11 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 ## Phase 2 — Location & Directory (§6, §7, §9.1, §9.2)
 
 **Boundary & validation**
-- [ ] **P2.1** Source the boundary polygon (per Q1). Record the source URL, version or date, and license in `docs/DATA_SOURCES.md`
-- [ ] **P2.2** Import script to load the polygon into a `ServiceArea` table (idempotent)
-- [ ] **P2.3** `assertLocationEligible()` (D7) checks: authenticated or guest, freshness (configurable, e.g. ≤ 60 s), accuracy ≤ threshold, inside the boundary, within the context radius, account standing, and permission for the action type 🔒
-- [ ] **P2.4** Unit and integration tests: outside boundary, inside but out of radius, stale, inaccurate, malformed, valid 🔒 ✅L1–L4
-- [ ] **P2.5** Location audit (`LocationCheck`) with retention purge job (D14)
+- [x] **P2.1** Boundary polygon: Census TIGER/Line 2026 Duval County (GEOID 12031), public domain, sha256 recorded. Committed as `apps/server/data/boundaries/duval-county.geojson` (2,148 points); `npm run fetch:boundary` regenerates it. Source, version, license and refresh steps in `docs/DATA_SOURCES.md`
+- [x] **P2.2** `importServiceArea()` upserts by key (`ST_MakeValid`, `ST_Multi`); `npm run import:boundary`, and the seed runs it too. Tested: importing twice leaves one row. 918.5 sq mi, matching Census land + water
+- [x] **P2.3** `assertLocationEligible(actor, reading, action, target)` checks, in order: action permission by account type → account standing → mock-location flag → freshness (≤ 60 s, ≤ 30 s clock skew) → accuracy (≤ 100 m) → inside Duval → within the target radius (general 1 mi, D20; business 0.3 mi, D19). All limits come from `AppConfiguration`. Every decision is audited; it fails closed if an allowed check can't be audited (D34) 🔒
+- [x] **P2.4** `test/location-eligibility.test.ts`: real places inside (downtown, Jax Beach, Atlantic Beach, Baldwin) and outside (Orange Park, Ponte Vedra, Fernandina, Atlanta, offshore); exactly-on-the-line; out of radius; stale; clock skew; inaccurate; mocked; 10 malformed readings; guest permissions; banned user; audit trail. Mutation-checked (boundary, radius, freshness) 🔒 ✅L1–L4
+- [~] **P2.5** Location audit: every check (allowed and denied) writes the precise point, accuracy, action and reason to `LocationCheck` (tested). *Left:* the 30-day purge job (D14)
 - [ ] **P2.6** Basic anomaly detection: impossible-travel speed between consecutive checks leads to a temporary restriction and a flag in the admin view 🔒
 - [ ] **P2.7** Server-issued installation ID (no MAC address or hardware IDs) 🔒
 - [ ] **P2.8** Integration point for App Attest / Play Integrity (documented stub if credentials are unavailable — §1 rule 6)
@@ -292,10 +293,10 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 Every row needs a linked test or a written manual procedure before it can be checked.
 
 **Location**
-- [ ] L1 — Outside the boundary → cannot post or vote (P2.4)
-- [ ] L2 — Inside Jax but outside the radius → blocked (P2.4)
-- [ ] L3 — Valid user in radius → allowed (P2.4)
-- [ ] L4 — Stale, malformed, or inaccurate readings rejected (P2.4)
+- [x] L1 — Outside the boundary → cannot post or vote (P2.4 ✓ `location-eligibility.test.ts`)
+- [x] L2 — Inside Jax but outside the radius → blocked (P2.4 ✓)
+- [x] L3 — Valid user in radius → allowed (P2.4 ✓)
+- [x] L4 — Stale, malformed, or inaccurate readings rejected (P2.4 ✓)
 - [ ] L5 — Tampered coordinates or user IDs can't bypass (P3.7, P7.2)
 - [ ] L6 — Read-only browsing never enables writes (P3.7)
 
@@ -347,7 +348,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [~] `docs/SETUP.md` — local development (services, DB workflow; extend as features land)
 - [~] `docs/TESTING.md` — how to run tests (test DB guard; extend as suites land)
 - [~] `docs/API.md` — endpoint reference (health, auth and `/me` so far)
-- [ ] `docs/DATA_SOURCES.md` — attribution and refresh steps
+- [~] `docs/DATA_SOURCES.md` — attribution and refresh steps (boundary done; OSM pending P2.10)
 - [ ] `docs/ARCHITECTURE.md`
 - [~] `docs/UI_DESIGN.md`: color scheme and UI conventions (D33); extend as screens land
 - [ ] `docs/SECURITY_PRIVACY_CHECKLIST.md`
@@ -396,3 +397,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-15 | P1.16, P1.17, D31 | In-app 6-digit codes for email confirmation and password reset (migration `email_codes`, two endpoints, code box on home, in-app Forgot password screen). 132 tests pass (shared 29, server 95, mobile 8), including lockout, expiry, cross-user, purpose binding, no account disclosure and the per-IP cap; lockout mutation-checked. Live check over Wi-Fi passed after a server restart (the running dev server held a stale DB client; `db.ts` now refreshes it; SETUP note added) |
 | 2026-10-15 | P1.20 device retest | Reset by code worked on the phone (password changed, email confirmed), but sign-in failed twice: correct account (`test@test.com`), non-matching password. A replay over Wi-Fi of reset-by-code plus email sign-in passed, and showed a trailing space breaks the match. D32 added (no edge spaces in new passwords; sign-in trims them). 139 tests pass |
 | 2026-10-15 | P1.20, Phase 1 gate, D33 | User signed in on their phone after a reset → P1.20 done, **Phase 1 complete**. Jaguars palette + white added (`@jax/shared` theme, contrast test, mobile screens themed, `docs/UI_DESIGN.md`). Fixed a flaky privacy test (random token/UUID could contain "1990"). Full-history secrets audit clean. 154 tests pass |
+| 2026-10-15 | P2.1–P2.4, P2.5 partial | Phase 2 started. Duval boundary from Census TIGER/Line 2026 (public domain) committed and imported (idempotent). `assertLocationEligible` built and covered by 45 tests (L1–L4 checked off), mutation-checked. Found and fixed: an audit failure could hide the real denial reason; allowed checks now fail closed (D34). 199 tests pass |
