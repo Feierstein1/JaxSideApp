@@ -8,6 +8,7 @@ import {
   View,
   type TextInputProps,
 } from 'react-native';
+import { BRAND, COLORS } from '@jax/shared';
 
 export function Field({
   label,
@@ -20,7 +21,7 @@ export function Field({
       <TextInput
         accessibilityLabel={label}
         style={[styles.input, error ? styles.inputError : null]}
-        placeholderTextColor="#888"
+        placeholderTextColor={COLORS.placeholder}
         {...input}
       />
       {error ? (
@@ -50,7 +51,7 @@ export function PasswordField({
         <TextInput
           accessibilityLabel={label}
           style={[styles.input, styles.passwordInput, error ? styles.inputError : null]}
-          placeholderTextColor="#888"
+          placeholderTextColor={COLORS.placeholder}
           secureTextEntry={!visible}
           autoCapitalize="none"
           autoCorrect={false}
@@ -95,7 +96,7 @@ export function Button({
       style={variant === 'primary' ? styles.button : styles.link}
     >
       {busy ? (
-        <ActivityIndicator color="white" />
+        <ActivityIndicator color={COLORS.onPrimary} />
       ) : (
         <Text style={variant === 'primary' ? styles.buttonText : styles.linkText}>{title}</Text>
       )}
@@ -112,37 +113,59 @@ export function FormError({ children }: { children?: ReactNode }) {
   );
 }
 
+/** Navigation header (D33): black bar, white title, gold back arrow (9.2:1 on black). */
+export const headerOptions = {
+  headerTitleAlign: 'center' as const,
+  headerStyle: { backgroundColor: COLORS.surfaceInverse },
+  headerTintColor: BRAND.gold,
+  headerTitleStyle: { color: COLORS.onSurfaceInverse },
+  contentStyle: { backgroundColor: COLORS.background },
+};
+
+/** Switch colors: teal when on. */
+export const switchColors = {
+  trackColor: { false: COLORS.border, true: COLORS.primary },
+  thumbColor: COLORS.background,
+};
+
 export const styles = StyleSheet.create({
   screen: { padding: 24, gap: 4 },
   title: { fontSize: 26, fontWeight: '700', marginBottom: 8 },
-  body: { fontSize: 15, color: '#333', lineHeight: 21 },
-  muted: { color: '#666' },
+  body: { fontSize: 15, color: COLORS.text, lineHeight: 21 },
+  muted: { color: COLORS.textMuted },
   field: { marginBottom: 12 },
   label: { fontWeight: '600', marginBottom: 4 },
   input: {
     borderWidth: 1,
-    borderColor: '#bbb',
+    borderColor: COLORS.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
   },
-  inputError: { borderColor: '#b00020' },
+  inputError: { borderColor: COLORS.error },
   passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   passwordInput: { flex: 1 },
   showButton: { paddingHorizontal: 8, paddingVertical: 10 },
-  error: { color: '#b00020', marginTop: 4 },
+  error: { color: COLORS.error, marginTop: 4 },
   formError: { marginBottom: 8 },
   button: {
-    backgroundColor: '#1d4ed8',
+    backgroundColor: COLORS.primary,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonText: { color: 'white', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: COLORS.onPrimary, fontWeight: '600', fontSize: 16 },
   link: { paddingVertical: 10, alignItems: 'center' },
-  linkText: { color: '#1d4ed8', fontWeight: '600' },
+  linkText: { color: COLORS.primary, fontWeight: '600' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 6 },
-  banner: { backgroundColor: '#fef3c7', padding: 12, borderRadius: 8, marginBottom: 12 },
+  banner: {
+    backgroundColor: COLORS.accentSoft,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.accent,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
 });

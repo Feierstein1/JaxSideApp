@@ -21,8 +21,8 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 ## Current status
 
-**Phase:** 1 — Repository & Foundation (all server auth done; one item left, the on-device check of P1.20)
-**Next action:** Run register → verify → login → logout on a device or emulator to close P1.20 and the Phase 1 gate (needs Q8). After that, Phase 2 starts with P2.1 (Duval County boundary).
+**Phase:** 2 — Location & Directory (Phase 1 complete 2026-10-15)
+**Next action:** P2.1: source the Duval County boundary polygon and record it in `docs/DATA_SOURCES.md`, then P2.2 (import) and P2.3 (`assertLocationEligible`). UI work follows `docs/UI_DESIGN.md` (D33).
 **Last updated:** 2026-10-14
 
 ---
@@ -129,6 +129,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D30 | **Accepted** 2026-10-15 | **No user-facing web version of the social app in the MVP.** The web surface is: (1) the admin portal under `/admin` (P5.11+), and (2) a few small account pages served by the same server: confirm email, reset password, and policy pages (ToS, privacy, retention). Later, before launch, add Android App Links / iOS Universal Links on the real domain so email links open the app directly when it is installed, falling back to these pages (P7.10) | §2/§19 scope the product as a mobile app plus an admin portal. Email links must work in any mail client and on any device, so a small web fallback is still needed |
 | D31 | **Accepted** 2026-10-15 | Email confirmation and password reset happen **in the app** with a 6-digit code from the email. The same email also carries a link (browser fallback for computers, or when the app is not installed). Code and link share one single-use token. Codes: 15-minute expiry, dead after 5 wrong guesses, 20 wrong guesses per IP per 15 min, stored as an HMAC with the server secret. Unknown email, wrong code and expired code give the same error. Tapping the link will open the app once App Links / Universal Links exist (P7.10, D30) | User wants verification and reset inside the app. Codes work in Expo Go today with no domain; links still cover email read on a computer |
 | D32 | **Accepted** 2026-10-15 | Amends D24: a new password can't start or end with whitespace (signup, reset). Sign-in trims edge whitespace from the typed password. Spaces inside a password are still allowed | Phone keyboards can add an invisible trailing space, so the password saved and the one typed later differ. Refusing edge spaces when a password is set makes trimming at sign-in safe |
+| D33 | **Accepted** 2026-10-15 | **Color scheme = Jacksonville Jaguars team colors + white:** gold `#D8A328`, teal `#136677`, black `#000000`, old gold `#9E7A2C`, white `#FFFFFF`. Defined once in `@jax/shared` (`BRAND`, semantic `COLORS`); screens never hard-code hex values. Readability rules: teal + white for primary actions; gold always with black text; never gold text on white or white on gold. A test enforces contrast. Palette only: no Jaguars/NFL names, logos or affiliation. Full notes: `docs/UI_DESIGN.md` | User request, with reference image. Contrast rules keep the gold readable (gold on white is only 2.3:1) |
 
 ---
 
@@ -168,8 +169,8 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [x] **P1.17** Password reset: hashed single-use 30-minute tokens, newest link only, all sessions revoked on reset. Known and unknown emails get the identical 202; at most 3 reset emails per account per hour (anti mail-bomb) 🔒
 - [x] **P1.18** `requireUser()` guard: bearer token → hashed lookup → revoked/expired check → account standing from the DB on **every** request (ban, suspension, deletion take effect immediately; a deleted account's session is revoked) → optional verified-email requirement → sliding 30-day expiry, written at most hourly. Mutation-checked: removing the ban check fails 2 tests 🔒
 - [x] **P1.19** Allow-list serializers (`toPublicUser`, `toMe`) plus `findForbiddenKeys` deep scan. Tests fail if email, birthYear, passwordHash, totp secret, token hashes, internal notes or suspension data appear in public output; `/me` and login responses checked 🔒 ✅A2 (public profile half is P4.8)
-- [~] **P1.20** Mobile: register, sign-in and home (sign-out, unverified-email banner with resend) built with Expo Router `Stack.Protected`; client-side checks reuse the shared schemas; token in SecureStore; 401 returns to sign-in. Typecheck clean, Android bundle exports, form helpers unit-tested. *Left:* run on a device/emulator (Q8)
-- [ ] **Phase gate:** Register → verify → login → logout works on a device; auth tests pass; secrets audit clean
+- [x] **P1.20** Mobile: register, sign-in, home (in-app email code, sign-out), in-app Forgot password (D31), password fields with Show/Hide (D32), Jaguars palette (D33). **Verified on the user's Android phone 2026-10-15:** register, reset by code, sign in. Sign-out and email-code confirm are covered by server tests and live API checks
+- [x] **Phase gate:** Register → verify → login → logout works on a device; auth tests pass; secrets audit clean (2026-10-15: device sign-in confirmed by user; 154 tests pass; full git history scanned for `.env` values, committed env files and key patterns: none)
 
 ## Phase 2 — Location & Directory (§6, §7, §9.1, §9.2)
 
@@ -348,6 +349,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [~] `docs/API.md` — endpoint reference (health, auth and `/me` so far)
 - [ ] `docs/DATA_SOURCES.md` — attribution and refresh steps
 - [ ] `docs/ARCHITECTURE.md`
+- [~] `docs/UI_DESIGN.md`: color scheme and UI conventions (D33); extend as screens land
 - [ ] `docs/SECURITY_PRIVACY_CHECKLIST.md`
 - [ ] `docs/EXTERNAL_SERVICES.md` — services and credentials needed
 - [ ] `docs/KNOWN_LIMITATIONS.md` — incomplete items, risks, next steps
@@ -393,3 +395,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-15 | P1.20 device retest | Password reset from the phone did nothing: Next 16's dev server blocks its own scripts for any host but localhost, so the page opened at the Wi-Fi address never became interactive (confirmed by A/B test; server log said so too). Fix: dev-only `allowedDevOrigins` = this machine's private LAN IPs (auto-detected). Reset forms use POST so an email never lands in the URL if scripts fail. Browser test from the Wi-Fi address now delivers the reset email. D30 proposed (no user-facing web app; small account pages + admin portal) |
 | 2026-10-15 | P1.16, P1.17, D31 | In-app 6-digit codes for email confirmation and password reset (migration `email_codes`, two endpoints, code box on home, in-app Forgot password screen). 132 tests pass (shared 29, server 95, mobile 8), including lockout, expiry, cross-user, purpose binding, no account disclosure and the per-IP cap; lockout mutation-checked. Live check over Wi-Fi passed after a server restart (the running dev server held a stale DB client; `db.ts` now refreshes it; SETUP note added) |
 | 2026-10-15 | P1.20 device retest | Reset by code worked on the phone (password changed, email confirmed), but sign-in failed twice: correct account (`test@test.com`), non-matching password. A replay over Wi-Fi of reset-by-code plus email sign-in passed, and showed a trailing space breaks the match. D32 added (no edge spaces in new passwords; sign-in trims them). 139 tests pass |
+| 2026-10-15 | P1.20, Phase 1 gate, D33 | User signed in on their phone after a reset → P1.20 done, **Phase 1 complete**. Jaguars palette + white added (`@jax/shared` theme, contrast test, mobile screens themed, `docs/UI_DESIGN.md`). Fixed a flaky privacy test (random token/UUID could contain "1990"). Full-history secrets audit clean. 154 tests pass |

@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
+import { COLORS } from '@jax/shared';
 import { AuthProvider, useAuth } from '@/auth/AuthContext';
 
 function RootStack() {
@@ -8,7 +9,7 @@ function RootStack() {
   if (state.status === 'loading') {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
+        <ActivityIndicator color={COLORS.primary} />
       </View>
     );
   }
@@ -28,7 +29,7 @@ function RootStack() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
       <RootStack />
     </AuthProvider>
   );

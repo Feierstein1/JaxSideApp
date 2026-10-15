@@ -526,8 +526,9 @@ describe('response privacy (P1.19, A2)', () => {
     expect(r.status).toBe(200);
     expect(r.body.user.email).toBe('river@example.test');
     expect(findForbiddenKeys(r.body, ['email'])).toEqual([]);
-    expect(r.raw).not.toContain('1990');
-    expect(r.raw).not.toContain('argon2');
+    const raw = withoutRandomValues(r.raw, [r.body.user.id]);
+    expect(raw).not.toContain('1990');
+    expect(raw).not.toContain('argon2');
   });
 
   it('login response contains no secrets other than the new session token', async () => {
@@ -536,7 +537,16 @@ describe('response privacy (P1.19, A2)', () => {
       body: { identifier: 'riverrat', password: PASSWORD },
     });
     expect(findForbiddenKeys(r.body, ['email'])).toEqual([]);
-    expect(r.raw).not.toContain('argon2');
-    expect(r.raw).not.toContain('1990');
+    const raw = withoutRandomValues(r.raw, [r.body.token, r.body.user.id]);
+    expect(raw).not.toContain('argon2');
+    expect(raw).not.toContain('1990');
   });
 });
+
+/**
+ * Removes random values (session token, UUIDs) before scanning raw text, so a check
+ * like "no 1990 anywhere" can't fail because a random token happened to contain it.
+ */
+function withoutRandomValues(raw: string, values: string[]): string {
+  return values.reduce((s, v) => s.split(v).join('<random>'), raw);
+}

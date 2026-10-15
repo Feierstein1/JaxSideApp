@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { PASSWORD_MIN, registerRequestSchema } from '@jax/shared';
 import { api } from '@/api';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
-import { Button, Field, FormError, PasswordField, styles } from '@/ui';
+import { Button, Field, FormError, PasswordField, styles, switchColors } from '@/ui';
 
 export default function Register() {
   const [username, setUsername] = useState('');
@@ -103,6 +103,7 @@ export default function Register() {
         />
         <View style={styles.row}>
           <Switch
+            {...switchColors}
             value={confirmAdult}
             onValueChange={setConfirmAdult}
             accessibilityLabel="I am 18 or older"
@@ -112,6 +113,7 @@ export default function Register() {
         <FormError>{errors.confirmAdult}</FormError>
         <View style={styles.row}>
           <Switch
+            {...switchColors}
             value={acceptTerms}
             onValueChange={setAcceptTerms}
             accessibilityLabel="I accept the Terms of Service"
