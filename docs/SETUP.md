@@ -81,3 +81,7 @@ also delete the data volumes.
   `npm run dev`. A dev server that was running during the migration can keep old code and an old
   database client in memory. `db.ts` now replaces the client when it's regenerated, but a restart
   is the reliable fix.
+- **The app shows "500" or a red error screen while loading after new packages were added**:
+  Expo's bundler (Metro) was started before the packages were installed and doesn't see the new
+  files (seen 2026-10-15 with `@expo/vector-icons`: "Unable to resolve module …Ionicons.ttf").
+  Stop it (`Ctrl+C`) and restart with a cleared cache: `npm run dev:mobile -- --clear`.
