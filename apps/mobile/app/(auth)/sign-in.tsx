@@ -5,7 +5,7 @@ import { loginRequestSchema } from '@jax/shared';
 import { API_BASE_URL } from '@/api';
 import { useAuth } from '@/auth/AuthContext';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
-import { Button, Field, FormError, styles } from '@/ui';
+import { Button, Field, FormError, PasswordField, styles } from '@/ui';
 
 export default function SignIn() {
   const { signIn } = useAuth();
@@ -52,11 +52,10 @@ export default function SignIn() {
           textContentType="username"
           error={errors.identifier}
         />
-        <Field
+        <PasswordField
           label="Password"
           value={password}
           onChangeText={setPassword}
-          secureTextEntry
           autoComplete="current-password"
           textContentType="password"
           error={errors.password}

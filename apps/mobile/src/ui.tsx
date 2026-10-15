@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -23,6 +23,49 @@ export function Field({
         placeholderTextColor="#888"
         {...input}
       />
+      {error ? (
+        <Text style={styles.error} accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Password input with a Show/Hide toggle. Capitalization, autocorrect and spellcheck
+ * are off: on Android the keyboard can otherwise silently capitalize the first
+ * character of a hidden field, so the saved password differs from what the user meant.
+ */
+export function PasswordField({
+  label,
+  error,
+  ...input
+}: Omit<TextInputProps, 'secureTextEntry'> & { label: string; error?: string }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.passwordRow}>
+        <TextInput
+          accessibilityLabel={label}
+          style={[styles.input, styles.passwordInput, error ? styles.inputError : null]}
+          placeholderTextColor="#888"
+          secureTextEntry={!visible}
+          autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
+          {...input}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={visible ? `Hide ${label}` : `Show ${label}`}
+          onPress={() => setVisible((v) => !v)}
+          style={styles.showButton}
+        >
+          <Text style={styles.linkText}>{visible ? 'Hide' : 'Show'}</Text>
+        </Pressable>
+      </View>
       {error ? (
         <Text style={styles.error} accessibilityLiveRegion="polite">
           {error}
@@ -85,6 +128,9 @@ export const styles = StyleSheet.create({
     fontSize: 16,
   },
   inputError: { borderColor: '#b00020' },
+  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  passwordInput: { flex: 1 },
+  showButton: { paddingHorizontal: 8, paddingVertical: 10 },
   error: { color: '#b00020', marginTop: 4 },
   formError: { marginBottom: 8 },
   button: {

@@ -4,12 +4,13 @@ import { router } from 'expo-router';
 import { PASSWORD_MIN, registerRequestSchema } from '@jax/shared';
 import { api } from '@/api';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
-import { Button, Field, FormError, styles } from '@/ui';
+import { Button, Field, FormError, PasswordField, styles } from '@/ui';
 
 export default function Register() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [birthYear, setBirthYear] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [confirmAdult, setConfirmAdult] = useState(false);
@@ -25,7 +26,14 @@ export default function Register() {
       acceptTerms,
       confirmAdult,
     });
-    if (!v.ok) return setErrors(v.errors);
+    // Confirmation is a client-side typo check only; it is never sent to the server.
+    const mismatch = password !== confirmPassword ? "Passwords don't match" : undefined;
+    if (!v.ok || mismatch) {
+      return setErrors({
+        ...(v.ok ? {} : v.errors),
+        ...(mismatch ? { confirmPassword: mismatch } : {}),
+      });
+    }
     setErrors({});
     setBusy(true);
     try {
@@ -67,15 +75,22 @@ export default function Register() {
           autoComplete="email"
           error={errors.email}
         />
-        <Field
+        <PasswordField
           label="Password"
           value={password}
           onChangeText={setPassword}
-          secureTextEntry
           autoComplete="new-password"
           textContentType="newPassword"
           placeholder={`At least ${PASSWORD_MIN} characters`}
           error={errors.password}
+        />
+        <PasswordField
+          label="Confirm password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          autoComplete="new-password"
+          textContentType="newPassword"
+          error={errors.confirmPassword}
         />
         <Field
           label="Birth year"

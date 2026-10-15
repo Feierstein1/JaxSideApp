@@ -61,3 +61,15 @@ also delete the data volumes.
 - Geography columns are `Unsupported(...)` in Prisma and are written with parameterized raw SQL.
 - CHECK constraints are hand-written at the end of migrations. Prisma doesn't track them, so
   they survive future `migrate dev` runs. Add new ones to the migration that introduces the table.
+
+## Troubleshooting
+
+- **A web page keeps reloading itself in dev** (seen once on `/verify-email`, 2026-10-15): the dev
+  server got stuck pushing a "reload" to every page it served. Restarting it (`Ctrl+C`, then
+  `npm run dev`) cleared it. It could not be reproduced on a fresh server, with several tabs, or
+  with Expo running. If it happens again, keep the terminal output and
+  `apps/server/.next/dev/logs/next-development.log` before restarting.
+- **The phone says "Could not reach the server"**: phone and computer must be on the same Wi-Fi,
+  `apps/mobile/.env` must hold the computer's Wi-Fi IP, and Windows Firewall must allow Node.js
+  (a Wi-Fi network marked "Public" blocks incoming connections).
+- **Tests say the database is not reachable**: start Docker Desktop, then `npm run services:up`.
