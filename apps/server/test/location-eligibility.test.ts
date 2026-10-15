@@ -14,7 +14,7 @@ import {
   readBoundaryFile,
 } from '@/server/location/service-area';
 import { resetDb } from './db-helpers';
-import { createTestUser } from './user-factory';
+import { createTestGuest, createTestUser } from './user-factory';
 
 // Reference points (checked against the TIGER2026 boundary).
 const P = {
@@ -230,15 +230,7 @@ describe('assertLocationEligible', () => {
 
   describe('actor permissions (§5, D28)', () => {
     async function realGuest(): Promise<LocationActor> {
-      const inst = await db.installation.create({ data: {} });
-      const g = await db.guestSession.create({
-        data: {
-          tokenHash: randomUUID().replace(/-/g, '').padEnd(64, '0'),
-          installationId: inst.id,
-          expiresAt: new Date(NOW.getTime() + 86_400_000),
-        },
-      });
-      return { kind: 'guest', guest: g };
+      return { kind: 'guest', guest: await createTestGuest(new Date(NOW.getTime() + 86_400_000)) };
     }
 
     it.each(['general.post', 'general.vote', 'business.read', 'business.post'] as const)(
@@ -308,8 +300,16 @@ describe('assertLocationEligible', () => {
   describe('audit trail (D7, P2.5)', () => {
     it('records allowed and denied checks with the precise point and reason', async () => {
       await assertLocationEligible(userActor, reading(P.downtown), 'general.post', undefined, NOW);
+      // Three hours later, so it isn't treated as impossible travel from downtown.
+      const later = new Date(NOW.getTime() + 3 * 3_600_000);
       await denialCode(
-        assertLocationEligible(userActor, reading(P.atlanta), 'general.post', undefined, NOW),
+        assertLocationEligible(
+          userActor,
+          reading(P.atlanta, { timestamp: later.getTime() - 5_000 }),
+          'general.post',
+          undefined,
+          later,
+        ),
       );
       const rows = await db.$queryRaw<
         { result: string; reason: string | null; lat: number; lng: number }[]

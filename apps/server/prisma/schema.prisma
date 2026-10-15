@@ -114,6 +114,13 @@ enum DeletionStatus {
   COMPLETED
 }
 
+/// P2.6: why a location pattern was flagged for review.
+enum LocationFlagKind {
+  IMPOSSIBLE_TRAVEL // blocked + temporary restriction
+  SUSPICIOUS_TRAVEL // flag only
+  MOCKED_LOCATION
+}
+
 enum LocationCheckResult {
   ALLOWED
   DENIED
@@ -179,6 +186,8 @@ model User {
   auditLogs       AdminAuditLog[]
   deletions       AccountDeletion[]
   locationChecks  LocationCheck[]
+  locationFlags   LocationFlag[]       @relation("LocationFlagUser")
+  flagsReviewed   LocationFlag[]       @relation("LocationFlagReviewer")
   configUpdates   AppConfiguration[]
 
   @@index([status])
@@ -196,20 +205,24 @@ model UsernameHistory {
 
 /// Server-managed opaque sessions (D3). Only the SHA-256 of the token is stored.
 model Session {
-  id            String      @id @default(uuid(7)) @db.Uuid
-  tokenHash     String      @unique @db.Char(64)
-  userId        String      @db.Uuid
-  kind          SessionKind
+  id             String        @id @default(uuid(7)) @db.Uuid
+  tokenHash      String        @unique @db.Char(64)
+  userId         String        @db.Uuid
+  kind           SessionKind
   /// Admin sessions only: hash of the CSRF token (D3).
-  csrfTokenHash String?     @db.Char(64)
-  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
-  lastUsedAt    DateTime    @default(now()) @db.Timestamptz(3)
-  expiresAt     DateTime    @db.Timestamptz(3)
-  revokedAt     DateTime?   @db.Timestamptz(3)
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  csrfTokenHash  String?       @db.Char(64)
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  lastUsedAt     DateTime      @default(now()) @db.Timestamptz(3)
+  expiresAt      DateTime      @db.Timestamptz(3)
+  revokedAt      DateTime?     @db.Timestamptz(3)
+  /// P2.7: the app install that signed in (for ban carry-over and abuse review).
+  installationId String?       @db.Uuid
+  installation   Installation? @relation(fields: [installationId], references: [id], onDelete: SetNull)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, revokedAt])
   @@index([expiresAt])
+  @@index([installationId])
 }
 
 /// Single-use email tokens (verification, reset, email change). Hashed (D10).
@@ -236,6 +249,8 @@ model EmailToken {
 /// Server-issued installation ID (§6.2, P2.7). Not a hardware identifier.
 model Installation {
   id              String    @id @default(uuid(7)) @db.Uuid
+  /// P2.7: SHA-256 of the secret installation token the app holds. Never the token.
+  tokenHash       String    @unique @db.Char(64)
   createdAt       DateTime  @default(now()) @db.Timestamptz(3)
   lastSeenAt      DateTime  @default(now()) @db.Timestamptz(3)
   bannedAt        DateTime? @db.Timestamptz(3)
@@ -244,6 +259,7 @@ model Installation {
   guestSessions  GuestSession[]
   modActions     ModerationAction[]
   locationChecks LocationCheck[]
+  sessions       Session[]
 }
 
 model GuestSession {
@@ -262,6 +278,7 @@ model GuestSession {
   reports        Report[]
   modActions     ModerationAction[]
   locationChecks LocationCheck[]
+  locationFlags  LocationFlag[]
 
   @@index([installationId])
   @@index([status, expiresAt])
@@ -313,6 +330,30 @@ model LocationCheck {
   @@index([userId, receivedAt])
   @@index([guestSessionId, receivedAt])
   @@index([receivedAt])
+}
+
+/// P2.6: suspicious location patterns for admin review (no coordinates stored here).
+model LocationFlag {
+  id              String           @id @default(uuid(7)) @db.Uuid
+  userId          String?          @db.Uuid
+  guestSessionId  String?          @db.Uuid
+  kind            LocationFlagKind
+  action          String           @db.VarChar(40)
+  speedKmh        Float?
+  distanceKm      Float?
+  elapsedSeconds  Float?
+  /// Location-restricted actions are refused until this time.
+  restrictedUntil DateTime?        @db.Timestamptz(3)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  reviewedAt      DateTime?        @db.Timestamptz(3)
+  reviewedById    String?          @db.Uuid
+  user            User?            @relation("LocationFlagUser", fields: [userId], references: [id], onDelete: Cascade)
+  guestSession    GuestSession?    @relation(fields: [guestSessionId], references: [id], onDelete: Cascade)
+  reviewedBy      User?            @relation("LocationFlagReviewer", fields: [reviewedById], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([guestSessionId, createdAt])
+  @@index([reviewedAt, createdAt])
 }
 
 // ──────────────────────────── Directory ────────────────────────────

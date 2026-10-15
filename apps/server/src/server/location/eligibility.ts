@@ -116,8 +116,19 @@ async function check(
   //    so this function is safe on its own.
   if (actor.kind === 'user') assertAccountUsable(actor.user, now);
 
-  // 3. Mock-location apps (Android reports this).
+  // 2b. A temporary restriction from an earlier impossible-travel flag (P2.6).
+  const restriction = await activeRestriction(actor, now);
+  if (restriction) {
+    throw deny(
+      'LOCATION_RESTRICTED',
+      'Location features are paused for a few minutes because your location changed impossibly fast. Please try again later.',
+      { restrictedUntil: restriction.toISOString() },
+    );
+  }
+
+  // 3. Mock-location apps (Android reports this). Flagged for admin review.
   if (reading.mocked) {
+    await recordFlag(actor, action, { kind: 'MOCKED_LOCATION' });
     throw deny('LOCATION_MOCKED', 'Turn off mock location apps to use this feature.');
   }
 
@@ -149,6 +160,9 @@ async function check(
     );
   }
 
+  // 5b. Impossible travel since the previous reading (P2.6, D38).
+  await checkTravel(actor, reading, action, now);
+
   // 6. Inside the service area (Duval County, D15).
   if (!(await isInServiceArea(db, reading.latitude, reading.longitude))) {
     throw deny('LOCATION_OUTSIDE_AREA', 'Jax is only available inside Duval County.');
@@ -175,6 +189,95 @@ async function check(
         { maxMiles: miles },
       );
     }
+  }
+}
+
+// ───────────────────────── Impossible travel (P2.6, D38) ─────────────────────────
+
+function actorColumns(actor: LocationActor) {
+  return {
+    userId: actor.kind === 'user' ? actor.user.id : null,
+    guestSessionId: actor.kind === 'guest' ? actor.guest.id : null,
+  };
+}
+
+async function activeRestriction(actor: LocationActor, now: Date): Promise<Date | null> {
+  const flag = await db.locationFlag.findFirst({
+    where: { ...actorColumns(actor), restrictedUntil: { gt: now } },
+    orderBy: { restrictedUntil: 'desc' },
+    select: { restrictedUntil: true },
+  });
+  return flag?.restrictedUntil ?? null;
+}
+
+async function recordFlag(
+  actor: LocationActor,
+  action: LocationAction,
+  data: {
+    kind: 'IMPOSSIBLE_TRAVEL' | 'SUSPICIOUS_TRAVEL' | 'MOCKED_LOCATION';
+    speedKmh?: number;
+    distanceKm?: number;
+    elapsedSeconds?: number;
+    restrictedUntil?: Date;
+  },
+) {
+  await db.locationFlag.create({ data: { ...actorColumns(actor), action, ...data } });
+}
+
+/**
+ * Compares this reading with the actor's most recent one. The distance is reduced by
+ * both readings' accuracy margins, so normal GPS jitter can't trigger it. One indexed
+ * lookup plus one distance calculation per check.
+ */
+async function checkTravel(
+  actor: LocationActor,
+  reading: LocationReading,
+  action: LocationAction,
+  now: Date,
+): Promise<void> {
+  const [lookback, blockKmh, blockKm, flagKmh, flagKm, restrictMin] = await Promise.all([
+    getConfig('location.travel.lookbackMinutes'),
+    getConfig('location.travel.blockSpeedKmh'),
+    getConfig('location.travel.blockMinDistanceKm'),
+    getConfig('location.travel.flagSpeedKmh'),
+    getConfig('location.travel.flagMinDistanceKm'),
+    getConfig('location.travel.restrictMinutes'),
+  ]);
+  const { userId, guestSessionId } = actorColumns(actor);
+  const since = new Date(now.getTime() - lookback * 60_000);
+  const [prev] = await db.$queryRaw<{ readingAt: Date; accuracyMeters: number; meters: number }[]>`
+    SELECT "readingAt", "accuracyMeters",
+           ST_Distance(point, ST_SetSRID(ST_MakePoint(${reading.longitude}, ${reading.latitude}), 4326)::geography) AS meters
+    FROM "LocationCheck"
+    WHERE "receivedAt" > ${since}
+      AND ("userId" = ${userId}::uuid OR "guestSessionId" = ${guestSessionId}::uuid)
+    ORDER BY "receivedAt" DESC
+    LIMIT 1`;
+  if (!prev) return;
+
+  const distanceKm = Math.max(0, prev.meters - prev.accuracyMeters - reading.accuracyMeters) / 1000;
+  const elapsedSeconds = Math.max(1, (reading.timestamp - prev.readingAt.getTime()) / 1000);
+  const speedKmh = distanceKm / (elapsedSeconds / 3600);
+  const measured = {
+    speedKmh: Math.round(speedKmh),
+    distanceKm: Math.round(distanceKm * 10) / 10,
+    elapsedSeconds: Math.round(elapsedSeconds),
+  };
+
+  if (speedKmh > blockKmh && distanceKm >= blockKm) {
+    await recordFlag(actor, action, {
+      kind: 'IMPOSSIBLE_TRAVEL',
+      ...measured,
+      restrictedUntil: new Date(now.getTime() + restrictMin * 60_000),
+    });
+    throw deny(
+      'LOCATION_IMPOSSIBLE_TRAVEL',
+      'Your location changed impossibly fast. Location features are paused for a few minutes.',
+      { restrictMinutes: restrictMin },
+    );
+  }
+  if (speedKmh > flagKmh && distanceKm >= flagKm) {
+    await recordFlag(actor, action, { kind: 'SUSPICIOUS_TRAVEL', ...measured });
   }
 }
 

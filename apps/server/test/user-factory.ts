@@ -26,3 +26,17 @@ export async function createTestUser(
     },
   });
 }
+
+/** A guest session on a fresh installation. */
+export async function createTestGuest(expiresAt = new Date(Date.now() + 86_400_000)) {
+  const inst = await db.installation.create({
+    data: { tokenHash: randomUUID().replace(/-/g, '').padEnd(64, '0') },
+  });
+  return db.guestSession.create({
+    data: {
+      tokenHash: randomUUID().replace(/-/g, '').padEnd(64, '1'),
+      installationId: inst.id,
+      expiresAt,
+    },
+  });
+}

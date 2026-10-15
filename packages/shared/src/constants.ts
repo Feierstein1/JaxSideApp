@@ -32,6 +32,27 @@ export const CONFIG_DEFAULTS = {
   /** Readings stamped this far in the future (device clock ahead) are refused. */
   'location.maxClockSkewSeconds': 30,
 
+  // P2.6 / D38 impossible travel. Compares a reading with the actor's previous one.
+  'location.travel.lookbackMinutes': 120,
+  /** Faster than this (over at least blockMinDistanceKm) is refused + temporary restriction. */
+  'location.travel.blockSpeedKmh': 1000,
+  'location.travel.blockMinDistanceKm': 5,
+  /** Faster than this (over at least flagMinDistanceKm) is flagged for admins only. */
+  'location.travel.flagSpeedKmh': 160,
+  'location.travel.flagMinDistanceKm': 2,
+  'location.travel.restrictMinutes': 15,
+
+  // P2.5 / D14 retention (daily maintenance job)
+  'retention.locationCheckDays': 30,
+  'retention.expiredSessionDays': 7,
+  'retention.usedEmailTokenDays': 7,
+
+  // P2.13 / P2.14 directory
+  'directory.pageSize': 20,
+  /** Favorites rank as if this many times closer than they are (D39). */
+  'directory.favoriteDistanceFactor': 0.25,
+  'favorites.maxPerUser': 200,
+
   // §5.1 / D17 guests
   'guest.inactivityDays': 30,
   'guest.expiryWarningDays': 5,
@@ -75,6 +96,11 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.codeAttempt.per15MinPerIp': 20,
   'rateLimit.submission.perDay': 5,
   'rateLimit.guestSession.perDayPerInstallation': 3,
+  'rateLimit.installation.perHourPerIp': 10,
+  'rateLimit.locationStatus.perMinute': 30,
+  'rateLimit.placeSearch.perMinute': 30,
+  'rateLimit.favorite.perMinute': 30,
+  'rateLimit.preferences.perMinute': 10,
 } as const;
 
 export type ConfigKey = keyof typeof CONFIG_DEFAULTS;

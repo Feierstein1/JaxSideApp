@@ -16,7 +16,8 @@
     "db:seed": "prisma db seed",
     "db:test:reset": "node scripts/reset-test-db.mjs",
     "fetch:boundary": "tsx scripts/boundary/fetch-duval.ts",
-    "import:boundary": "tsx --env-file=../../.env scripts/boundary/import-service-area.ts"
+    "import:boundary": "tsx --env-file=../../.env scripts/boundary/import-service-area.ts",
+    "jobs:maintenance": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/jobs/run-maintenance.ts"
   },
   "dependencies": {
     "@jax/shared": "*",

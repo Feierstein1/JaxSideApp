@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '@/server/db';
 import { resetDb } from './db-helpers';
-import { createTestUser } from './user-factory';
+import { createTestGuest, createTestUser } from './user-factory';
 
 // Downtown Jacksonville, used only as fixture coordinates.
 const LNG = -81.6557;
@@ -19,16 +19,7 @@ async function makeGeneralPost(authorId: string): Promise<string> {
   return id;
 }
 
-async function makeGuest() {
-  const inst = await db.installation.create({ data: {} });
-  return db.guestSession.create({
-    data: {
-      tokenHash: 'g'.repeat(64),
-      installationId: inst.id,
-      expiresAt: new Date(Date.now() + 86_400_000),
-    },
-  });
-}
+const makeGuest = () => createTestGuest();
 
 /** Asserts the promise fails with a Postgres constraint error (CHECK or UNIQUE). */
 async function expectConstraintViolation(p: Promise<unknown>, constraint?: string) {
