@@ -217,9 +217,10 @@ describe('login / logout (P1.15)', () => {
     expect(r.status).toBe(429);
   });
 
-  it('successful logins do not count toward the per-account lockout', async () => {
+  // D29: people sharing one IP (carrier NAT, café wifi) can all sign in normally.
+  it('successful logins count toward neither the per-account nor the per-IP limit', async () => {
     await call(registerPOST, 'POST', { body: registration() });
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 20; i++) {
       const r = await call(loginPOST, 'POST', {
         body: { identifier: 'riverrat', password: PASSWORD },
       });
@@ -227,8 +228,28 @@ describe('login / logout (P1.15)', () => {
     }
   });
 
-  it('rate-limits all login attempts per IP (51st in 15 min is 429)', async () => {
-    for (let i = 0; i < 50; i++) {
+  // 🔒 D29: 15 failed attempts per IP per 15 minutes, spread across many accounts.
+  it('after 15 failed logins from one IP, the 16th attempt is refused even with a correct password', async () => {
+    await call(registerPOST, 'POST', { body: registration() });
+    for (let i = 0; i < 15; i++) {
+      const r = await call(loginPOST, 'POST', {
+        body: { identifier: `nobody${i}`, password: 'wrong-password' },
+      });
+      expect(r.status).toBe(401);
+    }
+    const r = await call(loginPOST, 'POST', {
+      body: { identifier: 'riverrat', password: PASSWORD },
+    });
+    expect(r.status).toBe(429);
+    expect(r.body.error.details.retryAfterSeconds).toBeGreaterThan(0);
+  });
+
+  it('the per-IP failure limit comes from AppConfiguration', async () => {
+    await db.appConfiguration.create({
+      data: { key: 'rateLimit.login.per15MinPerIp', value: 3 },
+    });
+    invalidateConfigCache();
+    for (let i = 0; i < 3; i++) {
       await call(loginPOST, 'POST', { body: { identifier: `nobody${i}`, password: 'x' } });
     }
     const r = await call(loginPOST, 'POST', { body: { identifier: 'nobody', password: 'x' } });

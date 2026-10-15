@@ -8,6 +8,8 @@ export const CONFIG_DESCRIPTIONS: Partial<Record<keyof typeof CONFIG_DEFAULTS, s
   'location.maxAccuracyMeters': 'Reject readings with worse accuracy than this (§6.2)',
   'guest.inactivityDays': 'Guest expires after this many inactive days (§5.1)',
   'guest.commentVisibleDays': 'Guest comments hard-deleted after this many days (D17)',
+  'rateLimit.login.per15MinPerIp': 'Failed logins allowed per IP per 15 minutes (D29)',
+  'rateLimit.login.per15MinPerAccount': 'Failed logins allowed per account per 15 minutes (D29)',
 };
 
 /** Initial achievement definitions (P6.8). Criteria are evaluated server-side only. */

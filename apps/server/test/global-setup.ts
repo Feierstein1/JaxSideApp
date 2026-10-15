@@ -9,9 +9,20 @@ import { resolveTestDatabaseUrl } from './test-db-url.ts';
  */
 export default function setup() {
   const url = resolveTestDatabaseUrl();
-  execSync('npx prisma migrate deploy', {
-    cwd: path.resolve(import.meta.dirname, '..'),
-    env: { ...process.env, DATABASE_URL: url },
-    stdio: 'pipe',
-  });
+  try {
+    execSync('npx prisma migrate deploy', {
+      cwd: path.resolve(import.meta.dirname, '..'),
+      env: { ...process.env, DATABASE_URL: url },
+      stdio: 'pipe',
+    });
+  } catch (err) {
+    const output = String((err as { stderr?: Buffer }).stderr ?? '');
+    if (output.includes('P1001')) {
+      throw new Error(
+        'Test database is not reachable. Start Docker Desktop, then run `npm run services:up`.',
+        { cause: err },
+      );
+    }
+    throw new Error(`prisma migrate deploy failed:\n${output}`, { cause: err });
+  }
 }

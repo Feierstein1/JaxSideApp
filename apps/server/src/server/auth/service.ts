@@ -205,19 +205,23 @@ export async function login(input: LoginRequest, ctx: RequestContext) {
     windowSeconds: 15 * 60,
   };
 
-  // Per IP: every attempt counts. Per account: only failures count, so a user
-  // who knows their password isn't locked out by successful logins.
-  await enforce(
-    [
-      {
-        key: `login:ip:${ctx.ipSubject}`,
-        limitKey: 'rateLimit.login.per15MinPerIp',
-        windowSeconds: 15 * 60,
-      },
-    ],
-    now,
-  );
+  const ipRule = {
+    key: `login-fail:ip:${ctx.ipSubject}`,
+    limitKey: 'rateLimit.login.per15MinPerIp' as const,
+    windowSeconds: 15 * 60,
+  };
+
+  // Both limits count FAILED attempts only (D29). Successful logins never count, so
+  // people sharing one IP (carrier NAT, café wifi) aren't blocked by each other's
+  // normal sign-ins, and a user who knows their password isn't locked out.
+  await assertUnder(ipRule, now);
   await assertUnder(accountRule, now);
+
+  const fail = async () => {
+    await hit(ipRule.key, ipRule.windowSeconds, now);
+    await hit(accountRule.key, accountRule.windowSeconds, now);
+    return INVALID_CREDENTIALS();
+  };
 
   const user = await db.user.findUnique({
     where: identifier.includes('@') ? { email: identifier } : { usernameNormalized: identifier },
@@ -227,12 +231,10 @@ export async function login(input: LoginRequest, ctx: RequestContext) {
   const deleted = !user || user.status === 'DELETED' || user.deletedAt !== null;
   if (deleted) {
     await burnPasswordCheck(input.password);
-    await hit(accountRule.key, accountRule.windowSeconds, now);
-    throw INVALID_CREDENTIALS();
+    throw await fail();
   }
   if (!(await verifyPassword(user.passwordHash, input.password))) {
-    await hit(accountRule.key, accountRule.windowSeconds, now);
-    throw INVALID_CREDENTIALS();
+    throw await fail();
   }
 
   // Correct password: now it's safe to say the account is banned or suspended.

@@ -47,8 +47,9 @@ export const CONFIG_DEFAULTS = {
 
   // D8 / §18 rate limits (fixed windows). Enforced in P1.15 / P5.3.
   'rateLimit.register.perHourPerIp': 5,
+  // Login limits count failed attempts only (D29).
   'rateLimit.login.per15MinPerAccount': 10,
-  'rateLimit.login.per15MinPerIp': 50,
+  'rateLimit.login.per15MinPerIp': 15,
   'rateLimit.passwordReset.perHourPerIp': 5,
   'rateLimit.passwordReset.perHourPerAccount': 3,
   'rateLimit.post.perMinute': 2,
