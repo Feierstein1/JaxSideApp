@@ -16,6 +16,11 @@ export const locationReadingSchema = z.strictObject({
 });
 export type LocationReading = z.infer<typeof locationReadingSchema>;
 
+/** Body for endpoints that only need a reading (e.g. location status, place search). */
+export const locationStatusRequestSchema = z.strictObject({
+  reading: locationReadingSchema,
+});
+
 /** Why a location check failed. The app maps each to a helpful message. */
 export const LOCATION_DENIAL_CODES = [
   'LOCATION_STALE',

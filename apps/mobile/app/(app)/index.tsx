@@ -4,6 +4,7 @@ import { EMAIL_CODE_LENGTH, verifyEmailCodeSchema } from '@jax/shared';
 import { api } from '@/api';
 import { useAuth } from '@/auth/AuthContext';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
+import { LocationStatusCard } from '@/location/LocationStatusCard';
 import { Button, Field, FormError, styles } from '@/ui';
 
 /** Signed-in placeholder. The general feed replaces this in Phase 3. */
@@ -46,6 +47,7 @@ export default function Home() {
   return (
     <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Hi, {user.username}</Text>
+      <LocationStatusCard />
       {!user.emailVerified && (
         <View style={styles.banner}>
           <Text style={[styles.body, { marginBottom: 8 }]}>
