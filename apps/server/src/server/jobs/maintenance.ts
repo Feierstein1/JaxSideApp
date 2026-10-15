@@ -1,3 +1,4 @@
+import { purgeDeletedAccounts } from '../auth/account';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { logger } from '../logger';
@@ -15,6 +16,7 @@ export interface MaintenanceReport {
   guestsPurged: number;
   guestCommentsDeleted: number;
   guestCommentsBlanked: number;
+  accountsPurged: number;
 }
 
 /**
@@ -125,6 +127,8 @@ export async function runMaintenance(now: Date = new Date()): Promise<Maintenanc
         guestsPurged: guestsPurged.count,
         guestCommentsDeleted,
         guestCommentsBlanked,
+        // D37: crypto-shred deleted accounts past retention (skipping legal holds).
+        accountsPurged: await purgeDeletedAccounts(now, tx),
       };
       logger.info({ report }, 'maintenance complete');
       return report;

@@ -75,3 +75,62 @@ export function passwordResetEmail(
     ].join('\n'),
   };
 }
+
+/** P4.10: sent to the NEW address; the code confirms the change in the app. */
+export function emailChangeCodeEmail(to: string, code: string): OutgoingMail {
+  return {
+    to,
+    subject: `${spaced(code)} is your Jax email change code`,
+    text: [
+      'Someone asked to use this address for their Jax account.',
+      '',
+      'If it was you, enter this code in the app to finish the change:',
+      '',
+      `    ${spaced(code)}`,
+      '',
+      "The code expires in 15 minutes. If this wasn't you, ignore this email; nothing changes.",
+    ].join('\n'),
+  };
+}
+
+/** P4.10: sent to the OLD address when a change starts and when it completes. */
+export function emailChangeNoticeEmail(to: string, stage: 'requested' | 'completed'): OutgoingMail {
+  return {
+    to,
+    subject:
+      stage === 'requested' ? 'Your Jax email change was requested' : 'Your Jax email was changed',
+    text: [
+      stage === 'requested'
+        ? 'A change of the email address on your Jax account was requested. It completes only once the new address is confirmed.'
+        : 'The email address on your Jax account was changed. This address will no longer receive messages from Jax.',
+      '',
+      "If this wasn't you, reset your password from the app right away and contact support.",
+    ].join('\n'),
+  };
+}
+
+/** P4.10: sent to a new address that already belongs to another account (no disclosure in the app). */
+export function emailChangeTakenEmail(to: string): OutgoingMail {
+  return {
+    to,
+    subject: 'Someone tried to use your email on Jax',
+    text: [
+      'Someone tried to switch their Jax account to this address, but it already belongs to an account, so nothing changed.',
+      "If this wasn't you, you can ignore this email.",
+    ].join('\n'),
+  };
+}
+
+/** P4.12: confirmation that an account was deleted. */
+export function accountDeletedEmail(to: string, days: number): OutgoingMail {
+  return {
+    to,
+    subject: 'Your Jax account was deleted',
+    text: [
+      'Your Jax account has been deleted. You can no longer sign in, and your profile is hidden.',
+      '',
+      `Your email address is kept encrypted for ${days} days in case of abuse reports, then permanently destroyed.`,
+      "If you didn't do this, contact support right away.",
+    ].join('\n'),
+  };
+}

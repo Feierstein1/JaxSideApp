@@ -27,7 +27,14 @@ import * as feed from '@/app/api/v1/feed/route';
 import * as guests from '@/app/api/v1/guests/route';
 import * as installations from '@/app/api/v1/installations/route';
 import * as locationStatus from '@/app/api/v1/location/status/route';
+import * as meDelete from '@/app/api/v1/me/delete/route';
+import * as meEmailConfirm from '@/app/api/v1/me/email/confirm/route';
+import * as meEmail from '@/app/api/v1/me/email/route';
+import * as mePassword from '@/app/api/v1/me/password/route';
 import * as prefs from '@/app/api/v1/me/preferences/route';
+import * as meUsername from '@/app/api/v1/me/username/route';
+import * as userBlock from '@/app/api/v1/users/[username]/block/route';
+import * as userProfile from '@/app/api/v1/users/[username]/route';
 import * as profile from '@/app/api/v1/me/profile/route';
 import * as favorite from '@/app/api/v1/places/[id]/favorite/route';
 import * as roomList from '@/app/api/v1/places/[id]/posts/list/route';
@@ -51,7 +58,7 @@ const IN = { latitude: 30.315, longitude: -81.686, accuracyMeters: 10 };
 const OUT = { latitude: 30.1661, longitude: -81.7065, accuracyMeters: 10 }; // Orange Park
 const r = (p: typeof IN) => ({ ...p, timestamp: Date.now() - 2_000 });
 
-type Id = 'place' | 'post' | 'bizPost' | 'comment' | null;
+type Id = 'place' | 'post' | 'bizPost' | 'comment' | 'username' | null;
 interface Row {
   route: string;
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -189,6 +196,78 @@ const ROWS: Row[] = [
     id: null,
     location: false,
     body: () => ({ bio: 'hi' }),
+  },
+  {
+    route: 'me/username',
+    method: 'PATCH',
+    handler: h(meUsername, 'PATCH'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ username: 'new_name' }),
+  },
+  {
+    route: 'me/password',
+    method: 'POST',
+    handler: h(mePassword, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ currentPassword: 'x', newPassword: 'correct horse battery' }),
+  },
+  {
+    route: 'me/email',
+    method: 'POST',
+    handler: h(meEmail, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ newEmail: 'n@example.test', password: 'x' }),
+  },
+  {
+    route: 'me/email/confirm',
+    method: 'POST',
+    handler: h(meEmailConfirm, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ code: '123456' }),
+  },
+  {
+    route: 'me/delete',
+    method: 'POST',
+    handler: h(meDelete, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ password: 'x', confirm: 'DELETE' }),
+  },
+  {
+    route: 'users/[username]/block',
+    method: 'PUT',
+    handler: h(userBlock, 'PUT'),
+    auth: true,
+    id: 'username',
+    location: false,
+    body: () => ({}),
+  },
+  {
+    route: 'users/[username]/block',
+    method: 'DELETE',
+    handler: h(userBlock, 'DELETE'),
+    auth: true,
+    id: 'username',
+    location: false,
+    body: () => ({}),
+  },
+  {
+    route: 'users/[username]',
+    method: 'POST',
+    handler: h(userProfile, 'POST'),
+    auth: true,
+    id: 'username',
+    location: true,
+    body: (at) => ({ reading: r(at) }),
   },
   {
     route: 'me/preferences',
@@ -401,7 +480,13 @@ const ROWS: Row[] = [
 
 let owner: string; // created the fixtures
 let other: string; // a second verified user
-const ids: Record<Exclude<Id, null>, string> = { place: '', post: '', bizPost: '', comment: '' };
+const ids: Record<Exclude<Id, null>, string> = {
+  place: '',
+  post: '',
+  bizPost: '',
+  comment: '',
+  username: 'owner_w',
+};
 
 beforeAll(async () => {
   await resetDb();
@@ -459,7 +544,12 @@ beforeAll(async () => {
 });
 
 const call = (row: Row, opts: { token?: string; body?: unknown }) =>
-  callRoute(row.handler, row.method, { ...opts, id: row.id ? ids[row.id] : undefined });
+  callRoute(row.handler, row.method, {
+    ...opts,
+    ...(row.id === 'username'
+      ? { params: { username: ids.username } }
+      : { id: row.id ? ids[row.id] : undefined }),
+  });
 const label = (row: Row) => `${row.method} /${row.route}`;
 
 describe('write route table (P3.7)', () => {
@@ -518,7 +608,11 @@ describe('write route table (P3.7)', () => {
   // 🔒 Ownership: another user can't edit or delete (404, no IDOR hint).
   it.each(
     ROWS.filter(
-      (x) => (x.method === 'PATCH' || x.method === 'DELETE') && x.id && x.id !== 'place',
+      (x) =>
+        (x.method === 'PATCH' || x.method === 'DELETE') &&
+        x.id &&
+        x.id !== 'place' &&
+        x.id !== 'username',
     ).map((x) => [label(x), x] as const),
   )('%s → 404 for someone else’s content', async (_l, row) => {
     const res = await call(row, { token: other, body: row.body?.(IN) });

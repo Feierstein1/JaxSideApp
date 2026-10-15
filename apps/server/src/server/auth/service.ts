@@ -7,7 +7,7 @@ import {
   type LoginRequest,
   type RegisterRequest,
 } from '@jax/shared';
-import type { EmailTokenPurpose, Installation } from '@/generated/prisma/client';
+import type { EmailToken, EmailTokenPurpose, Installation } from '@/generated/prisma/client';
 import { assertInstallationNotBanned } from '../installations';
 import { getConfig } from '../config';
 import { db } from '../db';
@@ -95,11 +95,13 @@ export async function assertAgeEligible(birthYear: number, now = new Date()): Pr
  * One emailed credential with two ways to use it (D31): a long link token and a
  * 6-digit code for typing into the app. Using either one consumes the row.
  */
-async function issueEmailToken(
+export async function issueEmailToken(
   userId: string,
   purpose: EmailTokenPurpose,
   ttlMs: number,
   now: Date,
+  /** EMAIL_CHANGE only: the new address, already encrypted with the user's key (D35). */
+  newEmailEnc?: Uint8Array<ArrayBuffer>,
 ): Promise<{ token: string; code: string }> {
   const token = generateToken();
   const code = generateEmailCode();
@@ -117,6 +119,7 @@ async function issueEmailToken(
         tokenHash: hashToken(token),
         codeHash: hashEmailCode(code, getEnv().SESSION_SECRET),
         codeExpiresAt: new Date(now.getTime() + Math.min(ttlMs, codeMinutes * MINUTE_MS)),
+        newEmailEnc: newEmailEnc ?? null,
         createdAt: now,
         expiresAt: new Date(now.getTime() + ttlMs),
       },
@@ -134,12 +137,12 @@ const INVALID_CODE = () =>
  * guesses also count per IP, across all accounts. The error never says how many
  * tries are left, so reset-by-code can't reveal whether an account exists.
  */
-async function consumeEmailCode(
+export async function consumeEmailCode(
   userId: string | null,
   purpose: EmailTokenPurpose,
   code: string,
   ctx: RequestContext,
-): Promise<void> {
+): Promise<EmailToken> {
   const now = ctx.now ?? new Date();
   const ipRule = {
     key: `code-fail:ip:${ctx.ipSubject}`,
@@ -186,6 +189,7 @@ async function consumeEmailCode(
     data: { usedAt: now },
   });
   if (consumed.count !== 1) throw await fail();
+  return row;
 }
 
 /** Marks a token used exactly once (race-safe) and returns its owner. */

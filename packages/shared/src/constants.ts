@@ -73,6 +73,8 @@ export const CONFIG_DEFAULTS = {
 
   // §4.3 usernames
   'username.changeCooldownDays': 30,
+  /** A released username stays reserved this long, so nobody can grab it to impersonate. */
+  'username.releaseHoldDays': 30,
 
   // D10 sessions
   'session.mobileDays': 30,
@@ -117,6 +119,9 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.preferences.perMinute': 10,
   'rateLimit.edit.perMinute': 10,
   'rateLimit.profile.perMinute': 10,
+  'rateLimit.block.perMinute': 20,
+  /** Wrong current-password attempts (password/email change, deletion) per account. */
+  'rateLimit.passwordCheck.per15Min': 5,
   'rateLimit.feed.perMinute': 60,
 } as const;
 

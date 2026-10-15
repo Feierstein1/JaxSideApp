@@ -250,3 +250,17 @@ export async function deletePost(kind: DiscussionKind, id: string, userId: strin
     }
   });
 }
+
+/** P4.8: an author's recent area-feed posts (business-room posts stay behind D19). */
+export async function listAuthorPosts(
+  authorId: string,
+  viewerId: string,
+  at: GeoPoint,
+  limit = 10,
+) {
+  const rows = await db.$queryRaw<PostRow[]>`${selectPosts('general', viewerId, at)}
+    WHERE p.status = 'VISIBLE' AND p."authorId" = ${authorId}::uuid
+      ${notBlocked(viewerId, Prisma.sql`p."authorId"`)}
+    ORDER BY p."createdAt" DESC, p.id DESC LIMIT ${limit}`;
+  return rows.map((r) => toView(r, 'general', viewerId));
+}
