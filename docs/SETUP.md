@@ -73,3 +73,7 @@ also delete the data volumes.
   `apps/mobile/.env` must hold the computer's Wi-Fi IP, and Windows Firewall must allow Node.js
   (a Wi-Fi network marked "Public" blocks incoming connections).
 - **Tests say the database is not reachable**: start Docker Desktop, then `npm run services:up`.
+- **A web page opened from the phone does nothing when you press a button**: Next's dev server
+  only serves its scripts to allowed hosts. `next.config.ts` allows this computer's private Wi-Fi
+  addresses automatically. If your network uses another range, add the address to
+  `allowedDevOrigins`. The server log shows "Blocked cross-origin request" when this happens.

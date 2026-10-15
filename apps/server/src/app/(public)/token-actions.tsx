@@ -52,6 +52,7 @@ export function VerifyEmail({ token }: { token: string | null }) {
   );
 }
 
+// Forms use method="post": if scripts fail to load, nothing typed ends up in the URL.
 export function ResetPassword({ token }: { token: string | null }) {
   const [state, setState] = useState<State>({ kind: 'idle' });
 
@@ -86,7 +87,7 @@ export function ResetPassword({ token }: { token: string | null }) {
       {state.kind === 'done' ? (
         <p role="status">{state.message}</p>
       ) : token ? (
-        <form onSubmit={setPassword}>
+        <form method="post" onSubmit={setPassword}>
           <label>
             New password ({PASSWORD_MIN}+ characters)
             <input
@@ -112,7 +113,7 @@ export function ResetPassword({ token }: { token: string | null }) {
           <button disabled={state.kind === 'busy'}>Set new password</button>
         </form>
       ) : (
-        <form onSubmit={requestLink}>
+        <form method="post" onSubmit={requestLink}>
           <label>
             Email
             <input style={input} name="email" type="email" autoComplete="email" required />

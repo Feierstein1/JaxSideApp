@@ -1,3 +1,4 @@
+import { networkInterfaces } from 'node:os';
 import type { NextConfig } from 'next';
 import { loadEnvConfig } from '@next/env';
 import { findRepoRoot } from './src/server/repo-root.ts';
@@ -6,7 +7,21 @@ import { findRepoRoot } from './src/server/repo-root.ts';
 // forceReload: Next has already loaded (empty) env from apps/server and caches it.
 loadEnvConfig(findRepoRoot(), process.env.NODE_ENV !== 'production', undefined, true);
 
+/**
+ * Dev only: this machine's private LAN IPv4 addresses. Next 16 blocks its dev scripts
+ * for any host other than localhost, which broke pages opened from a phone on the Wi-Fi.
+ * Has no effect on production builds.
+ */
+function lanAddresses(): string[] {
+  return Object.values(networkInterfaces())
+    .flat()
+    .filter((a) => a && a.family === 'IPv4' && !a.internal)
+    .map((a) => a!.address)
+    .filter((ip) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip));
+}
+
 const nextConfig: NextConfig = {
+  allowedDevOrigins: lanAddresses(),
   transpilePackages: ['@jax/shared'],
   serverExternalPackages: ['pino'],
   poweredByHeader: false,
