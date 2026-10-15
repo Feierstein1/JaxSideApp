@@ -1,0 +1,369 @@
+# Jax App — Project Plan & Tracker
+
+Requirements: [docs/SPEC.md](docs/SPEC.md) (cited below as §N).
+This file tracks progress, decisions and open questions. Update it whenever work is finished.
+
+## How to use this file
+
+| Mark | Meaning |
+|---|---|
+| `- [ ]` | Not started |
+| `- [~]` | In progress or partly done (add a note saying what is left) |
+| `- [x]` | Done: the behavior works **and** its tests or security checks pass (§1 rule 10) |
+| `- [-]` | Deliberately deferred or dropped. Must link to a Decision Log entry |
+
+- Item IDs (e.g. `P3.4`) are stable. Refer to them in commits and notes.
+- 🔒 = security-critical. Needs a negative test (a test that proves the bypass fails), not just a happy-path test.
+- ✅ = maps to a §20 acceptance criterion (see the [Acceptance Criteria Tracker](#acceptance-criteria-tracker)).
+- A phase is finished only when every item in it is `[x]` or `[-]` and its **Phase gate** is checked.
+
+---
+
+## Current status
+
+**Phase:** 0 — Decisions & environment (no code yet)
+**Next action:** `git init` (P0.4), then Phase 1, starting with P1.1 (scaffolding) and P1.2 (docker-compose).
+**Last updated:** 2026-10-14
+
+---
+
+## Open Questions (need your decision)
+
+Questions marked **BLOCKING** must be answered before the phase listed. Each has my recommendation. Answers get moved to the Decision Log.
+
+- [x] **Q1 — Which boundary counts as "Jacksonville"? (BLOCKING Phase 2)** → Answered: include the Beaches (D15)
+  §6.1 says the *City of Jacksonville consolidated municipal boundary*. That boundary **excludes Jacksonville Beach, Atlantic Beach, Neptune Beach, and Baldwin**. They are separate municipalities inside Duval County. Under the spec as written, users at Jax Beach could not post.
+  *Recommendation:* Use all of **Duval County** (the consolidated city plus the 4 small municipalities), and make the boundary swappable in config.
+- [x] **Q2 — What do users outside Jacksonville, or without location, see? (BLOCKING Phase 3)** → Answered: profile and account only; no location-based content (D16). My recommendation below was **not** adopted
+  §6.1 and §7.3 allow "permitted read-only browsing," but the general feed is built from the user's location. Someone in Atlanta, or with location turned off, has no point to center the feed on.
+  *Recommendation:* Without an eligible location, show a read-only feed centered on a point the user picks (a neighborhood list or a map pin). Business rooms can be read by anyone. Writing always requires a fresh, verified location.
+- [x] **Q3 — Do guest comments disappear after one year? (BLOCKING Phase 4)** → Answered: shown for 1 year, then hard-deleted (D17)
+  §5.1 says guest comments "remain visible for one year from creation." That could mean (a) they are hidden or deleted after one year, or (b) they are guaranteed to stay for at least one year.
+  *Recommendation:* (a). Hide guest comments after 1 year and purge them later according to the retention policy. Registered users' comments stay until deleted.
+- [x] **Q4 — Who can comment on a general post? (BLOCKING Phase 3)** → Answered: within 1 mi of the post (D20)
+  §7.1 says the author must be within the radius of "the relevant discussion area." For a comment, is that area the **post's** location or the commenter's current feed?
+  *Recommendation:* Measure from the post's stored location. You can comment if you are within the general maximum radius (1 mi) of where the post was made.
+- [ ] **Q5 — Local development environment (BLOCKING Phase 1)**
+  This machine runs Windows 10 Home. PostGIS and S3-compatible storage are easiest to run locally with Docker Desktop (PostGIS plus MinIO containers).
+  *Recommendation:* Use Docker Desktop with WSL2. Confirm it is installed and running. Alternative: a free hosted Postgres with PostGIS (Supabase or Neon) as the dev database.
+  *Checked 2026-10-14:* Docker 29.1.3 is installed, but the engine was not running. Node v22 ✓, npm 10.9 ✓, pnpm not installed, Git 2.26 (2020; recommend updating).
+- [ ] **Q6 — Email delivery (BLOCKING Phase 1 password reset)**
+  Password reset (§4.1) and email changes (§14) require sending email.
+  *Recommendation:* In development, log emails to the console or use Mailpit in Docker. Pick a provider later (Resend, Postmark, or SES). Should registration require email verification? I recommend yes; it is cheap protection against abuse.
+- [x] **Q7 — Package manager / repo layout (BLOCKING Phase 1)** → Answered: npm workspaces (D21), layout per D1
+  *Recommendation:* A pnpm workspace monorepo:
+  `apps/mobile` (Expo), `apps/server` (one Next.js app that serves **both** the REST API and the admin portal), `packages/shared` (zod schemas, types, constants).
+  This means one backend, as §3 requires. Note: Expo plus pnpm needs `node-linker=hoisted`, so npm workspaces is the simpler fallback.
+  *Updated recommendation:* pnpm isn't installed, so use **npm workspaces**. It's already installed and works with Expo without extra config.
+- [ ] **Q8 — Mobile testing devices**
+  Do you have a physical iPhone and/or Android device? Location features need real GPS, or emulator location spoofing for tests. Native modules (maps, image picker, integrity APIs) need an **Expo dev build**; Expo Go will not be enough later on. iOS builds need either a Mac or EAS Build (free tier available).
+- [ ] **Q9 — Map provider (needed by Phase 2 UI and the admin map preview)**
+  `react-native-maps` uses Apple Maps on iOS and Google Maps on Android. Android needs a Google Maps API key (free tier with a billing account). Alternative: MapLibre with a free tile provider.
+  *Recommendation:* react-native-maps for the MVP, and record the Google key as an external dependency.
+- [ ] **Q10 — Geocoding of submitted addresses (§9.3)**
+  Turning a typed address into coordinates needs a geocoder. The public Nominatim service has strict usage limits.
+  *Recommendation:* For the MVP, require a **map pin** (the address is optional text), so no geocoder is needed. Add one later.
+- [ ] **Q11 — Legal / policy text**
+  The spec needs a Terms of Service, Privacy Policy, Community Guidelines, and retention policy. I can draft placeholders, but **an attorney should review them before any public launch.** See risks R3 and R4.
+
+---
+
+## Issues found in the spec
+
+These are gaps, contradictions, or likely mistakes in the original prompt. Each one is resolved by a question above or a default in the Decision Log.
+
+1. **Boundary excludes the Beaches.** See Q1.
+2. **Vote uniqueness is worded wrong (§8).** It says to prevent duplicate votes "of the same type." The constraint must be **one vote per (voter, target)** regardless of up or down, otherwise someone could upvote *and* downvote the same item. → D6
+3. **"Polymorphic" targets.** Comments, votes, reports, and photos each point at "target content" (a general post, business post, or comment). Prisma has no native polymorphic relations, and a loose `targetType + targetId` column has no foreign key. → D5
+4. **Polymorphic authors.** A post or comment author can be a `User` *or* a `GuestSession`. → D5
+5. **Reading the feed needs location.** The spec focuses on write checks, but read queries also need a center point. See Q2.
+6. **No rate-limit store.** §11.3 and §18 require rate limits, but §3 says no Redis until needed. → D8 (Postgres-backed limiter).
+7. **Guest ban evasion.** "Guests cannot evade bans," but a reinstalled app gets a new guest. The only levers are a server-issued installation ID plus platform integrity (App Attest / Play Integrity), and both are imperfect (§6.2 acknowledges this). Expect partial mitigation, not prevention. → R2
+8. **Missing items:** email verification, password-reset token rules, session lifetime, and strike thresholds are all unspecified. → defaults D9–D11.
+9. **App Store requirements** for user-generated-content apps (Apple guideline 1.2): report, block, a content filter, published contact information, and a EULA stating zero tolerance for objectionable content. The spec covers most of this. The EULA wording and support contact are not covered yet. → P7.10
+10. **CSAM legal obligation.** US providers that become aware of CSAM must report it to NCMEC (18 U.S.C. §2258A). The spec prohibits CSAM but has no reporting workflow. → P5.14, R4
+11. **Admin "map preview"** needs map tiles on the web as well. → Q9
+
+---
+
+## Decision Log
+
+Format: `D# — date — decision — reason`. Proposed items become **Accepted** when you approve them.
+
+| ID | Status | Decision | Reason |
+|---|---|---|---|
+| D1 | **Accepted** 2026-10-14 | Monorepo: `apps/mobile`, `apps/server` (Next.js API + admin), `packages/shared` | Single backend (§3); shared zod schemas mean client and server validation can't drift apart |
+| D2 | **Accepted** 2026-10-14 | Backend = Next.js App Router route handlers under `/api/v1/*`; admin portal = pages in the same Next.js app under `/admin` | §3 asks for one backend with the rationale documented. Admin stays a separate web experience (§10) |
+| D3 | **Accepted** 2026-10-14 | Auth: server-managed opaque session tokens stored in a DB `Session` table (token hashed). Mobile sends `Authorization: Bearer`; admin uses an httpOnly, SameSite=strict cookie plus CSRF token. Passwords hashed with argon2id | Revocable immediately on ban or deletion (§4.4, §11.3). Avoids JWT revocation problems |
+| D4 | **Accepted** 2026-10-14 | Admin sign-in requires TOTP 2FA | §10.1 "stronger authentication where available" |
+| D5 | **Accepted** 2026-10-14 | Separate `GeneralPost` and `BusinessPost` tables (§2 requires separation). `Comment`, `Vote`, `Photo`, `Report` use **explicit nullable FKs** (`generalPostId`, `businessPostId`, `commentId`) plus a DB CHECK that exactly one is set. Authors: nullable `userId` / `guestSessionId` plus a CHECK that exactly one is set | Real foreign keys and cascades, no orphaned polymorphic IDs |
+| D6 | **Accepted** 2026-10-14 | `Vote` unique on (voter, target). Value is +1 or −1. Changing a vote is an upsert; removing it is a delete. Score is kept in a counter column updated in the same transaction | Fixes spec issue #2; server-authoritative totals (§8) |
+| D7 | **Accepted** 2026-10-14 | Location check = one server function `assertLocationEligible(actor, reading, context)` called by every write route. Precise coordinates are stored only in a `LocationCheck` audit table with short retention (30 days proposed). Posts store a **coarsened** point (~100 m grid) for feed queries | §6.2, §6.3 |
+| D8 | **Accepted** 2026-10-14 | Rate limiting in Postgres (fixed-window counters table), with limits read from `AppConfiguration` | No Redis (§3, §18); swappable later |
+| D9 | **Accepted** 2026-10-14 | Strikes: warn → 24 h suspension → 7 d suspension → permanent ban. Strikes decay after 180 days. All values configurable | Spec gives no thresholds |
+| D10 | **Accepted** 2026-10-14 | Sessions: mobile 30 days sliding; admin 8 h with 30 min idle timeout. Reset tokens: single use, 30 min expiry, hashed in the DB | Spec gives no values |
+| D11 | **Accepted** 2026-10-14 | Registration requires email verification before posting (reading allowed) | Abuse protection; see Q6 |
+| D12 | **Accepted** 2026-10-14 | Testing: Vitest (unit and integration against a real PostGIS test DB), Playwright (admin E2E), Maestro or Detox (mobile critical flows, Phase 7) | §3 testing requirement |
+| D13 | **Accepted** 2026-10-14 | Images: client asks for an upload grant → uploads to a private **quarantine** bucket → server validates, strips EXIF, and re-encodes with `sharp` into a private bucket → delivered only through short-lived signed URLs | §12 |
+| D14 | **Accepted** 2026-10-14 | Data-retention periods (to be published in-app): location telemetry 30 d; expired guest session data 180 d; deleted account PII purged after 30 d; moderation records 2 y | §4.4, §5.1, §6.3 |
+| D15 | **Accepted** 2026-10-14 | Service area = **all of Duval County**: consolidated Jacksonville plus Jacksonville Beach, Atlantic Beach, Neptune Beach, Baldwin. Stored as one PostGIS polygon, swappable | User decision; overrides §6.1's "municipal boundary" wording |
+| D16 | **Accepted** 2026-10-14 | Without a verified in-boundary location (outside Duval, or location off/denied), users can access **only their own profile, account and settings**. No feed, comment or business-room content is shown. Server enforces this on **read** endpoints too, not just writes | User decision; narrows §6.1 / §7.3 "read-only browsing" for out-of-area users |
+| D17 | **Accepted** 2026-10-14 | Guest comments are shown for 1 year from creation, then **hard-deleted** by a scheduled job (not hidden or archived). Exception: content under an open moderation or legal hold (e.g. CSAM evidence, R4) is preserved until the hold clears | User decision: avoid storing high-volume guest data |
+| D18 | **Accepted** 2026-10-14 | The 18+ rule is a standard social-media age policy (ToS + birth-year screen), not an adult-content site. Explicit/adult content is prohibited in the content rules | User clarification; see R3 |
+| D6 | **Accepted** 2026-10-14 | (Confirmed) One vote per user per item | User confirmed spec issue #2 |
+| D19 | **Accepted** 2026-10-14 | **Business rooms are location-only for reading too.** Viewing a business's discussion requires a fresh verified location within the business radius (≤ 0.3 mi). The directory and search still list places and basic info (name, category, distance) so users can find them, but discussion content is locked until they're nearby. Favorites save the place, not remote access | User decision ("strictly location-based, for now"); overrides §7.3 read-only browsing for business rooms. May relax later |
+| D20 | **Accepted** 2026-10-14 | Commenting on a general post requires being within the general max radius (1 mi) of the post's stored location | Q4 answered |
+| D21 | **Accepted** 2026-10-14 | Package manager = **npm workspaces** | Q7 answered; already installed, no Expo config workarounds |
+
+---
+
+## Phase 0 — Decisions & Environment
+
+- [x] **P0.1** Answer the blocking questions Q1, Q2, Q4, Q7 (Q5 = Docker; pending engine start, P0.6)
+- [x] **P0.2** Accept or modify proposed decisions D1–D14 (all accepted 2026-10-14)
+- [ ] **P0.3** Install and verify tools: Node LTS, pnpm (or npm), Git, Docker Desktop, Expo tooling, Android Studio emulator and/or a physical device
+- [ ] **P0.4** `git init`, `.gitignore` (including `.env*` except `.env.example`), first commit
+- [x] **P0.5** Repo copied to `C:\Users\kenfe\Projects\JaxApp` (2026-10-14). The old OneDrive copy can be deleted once you've confirmed the new one
+- [x] **P0.6** Docker engine responding to `docker info` (verified 2026-10-14; the earlier error was temporary). Existing containers `php-afsb` and `mariadb-afsb` run alongside; check for port conflicts in P1.2. (Git update dropped: 2.26 is fine; only `git init -b` is missing, which has a simple workaround)
+- [ ] **Phase gate:** All blocking questions answered; environment runs `docker compose up` successfully
+
+## Phase 1 — Repository & Foundation (§21 P1, §3, §4.1, §4.2, §16, §17)
+
+**Scaffolding**
+- [ ] **P1.1** Monorepo workspace, root TS config, ESLint and Prettier, shared scripts (`dev`, `test`, `lint`, `typecheck`)
+- [ ] **P1.2** `docker-compose.yml`: PostGIS, MinIO (S3), Mailpit (dev email)
+- [ ] **P1.3** `apps/server` Next.js app; health endpoint; structured logger (no PII)
+- [ ] **P1.4** `apps/mobile` Expo + Expo Router + TypeScript; API client; secure token storage (`expo-secure-store`)
+- [ ] **P1.5** `packages/shared`: zod schemas with `.strict()` (rejects unexpected fields, §17), shared constants
+- [ ] **P1.6** `.env.example` with placeholders only; env validation at server boot 🔒
+- [ ] **P1.7** Vitest setup with an isolated test database; CI-ready `test` script
+
+**Database**
+- [ ] **P1.8** Prisma configured; PostGIS extension enabled in the first migration
+- [ ] **P1.9** Initial schema for all §16 entities (per D5): User, Session, GuestSession, Profile, AppConfiguration, AdminAuditLog, etc.
+- [ ] **P1.10** Geometry columns and GiST indexes via raw-SQL migration (Prisma `Unsupported("geography")`)
+- [ ] **P1.11** `AppConfiguration` seeded with radius defaults and limits (§7 table), age offset (19), rate limits, guest TTL
+- [ ] **P1.12** Seed script for dev data (idempotent)
+
+**Authentication (§4.1, §4.2)**
+- [ ] **P1.13** Register: username (normalized and unique), email (private), password (argon2id), birth year, ToS acceptance, 18+ confirmation 🔒
+- [ ] **P1.14** Age screen: `birthYear <= currentYear − configuredOffset`. Tests at year boundaries (Dec 31 / Jan 1) and an explanation shown in the UI 🔒
+- [ ] **P1.15** Login, logout, session revoke; login throttling per account and per IP 🔒
+- [ ] **P1.16** Email verification (if D11 is accepted)
+- [ ] **P1.17** Password reset: hashed single-use tokens, expiry, no account-existence disclosure 🔒
+- [ ] **P1.18** Central `requireActor()` guard: loads the session and rejects deleted, banned, or suspended accounts 🔒
+- [ ] **P1.19** Public-serializer pattern: public API responses can never include email, birthYear, passwordHash, or notes. Test fails if they appear 🔒 ✅A2
+- [ ] **P1.20** Mobile: register, login, and logout screens wired end to end
+- [ ] **Phase gate:** Register → verify → login → logout works on a device; auth tests pass; secrets audit clean
+
+## Phase 2 — Location & Directory (§6, §7, §9.1, §9.2)
+
+**Boundary & validation**
+- [ ] **P2.1** Source the boundary polygon (per Q1). Record the source URL, version or date, and license in `docs/DATA_SOURCES.md`
+- [ ] **P2.2** Import script to load the polygon into a `ServiceArea` table (idempotent)
+- [ ] **P2.3** `assertLocationEligible()` (D7) checks: authenticated or guest, freshness (configurable, e.g. ≤ 60 s), accuracy ≤ threshold, inside the boundary, within the context radius, account standing, and permission for the action type 🔒
+- [ ] **P2.4** Unit and integration tests: outside boundary, inside but out of radius, stale, inaccurate, malformed, valid 🔒 ✅L1–L4
+- [ ] **P2.5** Location audit (`LocationCheck`) with retention purge job (D14)
+- [ ] **P2.6** Basic anomaly detection: impossible-travel speed between consecutive checks leads to a temporary restriction and a flag in the admin view 🔒
+- [ ] **P2.7** Server-issued installation ID (no MAC address or hardware IDs) 🔒
+- [ ] **P2.8** Integration point for App Attest / Play Integrity (documented stub if credentials are unavailable — §1 rule 6)
+- [ ] **P2.9** Mobile: foreground location permission flow with an explanation screen and a "permission denied" state
+
+**Directory**
+- [ ] **P2.10** OSM import via Overpass: allow-list of public-facing tags (amenity=restaurant/cafe/bar/pub/fast_food, shop=*, leisure=park, tourism=*, car dealers, etc.); excludes offices
+- [ ] **P2.11** Import is idempotent (upsert on `sourceName + sourceId`) and dedupes by proximity plus normalized name ✅D1
+- [ ] **P2.12** ODbL attribution ("© OpenStreetMap contributors") shown in the app and documented; refresh instructions written
+- [ ] **P2.13** Place search: by name (trigram index), by nearby distance (PostGIS `ST_DWithin`), favorites ranked higher without replacing distance
+- [ ] **P2.14** Favorites: add/remove, unique (user, place) 🔒
+- [ ] **P2.15** Radius preferences: user value clamped to server min and max (§7) 🔒
+- [ ] **P2.16** Mobile: directory list and search, place detail, favorites, map view
+- [ ] **Phase gate:** Location tests pass; import run twice gives the same count; search works on device
+
+## Phase 3 — Core Discussions (§7.1, §7.2, §7.3, §8)
+
+- [ ] **P3.1** General posts: create (location-validated, server assigns the coarsened point), read nearby feed centered on the user's verified location 🔒
+- [ ] **P3.1a** Read endpoints (feed, post detail, comments, business rooms) require a fresh in-boundary location. Out-of-area or no-location callers get a "location required" response, and the mobile app shows only profile/settings (D16) 🔒
+- [ ] **P3.2** Business rooms: business posts tied to a canonical `BusinessPlace`; business-radius validation on **reads and writes** (D19) 🔒 ✅DV2
+- [ ] **P3.2a** Mobile: a place outside the radius shows its info card plus "Get within 0.3 mi to view this discussion" (D19)
+- [ ] **P3.3** Comments and replies (threaded, depth-limited), on both post types; radius rule per Q4 🔒 ✅DV3
+- [ ] **P3.4** Votes per D6; unique constraint; server-maintained score; vote-change and remove 🔒 ✅DV4 ✅DV5
+- [ ] **P3.5** Cursor pagination `(createdAt, id)`; tests for no duplicates or skips with concurrent inserts ✅DV6
+- [ ] **P3.6** Sorting: newest, plus a simple "top/hot" score (time-decayed votes)
+- [ ] **P3.7** Every write endpoint checks: auth, schema, rate limit, location, ownership. Test table enumerates every write route 🔒 ✅L5 ✅L6
+- [ ] **P3.8** Author edit and delete own content (soft-delete); IDOR tests 🔒
+- [ ] **P3.9** Blocked users' content hidden from the blocker (depends on P5.2; stub filter now)
+- [ ] **P3.10** XSS-safe rendering: plain text only, links not auto-executed; admin portal escapes all UGC 🔒
+- [ ] **P3.11** Mobile: general feed (default landing), post detail with comments, business room screen, compose screens, clear UI separation between the two
+- [ ] **Phase gate:** End-to-end posting and voting on device in both contexts; location-bypass test suite green
+
+## Phase 4 — Guests & Profiles (§4.3, §4.4, §5, §14)
+
+**Guests**
+- [ ] **P4.1** Guest session creation tied to an installation ID; rate-limited 🔒
+- [ ] **P4.2** Guest permissions: read the general feed and comment on general posts only. Server rejects guest top-level posts, business-room actions, uploads, and achievements 🔒 ✅A3
+- [ ] **P4.3** **GUEST** label on content; internal ID never exposed 🔒
+- [ ] **P4.4** Guest inactivity tracked server-side; expire after 30 days; expiry warning in the UI ✅A4
+- [ ] **P4.5** Guest comments visible for one year, then **hard-deleted** by a scheduled job, skipping items under moderation or legal hold (D17) ✅A5
+- [ ] **P4.6** Ban carry-over: a banned installation or guest cannot create a new guest session 🔒 ✅MS4
+- [ ] **P4.7** Guest-to-registered upgrade path (optional; decide)
+
+**Profiles & settings**
+- [ ] **P4.8** Public profile: username, avatar, bio, medals, posts and comments. No private fields 🔒 ✅A2
+- [ ] **P4.9** Username change with configurable cooldown; immutable user ID; history kept internally ✅A1
+- [ ] **P4.10** Email change (re-verify) and password change (revoke other sessions) 🔒
+- [ ] **P4.11** Settings screen: radius, favorites, blocked users, my reports and their status, ToS and privacy links, location-permission guidance, logout
+- [ ] **P4.12** Account deletion: immediate login and posting disable, sessions revoked, profile hidden, `AccountDeletion` record, purge job per D14 🔒 ✅A6 ✅A7
+- [ ] **P4.13** In-app policy pages: guest expiry, deletion, and content retention (§5.1)
+- [ ] **Phase gate:** Guest restriction tests green; deletion workflow verified end to end
+
+## Phase 5 — Moderation & Administration (§10, §11, §9.3)
+
+**User-facing safety**
+- [ ] **P5.1** Report posts, comments, profiles, images (reason categories plus details); dedupe repeated reports ✅MS1
+- [ ] **P5.2** Block and unblock users; blocked content hidden both ways ✅MS1
+- [ ] **P5.3** Rate limits (D8): registration, login, posts, comments, votes, uploads, reports, submissions; daily plus per-minute plus burst; guest-specific values 🔒 ✅MS2
+- [ ] **P5.4** Text screening: configurable term lists, normalization (leetspeak, spacing, homoglyphs), outcomes = allow / warn-and-confirm / hold-for-review / block. Profanity allowed by default
+- [ ] **P5.5** Duplicate-content and spam detection (same text hash within a window, link-heavy posts)
+- [ ] **P5.6** Strike system (D9); suspensions and bans enforced in `requireActor()` 🔒 ✅MS3
+- [ ] **P5.7** Appeals and unban requests with eligibility rules
+
+**Community submissions (§9.3)**
+- [ ] **P5.8** Submit a place: name, category, map pin (address optional), notes; boundary check; per-account limits 🔒
+- [ ] **P5.9** Duplicate candidate detection (normalized name plus proximity plus source ID) shown to the submitter and the admin ✅D2
+- [ ] **P5.10** Submissions hidden from the public until approved ✅D3
+
+**Admin portal**
+- [ ] **P5.11** Admin login with role check on the server for every `/admin` page and `/api/v1/admin/*` route; TOTP (D4); non-admin negative tests 🔒 ✅D8
+- [ ] **P5.12** Submission queue: status tabs, filters (status, category, submitter, date), inline map preview, duplicate candidates, submitter history, approve, reject (reason required), edit metadata, merge into existing, bulk select with a confirmation that lists items ✅D4 ✅D5 ✅D6
+- [ ] **P5.13** Approval is idempotent: exactly one place record and one badge even on double-click or a race 🔒 ✅D5
+- [ ] **P5.14** Moderation queues: reported posts, comments, profiles, images, with context (thread, author history); remove or restore; warn, suspend, ban; internal notes; adjust per-user rate limits; suspicious-location view. CSAM escalation path (preserve, do not delete, report to NCMEC; see R4) ✅MS3
+- [ ] **P5.15** `ModerationAction` records reason, timestamp, admin, and target for every action
+- [ ] **P5.16** `AdminAuditLog` for every consequential admin action; viewer page ✅D7
+- [ ] **P5.17** Admin config editor for `AppConfiguration` (validated ranges, audited)
+- [ ] **Phase gate:** One admin can clear 50 seeded submissions quickly; all admin routes reject non-admins in tests
+
+## Phase 6 — Photos & Achievements (§12, §13)
+
+- [ ] **P6.1** Upload grant endpoint: checks auth (registered only), location, and rate limit before issuing a presigned URL to quarantine 🔒
+- [ ] **P6.2** Processing: magic-byte validation, size and dimension limits, allow-list (JPEG, PNG, WebP, HEIC→JPEG), EXIF/GPS strip, re-encode with `sharp`, random storage keys 🔒
+- [ ] **P6.3** Test: an uploaded image containing GPS EXIF has none after processing ✅MS5
+- [ ] **P6.4** Delivery via short-lived signed URLs only; removed or private images return 403/404 🔒 ✅MS6
+- [ ] **P6.5** Images reportable and removable; avatar uploads use the same pipeline
+- [ ] **P6.6** Hook for future automated image classification (interface only)
+- [ ] **P6.7** Achievement framework: definitions in the DB, server-side evaluation, unique (user, achievement), never awarded to guests 🔒
+- [ ] **P6.8** Initial set: First Contribution, Approved Contributor (on submission approval), Well Received (net positive votes across N distinct posts, not raw volume)
+- [ ] **P6.9** Medals shown next to usernames and on profiles
+- [ ] **Phase gate:** EXIF test green; unauthorized image access tests green
+
+## Phase 7 — Verification & Release Readiness (§20, §21 P7, §22)
+
+- [ ] **P7.1** Full automated test run; coverage report on auth, location, and admin modules
+- [ ] **P7.2** Bypass test pass: spoofed coordinates, swapped user IDs, client-sent role/score/status fields, replayed stale readings 🔒
+- [ ] **P7.3** Dependency audit (`pnpm audit`), secret scan of git history 🔒
+- [ ] **P7.4** Migration from scratch plus backup/restore drill documented
+- [ ] **P7.5** Mobile E2E for critical flows (register, post, comment, vote, report)
+- [ ] **P7.6** Accessibility basics (labels, contrast, dynamic text)
+- [ ] **P7.7** Every §20 criterion below checked with a linked test or manual procedure
+- [ ] **P7.8** All §22 deliverables below complete
+- [ ] **P7.9** Known limitations and next-steps list written
+- [ ] **P7.10** App Store / Play prep: privacy nutrition labels, location usage strings, EULA zero-tolerance clause, support contact, 18+ rating, in-app account deletion (already covered)
+- [ ] **Phase gate:** You sign off. **No public deployment without your explicit authorization (§1 rule 8).**
+
+---
+
+## Acceptance Criteria Tracker (§20)
+
+Every row needs a linked test or a written manual procedure before it can be checked.
+
+**Location**
+- [ ] L1 — Outside the boundary → cannot post or vote (P2.4)
+- [ ] L2 — Inside Jax but outside the radius → blocked (P2.4)
+- [ ] L3 — Valid user in radius → allowed (P2.4)
+- [ ] L4 — Stale, malformed, or inaccurate readings rejected (P2.4)
+- [ ] L5 — Tampered coordinates or user IDs can't bypass (P3.7, P7.2)
+- [ ] L6 — Read-only browsing never enables writes (P3.7)
+
+**Accounts & guests**
+- [ ] A1 — Identity persists across username changes (P4.9)
+- [ ] A2 — Email and birth year never exposed (P1.19, P4.8)
+- [ ] A3 — Guests: no top-level posts, uploads, business rooms, achievements (P4.2)
+- [ ] A4 — Guests expire after 30 days inactive (P4.4)
+- [ ] A5 — Guest comments stay as GUEST for one year (P4.5)
+- [ ] A6 — Deleted or banned users can't participate (P4.12, P5.6)
+- [ ] A7 — Deletion hides the profile and runs the retention workflow (P4.12)
+
+**Discussions & voting**
+- [ ] DV1 — General and business discussions are distinct (P3.1, P3.2)
+- [ ] DV2 — Business posts tied to a canonical place (P3.2)
+- [ ] DV3 — Replies appear under the correct parent (P3.3)
+- [ ] DV4 — No duplicate votes (P3.4)
+- [ ] DV5 — Server-side vote totals (P3.4)
+- [ ] DV6 — Pagination: no duplicates or skips (P3.5)
+
+**Directory & admin**
+- [ ] D1 — Import is idempotent (P2.11)
+- [ ] D2 — Duplicate submissions flagged (P5.9)
+- [ ] D3 — Unapproved submissions hidden (P5.10)
+- [ ] D4 — Approved submission appears in the directory (P5.12)
+- [ ] D5 — Badge awarded only on approval, only once (P5.13)
+- [ ] D6 — Admin can approve, reject, correct, merge (P5.12)
+- [ ] D7 — Admin actions audited (P5.16)
+- [ ] D8 — Non-admins blocked from admin (P5.11)
+
+**Moderation & security**
+- [ ] MS1 — Report and block work (P5.1, P5.2)
+- [ ] MS2 — Server-side rate limits (P5.3)
+- [ ] MS3 — Remove content, suspend, ban (P5.6, P5.14)
+- [ ] MS4 — Username change or new guest doesn't bypass enforcement (P4.6, P4.9)
+- [ ] MS5 — EXIF stripped (P6.3)
+- [ ] MS6 — No unauthorized image or admin data access (P6.4, P5.11)
+- [ ] MS7 — Automated tests cover authorization and location failures (P7.1)
+
+---
+
+## Deliverables Tracker (§22)
+
+- [ ] Mobile app source
+- [ ] Backend + admin portal source
+- [ ] Prisma schema + migrations
+- [ ] Seed + directory import scripts (idempotent)
+- [ ] `.env.example` (placeholders only)
+- [ ] `docs/SETUP.md` — local development
+- [ ] `docs/TESTING.md` — how to run tests
+- [ ] `docs/API.md` — endpoint reference
+- [ ] `docs/DATA_SOURCES.md` — attribution and refresh steps
+- [ ] `docs/ARCHITECTURE.md`
+- [ ] `docs/SECURITY_PRIVACY_CHECKLIST.md`
+- [ ] `docs/EXTERNAL_SERVICES.md` — services and credentials needed
+- [ ] `docs/KNOWN_LIMITATIONS.md` — incomplete items, risks, next steps
+
+---
+
+## Risks Register
+
+| ID | Risk | Mitigation |
+|---|---|---|
+| R1 | GPS spoofing can't be fully prevented (§6.2) | Layered measures: freshness, accuracy, impossible-travel checks, integrity APIs, throttling. Document this honestly |
+| R2 | Ban evasion via reinstall / new guest / new email | Installation ID, integrity signals, email-domain throttles. Accept as partial |
+| R3 | Birth-year screen is not age verification | Downgraded 2026-10-14 (D18): standard social-media 18+ policy, no adult content. Don't market as "verified." A routine ToS/Privacy Policy review before launch is still recommended |
+| R4 | CSAM / NCMEC reporting is a federal obligation once aware | Admin escalation path (P5.14); register with NCMEC before launch; legal review |
+| R5 | Scope is large for an MVP | Strict phase gates; achievements are optional (§13); defer the guest upgrade path |
+| R6 | Repo inside OneDrive → sync and lock problems with node_modules | P0.5 |
+| R7 | OSM data quality / completeness for Jacksonville | Community submissions fill the gaps; admin can correct entries |
+
+---
+
+## Out of Scope (do not build — §15, §19)
+
+Private messaging · following · events/meetups/RSVPs · sponsored content / ads / subscriptions · push notifications · advanced analytics · recommendation algorithms · advanced reputation systems · demographic profile fields.
+
+---
+
+## Progress Log
+
+| Date | Phase/Item | Note |
+|---|---|---|
+| 2026-10-14 | — | Spec received and saved to `docs/SPEC.md`; tracker created; open questions raised |
+| 2026-10-14 | Phase 0 | Q1–Q3 answered → D15–D18 accepted, D6 confirmed. Added P3.1a (location-gated reads), P0.6. Env check: Docker installed (engine off), Node 22, npm 10, no pnpm, Git 2.26 |
+| 2026-10-14 | Phase 0 | D1–D14 accepted. D19 (business rooms location-only for reads), D20 (Q4), D21 (npm). Added P3.2a. All blocking decisions resolved |
+| 2026-10-14 | P0.5 / P0.6 | Files copied to the new folder. Docker Desktop open, but the engine returns HTTP 500 to `docker info` (WSL2 docker-desktop distro running). Git update not needed |
