@@ -29,7 +29,9 @@ export const POST = route(async (req) => {
     latitude,
     longitude,
     q: input.q,
-    category: input.category,
+    categories: input.categories,
+    sort: input.sort,
+    limit: input.limit,
     offset: input.offset,
   });
   // ODbL: data shown in the app must carry the attribution (P2.12).

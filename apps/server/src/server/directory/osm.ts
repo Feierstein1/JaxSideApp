@@ -89,6 +89,13 @@ const SHOP_GROUPS: Record<string, string> = {
 };
 const SHOP_EXCLUDED = new Set(['vacant', 'no', 'yes_but_closed']);
 
+/** Every category the importer can assign (used to check the app's filter groups). */
+export function allCategories(): Set<string> {
+  const out = new Set<string>(['shop', ...Object.values(SHOP_GROUPS)]);
+  for (const r of RULES) if (r.values !== '*') Object.values(r.values).forEach((c) => out.add(c));
+  return out;
+}
+
 export function categorize(tags: Record<string, string>): string | null {
   for (const rule of RULES) {
     const v = tags[rule.key];

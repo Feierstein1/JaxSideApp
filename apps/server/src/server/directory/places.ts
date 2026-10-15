@@ -1,4 +1,4 @@
-import { milesToMeters, type PlaceSummary } from '@jax/shared';
+import { milesToMeters, type PlaceSort, type PlaceSummary } from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
 import { getConfig } from '../config';
 import { db } from '../db';
@@ -33,39 +33,52 @@ async function toSummaries(rows: Row[]): Promise<PlaceSummary[]> {
 }
 
 /**
- * Directory search (P2.13). With `q`: typo-tolerant name match (pg_trgm), best matches
- * first. Without `q`: nearest first. Either way favorites rank as if closer by
- * directory.favoriteDistanceFactor, so they stand out without overriding distance (D39).
+ * Directory search (P2.13, D40).
+ * - Filters: name (typo-tolerant, pg_trgm), category list.
+ * - Sorts: "relevance" (best name match, default when searching), "distance" (default
+ *   otherwise), "name" (A–Z), "favorites" (favorites first, then distance).
+ * - In the distance-based sorts, favorites rank as if closer by
+ *   directory.favoriteDistanceFactor, so they stand out without overriding distance (D39).
  */
 export async function searchPlaces(opts: {
   userId: string;
   latitude: number;
   longitude: number;
   q?: string;
-  category?: string;
+  categories?: string[];
+  sort?: PlaceSort;
+  limit?: number;
   offset: number;
 }): Promise<{ places: PlaceSummary[]; nextOffset: number | null }> {
-  const [pageSize, favFactor] = await Promise.all([
+  const [defaultPageSize, favFactor] = await Promise.all([
     getConfig('directory.pageSize'),
     getConfig('directory.favoriteDistanceFactor'),
   ]);
+  const pageSize = opts.limit ?? defaultPageSize;
   const me = Prisma.sql`ST_SetSRID(ST_MakePoint(${opts.longitude}, ${opts.latitude}), 4326)::geography`;
   const q = opts.q ? normalizeName(opts.q) : '';
   const nameFilter = q
     ? Prisma.sql`AND (p."nameNormalized" % ${q}::text OR p."nameNormalized" LIKE ${'%' + q + '%'}::text)`
     : Prisma.empty;
-  const categoryFilter = opts.category
-    ? Prisma.sql`AND p.category = ${opts.category}`
+  const categoryFilter = opts.categories?.length
+    ? Prisma.sql`AND p.category IN (${Prisma.join(opts.categories)})`
     : Prisma.empty;
+  const distance = Prisma.sql`ST_Distance(p.location, ${me})`;
   const effectiveDistance = Prisma.sql`
-    ST_Distance(p.location, ${me}) * CASE WHEN f."userId" IS NULL THEN 1.0 ELSE ${favFactor}::float8 END`;
-  const order = q
-    ? Prisma.sql`ORDER BY round(similarity(p."nameNormalized", ${q}::text)::numeric, 1) DESC, ${effectiveDistance} ASC, p.id`
-    : Prisma.sql`ORDER BY ${effectiveDistance} ASC, p.id`;
+    ${distance} * CASE WHEN f."userId" IS NULL THEN 1.0 ELSE ${favFactor}::float8 END`;
+  const sort = opts.sort ?? (q ? 'relevance' : 'distance');
+  const order = {
+    relevance: q
+      ? Prisma.sql`ORDER BY round(similarity(p."nameNormalized", ${q}::text)::numeric, 1) DESC, ${effectiveDistance} ASC, p.id`
+      : Prisma.sql`ORDER BY ${effectiveDistance} ASC, p.id`,
+    distance: Prisma.sql`ORDER BY ${effectiveDistance} ASC, p.id`,
+    name: Prisma.sql`ORDER BY p."nameNormalized" ASC, ${distance} ASC, p.id`,
+    favorites: Prisma.sql`ORDER BY (f."userId" IS NULL) ASC, ${distance} ASC, p.id`,
+  }[sort];
 
   const rows = await db.$queryRaw<Row[]>`
     SELECT p.id, p.name, p.category, p.address, p.latitude, p.longitude,
-           ST_Distance(p.location, ${me}) AS distance,
+           ${distance} AS distance,
            (f."userId" IS NOT NULL) AS is_favorite
     FROM "BusinessPlace" p
     LEFT JOIN "FavoritePlace" f ON f."placeId" = p.id AND f."userId" = ${opts.userId}::uuid

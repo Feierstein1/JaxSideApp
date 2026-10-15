@@ -8,7 +8,8 @@ import { GET as meGET } from '@/app/api/v1/me/route';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
-import { importOsmPlaces, type OsmElement } from '@/server/directory/osm';
+import { CATEGORY_GROUPS } from '@jax/shared';
+import { allCategories, importOsmPlaces, type OsmElement } from '@/server/directory/osm';
 import { readBoundaryFile } from '@/server/location/boundary-file';
 import { importServiceArea } from '@/server/location/service-area';
 import { resetDb } from './db-helpers';
@@ -117,7 +118,43 @@ describe('place search (P2.13)', () => {
   });
 
   it('filters by category', async () => {
-    expect(names(await search({ category: 'park' }))).toEqual(['Memorial Park']);
+    expect(names(await search({ categories: ['park'] }))).toEqual(['Memorial Park']);
+    expect(names(await search({ categories: ['cafe', 'bar'] }))).toEqual([
+      'Bold Bean Coffee',
+      'The Brewery & Co.',
+    ]);
+  });
+
+  it('every category in the app filter groups is one the importer can assign (D40)', () => {
+    const known = allCategories();
+    for (const g of CATEGORY_GROUPS) for (const c of g.categories) expect(known).toContain(c);
+  });
+
+  it('sorts A–Z, favorites first, or nearest', async () => {
+    expect(names(await search({ sort: 'name' }))).toEqual([
+      'Bold Bean Coffee',
+      'The Brewery & Co.', // "brewery and co" (a leading "The" is ignored)
+      'Corner Store',
+      'Jacksonville Beach',
+      'Memorial Park',
+    ]);
+    await call(favPUT as Handler, 'PUT', { token: tokenA, id: await idOf('Jacksonville Beach') });
+    expect(names(await search({ sort: 'favorites' }))[0]).toBe('Jacksonville Beach');
+    expect(names(await search({ sort: 'distance' }))[0]).toBe('Bold Bean Coffee');
+  });
+
+  it('honors a larger page for the map view, capped at 50', async () => {
+    const r = await search({ limit: 3 });
+    expect(r.body.places).toHaveLength(3);
+    expect((await search({ limit: 51 })).status).toBe(400);
+  });
+
+  it.each([
+    [{ sort: 'random' }],
+    [{ categories: ['DROP TABLE'] }],
+    [{ categories: Array(13).fill('cafe') }],
+  ])('rejects %j', async (body) => {
+    expect((await search(body)).status).toBe(400);
   });
 
   // D39: favorites rank as if 4x closer, without overriding distance entirely.
