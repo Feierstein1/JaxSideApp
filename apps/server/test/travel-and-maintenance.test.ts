@@ -5,7 +5,8 @@ import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
 import { runMaintenance } from '@/server/jobs/maintenance';
 import { assertLocationEligible, type LocationActor } from '@/server/location/eligibility';
-import { importServiceArea, readBoundaryFile } from '@/server/location/service-area';
+import { readBoundaryFile } from '@/server/location/boundary-file';
+import { importServiceArea } from '@/server/location/service-area';
 import { resetDb } from './db-helpers';
 import { createTestUser } from './user-factory';
 

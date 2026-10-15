@@ -7,7 +7,8 @@
  */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../src/generated/prisma/client';
-import { importServiceArea, readBoundaryFile } from '../../src/server/location/service-area';
+import { readBoundaryFile } from '../../src/server/location/boundary-file';
+import { importServiceArea } from '../../src/server/location/service-area';
 
 async function main() {
   const url = process.env.DATABASE_URL;

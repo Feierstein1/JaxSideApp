@@ -32,3 +32,14 @@ npm run db:test:reset -w @jax/server
 - Test names reference spec sections or decision IDs where useful (e.g. `§16`, `D6`).
 - The mobile app has unit tests only for pure TypeScript modules (`src/**/*.test.ts`) so far.
   Device end-to-end tests come in Phase 7 (P7.5).
+
+## Full verification before committing
+
+```sh
+npm run verify   # typecheck + lint + all tests + production build of the server
+```
+
+The tests call route handlers directly in Node; they don't go through the Next.js bundler. The
+production build catches problems that only appear once bundled, for example `import.meta.dirname`
+being undefined in a route (found 2026-10-15). It also catches anything other than HTTP handlers
+being exported from a route file.

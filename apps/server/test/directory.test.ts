@@ -9,7 +9,8 @@ import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
 import { importOsmPlaces, type OsmElement } from '@/server/directory/osm';
-import { importServiceArea, readBoundaryFile } from '@/server/location/service-area';
+import { readBoundaryFile } from '@/server/location/boundary-file';
+import { importServiceArea } from '@/server/location/service-area';
 import { resetDb } from './db-helpers';
 import { createTestUser } from './user-factory';
 

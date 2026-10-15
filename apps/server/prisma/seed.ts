@@ -11,7 +11,8 @@ import { PrismaClient } from '../src/generated/prisma/client';
 import { hashPassword } from '../src/server/auth/crypto';
 import { encryptedEmailFields } from '../src/server/crypto/field-encryption';
 import { uuidv7 } from '../src/server/crypto/uuid';
-import { importServiceArea, readBoundaryFile } from '../src/server/location/service-area';
+import { readBoundaryFile } from '../src/server/location/boundary-file';
+import { importServiceArea } from '../src/server/location/service-area';
 import { ACHIEVEMENTS, CONFIG_DESCRIPTIONS, DEV_PLACES, DEV_USERS } from './seed-data';
 
 export interface SeedOptions {

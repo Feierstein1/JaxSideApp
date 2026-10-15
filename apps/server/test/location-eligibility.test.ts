@@ -8,11 +8,8 @@ import {
   coarsenPoint,
   type LocationActor,
 } from '@/server/location/eligibility';
-import {
-  importServiceArea,
-  isInServiceArea,
-  readBoundaryFile,
-} from '@/server/location/service-area';
+import { importServiceArea, isInServiceArea } from '@/server/location/service-area';
+import { readBoundaryFile } from '@/server/location/boundary-file';
 import { resetDb } from './db-helpers';
 import { createTestGuest, createTestUser } from './user-factory';
 

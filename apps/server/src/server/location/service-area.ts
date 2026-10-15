@@ -1,32 +1,7 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import type { PrismaClient } from '@/generated/prisma/client';
+import type { BoundaryFeature } from './boundary-file';
 
-/** The committed boundary file (P2.1). See docs/DATA_SOURCES.md. */
-export const DUVAL_BOUNDARY_FILE = path.resolve(
-  import.meta.dirname,
-  '../../../data/boundaries/duval-county.geojson',
-);
-
-export interface BoundaryFeature {
-  type: 'Feature';
-  properties: {
-    key: string;
-    name: string;
-    sourceUrl: string;
-    sourceVersion: string;
-    license: string;
-  };
-  geometry: { type: 'Polygon' | 'MultiPolygon'; coordinates: unknown };
-}
-
-export function readBoundaryFile(file = DUVAL_BOUNDARY_FILE): BoundaryFeature {
-  const feature = JSON.parse(readFileSync(file, 'utf8')) as BoundaryFeature;
-  if (feature.type !== 'Feature' || !['Polygon', 'MultiPolygon'].includes(feature.geometry?.type)) {
-    throw new Error(`${file} is not a Polygon/MultiPolygon GeoJSON Feature`);
-  }
-  return feature;
-}
+export type { BoundaryFeature };
 
 /**
  * Upserts a service-area polygon by key (P2.2). Idempotent: re-running replaces the
