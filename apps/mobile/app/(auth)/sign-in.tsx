@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Linking, Platform, ScrollView, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { loginRequestSchema } from '@jax/shared';
-import { API_BASE_URL } from '@/api';
 import { useAuth } from '@/auth/AuthContext';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { Button, Field, FormError, PasswordField, styles } from '@/ui';
 
 export default function SignIn() {
   const { signIn } = useAuth();
-  const params = useLocalSearchParams<{ registered?: string }>();
+  const params = useLocalSearchParams<{ registered?: string; reset?: string }>();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -38,7 +37,12 @@ export default function SignIn() {
         <Text style={styles.title}>Welcome to Jax</Text>
         {params.registered ? (
           <Text style={[styles.body, styles.banner]}>
-            Account created. Check your email to confirm your address, then sign in.
+            Account created. Sign in, then enter the 6-digit code we emailed you.
+          </Text>
+        ) : null}
+        {params.reset ? (
+          <Text style={[styles.body, styles.banner]}>
+            Password changed. Sign in with your new password.
           </Text>
         ) : null}
         <FormError>{errors.form}</FormError>
@@ -65,7 +69,7 @@ export default function SignIn() {
         <Button
           variant="link"
           title="Forgot password?"
-          onPress={() => Linking.openURL(`${API_BASE_URL}/reset-password`)}
+          onPress={() => router.push('/forgot-password')}
         />
         <Button variant="link" title="Create an account" onPress={() => router.push('/register')} />
       </ScrollView>

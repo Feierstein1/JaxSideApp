@@ -18,7 +18,10 @@ import { assertUnder, enforce, hit } from '../rate-limit';
 import { toMe } from '../serializers';
 import {
   burnPasswordCheck,
+  generateEmailCode,
   generateToken,
+  hashEmailCode,
+  safeEqualHex,
   hashPassword,
   hashToken,
   keyedHash,
@@ -79,15 +82,21 @@ export async function assertAgeEligible(birthYear: number, now = new Date()): Pr
 
 // ─────────────────────────── Email tokens ───────────────────────────
 
+/**
+ * One emailed credential with two ways to use it (D31): a long link token and a
+ * 6-digit code for typing into the app. Using either one consumes the row.
+ */
 async function issueEmailToken(
   userId: string,
   purpose: EmailTokenPurpose,
   ttlMs: number,
   now: Date,
-): Promise<string> {
+): Promise<{ token: string; code: string }> {
   const token = generateToken();
+  const code = generateEmailCode();
+  const codeMinutes = await getConfig('emailCode.expiryMinutes');
   await db.$transaction([
-    // Only the newest link of each kind works.
+    // Only the newest email of each kind works.
     db.emailToken.updateMany({
       where: { userId, purpose, usedAt: null },
       data: { usedAt: now },
@@ -97,12 +106,77 @@ async function issueEmailToken(
         userId,
         purpose,
         tokenHash: hashToken(token),
+        codeHash: hashEmailCode(code, getEnv().SESSION_SECRET),
+        codeExpiresAt: new Date(now.getTime() + Math.min(ttlMs, codeMinutes * MINUTE_MS)),
         createdAt: now,
         expiresAt: new Date(now.getTime() + ttlMs),
       },
     }),
   ]);
-  return token;
+  return { token, code };
+}
+
+const INVALID_CODE = () =>
+  new ApiError(400, 'INVALID_CODE', 'That code is incorrect or has expired. Request a new one.');
+
+/**
+ * Checks a typed code for a known user and consumes the token on success (D31).
+ * Each token allows emailCode.maxAttempts wrong guesses, then it is dead. Wrong
+ * guesses also count per IP, across all accounts. The error never says how many
+ * tries are left, so reset-by-code can't reveal whether an account exists.
+ */
+async function consumeEmailCode(
+  userId: string | null,
+  purpose: EmailTokenPurpose,
+  code: string,
+  ctx: RequestContext,
+): Promise<void> {
+  const now = ctx.now ?? new Date();
+  const ipRule = {
+    key: `code-fail:ip:${ctx.ipSubject}`,
+    limitKey: 'rateLimit.codeAttempt.per15MinPerIp' as const,
+    windowSeconds: 15 * 60,
+  };
+  await assertUnder(ipRule, now);
+  const fail = async () => {
+    await hit(ipRule.key, ipRule.windowSeconds, now);
+    return INVALID_CODE();
+  };
+
+  const maxAttempts = await getConfig('emailCode.maxAttempts');
+  const row = userId
+    ? await db.emailToken.findFirst({
+        where: {
+          userId,
+          purpose,
+          usedAt: null,
+          expiresAt: { gt: now },
+          codeExpiresAt: { gt: now },
+          codeAttempts: { lt: maxAttempts },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+    : null;
+  if (!row?.codeHash) throw await fail();
+
+  if (!safeEqualHex(row.codeHash, hashEmailCode(code, getEnv().SESSION_SECRET))) {
+    // Atomic increment; the guard stops parallel guesses from exceeding the cap.
+    await db.emailToken.updateMany({
+      where: { id: row.id, usedAt: null, codeAttempts: { lt: maxAttempts } },
+      data: { codeAttempts: { increment: 1 } },
+    });
+    await db.emailToken.updateMany({
+      where: { id: row.id, usedAt: null, codeAttempts: { gte: maxAttempts } },
+      data: { usedAt: now },
+    });
+    throw await fail();
+  }
+
+  const consumed = await db.emailToken.updateMany({
+    where: { id: row.id, usedAt: null, codeAttempts: { lt: maxAttempts } },
+    data: { usedAt: now },
+  });
+  if (consumed.count !== 1) throw await fail();
 }
 
 /** Marks a token used exactly once (race-safe) and returns its owner. */
@@ -124,8 +198,13 @@ async function consumeEmailToken(token: string, purpose: EmailTokenPurpose, now:
 
 async function sendVerification(userId: string, email: string, now: Date) {
   const hours = await getConfig('emailVerification.expiryHours');
-  const token = await issueEmailToken(userId, 'VERIFY_EMAIL', hours * 60 * MINUTE_MS, now);
-  await sendSafely(verificationEmail(email, getEnv().APP_BASE_URL, token), 'verify-email');
+  const { token, code } = await issueEmailToken(
+    userId,
+    'VERIFY_EMAIL',
+    hours * 60 * MINUTE_MS,
+    now,
+  );
+  await sendSafely(verificationEmail(email, getEnv().APP_BASE_URL, token, code), 'verify-email');
 }
 
 // ─────────────────────────── Register (P1.13) ───────────────────────────
@@ -257,6 +336,19 @@ export async function verifyEmail(token: string, now = new Date()) {
   return { status: 'verified' as const };
 }
 
+/** D31: the signed-in user types the 6-digit code from their email into the app. */
+export async function verifyEmailByCode(
+  user: { id: string; emailVerifiedAt: Date | null },
+  code: string,
+  ctx: RequestContext,
+) {
+  if (user.emailVerifiedAt) return { status: 'already_verified' as const };
+  const now = ctx.now ?? new Date();
+  await consumeEmailCode(user.id, 'VERIFY_EMAIL', code, ctx);
+  await db.user.update({ where: { id: user.id }, data: { emailVerifiedAt: now } });
+  return { status: 'verified' as const };
+}
+
 export async function resendVerification(
   user: { id: string; email: string; emailVerifiedAt: Date | null },
   now = new Date(),
@@ -302,9 +394,33 @@ export async function requestPasswordReset(email: string, ctx: RequestContext) {
   }
 
   const minutes = await getConfig('passwordReset.expiryMinutes');
-  const token = await issueEmailToken(user.id, 'PASSWORD_RESET', minutes * MINUTE_MS, now);
-  await sendSafely(passwordResetEmail(user.email, getEnv().APP_BASE_URL, token), 'password-reset');
+  const { token, code } = await issueEmailToken(
+    user.id,
+    'PASSWORD_RESET',
+    minutes * MINUTE_MS,
+    now,
+  );
+  await sendSafely(
+    passwordResetEmail(user.email, getEnv().APP_BASE_URL, token, code),
+    'password-reset',
+  );
   return RESET_REQUESTED;
+}
+
+async function finishPasswordReset(
+  user: { id: string; emailVerifiedAt: Date | null },
+  newPassword: string,
+  now: Date,
+) {
+  const passwordHash = await hashPassword(newPassword);
+  await db.user.update({
+    where: { id: user.id },
+    // Using the emailed link or code proves control of the address.
+    data: { passwordHash, emailVerifiedAt: user.emailVerifiedAt ?? now },
+  });
+  // Anyone holding an old session is signed out.
+  await revokeAllSessions(user.id, now);
+  return { status: 'password_reset' as const };
 }
 
 export async function confirmPasswordReset(token: string, newPassword: string, now = new Date()) {
@@ -312,13 +428,18 @@ export async function confirmPasswordReset(token: string, newPassword: string, n
   if (user.status === 'DELETED' || user.deletedAt) {
     throw new ApiError(400, 'INVALID_TOKEN', 'This link is invalid or has expired');
   }
-  const passwordHash = await hashPassword(newPassword);
-  await db.user.update({
-    where: { id: user.id },
-    // Using the emailed link proves control of the address.
-    data: { passwordHash, emailVerifiedAt: user.emailVerifiedAt ?? now },
-  });
-  // Anyone holding an old session is signed out.
-  await revokeAllSessions(user.id, now);
-  return { status: 'password_reset' as const };
+  return finishPasswordReset(user, newPassword, now);
+}
+
+/** D31: reset inside the app with the emailed 6-digit code. */
+export async function confirmPasswordResetByCode(
+  input: { email: string; code: string; newPassword: string },
+  ctx: RequestContext,
+) {
+  const now = ctx.now ?? new Date();
+  const user = await db.user.findUnique({ where: { email: input.email } });
+  const usable = user && user.status !== 'DELETED' && !user.deletedAt;
+  // Unknown and deleted accounts take the same path and get the same error.
+  await consumeEmailCode(usable ? user.id : null, 'PASSWORD_RESET', input.code, ctx);
+  return finishPasswordReset(user!, input.newPassword, now);
 }

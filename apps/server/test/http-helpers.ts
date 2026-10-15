@@ -33,6 +33,13 @@ export function captureMailer() {
   return { mailer, sent };
 }
 
+/** Pulls the 6-digit code ("482 913") out of an email, as "482913". */
+export function codeFromMail(mail: OutgoingMail | undefined): string {
+  const m = /^\s+(\d{3}) (\d{3})$/m.exec(mail?.text ?? '');
+  if (!m) throw new Error('no code in email');
+  return m[1]! + m[2]!;
+}
+
 /** Pulls the `token=` value out of an emailed link. */
 export function tokenFromMail(mail: OutgoingMail | undefined): string {
   const m = /token=([^\s]+)/.exec(mail?.text ?? '');

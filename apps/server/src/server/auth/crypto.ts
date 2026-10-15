@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { hash, verify } from '@node-rs/argon2';
 
 /** `Algorithm.Argon2id` is an ambient const enum (unusable with isolatedModules); its value is 2. */
@@ -20,6 +20,26 @@ export function hashToken(token: string): string {
 /** Keyed hash for values that are low-entropy but must not be stored raw (e.g. IPs in rate-limit keys). */
 export function keyedHash(value: string, secret: string): string {
   return createHmac('sha256', secret).update(value).digest('hex').slice(0, 32);
+}
+
+/** D31: uniformly random 6-digit code, zero-padded. */
+export function generateEmailCode(): string {
+  return randomInt(0, 1_000_000).toString().padStart(6, '0');
+}
+
+/**
+ * Codes have only 10^6 values, so a plain hash could be reversed instantly from a DB
+ * leak. HMAC with the server secret means the DB alone isn't enough.
+ */
+export function hashEmailCode(code: string, secret: string): string {
+  return createHmac('sha256', secret).update(`email-code:${code}`).digest('hex');
+}
+
+/** Constant-time comparison of two hex digests. */
+export function safeEqualHex(a: string, b: string): boolean {
+  const ab = Buffer.from(a, 'hex');
+  const bb = Buffer.from(b, 'hex');
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
 }
 
 // argon2id, OWASP baseline parameters (19 MiB, 2 iterations, 1 lane).

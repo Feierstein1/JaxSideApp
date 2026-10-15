@@ -44,6 +44,9 @@ export const CONFIG_DEFAULTS = {
   'session.adminIdleMinutes': 30,
   'passwordReset.expiryMinutes': 30,
   'emailVerification.expiryHours': 24,
+  // D31: 6-digit codes typed into the app.
+  'emailCode.expiryMinutes': 15,
+  'emailCode.maxAttempts': 5,
 
   // D8 / §18 rate limits (fixed windows). Enforced in P1.15 / P5.3.
   'rateLimit.register.perHourPerIp': 5,
@@ -66,6 +69,8 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.guestReport.perMinute': 2,
   'rateLimit.guestReport.perDay': 5,
   'rateLimit.verifyEmailResend.perHour': 3,
+  /** Wrong email codes per IP, across all accounts (D31). */
+  'rateLimit.codeAttempt.per15MinPerIp': 20,
   'rateLimit.submission.perDay': 5,
   'rateLimit.guestSession.perDayPerInstallation': 3,
 } as const;

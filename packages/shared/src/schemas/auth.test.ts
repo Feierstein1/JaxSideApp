@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { loginRequestSchema, registerRequestSchema } from './auth';
+import {
+  loginRequestSchema,
+  passwordResetCodeSchema,
+  registerRequestSchema,
+  verifyEmailCodeSchema,
+} from './auth';
 
 const valid = {
   username: 'river_rat',
@@ -52,6 +57,27 @@ describe('registerRequestSchema', () => {
   it('rejects non-integer birth year', () => {
     expect(registerRequestSchema.safeParse({ ...valid, birthYear: 1990.5 }).success).toBe(false);
     expect(registerRequestSchema.safeParse({ ...valid, birthYear: '1990' }).success).toBe(false);
+  });
+});
+
+describe('emailCodeSchema (D31)', () => {
+  it.each(['482913', '482 913', '482-913', ' 482913 '])('accepts %j as 482913', (code) => {
+    expect(verifyEmailCodeSchema.parse({ code }).code).toBe('482913');
+  });
+
+  it.each(['48291', '4829130', 'abcdef', '', '48291x'])('rejects %j', (code) => {
+    expect(verifyEmailCodeSchema.safeParse({ code }).success).toBe(false);
+  });
+
+  it('reset-by-code rejects unexpected fields', () => {
+    expect(
+      passwordResetCodeSchema.safeParse({
+        email: 'a@b.com',
+        code: '123456',
+        newPassword: 'long enough pw',
+        userId: 'x',
+      }).success,
+    ).toBe(false);
   });
 });
 

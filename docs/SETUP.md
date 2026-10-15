@@ -77,3 +77,7 @@ also delete the data volumes.
   only serves its scripts to allowed hosts. `next.config.ts` allows this computer's private Wi-Fi
   addresses automatically. If your network uses another range, add the address to
   `allowedDevOrigins`. The server log shows "Blocked cross-origin request" when this happens.
+- **After a database migration, new API calls fail with "Something went wrong"**: restart
+  `npm run dev`. A dev server that was running during the migration can keep old code and an old
+  database client in memory. `db.ts` now replaces the client when it's regenerated, but a restart
+  is the reliable fix.

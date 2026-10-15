@@ -19,16 +19,18 @@ Base path: `/api/v1`. JSON in and out. Mobile clients authenticate with `Authori
 
 ## Auth
 
-| Method | Path                           | Auth   | Body                                                                        | Response                                  |
-| ------ | ------------------------------ | ------ | --------------------------------------------------------------------------- | ----------------------------------------- |
-| POST   | `/auth/register`               | none   | `username, email, password, birthYear, acceptTerms:true, confirmAdult:true` | `202 {status:"verification_sent"}`        |
-| POST   | `/auth/login`                  | none   | `identifier` (username or email), `password`                                | `200 {token, expiresAt, user}`            |
-| POST   | `/auth/logout`                 | bearer | none                                                                        | `200 {status:"signed_out"}` (this device) |
-| DELETE | `/auth/sessions`               | bearer | none                                                                        | `200 {revoked}` (every device)            |
-| POST   | `/auth/verify-email`           | none   | `token`                                                                     | `200 {status:"verified"}`                 |
-| POST   | `/auth/verify-email/resend`    | bearer | `{}`                                                                        | `200 {status}`                            |
-| POST   | `/auth/password-reset/request` | none   | `email`                                                                     | `202 {status:"reset_requested"}`          |
-| POST   | `/auth/password-reset/confirm` | none   | `token, newPassword`                                                        | `200`; all sessions revoked               |
+| Method | Path                                | Auth   | Body                                                                        | Response                                  |
+| ------ | ----------------------------------- | ------ | --------------------------------------------------------------------------- | ----------------------------------------- |
+| POST   | `/auth/register`                    | none   | `username, email, password, birthYear, acceptTerms:true, confirmAdult:true` | `202 {status:"verification_sent"}`        |
+| POST   | `/auth/login`                       | none   | `identifier` (username or email), `password`                                | `200 {token, expiresAt, user}`            |
+| POST   | `/auth/logout`                      | bearer | none                                                                        | `200 {status:"signed_out"}` (this device) |
+| DELETE | `/auth/sessions`                    | bearer | none                                                                        | `200 {revoked}` (every device)            |
+| POST   | `/auth/verify-email`                | none   | `token`                                                                     | `200 {status:"verified"}`                 |
+| POST   | `/auth/verify-email/resend`         | bearer | `{}`                                                                        | `200 {status}`                            |
+| POST   | `/auth/verify-email/code`           | bearer | `code` (6 digits; spaces/dashes ok)                                         | `200 {status:"verified"}`                 |
+| POST   | `/auth/password-reset/request`      | none   | `email`                                                                     | `202 {status:"reset_requested"}`          |
+| POST   | `/auth/password-reset/confirm`      | none   | `token, newPassword`                                                        | `200`; all sessions revoked               |
+| POST   | `/auth/password-reset/confirm-code` | none   | `email, code, newPassword` (in the app)                                     | `200`; all sessions revoked               |
 
 **Privacy behavior**
 
@@ -38,6 +40,8 @@ Base path: `/api/v1`. JSON in and out. Mobile clients authenticate with `Authori
   with at most 3 per account per hour.
 - A wrong password and an unknown account return the same `401 INVALID_CREDENTIALS`. Deleted accounts
   look like unknown accounts.
+
+**Email codes (D31):** every verification and reset email carries a 6-digit code (typed into the app) and a link (browser fallback). Both use the same single-use token. Codes expire after 15 minutes and stop working after 5 wrong guesses. Wrong guesses are also capped at 20 per IP per 15 minutes across all accounts. A wrong code, an expired code and an unknown email all return the same `400 INVALID_CODE`, so the response never reveals whether an account exists.
 
 **Error codes:** `USERNAME_TAKEN` (409), `AGE_INELIGIBLE` (422, `details.maxBirthYear`),
 `INVALID_TOKEN` (400, for expired, used or wrong-purpose links), `EMAIL_NOT_VERIFIED` (403, on write

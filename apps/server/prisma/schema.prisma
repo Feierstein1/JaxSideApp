@@ -122,67 +122,67 @@ enum LocationCheckResult {
 // ──────────────────────── Identity & sessions ────────────────────────
 
 model User {
-  id                 String        @id @default(uuid(7)) @db.Uuid
-  username           String        @db.VarChar(20)
-  usernameNormalized String        @unique @db.VarChar(20)
-  usernameChangedAt  DateTime?     @db.Timestamptz(3)
+  id                  String        @id @default(uuid(7)) @db.Uuid
+  username            String        @db.VarChar(20)
+  usernameNormalized  String        @unique @db.VarChar(20)
+  usernameChangedAt   DateTime?     @db.Timestamptz(3)
   /// Private. Stored lowercased. Never in public responses.
-  email              String        @unique @db.VarChar(254)
-  emailVerifiedAt    DateTime?     @db.Timestamptz(3)
+  email               String        @unique @db.VarChar(254)
+  emailVerifiedAt     DateTime?     @db.Timestamptz(3)
   /// argon2id hash. Never in any response.
-  passwordHash       String
+  passwordHash        String
   /// Private (§4.2). Never in public responses.
-  birthYear          Int           @db.SmallInt
-  role               Role          @default(USER)
-  status             AccountStatus @default(ACTIVE)
-  suspendedUntil     DateTime?     @db.Timestamptz(3)
-  deletedAt          DateTime?     @db.Timestamptz(3)
-  tosAcceptedAt      DateTime      @db.Timestamptz(3)
-  tosVersion         String        @db.VarChar(20)
-  adultConfirmedAt   DateTime      @db.Timestamptz(3)
+  birthYear           Int           @db.SmallInt
+  role                Role          @default(USER)
+  status              AccountStatus @default(ACTIVE)
+  suspendedUntil      DateTime?     @db.Timestamptz(3)
+  deletedAt           DateTime?     @db.Timestamptz(3)
+  tosAcceptedAt       DateTime      @db.Timestamptz(3)
+  tosVersion          String        @db.VarChar(20)
+  adultConfirmedAt    DateTime      @db.Timestamptz(3)
   /// Admin TOTP secret, encrypted at rest (D4).
-  totpSecretEnc      String?
-  totpEnabledAt      DateTime?     @db.Timestamptz(3)
+  totpSecretEnc       String?
+  totpEnabledAt       DateTime?     @db.Timestamptz(3)
   /// User-chosen radii in miles; null = config default. Clamped server-side (P2.15).
   generalRadiusMiles  Float?
   businessRadiusMiles Float?
-  createdAt          DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime      @updatedAt @db.Timestamptz(3)
+  createdAt           DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime      @updatedAt @db.Timestamptz(3)
 
-  profile          Profile?
-  sessions         Session[]
-  emailTokens      EmailToken[]
-  usernameHistory  UsernameHistory[]
-  generalPosts     GeneralPost[]
-  businessPosts    BusinessPost[]
-  comments         Comment[]
-  votes            Vote[]
-  photos           Photo[]
-  favorites        FavoritePlace[]
-  achievements     UserAchievement[]
-  submissions      BusinessSubmission[] @relation("Submitter")
-  reviewedSubs     BusinessSubmission[] @relation("Reviewer")
-  reportsMade      Report[]             @relation("Reporter")
-  reportsAgainst   Report[]             @relation("ReportedUser")
-  reportsResolved  Report[]             @relation("ReportResolver")
-  blocking         UserBlock[]          @relation("Blocker")
-  blockedBy        UserBlock[]          @relation("Blocked")
-  modActionsTaken  ModerationAction[]   @relation("ModActor")
-  modActionsOnMe   ModerationAction[]   @relation("ModTargetUser")
-  auditLogs        AdminAuditLog[]
-  deletions        AccountDeletion[]
-  locationChecks   LocationCheck[]
-  configUpdates    AppConfiguration[]
+  profile         Profile?
+  sessions        Session[]
+  emailTokens     EmailToken[]
+  usernameHistory UsernameHistory[]
+  generalPosts    GeneralPost[]
+  businessPosts   BusinessPost[]
+  comments        Comment[]
+  votes           Vote[]
+  photos          Photo[]
+  favorites       FavoritePlace[]
+  achievements    UserAchievement[]
+  submissions     BusinessSubmission[] @relation("Submitter")
+  reviewedSubs    BusinessSubmission[] @relation("Reviewer")
+  reportsMade     Report[]             @relation("Reporter")
+  reportsAgainst  Report[]             @relation("ReportedUser")
+  reportsResolved Report[]             @relation("ReportResolver")
+  blocking        UserBlock[]          @relation("Blocker")
+  blockedBy       UserBlock[]          @relation("Blocked")
+  modActionsTaken ModerationAction[]   @relation("ModActor")
+  modActionsOnMe  ModerationAction[]   @relation("ModTargetUser")
+  auditLogs       AdminAuditLog[]
+  deletions       AccountDeletion[]
+  locationChecks  LocationCheck[]
+  configUpdates   AppConfiguration[]
 
   @@index([status])
 }
 
 model UsernameHistory {
-  id         String   @id @default(uuid(7)) @db.Uuid
-  userId     String   @db.Uuid
-  username   String   @db.VarChar(20)
-  changedAt  DateTime @default(now()) @db.Timestamptz(3)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @db.Uuid
+  username  String   @db.VarChar(20)
+  changedAt DateTime @default(now()) @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, changedAt])
 }
@@ -207,16 +207,21 @@ model Session {
 
 /// Single-use email tokens (verification, reset, email change). Hashed (D10).
 model EmailToken {
-  id        String            @id @default(uuid(7)) @db.Uuid
-  userId    String            @db.Uuid
-  purpose   EmailTokenPurpose
-  tokenHash String            @unique @db.Char(64)
+  id            String            @id @default(uuid(7)) @db.Uuid
+  userId        String            @db.Uuid
+  purpose       EmailTokenPurpose
+  tokenHash     String            @unique @db.Char(64)
   /// EMAIL_CHANGE only: the address being verified.
-  newEmail  String?           @db.VarChar(254)
-  createdAt DateTime          @default(now()) @db.Timestamptz(3)
-  expiresAt DateTime          @db.Timestamptz(3)
-  usedAt    DateTime?         @db.Timestamptz(3)
-  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  newEmail      String?           @db.VarChar(254)
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+  expiresAt     DateTime          @db.Timestamptz(3)
+  usedAt        DateTime?         @db.Timestamptz(3)
+  /// D31: 6-digit code typed into the app. HMAC (server secret) of the code, never the code.
+  codeHash      String?           @db.Char(64)
+  codeExpiresAt DateTime?         @db.Timestamptz(3)
+  /// Wrong code entries; the token dies at emailCode.maxAttempts.
+  codeAttempts  Int               @default(0)
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, purpose])
 }
@@ -235,15 +240,15 @@ model Installation {
 }
 
 model GuestSession {
-  id             String      @id @default(uuid(7)) @db.Uuid
-  tokenHash      String      @unique @db.Char(64)
-  installationId String      @db.Uuid
-  status         GuestStatus @default(ACTIVE)
-  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
-  lastActiveAt   DateTime    @default(now()) @db.Timestamptz(3)
+  id             String       @id @default(uuid(7)) @db.Uuid
+  tokenHash      String       @unique @db.Char(64)
+  installationId String       @db.Uuid
+  status         GuestStatus  @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  lastActiveAt   DateTime     @default(now()) @db.Timestamptz(3)
   /// lastActiveAt + guest.inactivityDays, recomputed on activity.
-  expiresAt      DateTime    @db.Timestamptz(3)
-  bannedAt       DateTime?   @db.Timestamptz(3)
+  expiresAt      DateTime     @db.Timestamptz(3)
+  bannedAt       DateTime?    @db.Timestamptz(3)
   installation   Installation @relation(fields: [installationId], references: [id])
 
   comments       Comment[]
@@ -268,35 +273,35 @@ model Profile {
 
 /// The eligible service area polygon (D15: Duval County). Swappable.
 model ServiceArea {
-  id            String   @id @default(uuid(7)) @db.Uuid
-  key           String   @unique @db.VarChar(50)
+  id            String                                        @id @default(uuid(7)) @db.Uuid
+  key           String                                        @unique @db.VarChar(50)
   name          String
   sourceUrl     String
   sourceVersion String
   license       String
-  active        Boolean  @default(true)
+  active        Boolean                                       @default(true)
   geom          Unsupported("geography(MultiPolygon, 4326)")?
-  importedAt    DateTime @default(now()) @db.Timestamptz(3)
+  importedAt    DateTime                                      @default(now()) @db.Timestamptz(3)
 
   @@index([geom], type: Gist)
 }
 
 /// Precise location audit (D7). Restricted access; purged after location retention (D14).
 model LocationCheck {
-  id             String              @id @default(uuid(7)) @db.Uuid
-  userId         String?             @db.Uuid
-  guestSessionId String?             @db.Uuid
-  installationId String?             @db.Uuid
-  action         String              @db.VarChar(40)
+  id             String                                 @id @default(uuid(7)) @db.Uuid
+  userId         String?                                @db.Uuid
+  guestSessionId String?                                @db.Uuid
+  installationId String?                                @db.Uuid
+  action         String                                 @db.VarChar(40)
   point          Unsupported("geography(Point, 4326)")?
   accuracyMeters Float
-  readingAt      DateTime            @db.Timestamptz(3)
-  receivedAt     DateTime            @default(now()) @db.Timestamptz(3)
+  readingAt      DateTime                               @db.Timestamptz(3)
+  receivedAt     DateTime                               @default(now()) @db.Timestamptz(3)
   result         LocationCheckResult
-  reason         String?             @db.VarChar(40)
-  user           User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  guestSession   GuestSession?       @relation(fields: [guestSessionId], references: [id], onDelete: Cascade)
-  installation   Installation?       @relation(fields: [installationId], references: [id], onDelete: SetNull)
+  reason         String?                                @db.VarChar(40)
+  user           User?                                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guestSession   GuestSession?                          @relation(fields: [guestSessionId], references: [id], onDelete: Cascade)
+  installation   Installation?                          @relation(fields: [installationId], references: [id], onDelete: SetNull)
 
   @@index([userId, receivedAt])
   @@index([guestSessionId, receivedAt])
@@ -306,21 +311,21 @@ model LocationCheck {
 // ──────────────────────────── Directory ────────────────────────────
 
 model BusinessPlace {
-  id             String      @id @default(uuid(7)) @db.Uuid
-  name           String      @db.VarChar(200)
-  nameNormalized String      @db.VarChar(200)
-  category       String      @db.VarChar(60)
-  address        String?     @db.VarChar(300)
+  id             String                                 @id @default(uuid(7)) @db.Uuid
+  name           String                                 @db.VarChar(200)
+  nameNormalized String                                 @db.VarChar(200)
+  category       String                                 @db.VarChar(60)
+  address        String?                                @db.VarChar(300)
   latitude       Float
   longitude      Float
   /// Generated from latitude/longitude in raw SQL on write.
   location       Unsupported("geography(Point, 4326)")?
-  status         PlaceStatus @default(ACTIVE)
-  sourceName     String      @db.VarChar(40)
-  sourceId       String      @db.VarChar(100)
-  attribution    String?     @db.VarChar(200)
-  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
+  status         PlaceStatus                            @default(ACTIVE)
+  sourceName     String                                 @db.VarChar(40)
+  sourceId       String                                 @db.VarChar(100)
+  attribution    String?                                @db.VarChar(200)
+  createdAt      DateTime                               @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                               @updatedAt @db.Timestamptz(3)
 
   posts       BusinessPost[]
   favorites   FavoritePlace[]
@@ -333,27 +338,27 @@ model BusinessPlace {
 }
 
 model BusinessSubmission {
-  id             String           @id @default(uuid(7)) @db.Uuid
-  submitterId    String           @db.Uuid
-  name           String           @db.VarChar(200)
-  nameNormalized String           @db.VarChar(200)
-  category       String           @db.VarChar(60)
-  address        String?          @db.VarChar(300)
+  id             String                                 @id @default(uuid(7)) @db.Uuid
+  submitterId    String                                 @db.Uuid
+  name           String                                 @db.VarChar(200)
+  nameNormalized String                                 @db.VarChar(200)
+  category       String                                 @db.VarChar(60)
+  address        String?                                @db.VarChar(300)
   latitude       Float
   longitude      Float
   location       Unsupported("geography(Point, 4326)")?
-  notes          String?          @db.VarChar(1000)
-  status         SubmissionStatus @default(PENDING)
-  decisionReason String?          @db.VarChar(500)
-  reviewerId     String?          @db.Uuid
-  reviewedAt     DateTime?        @db.Timestamptz(3)
+  notes          String?                                @db.VarChar(1000)
+  status         SubmissionStatus                       @default(PENDING)
+  decisionReason String?                                @db.VarChar(500)
+  reviewerId     String?                                @db.Uuid
+  reviewedAt     DateTime?                              @db.Timestamptz(3)
   /// Place created on approval, or the existing place it was merged into.
-  placeId        String?          @db.Uuid
-  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
-  submitter      User             @relation("Submitter", fields: [submitterId], references: [id])
-  reviewer       User?            @relation("Reviewer", fields: [reviewerId], references: [id])
-  place          BusinessPlace?   @relation(fields: [placeId], references: [id])
+  placeId        String?                                @db.Uuid
+  createdAt      DateTime                               @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                               @updatedAt @db.Timestamptz(3)
+  submitter      User                                   @relation("Submitter", fields: [submitterId], references: [id])
+  reviewer       User?                                  @relation("Reviewer", fields: [reviewerId], references: [id])
+  place          BusinessPlace?                         @relation(fields: [placeId], references: [id])
 
   modActions ModerationAction[]
 
@@ -377,20 +382,20 @@ model FavoritePlace {
 
 /// General feed post (§7.1). Registered users only, so the author is always a User.
 model GeneralPost {
-  id           String        @id @default(uuid(7)) @db.Uuid
-  authorId     String        @db.Uuid
-  body         String        @db.VarChar(2000)
+  id           String                                 @id @default(uuid(7)) @db.Uuid
+  authorId     String                                 @db.Uuid
+  body         String                                 @db.VarChar(2000)
   /// Coarsened (~100 m grid) point assigned by the server (D7). Never the raw reading.
   location     Unsupported("geography(Point, 4326)")?
-  status       ContentStatus @default(VISIBLE)
-  score        Int           @default(0)
-  upCount      Int           @default(0)
-  downCount    Int           @default(0)
-  commentCount Int           @default(0)
-  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
-  editedAt     DateTime?     @db.Timestamptz(3)
-  author       User          @relation(fields: [authorId], references: [id])
+  status       ContentStatus                          @default(VISIBLE)
+  score        Int                                    @default(0)
+  upCount      Int                                    @default(0)
+  downCount    Int                                    @default(0)
+  commentCount Int                                    @default(0)
+  createdAt    DateTime                               @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime                               @updatedAt @db.Timestamptz(3)
+  editedAt     DateTime?                              @db.Timestamptz(3)
+  author       User                                   @relation(fields: [authorId], references: [id])
 
   comments   Comment[]
   votes      Vote[]

@@ -53,6 +53,24 @@ export const passwordResetConfirmSchema = z.strictObject({
   newPassword: passwordSchema,
 });
 
+/** D31: 6-digit email code. Spaces and dashes are allowed when typing ("482 913"). */
+export const EMAIL_CODE_LENGTH = 6;
+export const emailCodeSchema = z
+  .string()
+  .max(20)
+  .transform((v) => v.replace(/[\s-]/g, ''))
+  .pipe(z.string().regex(/^\d{6}$/, 'Enter the 6-digit code from your email'));
+
+export const verifyEmailCodeSchema = z.strictObject({
+  code: emailCodeSchema,
+});
+
+export const passwordResetCodeSchema = z.strictObject({
+  email: emailSchema,
+  code: emailCodeSchema,
+  newPassword: passwordSchema,
+});
+
 /** For POST endpoints that take no input: any field at all is rejected. */
 export const emptyBodySchema = z.strictObject({});
 
