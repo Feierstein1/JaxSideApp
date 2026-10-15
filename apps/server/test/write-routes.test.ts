@@ -27,6 +27,7 @@ import * as feed from '@/app/api/v1/feed/route';
 import * as installations from '@/app/api/v1/installations/route';
 import * as locationStatus from '@/app/api/v1/location/status/route';
 import * as prefs from '@/app/api/v1/me/preferences/route';
+import * as profile from '@/app/api/v1/me/profile/route';
 import * as favorite from '@/app/api/v1/places/[id]/favorite/route';
 import * as roomList from '@/app/api/v1/places/[id]/posts/list/route';
 import * as roomPosts from '@/app/api/v1/places/[id]/posts/route';
@@ -169,6 +170,15 @@ const ROWS: Row[] = [
     id: null,
     location: false,
     body: () => ({ code: '123456' }),
+  },
+  {
+    route: 'me/profile',
+    method: 'PATCH',
+    handler: h(profile, 'PATCH'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ bio: 'hi' }),
   },
   {
     route: 'me/preferences',

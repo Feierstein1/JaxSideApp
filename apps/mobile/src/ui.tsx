@@ -9,6 +9,7 @@ import {
   type TextInputProps,
 } from 'react-native';
 import { BRAND, COLORS } from '@jax/shared';
+import { UserBadge } from './auth/UserBadge';
 
 export function Field({
   label,
@@ -113,8 +114,12 @@ export function FormError({ children }: { children?: ReactNode }) {
   );
 }
 
-/** Navigation header (D33): black bar, white title, gold back arrow (9.2:1 on black). */
+/**
+ * Navigation header (D33): black bar, white title, gold back arrow (9.2:1 on black), and
+ * the signed-in username on the right (hideable, D43).
+ */
 export const headerOptions = {
+  headerRight: () => <UserBadge />,
   headerTitleAlign: 'center' as const,
   headerStyle: { backgroundColor: COLORS.surfaceInverse },
   headerTintColor: BRAND.gold,
@@ -153,6 +158,7 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderRadius: 8,
     paddingVertical: 12,
+    paddingHorizontal: 24,
     alignItems: 'center',
     marginTop: 8,
   },

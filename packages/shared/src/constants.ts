@@ -111,6 +111,7 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.favorite.perMinute': 30,
   'rateLimit.preferences.perMinute': 10,
   'rateLimit.edit.perMinute': 10,
+  'rateLimit.profile.perMinute': 10,
   'rateLimit.feed.perMinute': 60,
 } as const;
 

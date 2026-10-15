@@ -69,6 +69,9 @@ Questions marked **BLOCKING** must be answered before the phase listed. Each has
 - [x] **Q12 — Can guests vote? Can guests file reports? (BLOCKING Phase 4)** → Answered: no voting; reports allowed, with report rate limits for **all** users (D28)
   §5 lists guest capabilities as browse and comment only, so voting isn't included. §5 also says guests "cannot bypass … reporting", which is unclear: it could mean they can be reported, or that they can report.
   *Recommendation:* Guests **cannot vote** (keeps vote totals tied to accountable accounts) but **can report** content (safety reports should be easy for anyone who can see content). The schema already supports this: `Vote.voterId` is a required User, and `Report` allows a guest reporter.
+- [ ] **Q13 — Maps on Android (P2.16, D42)**
+  The map shows a black box with the Google logo on the user's Android phone: Google Maps needs an API key tied to our app, and Expo Go can't use our own key. Both fixes need our own **development build** (EAS Build or Android Studio), which later items need anyway (integrity checks, P2.8).
+  *Options:* (a) **Google Maps key**: map loads in the phone SDKs are free, but Google requires a billing account to create the key. (b) **MapLibre** + free/open tiles: no Google account; a different map library. *Recommendation:* (a) for the MVP, since the code already uses `react-native-maps`; revisit if Google costs ever appear. Needs your approval to create the Google Cloud project and billing account.
 
 ---
 
@@ -138,6 +141,8 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D39 | **Accepted** 2026-10-15 | Directory: search and place info need a fresh in-Duval location (D16) but no radius (D19); registered users only (guests are limited to the general feed, §5). Favorites rank as if 4× closer (`directory.favoriteDistanceFactor`) | §9.2: favorites "appear prominently … without replacing geographic relevance entirely" |
 | D40 | **Accepted** 2026-10-15 | Places tab = a **filterable, sortable nearby list** with an optional **map view** of the same results. Filters: 8 category groups shared by app and server (`CATEGORY_GROUPS`). Sorts: nearest (default), A–Z, favorites first, best match when searching. Map: `react-native-maps`, up to 50 pins per request | User: "a list of businesses nearby … sorted by different filters"; a map is a nice extra (Q9) |
 | D41 | **Accepted** 2026-10-15 | Discussion details: reading a general post needs only an in-Duval location (D16) while commenting/voting needs 1 mi (D20); replies nest at most 3 deep; deleted comments stay as "[deleted]" placeholders; editing/deleting your own content needs no location; places carry a `postCount` counter updated in the same transaction (shown on place rows); "Top" = score within 7 days; feed pages of 15 | User asked for post counts on places, paginated sleek feeds and visible comments/votes; keeps reads cheap and threads readable |
+| D42 | **Accepted** 2026-10-15 | Hide the Map toggle on Android until a development build with a maps key exists (Q13); keep it on iOS (Apple Maps works in Expo Go) | A black box is worse than no map; the list covers the user's main need |
+| D43 | **Accepted** 2026-10-15 | The signed-in username shows in the top bar on every screen, with an eye button that hides it **on that device's screen only** (stored on the device). Posts still show the username to others | User request. Read as a screen-privacy toggle, not anonymous posting, which would be a bigger product change (§2, §4.3); to confirm with the user |
 
 ---
 
@@ -200,7 +205,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [x] **P2.13** `POST /places/search`: typo-tolerant name match (pg_trgm) or nearest first; category filter; favorites rank as if 4× closer (D39); pagination; inside Duval required (D16, D19). `POST /places/:id` detail. Tested: ordering, typos, favorites boost without overriding distance, paging without duplicates, inactive hidden, outside → 403 🔒
 - [x] **P2.14** Favorites: `PUT`/`DELETE /places/:id/favorite` (idempotent, unique (user, place), capped at 200), `GET /me/favorites`. Tested: own list only (IDOR), cap, unknown/inactive → 404 🔒
 - [x] **P2.15** `PATCH /me/preferences`: radii clamped to the configured min/max (§7). Tested: over max → max, under min → min, invalid/extra fields → 400 🔒
-- [~] **P2.16** Places list, filters, sort, place page, favorites and Account confirmed on the user's phone ("I like the design"). *Left:* **the map view doesn't appear on the user's Android phone** (Google Maps in Expo Go); diagnosing
+- [~] **P2.16** Places list, filters, sort, place page, favorites and Account confirmed on the user's phone. **Map view: hidden on Android (D42)** because Google Maps shows a black box in Expo Go without our own key; iPhone (Apple Maps) keeps it. *Left:* Q13 decision + development build
 - [x] **Phase gate:** Location tests pass; import run twice gives the same count; search works on device (2026-10-15: user confirmed Places on the phone; the map view is tracked under P2.16)
 
 ## Phase 3 — Core Discussions (§7.1, §7.2, §7.3, §8)
@@ -232,7 +237,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [ ] **P4.7** Guest-to-registered upgrade path (optional; decide)
 
 **Profiles & settings**
-- [ ] **P4.8** Public profile: username, avatar, bio, medals, posts and comments. No private fields 🔒 ✅A2
+- [~] **P4.8** Public profile: username, avatar, bio, medals, posts and comments. No private fields 🔒 ✅A2. *Done early (2026-10-15):* Account → Profile tab shows what others see (username, bio, join date) and edits the bio (`PATCH /me/profile`, plain text, ≤300, tested). *Left:* public profile page for other users, avatar (P6), medals (P6.9), the user's posts list
 - [ ] **P4.9** Username change with configurable cooldown; immutable user ID; history kept internally ✅A1
 - [ ] **P4.10** Email change (re-verify) and password change (revoke other sessions) 🔒
 - [ ] **P4.11** Settings screen: radius, favorites, blocked users, my reports and their status, ToS and privacy links, location-permission guidance, logout
@@ -414,3 +419,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-15 | P2 live check | Live check over Wi-Fi found the new location routes returning 500: `import.meta.dirname` is undefined inside the Next.js bundle (the tests call handlers directly and missed it). Fixed by resolving the boundary path at call time and moving file reading out of route-imported code. Added `npm run verify` (typecheck + lint + tests + production build). Live: status eligible, nearby list and "publix" search return real places |
 | 2026-10-15 | P2.9 ✓, D40, Q9 | User confirmed the location flow on the phone. A "500" while loading turned out to be Metro started before new packages were installed (fixed by restarting with --clear; SETUP note). Added category groups, sort options, map limit (server, tested) and a List / Map Places screen with chips and sort (`react-native-maps`). 307 tests + production build pass; Android and iOS bundles export; live check of filters OK |
 | 2026-10-15 | Phase 2 gate, Phase 3 | User confirmed Places on the phone (map view not showing: open under P2.16). Phase 3 server: feed, posts, threaded comments, votes, business rooms, edit/delete, block filter, and a write-route table test (34 endpoints). App: feed Home, post screen with comments, compose, place rooms, post counts; email code moved to Account. Live check on the dev server: post → feed → comment → vote → room post → count. 414 tests + production build pass. One test run hung in setup and didn't reproduce (3 reruns passed) |
+| 2026-10-15 | P2.16, D42, D43, P4.8 (early) | User feedback: map shows a black box with the Google logo (Google key rejected in Expo Go) → Map hidden on Android, Q13 opened. Button padding fixed globally. Username + hide-on-screen toggle in every top bar. Account split into Profile (view, bio edit) and Settings tabs. New `PATCH /me/profile` (the write-route table test flagged it until listed). 422 tests + build pass |

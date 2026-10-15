@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -37,6 +38,11 @@ const SORTS: { key: PlaceSort; label: string }[] = [
   { key: 'favorites', label: 'Favorites first' },
 ];
 const MAP_PINS = 50;
+/**
+ * D42: Google Maps on Android needs our own API key, which Expo Go can't use, so the map
+ * shows a black box there. Hidden on Android until a development build exists (Q13).
+ */
+const MAP_AVAILABLE = Platform.OS === 'ios';
 
 /**
  * P2.16 / D40: nearby places as a list or a map, with search, category filters and sort.
@@ -106,14 +112,18 @@ export default function PlacesScreen() {
           style={styles.input}
         />
         <View style={[styles.row, { justifyContent: 'space-between', marginVertical: 0 }]}>
-          <Segmented
-            options={[
-              { key: 'list', label: 'List' },
-              { key: 'map', label: 'Map' },
-            ]}
-            value={view}
-            onChange={(v) => setView(v as View_)}
-          />
+          {MAP_AVAILABLE ? (
+            <Segmented
+              options={[
+                { key: 'list', label: 'List' },
+                { key: 'map', label: 'Map' },
+              ]}
+              value={view}
+              onChange={(v) => setView(v as View_)}
+            />
+          ) : (
+            <View />
+          )}
           <Segmented
             options={SORTS}
             value={sort ?? (q ? '' : 'distance')}

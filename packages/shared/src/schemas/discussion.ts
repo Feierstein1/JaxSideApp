@@ -18,6 +18,12 @@ const text = (max: number) =>
     .refine((v) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(v), 'Invalid characters');
 
 export const postBodySchema = text(POST_MAX);
+
+export const BIO_MAX = 300;
+/** P4.8 (early): the public profile bio. Empty string clears it. */
+export const profileUpdateSchema = z.strictObject({
+  bio: z.union([z.literal(''), text(BIO_MAX)]),
+});
 export const commentBodySchema = text(COMMENT_MAX);
 
 /** Opaque pagination bookmark returned by list endpoints. */
