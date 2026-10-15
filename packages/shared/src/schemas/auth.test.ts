@@ -81,6 +81,27 @@ describe('emailCodeSchema (D31)', () => {
   });
 });
 
+describe('password edge spaces (D32)', () => {
+  it.each(['correct horse battery ', ' correct horse battery', 'correct horse battery\t'])(
+    'rejects a new password with edge whitespace: %j',
+    (password) => {
+      const r = registerRequestSchema.safeParse({ ...valid, password });
+      expect(r.success).toBe(false);
+    },
+  );
+
+  it('allows spaces inside a password', () => {
+    expect(registerRequestSchema.safeParse({ ...valid, password: 'a b c d e f g' }).success).toBe(
+      true,
+    );
+  });
+
+  it('login drops stray edge spaces from the typed password', () => {
+    const r = loginRequestSchema.parse({ identifier: 'x', password: ' correct horse battery ' });
+    expect(r.password).toBe('correct horse battery');
+  });
+});
+
 describe('loginRequestSchema', () => {
   it('rejects unexpected fields', () => {
     expect(

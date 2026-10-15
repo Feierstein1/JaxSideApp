@@ -47,6 +47,8 @@ Base path: `/api/v1`. JSON in and out. Mobile clients authenticate with `Authori
 `INVALID_TOKEN` (400, for expired, used or wrong-purpose links), `EMAIL_NOT_VERIFIED` (403, on write
 endpoints, D11).
 
+**Passwords (D24, D32):** 10–128 characters, no leading or trailing spaces when set; sign-in ignores edge spaces in what is typed.
+
 **Throttles (defaults):** register 5/hour per IP. Login: 15 _failed_ attempts per 15 min per IP and 10 _failed_
 attempts per 15 min per account (successful logins never count, D29). Reset 5/hour per IP. Verification resend 3/hour per user.
 

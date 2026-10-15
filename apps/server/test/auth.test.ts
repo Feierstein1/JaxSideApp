@@ -176,6 +176,27 @@ describe('age screen (P1.14)', () => {
 // ───────────────────────────── P1.15 Login ─────────────────────────────
 
 describe('login / logout (P1.15)', () => {
+  // D32: phone keyboards can append an invisible space.
+  it('accepts the correct password with stray edge spaces, still rejects a wrong one', async () => {
+    await call(registerPOST, 'POST', { body: registration() });
+    const ok = await call(loginPOST, 'POST', {
+      body: { identifier: 'river@example.test', password: ` ${PASSWORD} ` },
+    });
+    expect(ok.status).toBe(200);
+    const bad = await call(loginPOST, 'POST', {
+      body: { identifier: 'river@example.test', password: `${PASSWORD}x ` },
+    });
+    expect(bad.status).toBe(401);
+  });
+
+  it('refuses to register a password ending in a space', async () => {
+    const r = await call(registerPOST, 'POST', {
+      body: registration({ password: `${PASSWORD} ` }),
+    });
+    expect(r.status).toBe(400);
+    expect(await db.user.count()).toBe(0);
+  });
+
   it('logs in by username or email (any case) and stores only the token hash', async () => {
     await call(registerPOST, 'POST', { body: registration() });
     for (const identifier of ['riverrat', 'RIVER@example.test']) {

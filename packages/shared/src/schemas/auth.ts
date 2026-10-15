@@ -22,7 +22,10 @@ export const PASSWORD_MAX = 128;
 export const passwordSchema = z
   .string()
   .min(PASSWORD_MIN, `Password must be at least ${PASSWORD_MIN} characters`)
-  .max(PASSWORD_MAX, `Password must be at most ${PASSWORD_MAX} characters`);
+  .max(PASSWORD_MAX, `Password must be at most ${PASSWORD_MAX} characters`)
+  // D32: phone keyboards can add an invisible trailing space. Refuse it when a
+  // password is set, so sign-in can safely ignore edge spaces.
+  .refine((p) => p === p.trim(), "Password can't start or end with a space");
 
 /** Shape only. The configurable cutoff is enforced on the server (P1.14). */
 export const birthYearSchema = z.number().int().min(1900).max(2100);
@@ -40,7 +43,12 @@ export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 export const loginRequestSchema = z.strictObject({
   // Login accepts username or email.
   identifier: z.string().trim().min(1).max(254),
-  password: z.string().min(1).max(PASSWORD_MAX),
+  // D32: no valid password has edge spaces, so stray keyboard spaces are dropped.
+  password: z
+    .string()
+    .max(PASSWORD_MAX + 10)
+    .trim()
+    .min(1),
 });
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 
