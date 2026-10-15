@@ -11,6 +11,10 @@ export interface MaintenanceReport {
   sessions: number;
   emailTokens: number;
   rateLimitCounters: number;
+  guestsExpired: number;
+  guestsPurged: number;
+  guestCommentsDeleted: number;
+  guestCommentsBlanked: number;
 }
 
 /**
@@ -54,11 +58,73 @@ export async function runMaintenance(now: Date = new Date()): Promise<Maintenanc
         where: { expiresAt: { lt: now } },
       });
 
+      // P4.4: guests expire after N days without activity (server-side clock).
+      const guestsExpired = await tx.guestSession.updateMany({
+        where: { status: 'ACTIVE', expiresAt: { lt: now } },
+        data: { status: 'EXPIRED' },
+      });
+      // D14: expired guests' session data is deleted after N days. Banned guests (and
+      // guests on banned installations) are kept so the ban keeps working (P4.6).
+      const guestDataDays = await getConfig('retention.guestDataDays');
+      const guestsPurged = await tx.guestSession.deleteMany({
+        where: {
+          status: 'EXPIRED',
+          bannedAt: null,
+          expiresAt: { lt: ago(guestDataDays) },
+          installation: { bannedAt: null },
+        },
+      });
+
+      // P4.5 / D17: guest comments are shown for a year, then removed. Skipped while a
+      // report on them is still open. A comment with replies is blanked (kept as a
+      // "[deleted]" placeholder) so others' replies survive; once it has no replies, a
+      // later run deletes it.
+      const visibleDays = await getConfig('guest.commentVisibleDays');
+      const cutoff = ago(visibleDays);
+      const old = await tx.$queryRaw<
+        {
+          id: string;
+          status: string;
+          generalPostId: string | null;
+          businessPostId: string | null;
+          has_replies: boolean;
+        }[]
+      >`
+        SELECT c.id, c.status::text, c."generalPostId", c."businessPostId",
+               EXISTS (SELECT 1 FROM "Comment" r WHERE r."parentCommentId" = c.id) AS has_replies
+        FROM "Comment" c
+        WHERE c."authorKind" = 'GUEST' AND c."createdAt" < ${cutoff}
+          AND NOT EXISTS (SELECT 1 FROM "Report" rp WHERE rp."commentId" = c.id AND rp.status = 'OPEN')`;
+      for (const c of old.filter((x) => x.status === 'VISIBLE')) {
+        if (c.generalPostId) {
+          await tx.$executeRaw`UPDATE "GeneralPost" SET "commentCount" = GREATEST("commentCount" - 1, 0) WHERE id = ${c.generalPostId}::uuid`;
+        } else if (c.businessPostId) {
+          await tx.$executeRaw`UPDATE "BusinessPost" SET "commentCount" = GREATEST("commentCount" - 1, 0) WHERE id = ${c.businessPostId}::uuid`;
+        }
+      }
+      const blank = old.filter((c) => c.has_replies).map((c) => c.id);
+      const remove = old.filter((c) => !c.has_replies).map((c) => c.id);
+      const guestCommentsBlanked = blank.length
+        ? (
+            await tx.comment.updateMany({
+              where: { id: { in: blank } },
+              data: { body: '', status: 'DELETED', authorGuestId: null },
+            })
+          ).count
+        : 0;
+      const guestCommentsDeleted = remove.length
+        ? (await tx.comment.deleteMany({ where: { id: { in: remove } } })).count
+        : 0;
+
       const report = {
         locationChecks: locationChecks.count,
         sessions: sessions.count,
         emailTokens: emailTokens.count,
         rateLimitCounters: rateLimitCounters.count,
+        guestsExpired: guestsExpired.count,
+        guestsPurged: guestsPurged.count,
+        guestCommentsDeleted,
+        guestCommentsBlanked,
       };
       logger.info({ report }, 'maintenance complete');
       return report;

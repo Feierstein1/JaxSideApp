@@ -21,8 +21,8 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 ## Current status
 
-**Phase:** 3 — Core Discussions (server done and tested; app screens built)
-**Next action:** User tries the feed, posting, comments, votes and a place room on the phone → check P3.11 and the Phase 3 gate. Map view isn't showing on the user's Android phone (P2.16): waiting for the user's description to diagnose.
+**Phase:** 4 — Guests & Profiles (started 2026-10-15; Phase 3 gate pending only the on-device vote/comment check)
+**Next action:** Server: guest sessions and permissions (P4.1–P4.6), then account management (P4.9–P4.12), then the app screens.
 **Last updated:** 2026-10-14
 
 ---
@@ -224,7 +224,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [x] **P3.9** Block filter applied to feed, rooms, post detail and comments, in both directions (tested with `UserBlock` rows). The block/unblock UI comes in P5.2
 - [x] **P3.10** Plain text only: bodies stored and returned exactly as typed (tested with `<script>`), rendered with `<Text>` (never HTML, no auto-linking); control characters rejected. Admin portal escaping is part of P5 🔒
 - [~] **P3.11** App: Home = area feed (cards with teal accent; author, time, distance; body; up/down votes; comment count), New / Top this week, infinite scroll and pull to refresh, gold + button, "No posts in this area yet. Start the conversation!"; post screen with threaded comments, reply and delete; compose; place pages show their room (gold accent) or the 0.3 mi message; place rows show post counts; email confirmation moved to Account; sign-out only in Account; Duval status removed from Home. **Confirmed on the user's phone 2026-10-15:** a general post and a business-room post. *Left:* one vote and one comment on the phone to close the Phase 3 gate
-- [ ] **Phase gate:** End-to-end posting and voting on device in both contexts; location-bypass test suite green
+- [~] **Phase gate:** End-to-end posting and voting on device in both contexts; location-bypass test suite green. *2026-10-15:* posting confirmed on the phone in both contexts; bypass suite green (write-route table, 34 endpoints). **User approved moving to Phase 4; the on-device vote/comment check is deferred**, not skipped
 
 ## Phase 4 — Guests & Profiles (§4.3, §4.4, §5, §14)
 

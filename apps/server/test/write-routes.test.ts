@@ -24,6 +24,7 @@ import * as bizVote from '@/app/api/v1/business-posts/[id]/vote/route';
 import * as comment from '@/app/api/v1/comments/[id]/route';
 import * as commentVote from '@/app/api/v1/comments/[id]/vote/route';
 import * as feed from '@/app/api/v1/feed/route';
+import * as guests from '@/app/api/v1/guests/route';
 import * as installations from '@/app/api/v1/installations/route';
 import * as locationStatus from '@/app/api/v1/location/status/route';
 import * as prefs from '@/app/api/v1/me/preferences/route';
@@ -126,6 +127,15 @@ const ROWS: Row[] = [
     id: null,
     location: false,
     body: () => ({ email: 'a@example.test', code: '123456', newPassword: 'correct horse battery' }),
+  },
+  {
+    route: 'guests',
+    method: 'POST',
+    handler: h(guests, 'POST'),
+    auth: false,
+    id: null,
+    location: false,
+    body: () => ({}),
   },
   {
     route: 'installations',

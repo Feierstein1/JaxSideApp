@@ -166,7 +166,7 @@ describe('daily maintenance (P2.5, D14)', () => {
     });
 
     const report = await runMaintenance(NOW);
-    expect(report).toEqual({
+    expect(report).toMatchObject({
       locationChecks: 1,
       sessions: 2,
       emailTokens: 2,
@@ -178,7 +178,7 @@ describe('daily maintenance (P2.5, D14)', () => {
     expect(await db.rateLimitCounter.count()).toBe(1);
 
     // Running again removes nothing more.
-    expect(await runMaintenance(NOW)).toEqual({
+    expect(await runMaintenance(NOW)).toMatchObject({
       locationChecks: 0,
       sessions: 0,
       emailTokens: 0,

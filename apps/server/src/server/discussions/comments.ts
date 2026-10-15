@@ -22,13 +22,14 @@ interface CommentRow {
   editedAt: Date | null;
   authorKind: string;
   authorUserId: string | null;
+  authorGuestId: string | null;
   username: string | null;
   author_status: string | null;
   score: number;
   my_vote: number | null;
 }
 
-function toView(r: CommentRow, viewerId: string): CommentView {
+function toView(r: CommentRow, viewer: CommentViewer): CommentView {
   const status =
     r.status === 'VISIBLE' ? 'visible' : r.status === 'DELETED' ? 'deleted' : 'removed';
   return {
@@ -48,7 +49,9 @@ function toView(r: CommentRow, viewerId: string): CommentView {
           : { username: r.username },
     score: r.score,
     myVote: (r.my_vote ?? 0) as -1 | 0 | 1,
-    isMine: r.authorUserId === viewerId,
+    isMine:
+      (viewer.userId !== null && r.authorUserId === viewer.userId) ||
+      (viewer.guestId !== null && r.authorGuestId === viewer.guestId),
   };
 }
 
@@ -57,7 +60,17 @@ function toView(r: CommentRow, viewerId: string): CommentView {
  * first). Deleted/removed comments stay as placeholders so replies keep their context;
  * held-for-review ones are left out.
  */
-export async function listComments(kind: DiscussionKind, postId: string, viewerId: string) {
+/** Who is reading: a registered user or a guest (guests never vote or block, P4.2). */
+export interface CommentViewer {
+  userId: string | null;
+  guestId: string | null;
+}
+
+/** Matches no row: used where a guest has no user ID (votes, blocks). */
+export const NO_USER = '00000000-0000-0000-0000-000000000000';
+
+export async function listComments(kind: DiscussionKind, postId: string, viewer: CommentViewer) {
+  const viewerId = viewer.userId ?? NO_USER;
   const max = await getConfig('comments.maxPerPost');
   const rows = await db.$queryRaw<CommentRow[]>`
     WITH RECURSIVE thread AS (
@@ -71,7 +84,7 @@ export async function listComments(kind: DiscussionKind, postId: string, viewerI
       WHERE c.status <> 'HELD_FOR_REVIEW'
     )
     SELECT t.id, t."parentCommentId", t.depth, t.body, t.status::text, t."createdAt", t."editedAt",
-           t."authorKind"::text AS "authorKind", t."authorUserId", u.username,
+           t."authorKind"::text AS "authorKind", t."authorUserId", t."authorGuestId", u.username,
            u.status::text AS author_status, t.score, v.value AS my_vote
     FROM thread t
     LEFT JOIN "User" u ON u.id = t."authorUserId"
@@ -82,7 +95,7 @@ export async function listComments(kind: DiscussionKind, postId: string, viewerI
          OR (b."blockerId" = t."authorUserId" AND b."blockedId" = ${viewerId}::uuid))
     ORDER BY t.path
     LIMIT ${max}`;
-  return rows.map((r) => toView(r, viewerId));
+  return rows.map((r) => toView(r, viewer));
 }
 
 /**
@@ -92,7 +105,8 @@ export async function listComments(kind: DiscussionKind, postId: string, viewerI
 export async function createComment(opts: {
   kind: DiscussionKind;
   postId: string;
-  authorId: string;
+  /** Guests may comment on general posts only (P4.2); the caller enforces that. */
+  author: { kind: 'USER'; userId: string } | { kind: 'GUEST'; guestId: string };
   body: string;
   parentCommentId?: string;
 }): Promise<string> {
@@ -120,8 +134,9 @@ export async function createComment(opts: {
           : { businessPostId: opts.postId }),
         parentCommentId: opts.parentCommentId ?? null,
         depth,
-        authorKind: 'USER',
-        authorUserId: opts.authorId,
+        ...(opts.author.kind === 'USER'
+          ? { authorKind: 'USER' as const, authorUserId: opts.author.userId }
+          : { authorKind: 'GUEST' as const, authorGuestId: opts.author.guestId }),
         body: opts.body,
       },
       select: { id: true },

@@ -46,6 +46,10 @@ export const CONFIG_DEFAULTS = {
   'retention.locationCheckDays': 30,
   'retention.expiredSessionDays': 7,
   'retention.usedEmailTokenDays': 7,
+  /** D14: expired guest session data kept this long (for ban enforcement), then deleted. */
+  'retention.guestDataDays': 180,
+  /** D37: deleted-account email kept this long before crypto-shredding (unless on legal hold). */
+  'retention.deletedAccountDays': 30,
 
   // P2.13 / P2.14 directory
   'directory.pageSize': 20,
@@ -105,6 +109,7 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.codeAttempt.per15MinPerIp': 20,
   'rateLimit.submission.perDay': 5,
   'rateLimit.guestSession.perDayPerInstallation': 3,
+  'rateLimit.guestSession.perHourPerIp': 10,
   'rateLimit.installation.perHourPerIp': 10,
   'rateLimit.locationStatus.perMinute': 30,
   'rateLimit.placeSearch.perMinute': 30,

@@ -17,19 +17,26 @@ import {
   type DiscussionKind,
   type LocationReading,
 } from '@jax/shared';
-import type { User } from '@/generated/prisma/client';
-import { requireUser } from '../auth/require-actor';
+import { requireActor, requireUser, type Actor } from '../auth/require-actor';
 import { db } from '../db';
 import { ApiError } from '../http';
 import {
   assertLocationEligible,
   coarsenPoint,
   type LocationAction,
+  type LocationActor,
   type LocationTarget,
 } from '../location/eligibility';
 import { enforce } from '../rate-limit';
 import { parseBody } from '../validate';
-import { commentPost, createComment, deleteComment, editComment, listComments } from './comments';
+import {
+  commentPost,
+  createComment,
+  deleteComment,
+  editComment,
+  listComments,
+  NO_USER,
+} from './comments';
 import {
   createBusinessPost,
   createGeneralPost,
@@ -51,9 +58,12 @@ export async function idFrom(ctx: IdCtx): Promise<string> {
 }
 
 function limits(userId: string, ...rules: [string, ConfigKey, number][]) {
+  return limitsFor(`user:${userId}`, ...rules);
+}
+function limitsFor(subject: string, ...rules: [string, ConfigKey, number][]) {
   return enforce(
     rules.map(([bucket, limitKey, windowSeconds]) => ({
-      key: `${bucket}:user:${userId}`,
+      key: `${bucket}:${subject}`,
       limitKey,
       windowSeconds,
     })),
@@ -73,7 +83,7 @@ async function activePlacePoint(placeId: string) {
 
 /** The location rule for acting on an existing post (D19, D20). */
 async function checkPostAccess(
-  user: User,
+  actor: LocationActor,
   reading: LocationReading,
   kind: DiscussionKind,
   postId: string,
@@ -87,20 +97,36 @@ async function checkPostAccess(
     kind === 'general' && verb === 'read'
       ? undefined
       : { kind, point: { latitude: anchor.latitude, longitude: anchor.longitude } };
-  return assertLocationEligible({ kind: 'user', user }, reading, action, target);
+  return assertLocationEligible(actor, reading, action, target);
+}
+
+/** Guests act through requireActor (P4.2); IDs for rate limits and viewer joins. */
+function actorKey(a: Actor) {
+  return a.kind === 'user' ? `user:${a.user.id}` : `guest:${a.guest.id}`;
+}
+function locationActor(a: Actor): LocationActor {
+  return a.kind === 'user' ? { kind: 'user', user: a.user } : { kind: 'guest', guest: a.guest };
+}
+function viewerOf(a: Actor) {
+  return {
+    userId: a.kind === 'user' ? a.user.id : null,
+    guestId: a.kind === 'guest' ? a.guest.id : null,
+  };
 }
 
 // ───────────────────────────── Lists ─────────────────────────────
 
 /** POST /feed: the general feed around the reader (P3.1, P3.1a). */
 export async function feed(req: Request) {
-  const { user } = await requireUser(req);
+  const actor = await requireActor(req); // guests may read the feed (P4.2)
   const input = await parseBody(req, feedRequestSchema);
-  await limits(user.id, READ);
-  const at = await assertLocationEligible({ kind: 'user', user }, input.reading, 'general.read');
-  return NextResponse.json(
-    await listFeed({ viewer: user, at, sort: input.sort, cursor: input.cursor }),
-  );
+  await limitsFor(actorKey(actor), READ);
+  const at = await assertLocationEligible(locationActor(actor), input.reading, 'general.read');
+  const viewer =
+    actor.kind === 'user'
+      ? { id: actor.user.id, generalRadiusMiles: actor.user.generalRadiusMiles }
+      : { id: NO_USER, generalRadiusMiles: null };
+  return NextResponse.json(await listFeed({ viewer, at, sort: input.sort, cursor: input.cursor }));
 }
 
 /** POST /places/:id/posts/list: a room is readable only within 0.3 mi (D19). */
@@ -159,14 +185,19 @@ export async function createBusiness(req: Request, ctx: IdCtx) {
 /** POST /posts/:id or /business-posts/:id: the post plus its comment thread. */
 export function postDetail(kind: DiscussionKind) {
   return async (req: Request, ctx: IdCtx) => {
-    const { user } = await requireUser(req);
+    // Guests may read general posts (P4.2); business rooms are registered-only.
+    const actor: Actor =
+      kind === 'general'
+        ? await requireActor(req)
+        : { kind: 'user', user: (await requireUser(req)).user };
     const id = await idFrom(ctx);
     const { reading } = await parseBody(req, listCommentsSchema);
-    await limits(user.id, READ);
-    const at = await checkPostAccess(user, reading, kind, id, 'read');
+    await limitsFor(actorKey(actor), READ);
+    const at = await checkPostAccess(locationActor(actor), reading, kind, id, 'read');
+    const viewer = viewerOf(actor);
     const [post, comments] = await Promise.all([
-      getPostView(kind, id, user.id, kind === 'general' ? at : undefined),
-      listComments(kind, id, user.id),
+      getPostView(kind, id, viewer.userId ?? NO_USER, kind === 'general' ? at : undefined),
+      listComments(kind, id, viewer),
     ]);
     return NextResponse.json({ post, comments });
   };
@@ -198,19 +229,32 @@ export function postDelete(kind: DiscussionKind) {
 /** POST /…/:id/comments: comment or reply (P3.3, D20 / D19). */
 export function commentCreate(kind: DiscussionKind) {
   return async (req: Request, ctx: IdCtx) => {
-    const { user } = await requireUser(req, VERIFIED);
+    // Guests may comment on general posts only (P4.2), with lower limits (§11.3).
+    const actor: Actor =
+      kind === 'general'
+        ? await requireActor(req, VERIFIED)
+        : { kind: 'user', user: (await requireUser(req, VERIFIED)).user };
     const postId = await idFrom(ctx);
     const input = await parseBody(req, createCommentSchema);
-    await limits(
-      user.id,
-      ['comment-min', 'rateLimit.comment.perMinute', 60],
-      ['comment-day', 'rateLimit.comment.perDay', 86_400],
-    );
-    await checkPostAccess(user, input.reading, kind, postId, 'comment');
+    const rules: [string, ConfigKey, number][] =
+      actor.kind === 'user'
+        ? [
+            ['comment-min', 'rateLimit.comment.perMinute', 60],
+            ['comment-day', 'rateLimit.comment.perDay', 86_400],
+          ]
+        : [
+            ['comment-min', 'rateLimit.guestComment.perMinute', 60],
+            ['comment-day', 'rateLimit.guestComment.perDay', 86_400],
+          ];
+    await limitsFor(actorKey(actor), ...rules);
+    await checkPostAccess(locationActor(actor), input.reading, kind, postId, 'comment');
     const id = await createComment({
       kind,
       postId,
-      authorId: user.id,
+      author:
+        actor.kind === 'user'
+          ? { kind: 'USER', userId: actor.user.id }
+          : { kind: 'GUEST', guestId: actor.guest.id },
       body: input.body,
       parentCommentId: input.parentCommentId,
     });
@@ -225,7 +269,7 @@ export function postVote(kind: DiscussionKind) {
     const id = await idFrom(ctx);
     const input = await parseBody(req, voteSchema);
     await limits(user.id, ['vote', 'rateLimit.vote.perMinute', 60]);
-    await checkPostAccess(user, input.reading, kind, id, 'vote');
+    await checkPostAccess({ kind: 'user', user }, input.reading, kind, id, 'vote');
     return NextResponse.json(await castVote(user.id, { type: kind, id }, input.value));
   };
 }
@@ -239,7 +283,7 @@ export async function commentVote(req: Request, ctx: IdCtx) {
   const input = await parseBody(req, voteSchema);
   await limits(user.id, ['vote', 'rateLimit.vote.perMinute', 60]);
   const { kind, postId } = await commentPost(id);
-  await checkPostAccess(user, input.reading, kind, postId, 'vote');
+  await checkPostAccess({ kind: 'user', user }, input.reading, kind, postId, 'vote');
   return NextResponse.json(await castVote(user.id, { type: 'comment', id }, input.value));
 }
 
