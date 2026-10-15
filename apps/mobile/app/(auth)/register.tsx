@@ -53,8 +53,9 @@ export default function Register() {
     >
       <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
         <Text style={[styles.body, styles.banner]}>
-          Jax is for adults 18 and older. We ask for your birth year only to check that, and it is
-          never shown on your profile. It is a simple age check, not identity verification.
+          Jax is for adults 18 and older. We use your birth year only to check that, then discard
+          it. We don&apos;t store it. Your email is stored encrypted and never shown to anyone. This
+          is a simple age check, not identity verification.
         </Text>
         <FormError>{errors.form}</FormError>
         <Field

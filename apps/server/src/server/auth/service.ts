@@ -14,6 +14,8 @@ import { getEnv } from '../env';
 import { ApiError } from '../http';
 import { sendSafely } from '../mail/mailer';
 import { passwordResetEmail, registrationAttemptEmail, verificationEmail } from '../mail/templates';
+import { decryptUserEmail, emailIndex, encryptedEmailFields } from '../crypto/field-encryption';
+import { uuidv7 } from '../crypto/uuid';
 import { assertUnder, enforce, hit } from '../rate-limit';
 import { toMe } from '../serializers';
 import {
@@ -64,8 +66,11 @@ function isUniqueViolation(err: unknown, field: string): boolean {
 
 // ───────────────────────────── Age (P1.14) ─────────────────────────────
 
-/** Server-side 18+ screen (§4.2). The offset comes from AppConfiguration. */
-export async function assertAgeEligible(birthYear: number, now = new Date()): Promise<void> {
+/**
+ * Server-side 18+ screen (§4.2). The offset comes from AppConfiguration.
+ * Returns the cutoff year the user passed, which is stored instead of the birth year (D36).
+ */
+export async function assertAgeEligible(birthYear: number, now = new Date()): Promise<number> {
   const offset = await getConfig('age.birthYearOffset');
   const year = currentYearInAppTimeZone(now);
   if (!isBirthYearEligible(birthYear, year, offset)) {
@@ -78,6 +83,7 @@ export async function assertAgeEligible(birthYear: number, now = new Date()): Pr
       { maxBirthYear: max },
     );
   }
+  return maxEligibleBirthYear(year, offset);
 }
 
 // ─────────────────────────── Email tokens ───────────────────────────
@@ -221,7 +227,8 @@ export async function register(input: RegisterRequest, ctx: RequestContext) {
     ],
     now,
   );
-  await assertAgeEligible(input.birthYear, now);
+  // The birth year is used here and never stored (D36).
+  const ageCutoffYear = await assertAgeEligible(input.birthYear, now);
 
   const usernameNormalized = normalizeUsername(input.username);
   if (await db.user.findUnique({ where: { usernameNormalized }, select: { id: true } })) {
@@ -231,8 +238,10 @@ export async function register(input: RegisterRequest, ctx: RequestContext) {
   // Hash before the email check so both paths take the same time.
   const passwordHash = await hashPassword(input.password);
 
+  // Look up by keyed hash; the email itself is never stored in plaintext (D35).
+  const index = emailIndex(input.email);
   const existing = await db.user.findUnique({
-    where: { email: input.email },
+    where: { emailIndex: index },
     select: { id: true },
   });
   if (existing) {
@@ -243,15 +252,17 @@ export async function register(input: RegisterRequest, ctx: RequestContext) {
     return REGISTER_ACCEPTED;
   }
 
-  let userId: string;
+  // The ID is chosen here so the encrypted email can be bound to it.
+  const userId = uuidv7(now.getTime());
   try {
-    const user = await db.user.create({
+    await db.user.create({
       data: {
+        id: userId,
         username: input.username.trim(),
         usernameNormalized,
-        email: input.email,
+        ...encryptedEmailFields(userId, input.email),
         passwordHash,
-        birthYear: input.birthYear,
+        ageCutoffYear,
         tosAcceptedAt: now,
         tosVersion: TOS_VERSION,
         adultConfirmedAt: now,
@@ -259,13 +270,12 @@ export async function register(input: RegisterRequest, ctx: RequestContext) {
       },
       select: { id: true },
     });
-    userId = user.id;
   } catch (err) {
     // Lost a race with a concurrent registration.
     if (isUniqueViolation(err, 'usernameNormalized')) {
       throw new ApiError(409, 'USERNAME_TAKEN', 'That username is taken');
     }
-    if (isUniqueViolation(err, 'email')) return REGISTER_ACCEPTED;
+    if (isUniqueViolation(err, 'emailIndex')) return REGISTER_ACCEPTED;
     throw err;
   }
 
@@ -303,7 +313,9 @@ export async function login(input: LoginRequest, ctx: RequestContext) {
   };
 
   const user = await db.user.findUnique({
-    where: identifier.includes('@') ? { email: identifier } : { usernameNormalized: identifier },
+    where: identifier.includes('@')
+      ? { emailIndex: emailIndex(identifier) }
+      : { usernameNormalized: identifier },
     include: { profile: true },
   });
 
@@ -320,7 +332,11 @@ export async function login(input: LoginRequest, ctx: RequestContext) {
   assertAccountUsable(user, now);
 
   const { token, expiresAt } = await createSession(user.id, 'MOBILE', now);
-  return { token, expiresAt: expiresAt.toISOString(), user: toMe(user) };
+  return {
+    token,
+    expiresAt: expiresAt.toISOString(),
+    user: toMe({ ...user, email: decryptUserEmail(user) }),
+  };
 }
 
 // ─────────────────────── Email verification (P1.16) ───────────────────────
@@ -350,7 +366,12 @@ export async function verifyEmailByCode(
 }
 
 export async function resendVerification(
-  user: { id: string; email: string; emailVerifiedAt: Date | null },
+  user: {
+    id: string;
+    emailVerifiedAt: Date | null;
+    dekWrapped: Uint8Array | null;
+    emailEnc: Uint8Array | null;
+  },
   now = new Date(),
 ) {
   if (user.emailVerifiedAt) return { status: 'already_verified' as const };
@@ -364,7 +385,7 @@ export async function resendVerification(
     ],
     now,
   );
-  await sendVerification(user.id, user.email, now);
+  await sendVerification(user.id, decryptUserEmail(user), now);
   return { status: 'verification_sent' as const };
 }
 
@@ -383,7 +404,7 @@ export async function requestPasswordReset(email: string, ctx: RequestContext) {
     now,
   );
 
-  const user = await db.user.findUnique({ where: { email } });
+  const user = await db.user.findUnique({ where: { emailIndex: emailIndex(email) } });
   if (!user || user.status === 'DELETED' || user.deletedAt) return RESET_REQUESTED;
 
   // Per-account cap stops an attacker from mail-bombing someone. Over the cap,
@@ -401,7 +422,7 @@ export async function requestPasswordReset(email: string, ctx: RequestContext) {
     now,
   );
   await sendSafely(
-    passwordResetEmail(user.email, getEnv().APP_BASE_URL, token, code),
+    passwordResetEmail(decryptUserEmail(user), getEnv().APP_BASE_URL, token, code),
     'password-reset',
   );
   return RESET_REQUESTED;
@@ -437,7 +458,7 @@ export async function confirmPasswordResetByCode(
   ctx: RequestContext,
 ) {
   const now = ctx.now ?? new Date();
-  const user = await db.user.findUnique({ where: { email: input.email } });
+  const user = await db.user.findUnique({ where: { emailIndex: emailIndex(input.email) } });
   const usable = user && user.status !== 'DELETED' && !user.deletedAt;
   // Unknown and deleted accounts take the same path and get the same error.
   await consumeEmailCode(usable ? user.id : null, 'PASSWORD_RESET', input.code, ctx);

@@ -14,6 +14,7 @@ import {
   readBoundaryFile,
 } from '@/server/location/service-area';
 import { resetDb } from './db-helpers';
+import { createTestUser } from './user-factory';
 
 // Reference points (checked against the TIGER2026 boundary).
 const P = {
@@ -45,18 +46,7 @@ beforeEach(async () => {
   await resetDb();
   invalidateConfigCache();
   await importServiceArea(db, readBoundaryFile());
-  const u = await db.user.create({
-    data: {
-      username: 'Rover',
-      usernameNormalized: 'rover',
-      email: `${randomUUID()}@example.test`,
-      passwordHash: 'x',
-      birthYear: 1990,
-      tosAcceptedAt: NOW,
-      tosVersion: 'test',
-      adultConfirmedAt: NOW,
-    },
-  });
+  const u = await createTestUser('Rover');
   userActor = { kind: 'user', user: u };
 });
 

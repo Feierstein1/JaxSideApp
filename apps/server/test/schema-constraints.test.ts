@@ -2,25 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '@/server/db';
 import { resetDb } from './db-helpers';
+import { createTestUser } from './user-factory';
 
 // Downtown Jacksonville, used only as fixture coordinates.
 const LNG = -81.6557;
 const LAT = 30.3322;
 
-async function makeUser(name: string) {
-  return db.user.create({
-    data: {
-      username: name,
-      usernameNormalized: name.toLowerCase(),
-      email: `${randomUUID()}@example.test`,
-      passwordHash: 'x',
-      birthYear: 1990,
-      tosAcceptedAt: new Date(),
-      tosVersion: 'test',
-      adultConfirmedAt: new Date(),
-    },
-  });
-}
+const makeUser = (name: string) => createTestUser(name);
 
 async function makeGeneralPost(authorId: string): Promise<string> {
   const id = randomUUID();

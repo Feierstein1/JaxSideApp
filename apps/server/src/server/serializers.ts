@@ -61,6 +61,12 @@ export const FORBIDDEN_PUBLIC_KEYS = [
   'internalNote',
   'suspendedUntil',
   'point',
+  'emailEnc',
+  'emailIndex',
+  'dekWrapped',
+  'legalHoldAt',
+  'legalHoldNote',
+  'ageCutoffYear',
 ] as const;
 
 export function findForbiddenKeys(value: unknown, allow: readonly string[] = []): string[] {

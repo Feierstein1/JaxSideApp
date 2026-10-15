@@ -12,6 +12,7 @@ import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
 import { assertAgeEligible } from '@/server/auth/service';
 import { hashToken } from '@/server/auth/crypto';
+import { decryptUserEmail } from '@/server/crypto/field-encryption';
 import { setMailer } from '@/server/mail/mailer';
 import { findForbiddenKeys } from '@/server/serializers';
 import { resetDb } from './db-helpers';
@@ -65,7 +66,8 @@ describe('register (P1.13)', () => {
       include: { profile: true, emailTokens: true },
     });
     expect(user.username).toBe('RiverRat');
-    expect(user.email).toBe('river@example.test');
+    // Stored encrypted (D35): decrypting gives back the lowercased address.
+    expect(decryptUserEmail(user)).toBe('river@example.test');
     expect(user.passwordHash).toMatch(/^\$argon2id\$/);
     expect(user.passwordHash).not.toContain(PASSWORD);
     expect(user.role).toBe('USER');
@@ -160,8 +162,9 @@ describe('age screen (P1.14)', () => {
     await expect(assertAgeEligible(2008, lastSecond2026)).rejects.toMatchObject({
       code: 'AGE_INELIGIBLE',
     });
-    await expect(assertAgeEligible(2008, firstSecond2027)).resolves.toBeUndefined();
-    await expect(assertAgeEligible(2007, lastSecond2026)).resolves.toBeUndefined();
+    // Passing returns the cutoff year that is stored instead of the birth year (D36).
+    await expect(assertAgeEligible(2008, firstSecond2027)).resolves.toBe(2008);
+    await expect(assertAgeEligible(2007, lastSecond2026)).resolves.toBe(2007);
   });
 
   it('uses the configured offset from AppConfiguration', async () => {
@@ -169,7 +172,7 @@ describe('age screen (P1.14)', () => {
     invalidateConfigCache();
     const now = new Date('2026-06-01T12:00:00Z');
     await expect(assertAgeEligible(2006, now)).rejects.toMatchObject({ code: 'AGE_INELIGIBLE' });
-    await expect(assertAgeEligible(2005, now)).resolves.toBeUndefined();
+    await expect(assertAgeEligible(2005, now)).resolves.toBe(2005);
   });
 });
 

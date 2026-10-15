@@ -131,6 +131,9 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D32 | **Accepted** 2026-10-15 | Amends D24: a new password can't start or end with whitespace (signup, reset). Sign-in trims edge whitespace from the typed password. Spaces inside a password are still allowed | Phone keyboards can add an invisible trailing space, so the password saved and the one typed later differ. Refusing edge spaces when a password is set makes trimming at sign-in safe |
 | D33 | **Accepted** 2026-10-15 | **Color scheme = Jacksonville Jaguars team colors + white:** gold `#D8A328`, teal `#136677`, black `#000000`, old gold `#9E7A2C`, white `#FFFFFF`. Defined once in `@jax/shared` (`BRAND`, semantic `COLORS`); screens never hard-code hex values. Readability rules: teal + white for primary actions; gold always with black text; never gold text on white or white on gold. A test enforces contrast. Palette only: no Jaguars/NFL names, logos or affiliation. Full notes: `docs/UI_DESIGN.md` | User request, with reference image. Contrast rules keep the gold readable (gold on white is only 2.3:1) |
 | D34 | **Accepted** 2026-10-15 | Location-check details (within D7): freshness is measured against the **server** clock, with a 30 s allowance for a phone clock running ahead (`LOCATION_CLOCK_SKEW` explains the fix). Android's `mocked` flag means denial. The comment/vote radius is measured from the post's stored (~100 m-rounded) point. Audit failure: a denial still returns its real reason, but an allowed check that can't be audited is refused (fail closed) | Spec gives no values. Server time can't be faked by the client; fail-closed keeps every location-restricted action traceable |
+| D35 | **Accepted** 2026-10-15 | **Emails encrypted at rest** with envelope encryption: each user has a random data key, locked by a versioned master key held outside the database; email encrypted AES-256-GCM and bound to the user's ID. Lookup and uniqueness use a keyed hash (separate `EMAIL_INDEX_KEY`). Same for pending email changes. Keys, storage, backup and rotation in `docs/KEY_MANAGEMENT.md`. Production keys go in a managed secrets store (paid, needs approval before launch) | User request: a leaked database or backup should reveal no emails and allow no matching against known email lists |
+| D36 | **Accepted** 2026-10-15 | **Birth year is not stored.** It's checked at signup, then discarded; only the cutoff the user passed is kept (`ageCutoffYear`, e.g. "born in 2007 or earlier"). Deviates from §4.2/§16, which assume storage | User decision: after the age attestation the year has no use and is just more personal data to protect |
+| D37 | **Accepted** 2026-10-15 | Amends D14. **Deleted accounts:** encrypted email kept 30 days, then crypto-shredded (data key + ciphertext destroyed, so backups become unreadable too). **Banned accounts:** the email lookup hash is kept to block re-registration. **Legal hold** (`legalHoldAt` + note, set by an admin for CSAM, threats or police requests) suspends shredding until released. Revealing an email in the admin portal requires a reason and is audited | User wants the ability to identify a culprit for serious cases and inform authorities, without keeping data longer for ordinary accounts |
 
 ---
 
@@ -229,7 +232,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [ ] **P4.9** Username change with configurable cooldown; immutable user ID; history kept internally ✅A1
 - [ ] **P4.10** Email change (re-verify) and password change (revoke other sessions) 🔒
 - [ ] **P4.11** Settings screen: radius, favorites, blocked users, my reports and their status, ToS and privacy links, location-permission guidance, logout
-- [ ] **P4.12** Account deletion: immediate login and posting disable, sessions revoked, profile hidden, `AccountDeletion` record, purge job per D14 🔒 ✅A6 ✅A7
+- [ ] **P4.12** Account deletion: immediate login and posting disable, sessions revoked, profile hidden, `AccountDeletion` record, purge job per D14/D37 (crypto-shred after 30 days unless under legal hold; keep the email hash for banned accounts) 🔒 ✅A6 ✅A7
 - [ ] **P4.13** In-app policy pages: guest expiry, deletion, and content retention (§5.1)
 - [ ] **Phase gate:** Guest restriction tests green; deletion workflow verified end to end
 
@@ -256,6 +259,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [ ] **P5.14** Moderation queues: reported posts, comments, profiles, images, with context (thread, author history); remove or restore; warn, suspend, ban; internal notes; adjust per-user rate limits; suspicious-location view. CSAM escalation path (preserve, do not delete, report to NCMEC; see R4) ✅MS3
 - [ ] **P5.15** `ModerationAction` records reason, timestamp, admin, and target for every action
 - [ ] **P5.16** `AdminAuditLog` for every consequential admin action; viewer page ✅D7
+- [ ] **P5.18** Legal hold (D37): set/release with reason (audited); "reveal email" with a required reason (audited); key-rotation rewrap job (`docs/KEY_MANAGEMENT.md`) 🔒
 - [ ] **P5.17** Admin config editor for `AppConfiguration` (validated ranges, audited)
 - [ ] **Phase gate:** One admin can clear 50 seeded submissions quickly; all admin routes reject non-admins in tests
 
@@ -352,6 +356,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [ ] `docs/ARCHITECTURE.md`
 - [~] `docs/UI_DESIGN.md`: color scheme and UI conventions (D33); extend as screens land
 - [ ] `docs/SECURITY_PRIVACY_CHECKLIST.md`
+- [x] `docs/KEY_MANAGEMENT.md`: keys, storage, backup, rotation, retention and legal hold (D35–D37)
 - [ ] `docs/EXTERNAL_SERVICES.md` — services and credentials needed
 - [ ] `docs/KNOWN_LIMITATIONS.md` — incomplete items, risks, next steps
 
@@ -370,6 +375,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 | R7 | OSM data quality / completeness for Jacksonville | Community submissions fill the gaps; admin can correct entries |
 | R8 | `npm audit`: 4 high advisories in `mysql2`, pulled in only by the `prisma` CLI (dev dependency). The app never connects to MySQL | The audit's suggested fix is a downgrade to Prisma 6, so it was not applied. Recheck when Prisma 7.x patches the dependency (P7.3) |
 | R9 | Per-account login lockout can be triggered by anyone who knows a username (10 failed attempts per 15 min) | Only failures count; the lock lifts after the window and password reset still works. Revisit with CAPTCHA or backoff if abused |
+| R10 | Losing the master encryption keys makes every stored email permanently unreadable (D35) | Offline key backup kept separately from database backups; versioned keys; documented in `docs/KEY_MANAGEMENT.md`. Choose a production secrets store before launch |
 
 ---
 
@@ -398,3 +404,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-15 | P1.20 device retest | Reset by code worked on the phone (password changed, email confirmed), but sign-in failed twice: correct account (`test@test.com`), non-matching password. A replay over Wi-Fi of reset-by-code plus email sign-in passed, and showed a trailing space breaks the match. D32 added (no edge spaces in new passwords; sign-in trims them). 139 tests pass |
 | 2026-10-15 | P1.20, Phase 1 gate, D33 | User signed in on their phone after a reset → P1.20 done, **Phase 1 complete**. Jaguars palette + white added (`@jax/shared` theme, contrast test, mobile screens themed, `docs/UI_DESIGN.md`). Fixed a flaky privacy test (random token/UUID could contain "1990"). Full-history secrets audit clean. 154 tests pass |
 | 2026-10-15 | P2.1–P2.4, P2.5 partial | Phase 2 started. Duval boundary from Census TIGER/Line 2026 (public domain) committed and imported (idempotent). `assertLocationEligible` built and covered by 45 tests (L1–L4 checked off), mutation-checked. Found and fixed: an audit failure could hide the real denial reason; allowed checks now fail closed (D34). 199 tests pass |
+| 2026-10-15 | D35–D37 | Emails encrypted per user (envelope AES-256-GCM, keyed-hash lookup); birth year no longer stored; retention and legal-hold policy. Two-step migration with a verified backfill (5/5 existing users decrypt correctly). 13 encryption tests (no plaintext in a DB dump, row-swap and tamper rejected, rotation, crypto-shredding, ban hash blocks re-registration) plus env keyring checks; account-binding and keyed-hash protections mutation-checked. Found and fixed a test gap: the binding mutation initially passed, now covered. Live check passed. 219 tests pass. Added P5.18, R10, `docs/KEY_MANAGEMENT.md` |

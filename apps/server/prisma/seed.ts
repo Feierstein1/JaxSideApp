@@ -9,6 +9,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { CONFIG_DEFAULTS, TOS_VERSION } from '@jax/shared';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { hashPassword } from '../src/server/auth/crypto';
+import { encryptedEmailFields } from '../src/server/crypto/field-encryption';
+import { uuidv7 } from '../src/server/crypto/uuid';
 import { importServiceArea, readBoundaryFile } from '../src/server/location/service-area';
 import { ACHIEVEMENTS, CONFIG_DESCRIPTIONS, DEV_PLACES, DEV_USERS } from './seed-data';
 
@@ -42,9 +44,9 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
     const passwordHash = await hashPassword(opts.devPassword);
     for (const u of DEV_USERS) {
       const now = new Date();
+      const id = uuidv7();
       const data = {
         username: u.username,
-        email: u.email,
         passwordHash,
         role: u.role,
         emailVerifiedAt: u.verified ? now : null,
@@ -54,8 +56,10 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
         update: data,
         create: {
           ...data,
+          id,
+          ...encryptedEmailFields(id, u.email),
           usernameNormalized: u.username.toLowerCase(),
-          birthYear: 1990,
+          ageCutoffYear: 2007,
           tosAcceptedAt: now,
           tosVersion: TOS_VERSION,
           adultConfirmedAt: now,

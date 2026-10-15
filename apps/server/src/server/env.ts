@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseKeyring } from './crypto/keyring';
 
 /** Values copied from .env.example that must never be used as real secrets. */
 const PLACEHOLDER_PATTERN = /change-me|replace-with|placeholder|example-secret/i;
@@ -25,33 +26,61 @@ const csv = z
   )
   .pipe(z.array(z.string().url()));
 
-export const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  APP_BASE_URL: z.string().url(),
-  CORS_ORIGINS: csv,
-  /** Only true behind a reverse proxy we control that sets X-Forwarded-For. */
-  TRUST_PROXY: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((v) => v === 'true'),
+export const envSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .default('info'),
+    APP_BASE_URL: z.string().url(),
+    CORS_ORIGINS: csv,
+    /** Only true behind a reverse proxy we control that sets X-Forwarded-For. */
+    TRUST_PROXY: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
 
-  DATABASE_URL: postgresUrl,
-  TEST_DATABASE_URL: postgresUrl.optional(),
+    DATABASE_URL: postgresUrl,
+    TEST_DATABASE_URL: postgresUrl.optional(),
 
-  SESSION_SECRET: secret(32),
+    SESSION_SECRET: secret(32),
 
-  S3_ENDPOINT: z.string().url(),
-  S3_REGION: z.string().min(1),
-  S3_ACCESS_KEY: secret(8),
-  S3_SECRET_KEY: secret(16),
-  S3_BUCKET_QUARANTINE: z.string().min(3),
-  S3_BUCKET_MEDIA: z.string().min(3),
+    /**
+     * D35 encryption keys (docs/KEY_MANAGEMENT.md). ENCRYPTION_KEYS lists every master
+     * key still needed to read data ("v1:<base64>,v2:<base64>"); ENCRYPTION_KEY_ID is the
+     * one used for new data. EMAIL_INDEX_KEY keys the email lookup hash.
+     */
+    ENCRYPTION_KEYS: secret(40),
+    ENCRYPTION_KEY_ID: z.string().regex(/^[A-Za-z0-9_-]{1,16}$/),
+    EMAIL_INDEX_KEY: secret(40),
 
-  SMTP_HOST: z.string().min(1),
-  SMTP_PORT: z.coerce.number().int().positive(),
-  SMTP_FROM: z.string().min(3),
-});
+    S3_ENDPOINT: z.string().url(),
+    S3_REGION: z.string().min(1),
+    S3_ACCESS_KEY: secret(8),
+    S3_SECRET_KEY: secret(16),
+    S3_BUCKET_QUARANTINE: z.string().min(3),
+    S3_BUCKET_MEDIA: z.string().min(3),
+
+    SMTP_HOST: z.string().min(1),
+    SMTP_PORT: z.coerce.number().int().positive(),
+    SMTP_FROM: z.string().min(3),
+  })
+  .superRefine((env, ctx) => {
+    // Structural keyring checks (lengths, current key present, keys distinct).
+    // The message names the rule, never the value.
+    try {
+      parseKeyring(env.ENCRYPTION_KEYS, env.ENCRYPTION_KEY_ID, env.EMAIL_INDEX_KEY);
+    } catch (e) {
+      ctx.addIssue({ code: 'custom', path: ['ENCRYPTION_KEYS'], message: (e as Error).message });
+    }
+    if (env.EMAIL_INDEX_KEY === env.SESSION_SECRET) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['EMAIL_INDEX_KEY'],
+        message: 'must differ from SESSION_SECRET',
+      });
+    }
+  });
 
 export type Env = z.infer<typeof envSchema>;
 
