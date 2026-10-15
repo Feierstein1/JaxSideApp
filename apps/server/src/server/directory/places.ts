@@ -14,6 +14,7 @@ interface Row {
   longitude: number;
   distance: number;
   is_favorite: boolean;
+  post_count: number;
 }
 
 async function toSummaries(rows: Row[]): Promise<PlaceSummary[]> {
@@ -29,6 +30,7 @@ async function toSummaries(rows: Row[]): Promise<PlaceSummary[]> {
     distanceMeters: Math.round(r.distance / 10) * 10,
     isFavorite: r.is_favorite,
     withinRoomRadius: r.distance <= roomMeters,
+    postCount: r.post_count,
   }));
 }
 
@@ -77,7 +79,7 @@ export async function searchPlaces(opts: {
   }[sort];
 
   const rows = await db.$queryRaw<Row[]>`
-    SELECT p.id, p.name, p.category, p.address, p.latitude, p.longitude,
+    SELECT p.id, p.name, p.category, p.address, p.latitude, p.longitude, p."postCount" AS post_count,
            ${distance} AS distance,
            (f."userId" IS NOT NULL) AS is_favorite
     FROM "BusinessPlace" p
@@ -102,7 +104,7 @@ export async function getPlace(opts: {
 }): Promise<PlaceSummary> {
   const me = Prisma.sql`ST_SetSRID(ST_MakePoint(${opts.longitude}, ${opts.latitude}), 4326)::geography`;
   const rows = await db.$queryRaw<Row[]>`
-    SELECT p.id, p.name, p.category, p.address, p.latitude, p.longitude,
+    SELECT p.id, p.name, p.category, p.address, p.latitude, p.longitude, p."postCount" AS post_count,
            ST_Distance(p.location, ${me}) AS distance,
            (f."userId" IS NOT NULL) AS is_favorite
     FROM "BusinessPlace" p

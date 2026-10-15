@@ -1,0 +1,261 @@
+/**
+ * HTTP handlers shared by general posts (/posts) and business-room posts
+ * (/business-posts, /places/:id/posts), so both enforce the same order (CLAUDE.md):
+ * auth guard → strict schema → rate limit → location → ownership/business rules.
+ */
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import {
+  createCommentSchema,
+  createPostSchema,
+  editCommentSchema,
+  editPostSchema,
+  feedRequestSchema,
+  listCommentsSchema,
+  voteSchema,
+  type ConfigKey,
+  type DiscussionKind,
+  type LocationReading,
+} from '@jax/shared';
+import type { User } from '@/generated/prisma/client';
+import { requireUser } from '../auth/require-actor';
+import { db } from '../db';
+import { ApiError } from '../http';
+import {
+  assertLocationEligible,
+  coarsenPoint,
+  type LocationAction,
+  type LocationTarget,
+} from '../location/eligibility';
+import { enforce } from '../rate-limit';
+import { parseBody } from '../validate';
+import { commentPost, createComment, deleteComment, editComment, listComments } from './comments';
+import {
+  createBusinessPost,
+  createGeneralPost,
+  deletePost,
+  editPost,
+  getPostView,
+  listFeed,
+  listPlacePosts,
+  postAnchor,
+} from './posts';
+import { castVote } from './votes';
+
+export type IdCtx = { params: Promise<{ id: string }> };
+
+export async function idFrom(ctx: IdCtx): Promise<string> {
+  const { id } = await ctx.params;
+  if (!z.uuid().safeParse(id).success) throw new ApiError(404, 'NOT_FOUND', 'Not found');
+  return id;
+}
+
+function limits(userId: string, ...rules: [string, ConfigKey, number][]) {
+  return enforce(
+    rules.map(([bucket, limitKey, windowSeconds]) => ({
+      key: `${bucket}:user:${userId}`,
+      limitKey,
+      windowSeconds,
+    })),
+  );
+}
+const READ: [string, ConfigKey, number] = ['feed', 'rateLimit.feed.perMinute', 60];
+const VERIFIED = { requireVerifiedEmail: true } as const;
+
+async function activePlacePoint(placeId: string) {
+  const p = await db.businessPlace.findFirst({
+    where: { id: placeId, status: 'ACTIVE' },
+    select: { latitude: true, longitude: true },
+  });
+  if (!p) throw new ApiError(404, 'NOT_FOUND', 'Place not found');
+  return p;
+}
+
+/** The location rule for acting on an existing post (D19, D20). */
+async function checkPostAccess(
+  user: User,
+  reading: LocationReading,
+  kind: DiscussionKind,
+  postId: string,
+  verb: 'read' | 'comment' | 'vote',
+) {
+  const anchor = await postAnchor(kind, postId);
+  const action = `${kind}.${verb}` as LocationAction;
+  // Reading a general post only needs an in-Duval location (D16); everything else is
+  // radius-bound: 1 mi of a general post (D20), 0.3 mi of a business (D19).
+  const target: LocationTarget | undefined =
+    kind === 'general' && verb === 'read'
+      ? undefined
+      : { kind, point: { latitude: anchor.latitude, longitude: anchor.longitude } };
+  return assertLocationEligible({ kind: 'user', user }, reading, action, target);
+}
+
+// ───────────────────────────── Lists ─────────────────────────────
+
+/** POST /feed: the general feed around the reader (P3.1, P3.1a). */
+export async function feed(req: Request) {
+  const { user } = await requireUser(req);
+  const input = await parseBody(req, feedRequestSchema);
+  await limits(user.id, READ);
+  const at = await assertLocationEligible({ kind: 'user', user }, input.reading, 'general.read');
+  return NextResponse.json(
+    await listFeed({ viewer: user, at, sort: input.sort, cursor: input.cursor }),
+  );
+}
+
+/** POST /places/:id/posts/list: a room is readable only within 0.3 mi (D19). */
+export async function placePosts(req: Request, ctx: IdCtx) {
+  const { user } = await requireUser(req);
+  const placeId = await idFrom(ctx);
+  const input = await parseBody(req, feedRequestSchema);
+  await limits(user.id, READ);
+  const place = await activePlacePoint(placeId);
+  await assertLocationEligible({ kind: 'user', user }, input.reading, 'business.read', {
+    kind: 'business',
+    point: place,
+  });
+  return NextResponse.json(
+    await listPlacePosts({ viewerId: user.id, placeId, cursor: input.cursor }),
+  );
+}
+
+// ───────────────────────────── Create ─────────────────────────────
+
+const POST_LIMITS: [string, ConfigKey, number][] = [
+  ['post-min', 'rateLimit.post.perMinute', 60],
+  ['post-day', 'rateLimit.post.perDay', 86_400],
+];
+
+/** POST /posts: a general post at the author's coarsened location (P3.1, D7). */
+export async function createGeneral(req: Request) {
+  const { user } = await requireUser(req, VERIFIED);
+  const input = await parseBody(req, createPostSchema);
+  await limits(user.id, ...POST_LIMITS);
+  const at = await assertLocationEligible({ kind: 'user', user }, input.reading, 'general.post');
+  const id = await createGeneralPost(user.id, coarsenPoint(at), input.body);
+  return NextResponse.json(
+    { post: await getPostView('general', id, user.id, at) },
+    { status: 201 },
+  );
+}
+
+/** POST /places/:id/posts: a room post, only within 0.3 mi of the place (D19). */
+export async function createBusiness(req: Request, ctx: IdCtx) {
+  const { user } = await requireUser(req, VERIFIED);
+  const placeId = await idFrom(ctx);
+  const input = await parseBody(req, createPostSchema);
+  await limits(user.id, ...POST_LIMITS);
+  const place = await activePlacePoint(placeId);
+  await assertLocationEligible({ kind: 'user', user }, input.reading, 'business.post', {
+    kind: 'business',
+    point: place,
+  });
+  const id = await createBusinessPost(user.id, placeId, input.body);
+  return NextResponse.json({ post: await getPostView('business', id, user.id) }, { status: 201 });
+}
+
+// ───────────────────────────── One post ─────────────────────────────
+
+/** POST /posts/:id or /business-posts/:id: the post plus its comment thread. */
+export function postDetail(kind: DiscussionKind) {
+  return async (req: Request, ctx: IdCtx) => {
+    const { user } = await requireUser(req);
+    const id = await idFrom(ctx);
+    const { reading } = await parseBody(req, listCommentsSchema);
+    await limits(user.id, READ);
+    const at = await checkPostAccess(user, reading, kind, id, 'read');
+    const [post, comments] = await Promise.all([
+      getPostView(kind, id, user.id, kind === 'general' ? at : undefined),
+      listComments(kind, id, user.id),
+    ]);
+    return NextResponse.json({ post, comments });
+  };
+}
+
+/** PATCH: author edits their own post (P3.8). No location check: content already placed. */
+export function postEdit(kind: DiscussionKind) {
+  return async (req: Request, ctx: IdCtx) => {
+    const { user } = await requireUser(req, VERIFIED);
+    const id = await idFrom(ctx);
+    const { body } = await parseBody(req, editPostSchema);
+    await limits(user.id, ['edit', 'rateLimit.edit.perMinute', 60]);
+    await editPost(kind, id, user.id, body);
+    return NextResponse.json({ post: await getPostView(kind, id, user.id) });
+  };
+}
+
+/** DELETE: author soft-deletes their own post (P3.8). */
+export function postDelete(kind: DiscussionKind) {
+  return async (req: Request, ctx: IdCtx) => {
+    const { user } = await requireUser(req);
+    const id = await idFrom(ctx);
+    await limits(user.id, ['edit', 'rateLimit.edit.perMinute', 60]);
+    await deletePost(kind, id, user.id);
+    return NextResponse.json({ deleted: true });
+  };
+}
+
+/** POST /…/:id/comments: comment or reply (P3.3, D20 / D19). */
+export function commentCreate(kind: DiscussionKind) {
+  return async (req: Request, ctx: IdCtx) => {
+    const { user } = await requireUser(req, VERIFIED);
+    const postId = await idFrom(ctx);
+    const input = await parseBody(req, createCommentSchema);
+    await limits(
+      user.id,
+      ['comment-min', 'rateLimit.comment.perMinute', 60],
+      ['comment-day', 'rateLimit.comment.perDay', 86_400],
+    );
+    await checkPostAccess(user, input.reading, kind, postId, 'comment');
+    const id = await createComment({
+      kind,
+      postId,
+      authorId: user.id,
+      body: input.body,
+      parentCommentId: input.parentCommentId,
+    });
+    return NextResponse.json({ id }, { status: 201 });
+  };
+}
+
+/** PUT /…/:id/vote: up, down or clear (P3.4, D6). */
+export function postVote(kind: DiscussionKind) {
+  return async (req: Request, ctx: IdCtx) => {
+    const { user } = await requireUser(req, VERIFIED);
+    const id = await idFrom(ctx);
+    const input = await parseBody(req, voteSchema);
+    await limits(user.id, ['vote', 'rateLimit.vote.perMinute', 60]);
+    await checkPostAccess(user, input.reading, kind, id, 'vote');
+    return NextResponse.json(await castVote(user.id, { type: kind, id }, input.value));
+  };
+}
+
+// ───────────────────────────── Comments ─────────────────────────────
+
+/** PUT /comments/:id/vote: same location rule as voting on the comment's post. */
+export async function commentVote(req: Request, ctx: IdCtx) {
+  const { user } = await requireUser(req, VERIFIED);
+  const id = await idFrom(ctx);
+  const input = await parseBody(req, voteSchema);
+  await limits(user.id, ['vote', 'rateLimit.vote.perMinute', 60]);
+  const { kind, postId } = await commentPost(id);
+  await checkPostAccess(user, input.reading, kind, postId, 'vote');
+  return NextResponse.json(await castVote(user.id, { type: 'comment', id }, input.value));
+}
+
+export async function commentEdit(req: Request, ctx: IdCtx) {
+  const { user } = await requireUser(req, VERIFIED);
+  const id = await idFrom(ctx);
+  const { body } = await parseBody(req, editCommentSchema);
+  await limits(user.id, ['edit', 'rateLimit.edit.perMinute', 60]);
+  await editComment(id, user.id, body);
+  return NextResponse.json({ edited: true });
+}
+
+export async function commentDelete(req: Request, ctx: IdCtx) {
+  const { user } = await requireUser(req);
+  const id = await idFrom(ctx);
+  await limits(user.id, ['edit', 'rateLimit.edit.perMinute', 60]);
+  await deleteComment(id, user.id);
+  return NextResponse.json({ deleted: true });
+}

@@ -1,0 +1,406 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { POST as feedPOST } from '@/app/api/v1/feed/route';
+import { POST as createPostPOST } from '@/app/api/v1/posts/route';
+import {
+  POST as postDetailPOST,
+  PATCH as postPATCH,
+  DELETE as postDELETE,
+} from '@/app/api/v1/posts/[id]/route';
+import { POST as commentPOST } from '@/app/api/v1/posts/[id]/comments/route';
+import { PUT as votePUT } from '@/app/api/v1/posts/[id]/vote/route';
+import { POST as roomListPOST } from '@/app/api/v1/places/[id]/posts/list/route';
+import { POST as roomPostPOST } from '@/app/api/v1/places/[id]/posts/route';
+import { POST as bizDetailPOST, DELETE as bizDELETE } from '@/app/api/v1/business-posts/[id]/route';
+import { POST as bizCommentPOST } from '@/app/api/v1/business-posts/[id]/comments/route';
+import { PUT as bizVotePUT } from '@/app/api/v1/business-posts/[id]/vote/route';
+import { PUT as commentVotePUT } from '@/app/api/v1/comments/[id]/vote/route';
+import { DELETE as commentDELETE } from '@/app/api/v1/comments/[id]/route';
+import { POST as searchPOST } from '@/app/api/v1/places/search/route';
+import { createSession } from '@/server/auth/sessions';
+import { invalidateConfigCache } from '@/server/config';
+import { db } from '@/server/db';
+import { importOsmPlaces } from '@/server/directory/osm';
+import { readBoundaryFile } from '@/server/location/boundary-file';
+import { importServiceArea } from '@/server/location/service-area';
+import { resetDb } from './db-helpers';
+import { callRoute as call, type AnyHandler as H } from './route-call';
+import { createTestUser } from './user-factory';
+
+const FIVE_POINTS = { latitude: 30.3149, longitude: -81.6853 };
+const MEMORIAL = { latitude: 30.3088, longitude: -81.6823 }; // ~740 m from Five Points
+const DOWNTOWN = { latitude: 30.3322, longitude: -81.6557 }; // ~3.4 km away
+const ORANGE_PARK = { latitude: 30.1661, longitude: -81.7065 }; // outside Duval
+const reading = (p: { latitude: number; longitude: number }) => ({
+  ...p,
+  accuracyMeters: 10,
+  timestamp: Date.now() - 2_000,
+});
+
+let alice: string; // verified
+let bob: string; // verified
+let carol: string; // email not verified
+let aliceId: string;
+let cafeId: string; // ~70 m from Five Points
+
+beforeEach(async () => {
+  await resetDb();
+  invalidateConfigCache();
+  await importServiceArea(db, readBoundaryFile());
+  await importOsmPlaces(db, [
+    {
+      type: 'node',
+      id: 1,
+      lat: 30.315,
+      lon: -81.686,
+      tags: { amenity: 'cafe', name: 'Bold Bean' },
+    },
+  ]);
+  cafeId = (await db.businessPlace.findFirstOrThrow()).id;
+  const a = await createTestUser('alice_p', { emailVerifiedAt: new Date() });
+  aliceId = a.id;
+  alice = (await createSession(a.id, 'MOBILE')).token;
+  bob = (
+    await createSession(
+      (await createTestUser('bob_p', { emailVerifiedAt: new Date() })).id,
+      'MOBILE',
+    )
+  ).token;
+  carol = (await createSession((await createTestUser('carol_p')).id, 'MOBILE')).token;
+});
+
+const post = (token: string, body: string, at = FIVE_POINTS) =>
+  call(createPostPOST as H, 'POST', { token, body: { reading: reading(at), body } });
+const feed = (token: string, at = FIVE_POINTS, extra: object = {}) =>
+  call(feedPOST as H, 'POST', { token, body: { reading: reading(at), ...extra } });
+const bodies = (r: { body: { posts: { body: string }[] } }) => r.body.posts.map((p) => p.body);
+
+/** Tests that need many writes in a minute lift the rate limits (they're tested separately). */
+async function liftLimits(...keys: string[]) {
+  await db.appConfiguration.createMany({ data: keys.map((key) => ({ key, value: 1000 })) });
+  invalidateConfigCache();
+}
+
+describe('general posts and feed (P3.1, P3.1a)', () => {
+  it('creates a post at a coarsened point and returns no coordinates or private data', async () => {
+    const r = await post(alice, 'Anyone know a good brunch spot?');
+    expect(r.status).toBe(201);
+    expect(r.body.post).toMatchObject({
+      body: 'Anyone know a good brunch spot?',
+      author: { username: 'alice_p' },
+      score: 0,
+      commentCount: 0,
+      isMine: true,
+      kind: 'general',
+    });
+    expect(r.raw).not.toMatch(/latitude|longitude|30\.31|81\.68|email/);
+    // Stored point is the ~100 m grid point, never the exact reading (D7).
+    const [p] = await db.$queryRaw<{ lat: number; lng: number }[]>`
+      SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng FROM "GeneralPost"`;
+    expect([p!.lat, p!.lng]).toEqual([30.315, -81.685]);
+  });
+
+  // 🔒 Writes need a verified email (D11), a valid location, and a strict body.
+  it('rejects unverified authors, outside locations and smuggled fields', async () => {
+    expect((await post(carol, 'hi')).body.error.code).toBe('EMAIL_NOT_VERIFIED');
+    expect((await post(alice, 'hi', ORANGE_PARK)).body.error.code).toBe('LOCATION_OUTSIDE_AREA');
+    for (const extra of [{ authorId: aliceId }, { location: 'POINT(0 0)' }, { score: 99 }]) {
+      const r = await call(createPostPOST as H, 'POST', {
+        token: alice,
+        body: { reading: reading(FIVE_POINTS), body: 'hi', ...extra },
+      });
+      expect(r.status).toBe(400);
+    }
+    expect(await db.generalPost.count()).toBe(0);
+  });
+
+  it('shows nearby posts and hides ones beyond the reader’s radius', async () => {
+    await post(alice, 'Five Points post');
+    expect(bodies(await feed(bob, MEMORIAL))).toEqual(['Five Points post']); // 740 m
+    expect(bodies(await feed(bob, DOWNTOWN))).toEqual([]); // 3.4 km > 1 mi
+    // A reader who narrowed their radius to 0.25 mi (402 m) no longer sees it.
+    await db.user.updateMany({ where: { username: 'bob_p' }, data: { generalRadiusMiles: 0.25 } });
+    expect(bodies(await feed(bob, MEMORIAL))).toEqual([]);
+  });
+
+  // 🔒 P3.1a / D16: no feed from outside Duval.
+  it('refuses the feed outside Duval', async () => {
+    expect((await feed(bob, ORANGE_PARK)).body.error.code).toBe('LOCATION_OUTSIDE_AREA');
+  });
+
+  it('an empty area returns an empty page', async () => {
+    expect((await feed(bob)).body).toEqual({ posts: [], nextCursor: null });
+  });
+
+  // ✅ DV6: cursor paging has no duplicates or skips, even when new posts arrive mid-scroll.
+  it('pages newest-first without duplicates or skips while posts are added', async () => {
+    await liftLimits('rateLimit.post.perMinute', 'rateLimit.post.perDay');
+    for (let i = 1; i <= 20; i++) await post(alice, `post ${i}`);
+    const p1 = await feed(bob);
+    expect(bodies(p1)).toHaveLength(15);
+    expect(bodies(p1)[0]).toBe('post 20');
+    for (let i = 21; i <= 23; i++) await post(alice, `post ${i}`); // arrive while scrolling
+    const p2 = await feed(bob, FIVE_POINTS, { cursor: p1.body.nextCursor });
+    expect(bodies(p2)).toEqual(['post 5', 'post 4', 'post 3', 'post 2', 'post 1']);
+    expect(p2.body.nextCursor).toBeNull();
+    expect(bodies(await feed(bob))[0]).toBe('post 23'); // a refresh shows the new ones
+  });
+
+  // 🔒 MS2: posting is rate-limited per user (2 a minute by default).
+  it('the third post within a minute is refused', async () => {
+    expect((await post(alice, 'one')).status).toBe(201);
+    expect((await post(alice, 'two')).status).toBe(201);
+    const third = await post(alice, 'three');
+    expect(third.status).toBe(429);
+    expect(third.body.error.code).toBe('RATE_LIMITED');
+  });
+
+  it('rejects a tampered page bookmark', async () => {
+    expect((await feed(bob, FIVE_POINTS, { cursor: 'not-a-cursor' })).status).toBe(400);
+  });
+
+  it('"top" orders by score (P3.6)', async () => {
+    const a = (await post(alice, 'meh')).body.post.id;
+    const b = (await post(alice, 'great')).body.post.id;
+    await call(votePUT as H, 'PUT', {
+      token: bob,
+      id: b,
+      body: { reading: reading(FIVE_POINTS), value: 1 },
+    });
+    await call(votePUT as H, 'PUT', {
+      token: bob,
+      id: a,
+      body: { reading: reading(FIVE_POINTS), value: -1 },
+    });
+    expect(bodies(await feed(bob, FIVE_POINTS, { sort: 'top' }))).toEqual(['great', 'meh']);
+  });
+
+  // P3.10: stored and returned as plain text, never transformed into markup.
+  it('keeps text exactly as typed (plain text) and rejects control characters', async () => {
+    const text = '<script>alert(1)</script> & <b>bold</b>';
+    const r = await post(alice, text);
+    expect(r.body.post.body).toBe(text);
+    expect((await post(alice, 'bad\u0000char')).status).toBe(400);
+  });
+});
+
+describe('comments (P3.3, D20)', () => {
+  const comment = (
+    token: string,
+    postId: string,
+    body: string,
+    parentCommentId?: string,
+    at = FIVE_POINTS,
+  ) =>
+    call(commentPOST as H, 'POST', {
+      token,
+      id: postId,
+      body: { reading: reading(at), body, ...(parentCommentId ? { parentCommentId } : {}) },
+    });
+  const detail = (token: string, id: string, at = FIVE_POINTS) =>
+    call(postDetailPOST as H, 'POST', { token, id, body: { reading: reading(at) } });
+
+  // ✅ DV3: replies appear under the correct parent, in thread order.
+  it('threads replies under their parent and counts comments', async () => {
+    const p = (await post(alice, 'Q')).body.post.id;
+    const c1 = (await comment(bob, p, 'first')).body.id;
+    const c2 = (await comment(alice, p, 'second')).body.id;
+    await comment(alice, p, 'reply to first', c1);
+    await comment(bob, p, 'reply to second', c2);
+    const d = await detail(bob, p);
+    expect(d.body.comments.map((c: { body: string; depth: number }) => [c.body, c.depth])).toEqual([
+      ['first', 0],
+      ['reply to first', 1],
+      ['second', 0],
+      ['reply to second', 1],
+    ]);
+    expect(d.body.post.commentCount).toBe(4);
+  });
+
+  it('commenting needs to be within 1 mi of the post', async () => {
+    const p = (await post(alice, 'Q')).body.post.id;
+    expect((await comment(bob, p, 'from Memorial Park', undefined, MEMORIAL)).status).toBe(201);
+    expect((await comment(bob, p, 'from downtown', undefined, DOWNTOWN)).body.error.code).toBe(
+      'LOCATION_TOO_FAR',
+    );
+  });
+
+  it('caps nesting at 3 levels and rejects a parent from another post', async () => {
+    await liftLimits('rateLimit.comment.perMinute');
+    const p = (await post(alice, 'Q')).body.post.id;
+    const other = (await post(alice, 'other')).body.post.id;
+    let parent = (await comment(bob, p, 'd0')).body.id;
+    for (const d of ['d1', 'd2', 'd3']) parent = (await comment(bob, p, d, parent)).body.id;
+    expect((await comment(bob, p, 'd4', parent)).body.error.code).toBe('MAX_DEPTH');
+    const foreign = (await comment(bob, other, 'elsewhere')).body.id;
+    expect((await comment(bob, p, 'x', foreign)).body.error.code).toBe('INVALID_PARENT');
+  });
+
+  it('a deleted comment stays as a placeholder so replies keep their context', async () => {
+    const p = (await post(alice, 'Q')).body.post.id;
+    const c = (await comment(bob, p, 'oops')).body.id;
+    await comment(alice, p, 'reply', c);
+    expect((await call(commentDELETE as H, 'DELETE', { token: bob, id: c })).status).toBe(200);
+    const d = await detail(alice, p);
+    expect(d.body.comments[0]).toMatchObject({ body: null, status: 'deleted' });
+    expect(d.body.comments[1]).toMatchObject({ body: 'reply', depth: 1 });
+    expect(d.body.post.commentCount).toBe(1);
+  });
+});
+
+describe('votes (P3.4, D6)', () => {
+  const vote = (token: string, id: string, value: number, at = FIVE_POINTS) =>
+    call(votePUT as H, 'PUT', { token, id, body: { reading: reading(at), value } });
+
+  // ✅ DV4 / DV5: one vote per user per item; totals are computed by the server.
+  it('sets, changes, repeats and removes a vote with correct totals', async () => {
+    const p = (await post(alice, 'vote me')).body.post.id;
+    expect((await vote(bob, p, 1)).body).toEqual({ score: 1, upCount: 1, downCount: 0, myVote: 1 });
+    expect((await vote(bob, p, -1)).body).toEqual({
+      score: -1,
+      upCount: 0,
+      downCount: 1,
+      myVote: -1,
+    });
+    expect((await vote(bob, p, -1)).body).toEqual({
+      score: -1,
+      upCount: 0,
+      downCount: 1,
+      myVote: -1,
+    });
+    expect((await vote(bob, p, 0)).body).toEqual({ score: 0, upCount: 0, downCount: 0, myVote: 0 });
+    expect(await db.vote.count()).toBe(0);
+  });
+
+  it('rapid repeated taps still count once', async () => {
+    const p = (await post(alice, 'spam tap')).body.post.id;
+    await Promise.all(Array.from({ length: 6 }, () => vote(bob, p, 1)));
+    const row = await db.generalPost.findUniqueOrThrow({ where: { id: p } });
+    expect([row.score, row.upCount]).toEqual([1, 1]);
+    expect(await db.vote.count()).toBe(1);
+  });
+
+  // 🔒 Totals can't be sent by the client, and voting is radius-bound.
+  it('rejects client-sent totals and far-away votes', async () => {
+    const p = (await post(alice, 'x')).body.post.id;
+    const r = await call(votePUT as H, 'PUT', {
+      token: bob,
+      id: p,
+      body: { reading: reading(FIVE_POINTS), value: 1, score: 1000 },
+    });
+    expect(r.status).toBe(400);
+    expect((await vote(bob, p, 2)).status).toBe(400);
+    expect((await vote(bob, p, 1, DOWNTOWN)).body.error.code).toBe('LOCATION_TOO_FAR');
+  });
+
+  it('comments can be voted on too', async () => {
+    const p = (await post(alice, 'Q')).body.post.id;
+    const c = (
+      await call(commentPOST as H, 'POST', {
+        token: bob,
+        id: p,
+        body: { reading: reading(FIVE_POINTS), body: 'A' },
+      })
+    ).body.id;
+    const r = await call(commentVotePUT as H, 'PUT', {
+      token: alice,
+      id: c,
+      body: { reading: reading(FIVE_POINTS), value: 1 },
+    });
+    expect(r.body.score).toBe(1);
+  });
+});
+
+describe('edit and delete own content (P3.8)', () => {
+  // 🔒 IDOR: someone else's post looks like it doesn't exist.
+  it('only the author can edit or delete; others get 404', async () => {
+    const p = (await post(alice, 'mine')).body.post.id;
+    expect(
+      (await call(postPATCH as H, 'PATCH', { token: bob, id: p, body: { body: 'hacked' } })).status,
+    ).toBe(404);
+    expect((await call(postDELETE as H, 'DELETE', { token: bob, id: p })).status).toBe(404);
+
+    const e = await call(postPATCH as H, 'PATCH', {
+      token: alice,
+      id: p,
+      body: { body: 'edited' },
+    });
+    expect(e.body.post).toMatchObject({ body: 'edited' });
+    expect(e.body.post.editedAt).not.toBeNull();
+    expect((await call(postDELETE as H, 'DELETE', { token: alice, id: p })).status).toBe(200);
+    expect(bodies(await feed(bob))).toEqual([]);
+  });
+});
+
+describe('business rooms (P3.2, D19)', () => {
+  const roomPost = (token: string, body: string, at = FIVE_POINTS) =>
+    call(roomPostPOST as H, 'POST', { token, id: cafeId, body: { reading: reading(at), body } });
+  const room = (token: string, at = FIVE_POINTS) =>
+    call(roomListPOST as H, 'POST', { token, id: cafeId, body: { reading: reading(at) } });
+
+  // ✅ DV2: business posts belong to their place; ✅ DV1: rooms and the general feed are separate.
+  it('posts in a room stay in that room and never appear in the general feed', async () => {
+    const r = await roomPost(alice, 'Best latte in town');
+    expect(r.status).toBe(201);
+    expect(r.body.post).toMatchObject({
+      kind: 'business',
+      place: { id: cafeId, name: 'Bold Bean' },
+    });
+    await post(alice, 'general chatter');
+    expect(bodies(await room(bob))).toEqual(['Best latte in town']);
+    expect(bodies(await feed(bob))).toEqual(['general chatter']);
+  });
+
+  // 🔒 D19: reading and writing a room both need 0.3 mi.
+  it('reading and posting require being within 0.3 mi of the place', async () => {
+    expect((await room(bob, MEMORIAL)).body.error.code).toBe('LOCATION_TOO_FAR');
+    expect((await roomPost(bob, 'from afar', MEMORIAL)).body.error.code).toBe('LOCATION_TOO_FAR');
+    const p = (await roomPost(alice, 'here')).body.post.id;
+    const d = await call(bizDetailPOST as H, 'POST', {
+      token: bob,
+      id: p,
+      body: { reading: reading(MEMORIAL) },
+    });
+    expect(d.body.error.code).toBe('LOCATION_TOO_FAR');
+  });
+
+  it('keeps the place post count in step and shows it in search (D41)', async () => {
+    const p1 = (await roomPost(alice, 'one')).body.post.id;
+    await roomPost(bob, 'two');
+    const search = async () =>
+      (await call(searchPOST as H, 'POST', { token: bob, body: { reading: reading(FIVE_POINTS) } }))
+        .body.places[0].postCount;
+    expect(await search()).toBe(2);
+    await call(bizDELETE as H, 'DELETE', { token: alice, id: p1 });
+    expect(await search()).toBe(1);
+  });
+
+  it('room comments and votes use the 0.3 mi rule', async () => {
+    const p = (await roomPost(alice, 'q')).body.post.id;
+    const near = await call(bizCommentPOST as H, 'POST', {
+      token: bob,
+      id: p,
+      body: { reading: reading(FIVE_POINTS), body: 'a' },
+    });
+    expect(near.status).toBe(201);
+    const far = await call(bizVotePUT as H, 'PUT', {
+      token: bob,
+      id: p,
+      body: { reading: reading(MEMORIAL), value: 1 },
+    });
+    expect(far.body.error.code).toBe('LOCATION_TOO_FAR');
+  });
+});
+
+describe('blocking (P3.9)', () => {
+  it('hides content between users who blocked each other, both ways', async () => {
+    await post(alice, 'from alice');
+    const bobUser = await db.user.findFirstOrThrow({ where: { username: 'bob_p' } });
+    await call(createPostPOST as H, 'POST', {
+      token: bob,
+      body: { reading: reading(FIVE_POINTS), body: 'from bob' },
+    });
+    await db.userBlock.create({ data: { blockerId: aliceId, blockedId: bobUser.id } });
+    expect(bodies(await feed(alice))).toEqual(['from alice']);
+    expect(bodies(await feed(bob))).toEqual(['from bob']);
+  });
+});

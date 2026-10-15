@@ -69,4 +69,6 @@ export interface PlaceSummary {
   isFavorite: boolean;
   /** Within the business radius right now, so its discussion room would open (D19). */
   withinRoomRadius: boolean;
+  /** Visible posts in this place's room (D41). */
+  postCount: number;
 }

@@ -53,6 +53,15 @@ export const CONFIG_DEFAULTS = {
   'directory.favoriteDistanceFactor': 0.25,
   'favorites.maxPerUser': 200,
 
+  // Phase 3 discussions (D41)
+  'feed.pageSize': 15,
+  /** "Top" sort looks back this many days. */
+  'feed.topWindowDays': 7,
+  /** Replies nest at most this deep (0 = top-level comment). */
+  'comments.maxDepth': 3,
+  /** Comments returned per post (MVP: one page, oldest thread first). */
+  'comments.maxPerPost': 300,
+
   // §5.1 / D17 guests
   'guest.inactivityDays': 30,
   'guest.expiryWarningDays': 5,
@@ -101,6 +110,8 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.placeSearch.perMinute': 30,
   'rateLimit.favorite.perMinute': 30,
   'rateLimit.preferences.perMinute': 10,
+  'rateLimit.edit.perMinute': 10,
+  'rateLimit.feed.perMinute': 60,
 } as const;
 
 export type ConfigKey = keyof typeof CONFIG_DEFAULTS;

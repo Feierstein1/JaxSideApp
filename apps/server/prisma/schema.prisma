@@ -369,6 +369,8 @@ model BusinessPlace {
   /// Generated from latitude/longitude in raw SQL on write.
   location       Unsupported("geography(Point, 4326)")?
   status         PlaceStatus                            @default(ACTIVE)
+  /// Visible business-room posts, maintained in the same transaction as each post (D41).
+  postCount      Int                                    @default(0)
   sourceName     String                                 @db.VarChar(40)
   sourceId       String                                 @db.VarChar(100)
   attribution    String?                                @db.VarChar(200)
