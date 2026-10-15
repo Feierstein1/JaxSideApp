@@ -34,7 +34,36 @@ External data used by the app: where it comes from, its license, and how to refr
 **Swapping the service area** (e.g. adding a neighboring county later): add another feature with
 a new `key`. The location check accepts a point inside **any** active `ServiceArea` row.
 
-## Business directory: OpenStreetMap (P2.10, planned)
+## Business directory: OpenStreetMap (P2.10–P2.12)
 
-To be documented when the importer is built: Overpass query, tag allow-list, ODbL attribution
-("© OpenStreetMap contributors"), and refresh steps.
+|               |                                                                                                                                                                                                                                                                                                                      |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **What**      | Named, public-facing places inside Duval County: restaurants, cafés, bars, shops, car dealers, parks, beaches, attractions, museums, hotels, gyms and similar                                                                                                                                                        |
+| **Source**    | OpenStreetMap, queried through the Overpass API (`https://overpass-api.de/api/interpreter`, configurable with `OVERPASS_URL`)                                                                                                                                                                                        |
+| **License**   | **ODbL 1.0.** Attribution is required: "© OpenStreetMap contributors" with a link to https://www.openstreetmap.org/copyright. The app shows it under every place list and place page, and the API returns it with search results. If we ever publish a modified copy of the dataset itself, ODbL share-alike applies |
+| **Stored at** | `BusinessPlace` rows with `sourceName = 'osm'`, `sourceId = 'node/123'` (or `way/`, `relation/`), `attribution = '© OpenStreetMap contributors'`                                                                                                                                                                     |
+| **Code**      | `apps/server/src/server/directory/osm.ts` (allow-list, normalization, import); `apps/server/scripts/directory/import-osm.ts` (download)                                                                                                                                                                              |
+
+**What's included:** only allow-listed tags (`RULES` in `osm.ts`), and only features with a `name`.
+Offices, homes and infrastructure (parking, benches) are never requested. `shop=vacant` is skipped.
+
+**Duplicates (P2.11):** within an import, the same normalized name within 50 m counts as one place
+(a point is kept over a building outline). A place already in the directory from another source,
+such as an approved community submission, isn't added again.
+
+**Refreshing**
+
+```sh
+npm run import:places -w @jax/server
+```
+
+- The county is fetched as a 4×4 grid of small queries, 5 seconds apart, with backoff when the
+  public server is busy (it often is). Finished tiles are saved per day under
+  `apps/server/data/osm/` (git-ignored), so a rerun after a failure only fetches the missing tiles.
+- **Idempotent:** a rerun updates changed places in place (same ID), inserts new ones, and marks
+  places that vanished from OSM `INACTIVE` (they come back if they reappear). If a download looks
+  truncated (under half the current count), nothing is deactivated.
+- To re-import a saved download without the network:
+  `npm run import:places -w @jax/server -- --from-file <file>`.
+- **Etiquette:** the public Overpass server is meant for light use. Refresh at most weekly. For
+  frequent or large refreshes, use a self-hosted Overpass instance or a Geofabrik extract.

@@ -1,7 +1,8 @@
 import { ActivityIndicator, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Tabs } from 'expo-router';
 import * as Location from 'expo-location';
-import { COLORS } from '@jax/shared';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { BRAND, COLORS } from '@jax/shared';
 import { LocationGate } from '@/location/LocationGate';
 import { headerOptions } from '@/ui';
 
@@ -23,8 +24,38 @@ export default function AppLayout() {
   if (!permission.granted) return <LocationGate permission={permission} request={request} />;
 
   return (
-    <Stack screenOptions={headerOptions}>
-      <Stack.Screen name="index" options={{ title: 'Jax' }} />
-    </Stack>
+    <Tabs
+      screenOptions={{
+        ...headerOptions,
+        // Black tab bar with gold for the active tab (9.2:1) and white for the rest (D33).
+        tabBarStyle: { backgroundColor: COLORS.surfaceInverse },
+        tabBarActiveTintColor: BRAND.gold,
+        tabBarInactiveTintColor: COLORS.onSurfaceInverse,
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Jax',
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="places"
+        options={{
+          headerShown: false,
+          title: 'Places',
+          tabBarIcon: ({ color, size }) => <Ionicons name="storefront" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="account"
+        options={{
+          title: 'Account',
+          tabBarIcon: ({ color, size }) => <Ionicons name="person" color={color} size={size} />,
+        }}
+      />
+    </Tabs>
   );
 }

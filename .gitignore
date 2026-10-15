@@ -46,3 +46,4 @@ Thumbs.db
 
 # Generated Prisma client (rebuilt by postinstall)
 apps/server/src/generated/
+apps/server/data/osm/

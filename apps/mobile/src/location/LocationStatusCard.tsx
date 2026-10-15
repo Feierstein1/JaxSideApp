@@ -22,7 +22,7 @@ export function LocationStatusCard() {
   const check = useCallback(async () => {
     setStatus({ kind: 'checking' });
     try {
-      const reading = await getFreshReading();
+      const reading = await getFreshReading({ fresh: true });
       await api.post('/api/v1/location/status', { reading });
       setStatus({ kind: 'ok' });
     } catch (e) {

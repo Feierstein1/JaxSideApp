@@ -18,6 +18,8 @@ export type LocationActor =
  */
 export const LOCATION_ACTIONS = {
   'general.read': ['user', 'guest'],
+  /** Directory search and place info: inside Duval, no radius (D16, D19). Not for guests (§5). */
+  'directory.read': ['user'],
   'general.post': ['user'],
   'general.comment': ['user', 'guest'],
   'general.vote': ['user'],

@@ -17,7 +17,8 @@
     "db:test:reset": "node scripts/reset-test-db.mjs",
     "fetch:boundary": "tsx scripts/boundary/fetch-duval.ts",
     "import:boundary": "tsx --env-file=../../.env scripts/boundary/import-service-area.ts",
-    "jobs:maintenance": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/jobs/run-maintenance.ts"
+    "jobs:maintenance": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/jobs/run-maintenance.ts",
+    "import:places": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/directory/import-osm.ts"
   },
   "dependencies": {
     "@jax/shared": "*",
