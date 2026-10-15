@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { COLORS, type FeedSort } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
+import { useGuest } from '@/auth/guest';
 import { fetchFeed } from '@/discussion/api';
 import { PostList } from '@/discussion/PostList';
 import { Segmented, styles } from '@/ui';
@@ -14,8 +15,11 @@ export default function HomeFeed() {
   const [sort, setSort] = useState<FeedSort>('new');
   const load = useCallback((cursor?: string) => fetchFeed(sort, cursor), [sort]);
   const verified = state.status === 'signedIn' && state.user.emailVerified;
+  const { isGuest, promptAccount } = useGuest();
+  const guest = state.status === 'guest' ? state.guest : undefined;
 
   function compose() {
+    if (isGuest) return promptAccount('start a post'); // P4.2
     if (!verified) {
       Alert.alert(
         'Confirm your email first',
@@ -38,7 +42,15 @@ export default function HomeFeed() {
         onOpen={(p) => router.push(`/post/${p.id}`)}
         header={
           <View style={{ paddingHorizontal: 12, paddingTop: 6, gap: 8 }}>
-            {!verified ? (
+            {guest?.expiringSoon ? (
+              <View style={styles.banner}>
+                <Text style={styles.body}>
+                  Your guest session ends in {guest.daysLeft}{' '}
+                  {guest.daysLeft === 1 ? 'day' : 'days'} unless you use Jax before then.
+                </Text>
+              </View>
+            ) : null}
+            {!verified && !isGuest ? (
               <Pressable onPress={() => router.push('/account')} accessibilityRole="button">
                 <View style={styles.banner}>
                   <Text style={styles.body}>

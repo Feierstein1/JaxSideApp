@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { loginRequestSchema } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
@@ -7,12 +7,25 @@ import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { Button, Field, FormError, PasswordField, styles } from '@/ui';
 
 export default function SignIn() {
-  const { signIn } = useAuth();
+  const { signIn, continueAsGuest } = useAuth();
   const params = useLocalSearchParams<{ registered?: string; reset?: string }>();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
+  const [guestBusy, setGuestBusy] = useState(false);
+
+  async function guest() {
+    setErrors({});
+    setGuestBusy(true);
+    try {
+      await continueAsGuest();
+    } catch (e) {
+      setErrors(serverErrors(e));
+    } finally {
+      setGuestBusy(false);
+    }
+  }
 
   async function submit() {
     const v = validate(loginRequestSchema, { identifier, password });
@@ -72,6 +85,13 @@ export default function SignIn() {
           onPress={() => router.push('/forgot-password')}
         />
         <Button variant="link" title="Create an account" onPress={() => router.push('/register')} />
+        <View style={{ marginTop: 24 }}>
+          <Button variant="secondary" title="Continue as guest" onPress={guest} busy={guestBusy} />
+          <Text style={[styles.muted, { marginTop: 6, textAlign: 'center' }]}>
+            Guests can read the area feed and comment. Posting, voting and business discussions need
+            a free account.
+          </Text>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

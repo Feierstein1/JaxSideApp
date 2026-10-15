@@ -23,7 +23,8 @@ import { ApiRequestError } from '@/api/client';
 import { timeAgo } from '@/format';
 import { Button, styles } from '@/ui';
 import { createComment, deleteComment, deletePost, fetchPost, markFeedsDirty } from './api';
-import { authorName, PostCard } from './PostCard';
+import { authorName, openAuthor, PostCard } from './PostCard';
+import { useGuest } from '@/auth/guest';
 import { VoteControl } from './VoteControl';
 
 const MAX_DEPTH = CONFIG_DEFAULTS['comments.maxDepth'];
@@ -36,6 +37,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<CommentView>();
   const [sending, setSending] = useState(false);
+  const { isGuest } = useGuest();
 
   const load = useCallback(async () => {
     setError(undefined);
@@ -136,7 +138,11 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
             onReply={
               c.depth < MAX_DEPTH && c.status === 'visible' ? () => setReplyTo(c) : undefined
             }
-            onDelete={c.isMine && c.status === 'visible' ? () => void removeComment(c) : undefined}
+            onDelete={
+              c.isMine && !isGuest && c.status === 'visible'
+                ? () => void removeComment(c)
+                : undefined
+            }
             onError={setError}
           />
         ))}
@@ -226,7 +232,10 @@ function CommentRow({
         }}
       >
         <Text style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 4 }}>
-          <Text style={{ fontWeight: '700', color: COLORS.text }}>
+          <Text
+            style={{ fontWeight: '700', color: COLORS.text }}
+            onPress={visible && 'username' in c.author ? () => openAuthor(c.author) : undefined}
+          >
             {visible ? authorName(c.author) : ' '}
           </Text>
           {visible ? ` · ${timeAgo(c.createdAt)}${c.editedAt ? ' · edited' : ''}` : ''}

@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BRAND, COLORS, type PostView } from '@jax/shared';
 import { formatDistance, timeAgo } from '@/format';
@@ -8,6 +9,11 @@ export function authorName(a: PostView['author'] | { guest: true }): string {
   if ('username' in a) return a.username;
   if ('guest' in a) return 'GUEST';
   return 'deleted user';
+}
+
+/** Opens a registered author's profile (P4.8); guests and deleted users aren't links. */
+export function openAuthor(a: PostView['author'] | { guest: true }) {
+  if ('username' in a) router.push(`/user/${encodeURIComponent(a.username)}`);
 }
 
 /** Round initial badge: teal for area posts, gold for business rooms (D33). */
@@ -82,7 +88,11 @@ export function PostCard({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
         <Avatar name={name} business={business} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontWeight: '700', color: COLORS.text }}>
+          <Text
+            style={{ fontWeight: '700', color: COLORS.text }}
+            onPress={'username' in post.author ? () => openAuthor(post.author) : undefined}
+            accessibilityRole={'username' in post.author ? 'link' : undefined}
+          >
             {name}
             {post.isMine ? (
               <Text style={{ color: COLORS.textMuted, fontWeight: '400' }}> (you)</Text>

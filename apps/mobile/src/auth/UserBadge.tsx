@@ -40,6 +40,11 @@ export function UserBadge() {
   useEffect(() => {
     void load();
   }, []);
+  if (state.status === 'guest') {
+    return (
+      <Text style={{ color: BRAND.gold, fontWeight: '700', paddingHorizontal: 4 }}>GUEST</Text>
+    );
+  }
   if (state.status !== 'signedIn') return null;
 
   return (

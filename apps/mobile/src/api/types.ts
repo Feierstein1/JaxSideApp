@@ -21,3 +21,13 @@ export interface StatusMessage {
   status: string;
   message?: string;
 }
+
+/** P4.4: a guest's server-computed expiry. */
+export interface GuestStatus {
+  expiresAt: string;
+  daysLeft: number;
+  expiringSoon: boolean;
+}
+
+export type SessionResponse =
+  { kind: 'user'; user: MeUser } | { kind: 'guest'; guest: GuestStatus };

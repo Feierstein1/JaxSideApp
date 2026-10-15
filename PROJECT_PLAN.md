@@ -22,8 +22,8 @@ This file tracks progress, decisions and open questions. Update it whenever work
 ## Current status
 
 **Phase:** 4 — Guests & Profiles (started 2026-10-15; Phase 3 gate pending only the on-device vote/comment check)
-**Next action:** Server: guest sessions and permissions (P4.1–P4.6), then account management (P4.9–P4.12), then the app screens.
-**Last updated:** 2026-10-14
+**Next action:** User tests guest mode and the new Account screens on the phone (Phase 4 gate). Then Phase 5 (moderation & admin).
+**Last updated:** 2026-10-15
 
 ---
 
@@ -64,7 +64,7 @@ Questions marked **BLOCKING** must be answered before the phase listed. Each has
 - [ ] **Q10 — Geocoding of submitted addresses (§9.3)**
   Turning a typed address into coordinates needs a geocoder. The public Nominatim service has strict usage limits.
   *Recommendation:* For the MVP, require a **map pin** (the address is optional text), so no geocoder is needed. Add one later.
-- [ ] **Q11 — Legal / policy text**
+- [ ] **Q11 — Legal / policy text** *(drafts written 2026-10-15, P4.13; attorney review still needed)*
   The spec needs a Terms of Service, Privacy Policy, Community Guidelines, and retention policy. I can draft placeholders, but **an attorney should review them before any public launch.** See risks R3 and R4.
 - [x] **Q12 — Can guests vote? Can guests file reports? (BLOCKING Phase 4)** → Answered: no voting; reports allowed, with report rate limits for **all** users (D28)
   §5 lists guest capabilities as browse and comment only, so voting isn't included. §5 also says guests "cannot bypass … reporting", which is unclear: it could mean they can be reported, or that they can report.
@@ -143,6 +143,13 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D40 | **Accepted** 2026-10-15 | Places tab = a **filterable, sortable nearby list** with an optional **map view** of the same results. Filters: 8 category groups shared by app and server (`CATEGORY_GROUPS`). Sorts: nearest (default), A–Z, favorites first, best match when searching. Map: `react-native-maps`, up to 50 pins per request | User: "a list of businesses nearby … sorted by different filters"; a map is a nice extra (Q9) |
 | D41 | **Accepted** 2026-10-15 | Discussion details: reading a general post needs only an in-Duval location (D16) while commenting/voting needs 1 mi (D20); replies nest at most 3 deep; deleted comments stay as "[deleted]" placeholders; editing/deleting your own content needs no location; places carry a `postCount` counter updated in the same transaction (shown on place rows); "Top" = score within 7 days; feed pages of 15 | User asked for post counts on places, paginated sleek feeds and visible comments/votes; keeps reads cheap and threads readable |
 | D42 | **Accepted** 2026-10-15 | Hide the Map toggle on Android until a development build with a maps key exists (Q13); keep it on iOS (Apple Maps works in Expo Go) | A black box is worse than no map; the list covers the user's main need |
+| D44 | **Accepted** 2026-10-15 | Guests: **one guest identity per app installation**. Asking again rotates the token (the old token stops working) instead of creating a new guest, so reinstalling is the only way to get a new one. Limits: 3 guest starts per installation per day, 10 per IP per hour. A banned installation, or one with any banned guest, can't start guest mode (P4.6) | Keeps guest mode low-friction while making "start a fresh guest" useless for evading a ban (§5, MS4) |
+| D45 | **Accepted** 2026-10-15 | Guest comment removal after 1 year (D17): a comment **with replies is blanked** (kept as a "[deleted]" placeholder, no guest link) so others' replies survive; one without replies is hard-deleted. Comments with an OPEN report are skipped until resolved. Guests can't edit or delete their own comments (no account to recover; moderators can remove them) | The spec asks for hard deletion but also for threaded replies; blanking removes the guest's content while keeping the thread intact |
+| D46 | **Accepted** 2026-10-15 | Username change (P4.9): 30-day cooldown, except capitalization-only changes. A released name stays **reserved for 30 days** (`username.releaseHoldDays`) so no one can take it right away and pose as that person. History kept in `UsernameHistory` | Prevents impersonation via freshly released names (MS4) |
+| D47 | **Accepted** 2026-10-15 | Email change (P4.10): needs the current password; a 6-digit code goes to the **new** address and the switch happens only after it's entered; the old address gets a notice at the start and at the end. An address already in use gets the same response (plus an email to that address), so emails can't be probed. Wrong-password checks are limited to 5 per 15 min per account | Same in-app code pattern as D31; no account enumeration (§16) |
+| D48 | **Accepted** 2026-10-15 | Account deletion (P4.12): password + typing DELETE. Immediately: status DELETED, all sessions revoked, bio and favorites removed, profile 404, posts show "deleted user". After 30 days (unless `legalHoldAt` is set): email ciphertext, data key and email hash destroyed (crypto-shred, D37), username freed as `deleted_<random>`, location checks and email tokens deleted. Banned accounts can't sign in to delete themselves, so their email hash stays for ban enforcement | Implements D14/D37 and the user's request to keep data only for legal reasons |
+| D49 | **Accepted** 2026-10-15 | Public profiles show username, bio, join date, post count and the person's recent **area (general) posts near the viewer**; business posts and comments aren't listed. Viewing needs an in-Duval reading like the feed (D16). Blocking (P5.2) built now with profiles: block/unblock from a profile, list in Settings | Avoids revealing where someone hangs out (business rooms) while still giving context. P5.2 was needed for the Settings screen (P4.11) |
+| D50 | **Accepted** 2026-10-15 | P4.7 guest-to-registered upgrade: **deferred**. Guests sign up normally; their guest comments stay as GUEST | Linking a guest to an account adds risk (a shared phone's guest history would join someone's account) for little benefit. Revisit after launch |
 | D43 | **Accepted** 2026-10-15 | The signed-in username shows in the top bar on every screen, with an eye button that hides it **on that device's screen only** (stored on the device). Posts still show the username to others | User request. Screen-privacy toggle, not anonymous posting. **Confirmed by the user 2026-10-15** |
 
 ---
@@ -229,28 +236,28 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 ## Phase 4 — Guests & Profiles (§4.3, §4.4, §5, §14)
 
 **Guests**
-- [ ] **P4.1** Guest session creation tied to an installation ID; rate-limited 🔒
-- [ ] **P4.2** Guest permissions: read the general feed, comment on general posts, and report (D28). Server rejects guest top-level posts, **votes**, business-room actions, uploads, and achievements 🔒 ✅A3
-- [ ] **P4.3** **GUEST** label on content; internal ID never exposed 🔒
-- [ ] **P4.4** Guest inactivity tracked server-side; expire after 30 days; expiry warning in the UI ✅A4
-- [ ] **P4.5** Guest comments visible for one year, then **hard-deleted** by a scheduled job, skipping items under moderation or legal hold (D17) ✅A5
-- [ ] **P4.6** Ban carry-over: a banned installation or guest cannot create a new guest session 🔒 ✅MS4
-- [ ] **P4.7** Guest-to-registered upgrade path (optional; decide)
+- [x] **P4.1** Guest session creation tied to an installation ID; rate-limited 🔒 (D44, `guests.test.ts`). App: "Continue as guest" on sign-in
+- [x] **P4.2** Guest permissions: read the general feed, comment on general posts, and report (D28). Server rejects guest top-level posts, **votes**, business-room actions, uploads, and achievements 🔒 ✅A3. Tested: posts, votes, rooms, directory and account endpoints → 403 GUEST_NOT_ALLOWED. Upload/achievement endpoints don't exist yet (P6) and must use `requireUser`. App hides Places, and votes/new post show a sign-up prompt. Guest reports come with P5.1
+- [x] **P4.3** **GUEST** label on content; internal ID never exposed 🔒 (tested; the top bar shows GUEST)
+- [x] **P4.4** Guest inactivity tracked server-side; expire after 30 days; expiry warning in the UI ✅A4 (`expiringSoon` 5 days ahead; banner on Home and in Account)
+- [x] **P4.5** Guest comments visible for one year, then **hard-deleted** by a scheduled job, skipping items under moderation or legal hold (D17) ✅A5. Blanked if it has replies (D45)
+- [x] **P4.6** Ban carry-over: a banned installation or guest cannot create a new guest session 🔒 ✅MS4
+- [-] **P4.7** Guest-to-registered upgrade path (optional; decide) → deferred (D50)
 
 **Profiles & settings**
-- [~] **P4.8** Public profile: username, avatar, bio, medals, posts and comments. No private fields 🔒 ✅A2. *Done early (2026-10-15):* Account → Profile tab shows what others see (username, bio, join date) and edits the bio (`PATCH /me/profile`, plain text, ≤300, tested). *Left:* public profile page for other users, avatar (P6), medals (P6.9), the user's posts list
-- [ ] **P4.9** Username change with configurable cooldown; immutable user ID; history kept internally ✅A1
-- [ ] **P4.10** Email change (re-verify) and password change (revoke other sessions) 🔒
-- [ ] **P4.11** Settings screen: radius, favorites, blocked users, my reports and their status, ToS and privacy links, location-permission guidance, logout
-- [ ] **P4.12** Account deletion: immediate login and posting disable, sessions revoked, profile hidden, `AccountDeletion` record, purge job per D14/D37 (crypto-shred after 30 days unless under legal hold; keep the email hash for banned accounts) 🔒 ✅A6 ✅A7
-- [ ] **P4.13** In-app policy pages: guest expiry, deletion, and content retention (§5.1)
-- [ ] **Phase gate:** Guest restriction tests green; deletion workflow verified end to end
+- [x] **P4.8** Public profile: username, avatar, bio, medals, posts and comments. No private fields 🔒 ✅A2. Tap a name to open a profile (username, bio, join date, post count, recent area posts, D49); your own Profile tab edits the bio. Forbidden-key scan on the response. Avatar → P6.2, medals → P6.9
+- [x] **P4.9** Username change with configurable cooldown; immutable user ID; history kept internally ✅A1 (D46)
+- [x] **P4.10** Email change (re-verify) and password change (revoke other sessions) 🔒 (D47)
+- [x] **P4.11** Settings screen: radius, favorites, blocked users, my reports and their status, ToS and privacy links, location-permission guidance, logout. "My reports" is a placeholder until reports exist (P5.1); delete account is linked here
+- [x] **P4.12** Account deletion: immediate login and posting disable, sessions revoked, profile hidden, `AccountDeletion` record, purge job per D14/D37 (crypto-shred after 30 days unless under legal hold; keep the email hash for banned accounts) 🔒 ✅A6 ✅A7 (D48)
+- [x] **P4.13** In-app policy pages: guest expiry, deletion, and content retention (§5.1). Terms, Privacy, Guidelines and Data Retention in `@jax/shared/policies.ts`, shown in the app (Account, and from sign-up) and on the web at `/legal/<key>`. **Drafts: attorney review needed (Q11)**
+- [~] **Phase gate:** Guest restriction tests green; deletion workflow verified end to end. *2026-10-15:* guest and deletion/purge tests green (server). Waiting for the on-phone check
 
 ## Phase 5 — Moderation & Administration (§10, §11, §9.3)
 
 **User-facing safety**
 - [ ] **P5.1** Report posts, comments, profiles, images (reason categories plus details); dedupe repeated reports; per-minute + per-day report limits for users and (lower) guests (D28) 🔒 ✅MS1
-- [ ] **P5.2** Block and unblock users; blocked content hidden both ways ✅MS1
+- [x] **P5.2** Block and unblock users; blocked content hidden both ways ✅MS1 (built early with profiles, D49; `account.test.ts`)
 - [ ] **P5.3** Rate limits (D8): registration, login, posts, comments, votes, uploads, reports, submissions; daily plus per-minute plus burst; guest-specific values 🔒 ✅MS2
 - [ ] **P5.4** Text screening: configurable term lists, normalization (leetspeak, spacing, homoglyphs), outcomes = allow / warn-and-confirm / hold-for-review / block. Profanity allowed by default
 - [ ] **P5.5** Duplicate-content and spam detection (same text hash within a window, link-heavy posts)
@@ -315,13 +322,13 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [x] L6 — Read-only browsing never enables writes (P3.7 ✓)
 
 **Accounts & guests**
-- [ ] A1 — Identity persists across username changes (P4.9)
-- [ ] A2 — Email and birth year never exposed (P1.19 ✓ tested, P4.8 pending)
-- [ ] A3 — Guests: no top-level posts, uploads, business rooms, achievements (P4.2)
-- [ ] A4 — Guests expire after 30 days inactive (P4.4)
-- [ ] A5 — Guest comments stay as GUEST for one year (P4.5)
-- [ ] A6 — Deleted or banned users can't participate (P4.12, P5.6)
-- [ ] A7 — Deletion hides the profile and runs the retention workflow (P4.12)
+- [x] A1 — Identity persists across username changes (P4.9 ✓ `account.test.ts`)
+- [x] A2 — Email and birth year never exposed (P1.19 ✓, P4.8 ✓ profile response scanned)
+- [~] A3 — Guests: no top-level posts, uploads, business rooms, achievements (P4.2 ✓ posts and rooms; uploads/achievements re-check in P6)
+- [x] A4 — Guests expire after 30 days inactive (P4.4 ✓ `guests.test.ts`)
+- [x] A5 — Guest comments stay as GUEST for one year (P4.5 ✓)
+- [~] A6 — Deleted or banned users can't participate (P4.12 ✓ deleted; banned users P5.6)
+- [x] A7 — Deletion hides the profile and runs the retention workflow (P4.12 ✓)
 
 **Discussions & voting**
 - [x] DV1 — General and business discussions are distinct (P3.1, P3.2 ✓ `discussions.test.ts`)
@@ -345,7 +352,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [ ] MS1 — Report and block work (P5.1, P5.2)
 - [ ] MS2 — Server-side rate limits (P5.3)
 - [ ] MS3 — Remove content, suspend, ban (P5.6, P5.14)
-- [ ] MS4 — Username change or new guest doesn't bypass enforcement (P4.6, P4.9)
+- [x] MS4 — Username change or new guest doesn't bypass enforcement (P4.6 ✓, P4.9 ✓ same user ID and release hold)
 - [ ] MS5 — EXIF stripped (P6.3)
 - [ ] MS6 — No unauthorized image or admin data access (P6.4, P5.11)
 - [ ] MS7 — Automated tests cover authorization and location failures (P7.1)
@@ -422,3 +429,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-15 | Phase 2 gate, Phase 3 | User confirmed Places on the phone (map view not showing: open under P2.16). Phase 3 server: feed, posts, threaded comments, votes, business rooms, edit/delete, block filter, and a write-route table test (34 endpoints). App: feed Home, post screen with comments, compose, place rooms, post counts; email code moved to Account. Live check on the dev server: post → feed → comment → vote → room post → count. 414 tests + production build pass. One test run hung in setup and didn't reproduce (3 reruns passed) |
 | 2026-10-15 | P2.16, D42, D43, P4.8 (early) | User feedback: map shows a black box with the Google logo (Google key rejected in Expo Go) → Map hidden on Android, Q13 opened. Button padding fixed globally. Username + hide-on-screen toggle in every top bar. Account split into Profile (view, bio edit) and Settings tabs. New `PATCH /me/profile` (the write-route table test flagged it until listed). 422 tests + build pass |
 | 2026-10-15 | D43, Q13, P3.11 | User confirmed D43 (screen-only hiding). Q13 deferred, free map preferred. Posting in the area feed and in a business room confirmed on the phone |
+| 2026-10-15 | Phase 4 (P4.1–P4.13, P5.2 early, D44–D50) | Server: guest sessions (one per install, token rotation, ban carry-over), guest feed/comments with lower limits, expiry + 180-day purge, 1-year guest comment removal; username/email/password change; account deletion with 30-day crypto-shred (legal hold respected); public profiles; blocking; draft policy text served in the app and at `/legal/*`. App: Continue as guest (Places hidden, sign-up prompts for votes/posts, GUEST in top bar, expiry banner), tap a name for a profile with Block, Account settings screens (username, email with code, password, blocked users, policies, location help, delete account). 400 server tests + 28 app tests, production build and Android bundle pass. One verify run hung during tests and passed on rerun |

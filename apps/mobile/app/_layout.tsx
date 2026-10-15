@@ -13,7 +13,7 @@ function RootStack() {
       </View>
     );
   }
-  const signedIn = state.status === 'signedIn';
+  const signedIn = state.status === 'signedIn' || state.status === 'guest';
   return (
     <Stack screenOptions={{ headerTitleAlign: 'center' }}>
       <Stack.Protected guard={signedIn}>

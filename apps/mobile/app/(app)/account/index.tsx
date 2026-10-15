@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState, type ComponentProps, type ReactNode } from 'react';
+import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { router, useFocusEffect, type Href } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { BIO_MAX, BRAND, COLORS, CONFIG_DEFAULTS } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
@@ -21,11 +22,13 @@ interface Favorite {
 /**
  * Account, in two tabs (no location needed here, D16):
  * - Profile: what other people see (username, bio, join date); edit your bio (P4.8, early).
- * - Settings: email confirmation, radius preferences, favorites, and sign-out (only here).
+ * - Settings (P4.11): account changes, radius, favorites, blocked users, policies,
+ *   location help, sign-out (only here) and account deletion.
  */
 export default function AccountScreen() {
   const { state } = useAuth();
   const [tab, setTab] = useState<'profile' | 'settings'>('profile');
+  if (state.status === 'guest') return <GuestAccount />;
   if (state.status !== 'signedIn') return null;
 
   return (
@@ -195,6 +198,13 @@ function SettingsTab() {
       {!user.emailVerified ? <EmailCodeCard email={user.email} /> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
+      <Section title="Your account">
+        <Row icon="at" label="Change username" href="/account/username" />
+        <Row icon="mail-outline" label="Change email" href="/account/email" />
+        <Row icon="key-outline" label="Change password" href="/account/password" />
+        <Row icon="ban-outline" label="Blocked users" href="/account/blocked" />
+      </Section>
+
       <Text style={[styles.label, { marginTop: 20 }]}>Feed radius</Text>
       <Options
         values={GENERAL_OPTIONS}
@@ -226,10 +236,118 @@ function SettingsTab() {
         ))
       )}
 
+      <Section title="My reports">
+        <Text style={styles.muted}>Reports you send will show here with their status.</Text>
+      </Section>
+
+      <LocationHelp />
+      <Policies />
+
       <View style={{ marginTop: 24 }}>
         <Button title="Sign out" onPress={signOut} />
+        <Button
+          variant="link"
+          title="Delete account"
+          onPress={() => router.push('/account/delete')}
+        />
       </View>
     </View>
+  );
+}
+
+/** P4.4 / P4.11: a guest sees their expiry, what guests can do, and the policies. */
+function GuestAccount() {
+  const { state, signOut } = useAuth();
+  if (state.status !== 'guest') return null;
+  const { guest } = state;
+  return (
+    <ScrollView contentContainerStyle={styles.screen}>
+      <Text style={styles.title}>You’re browsing as a guest</Text>
+      <View style={guest.expiringSoon ? styles.banner : undefined}>
+        <Text style={styles.body}>
+          Your guest session ends after {CONFIG_DEFAULTS['guest.inactivityDays']} days without use
+          {guest.expiringSoon
+            ? `, in ${guest.daysLeft} ${guest.daysLeft === 1 ? 'day' : 'days'}`
+            : ''}
+          . Using Jax resets the clock.
+        </Text>
+      </View>
+      <Text style={[styles.body, { marginTop: 8 }]}>
+        Guests can read the area feed and comment, shown as GUEST. To start posts, vote, use
+        business discussions and keep a profile, create a free account.
+      </Text>
+      <Button title="Sign up or sign in" onPress={() => void signOut()} />
+      <LocationHelp />
+      <Policies />
+    </ScrollView>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <View style={{ marginTop: 20 }}>
+      <Text style={styles.label}>{title}</Text>
+      {children}
+    </View>
+  );
+}
+
+function Row({
+  icon,
+  label,
+  href,
+  onPress,
+}: {
+  icon: ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  href?: Href;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress ?? (() => href && router.push(href))}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.cardBorder,
+      }}
+    >
+      <Ionicons name={icon} size={20} color={COLORS.primary} />
+      <Text style={[styles.body, { flex: 1 }]}>{label}</Text>
+      <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+    </Pressable>
+  );
+}
+
+/** P4.11: location-permission guidance (D16: foreground only, asked once). */
+function LocationHelp() {
+  return (
+    <Section title="Location">
+      <Text style={styles.body}>
+        Jax uses your location only while the app is open, to show and verify conversations near
+        you. It never tracks you in the background. To change this, open your phone’s settings.
+      </Text>
+      <Row
+        icon="settings-outline"
+        label="Open phone settings"
+        onPress={() => void Linking.openSettings()}
+      />
+    </Section>
+  );
+}
+
+function Policies() {
+  return (
+    <Section title="Policies">
+      <Row icon="document-text-outline" label="Terms of Service" href="/account/legal/terms" />
+      <Row icon="lock-closed-outline" label="Privacy Policy" href="/account/legal/privacy" />
+      <Row icon="people-outline" label="Community Guidelines" href="/account/legal/guidelines" />
+      <Row icon="time-outline" label="Data Retention" href="/account/legal/retention" />
+    </Section>
   );
 }
 

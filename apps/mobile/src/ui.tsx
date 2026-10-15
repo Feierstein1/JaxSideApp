@@ -86,20 +86,34 @@ export function Button({
   title: string;
   onPress: () => void;
   busy?: boolean;
-  variant?: 'primary' | 'link';
+  variant?: 'primary' | 'secondary' | 'danger' | 'link';
 }) {
+  const box =
+    variant === 'link'
+      ? styles.link
+      : variant === 'secondary'
+        ? [styles.button, styles.buttonSecondary]
+        : variant === 'danger'
+          ? [styles.button, styles.buttonDanger]
+          : styles.button;
+  const label =
+    variant === 'link'
+      ? styles.linkText
+      : variant === 'secondary'
+        ? [styles.buttonText, { color: COLORS.primary }]
+        : styles.buttonText;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ busy: !!busy, disabled: !!busy }}
       disabled={busy}
       onPress={onPress}
-      style={variant === 'primary' ? styles.button : styles.link}
+      style={box}
     >
       {busy ? (
-        <ActivityIndicator color={COLORS.onPrimary} />
+        <ActivityIndicator color={variant === 'secondary' ? COLORS.primary : COLORS.onPrimary} />
       ) : (
-        <Text style={variant === 'primary' ? styles.buttonText : styles.linkText}>{title}</Text>
+        <Text style={label}>{title}</Text>
       )}
     </Pressable>
   );
@@ -162,6 +176,12 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
+  buttonSecondary: {
+    backgroundColor: COLORS.background,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  buttonDanger: { backgroundColor: COLORS.error },
   buttonText: { color: COLORS.onPrimary, fontWeight: '600', fontSize: 16 },
   link: { paddingVertical: 10, alignItems: 'center' },
   linkText: { color: COLORS.primary, fontWeight: '600' },

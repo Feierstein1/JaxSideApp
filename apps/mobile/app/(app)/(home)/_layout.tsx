@@ -6,6 +6,7 @@ export default function HomeLayout() {
     <Stack screenOptions={headerOptions}>
       <Stack.Screen name="index" options={{ title: 'Jax' }} />
       <Stack.Screen name="post/[id]" options={{ title: 'Post' }} />
+      <Stack.Screen name="user/[username]" options={{ title: 'Profile' }} />
       <Stack.Screen name="compose" options={{ title: 'New post', presentation: 'modal' }} />
     </Stack>
   );

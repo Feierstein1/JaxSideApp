@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import * as Location from 'expo-location';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BRAND, COLORS } from '@jax/shared';
+import { useGuest } from '@/auth/guest';
 import { LocationGate } from '@/location/LocationGate';
 import { headerOptions } from '@/ui';
 
@@ -13,6 +14,7 @@ import { headerOptions } from '@/ui';
  */
 export default function AppLayout() {
   const [permission, request] = Location.useForegroundPermissions();
+  const { isGuest } = useGuest();
 
   if (!permission) {
     return (
@@ -47,12 +49,15 @@ export default function AppLayout() {
         options={{
           headerShown: false,
           title: 'Places',
+          // P4.2: business rooms are for registered users only.
+          href: isGuest ? null : undefined,
           tabBarIcon: ({ color, size }) => <Ionicons name="storefront" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="account"
         options={{
+          headerShown: false,
           title: 'Account',
           tabBarIcon: ({ color, size }) => <Ionicons name="person" color={color} size={size} />,
         }}

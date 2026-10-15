@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BRAND, COLORS, type DiscussionKind } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
+import { useGuest } from '@/auth/guest';
 import { vote } from './api';
 
 /**
@@ -26,8 +27,10 @@ export function VoteControl({
   const [score, setScore] = useState(initialScore);
   const [mine, setMine] = useState(initialVote);
   const [busy, setBusy] = useState(false);
+  const { isGuest, promptAccount } = useGuest();
 
   async function press(dir: 1 | -1) {
+    if (isGuest) return promptAccount('vote'); // P4.2: the server refuses guest votes too
     if (busy) return;
     const next = mine === dir ? 0 : dir;
     const before = { score, mine };

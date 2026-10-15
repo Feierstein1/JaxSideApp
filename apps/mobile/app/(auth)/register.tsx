@@ -122,6 +122,21 @@ export default function Register() {
           <Text style={styles.body}>I accept the Terms of Service</Text>
         </View>
         <FormError>{errors.acceptTerms}</FormError>
+        <Text style={styles.muted}>
+          Read the{' '}
+          <Text style={styles.linkText} onPress={() => router.push('/legal/terms')}>
+            Terms
+          </Text>
+          ,{' '}
+          <Text style={styles.linkText} onPress={() => router.push('/legal/privacy')}>
+            Privacy Policy
+          </Text>{' '}
+          and{' '}
+          <Text style={styles.linkText} onPress={() => router.push('/legal/guidelines')}>
+            Community Guidelines
+          </Text>
+          .
+        </Text>
         <Button title="Create account" onPress={submit} busy={busy} />
       </ScrollView>
     </KeyboardAvoidingView>
