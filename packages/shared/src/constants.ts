@@ -50,6 +50,7 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.login.per15MinPerAccount': 10,
   'rateLimit.login.per15MinPerIp': 50,
   'rateLimit.passwordReset.perHourPerIp': 5,
+  'rateLimit.passwordReset.perHourPerAccount': 3,
   'rateLimit.post.perMinute': 2,
   'rateLimit.post.perDay': 20,
   'rateLimit.comment.perMinute': 6,
@@ -58,12 +59,20 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.guestComment.perDay': 20,
   'rateLimit.vote.perMinute': 60,
   'rateLimit.upload.perDay': 30,
+  // D28: reports are limited for everyone; guests lower.
+  'rateLimit.report.perMinute': 3,
   'rateLimit.report.perDay': 20,
+  'rateLimit.guestReport.perMinute': 2,
+  'rateLimit.guestReport.perDay': 5,
+  'rateLimit.verifyEmailResend.perHour': 3,
   'rateLimit.submission.perDay': 5,
   'rateLimit.guestSession.perDayPerInstallation': 3,
 } as const;
 
 export type ConfigKey = keyof typeof CONFIG_DEFAULTS;
+
+/** Version of the Terms of Service users accept at registration (Q11: text pending legal review). */
+export const TOS_VERSION = '2026-10-draft';
 
 export const ROLES = ['USER', 'ADMIN'] as const;
 export type Role = (typeof ROLES)[number];

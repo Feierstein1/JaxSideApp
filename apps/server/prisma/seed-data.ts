@@ -35,6 +35,19 @@ export const ACHIEVEMENTS = [
   },
 ] as const;
 
+/** Dev accounts. Password comes from SEED_DEV_PASSWORD. The admin still needs TOTP (P5.11). */
+export const DEV_USERS = [
+  {
+    username: 'dev_alice',
+    email: 'alice@dev.test',
+    role: 'USER',
+    verified: true,
+    bio: 'Riverside regular',
+  },
+  { username: 'dev_bob', email: 'bob@dev.test', role: 'USER', verified: false, bio: null },
+  { username: 'dev_admin', email: 'admin@dev.test', role: 'ADMIN', verified: true, bio: null },
+] as const;
+
 /** A few well-known public places for local development (sourceName "dev-seed"). */
 export const DEV_PLACES = [
   { sourceId: 'jax-1', name: 'Hemming Park', category: 'park', lat: 30.3274, lng: -81.6588 },

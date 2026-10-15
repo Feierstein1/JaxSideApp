@@ -33,17 +33,21 @@ npm run dev
 npm run dev:mobile
 ```
 
+**Dev accounts:** if `SEED_DEV_PASSWORD` is set in `.env`, the seed creates `dev_alice` (verified),
+`dev_bob` (unverified) and `dev_admin` (ADMIN role, verified), all with that password. Leave it empty
+to skip them. Dev email (verification and reset links) shows up in Mailpit at http://localhost:8025.
+
 On a physical device, `localhost` is the phone itself. Set the server's LAN address in
 `apps/mobile/.env`: `EXPO_PUBLIC_API_URL=http://<your-computer-ip>:3000`. Never put a secret in an
 `EXPO_PUBLIC_*` variable, because these values are bundled into the app.
 
 ## Services
 
-| Service  | Purpose                          | Address                  |
-| -------- | -------------------------------- | ------------------------ |
-| postgres | PostGIS 17 / 3.5, `jax_dev` + `jax_test` | `localhost:5433`  |
-| s3       | SeaweedFS S3 API (private)       | `http://localhost:8333`  |
-| mailpit  | Catches all dev email            | UI `http://localhost:8025` |
+| Service  | Purpose                                  | Address                    |
+| -------- | ---------------------------------------- | -------------------------- |
+| postgres | PostGIS 17 / 3.5, `jax_dev` + `jax_test` | `localhost:5433`           |
+| s3       | SeaweedFS S3 API (private)               | `http://localhost:8333`    |
+| mailpit  | Catches all dev email                    | UI `http://localhost:8025` |
 
 All ports bind to `127.0.0.1` only. Port 5432 was already in use on the dev machine, so Postgres
 is on 5433 (`POSTGRES_PORT`).

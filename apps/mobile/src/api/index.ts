@@ -7,4 +7,16 @@ import { secureTokenStore } from '@/auth/secure-token-store';
  */
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
-export const api = createApiClient({ baseUrl: API_BASE_URL, tokenStore: secureTokenStore });
+const unauthorizedListeners = new Set<() => void>();
+
+/** Lets the auth state react when the server rejects the session (expired, revoked, deleted). */
+export function onUnauthorized(listener: () => void): () => void {
+  unauthorizedListeners.add(listener);
+  return () => unauthorizedListeners.delete(listener);
+}
+
+export const api = createApiClient({
+  baseUrl: API_BASE_URL,
+  tokenStore: secureTokenStore,
+  onUnauthorized: () => unauthorizedListeners.forEach((fn) => fn()),
+});

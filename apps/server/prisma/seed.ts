@@ -5,11 +5,18 @@
  * - Dev places: only outside production.
  */
 import { PrismaPg } from '@prisma/adapter-pg';
-import { CONFIG_DEFAULTS } from '@jax/shared';
+import { CONFIG_DEFAULTS, TOS_VERSION } from '@jax/shared';
 import { PrismaClient } from '../src/generated/prisma/client';
-import { ACHIEVEMENTS, CONFIG_DESCRIPTIONS, DEV_PLACES } from './seed-data';
+import { hashPassword } from '../src/server/auth/crypto';
+import { ACHIEVEMENTS, CONFIG_DESCRIPTIONS, DEV_PLACES, DEV_USERS } from './seed-data';
 
-export async function seed(db: PrismaClient, opts: { includeDevData: boolean }) {
+export interface SeedOptions {
+  includeDevData: boolean;
+  /** Dev users are created only when set (SEED_DEV_PASSWORD), so no password lives in git. */
+  devPassword?: string;
+}
+
+export async function seed(db: PrismaClient, opts: SeedOptions) {
   for (const [key, value] of Object.entries(CONFIG_DEFAULTS)) {
     await db.appConfiguration.upsert({
       where: { key },
@@ -25,6 +32,33 @@ export async function seed(db: PrismaClient, opts: { includeDevData: boolean }) 
       create: { key: a.key, ...data },
       update: data,
     });
+  }
+
+  if (opts.includeDevData && opts.devPassword) {
+    const passwordHash = await hashPassword(opts.devPassword);
+    for (const u of DEV_USERS) {
+      const now = new Date();
+      const data = {
+        username: u.username,
+        email: u.email,
+        passwordHash,
+        role: u.role,
+        emailVerifiedAt: u.verified ? now : null,
+      };
+      await db.user.upsert({
+        where: { usernameNormalized: u.username.toLowerCase() },
+        update: data,
+        create: {
+          ...data,
+          usernameNormalized: u.username.toLowerCase(),
+          birthYear: 1990,
+          tosAcceptedAt: now,
+          tosVersion: TOS_VERSION,
+          adultConfirmedAt: now,
+          profile: { create: { bio: u.bio } },
+        },
+      });
+    }
   }
 
   if (opts.includeDevData) {
@@ -49,11 +83,15 @@ async function main() {
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   try {
     const includeDevData = process.env.NODE_ENV !== 'production';
-    await seed(db, { includeDevData });
+    await seed(db, { includeDevData, devPassword: process.env.SEED_DEV_PASSWORD || undefined });
+    if (includeDevData && !process.env.SEED_DEV_PASSWORD) {
+      console.log('SEED_DEV_PASSWORD not set: skipped dev users');
+    }
     const counts = {
       config: await db.appConfiguration.count(),
       achievements: await db.achievement.count(),
       places: await db.businessPlace.count(),
+      users: await db.user.count(),
     };
     console.log('seed complete', counts);
   } finally {

@@ -53,6 +53,9 @@ export const passwordResetConfirmSchema = z.strictObject({
   newPassword: passwordSchema,
 });
 
+/** For POST endpoints that take no input: any field at all is rejected. */
+export const emptyBodySchema = z.strictObject({});
+
 export const verifyEmailSchema = z.strictObject({
   token: z.string().min(20).max(200),
 });

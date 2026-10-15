@@ -30,6 +30,11 @@ export const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   APP_BASE_URL: z.string().url(),
   CORS_ORIGINS: csv,
+  /** Only true behind a reverse proxy we control that sets X-Forwarded-For. */
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 
   DATABASE_URL: postgresUrl,
   TEST_DATABASE_URL: postgresUrl.optional(),

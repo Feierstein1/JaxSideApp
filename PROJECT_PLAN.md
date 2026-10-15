@@ -21,8 +21,8 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 ## Current status
 
-**Phase:** 1 — Repository & Foundation (scaffolding and database done; authentication next)
-**Next action:** P1.13 (register) → P1.14 → P1.15 → P1.18 → P1.19. Also please answer Q12 (guest votes/reports) before Phase 4, and review D22–D27.
+**Phase:** 1 — Repository & Foundation (all server auth done; one item left, the on-device check of P1.20)
+**Next action:** Run register → verify → login → logout on a device or emulator to close P1.20 and the Phase 1 gate (needs Q8). After that, Phase 2 starts with P2.1 (Duval County boundary).
 **Last updated:** 2026-10-14
 
 ---
@@ -66,7 +66,7 @@ Questions marked **BLOCKING** must be answered before the phase listed. Each has
   *Recommendation:* For the MVP, require a **map pin** (the address is optional text), so no geocoder is needed. Add one later.
 - [ ] **Q11 — Legal / policy text**
   The spec needs a Terms of Service, Privacy Policy, Community Guidelines, and retention policy. I can draft placeholders, but **an attorney should review them before any public launch.** See risks R3 and R4.
-- [ ] **Q12 — Can guests vote? Can guests file reports? (BLOCKING Phase 4)**
+- [x] **Q12 — Can guests vote? Can guests file reports? (BLOCKING Phase 4)** → Answered: no voting; reports allowed, with report rate limits for **all** users (D28)
   §5 lists guest capabilities as browse and comment only, so voting isn't included. §5 also says guests "cannot bypass … reporting", which is unclear: it could mean they can be reported, or that they can report.
   *Recommendation:* Guests **cannot vote** (keeps vote totals tied to accountable accounts) but **can report** content (safety reports should be easy for anyone who can see content). The schema already supports this: `Vote.voterId` is a required User, and `Report` allows a guest reporter.
 
@@ -118,12 +118,13 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D19 | **Accepted** 2026-10-14 | **Business rooms are location-only for reading too.** Viewing a business's discussion requires a fresh verified location within the business radius (≤ 0.3 mi). The directory and search still list places and basic info (name, category, distance) so users can find them, but discussion content is locked until they're nearby. Favorites save the place, not remote access | User decision ("strictly location-based, for now"); overrides §7.3 read-only browsing for business rooms. May relax later |
 | D20 | **Accepted** 2026-10-14 | Commenting on a general post requires being within the general max radius (1 mi) of the post's stored location | Q4 answered |
 | D21 | **Accepted** 2026-10-14 | Package manager = **npm workspaces** | Q7 answered; already installed, no Expo config workarounds |
-| D22 | Proposed 2026-10-14 | The age screen's "current year" is the calendar year in **America/New_York**, so the cutoff moves at local midnight on Jan 1 | §4.2 doesn't name a timezone; Jacksonville is Eastern. Tested at the UTC/Eastern boundary |
-| D23 | Proposed 2026-10-14 | Usernames: 3–20 characters, ASCII letters/digits/underscore, unique case-insensitively (`usernameNormalized`). Reserved list blocks impersonating names (admin, moderator, guest, support, jax, …) | §4.3 gives no format rules; the reserved list protects the GUEST label and staff names |
-| D24 | Proposed 2026-10-14 | Passwords: 10–128 characters, no composition rules (NIST 800-63B style). The maximum length bounds argon2 cost | §4.1 gives no policy |
+| D22 | **Accepted** 2026-10-14 | The age screen's "current year" is the calendar year in **America/New_York**, so the cutoff moves at local midnight on Jan 1 | §4.2 doesn't name a timezone; Jacksonville is Eastern. Tested at the UTC/Eastern boundary |
+| D23 | **Accepted** 2026-10-14 | Usernames: 3–20 characters, ASCII letters/digits/underscore, unique case-insensitively (`usernameNormalized`). Reserved list blocks impersonating names (admin, moderator, guest, support, jax, …) | §4.3 gives no format rules; the reserved list protects the GUEST label and staff names |
+| D24 | **Accepted** 2026-10-14 | Passwords: 10–128 characters, no composition rules (NIST 800-63B style). The maximum length bounds argon2 cost | §4.1 gives no policy |
 | D25 | **Accepted** 2026-10-14 | Local S3 = **SeaweedFS** (pinned image) instead of MinIO. The app uses only the generic S3 API, so production can use any S3-compatible service | MinIO no longer publishes community Docker images (pull fails). Dev-only tool change |
 | D26 | **Accepted** 2026-10-14 | Versions: Next 16.4, React 19.2.3 (Expo 57's pin, shared across the workspace), Expo SDK 57, Prisma 7.10 with the `pg` driver adapter, **TypeScript 6.0** (not 7), zod 4, Vitest 5 | typescript-eslint doesn't support TS 7 yet; one React version avoids duplicate-React bugs in a hoisted monorepo; Prisma's `latest` tag is an 8.0 RC, so the stable 7.10 is used |
 | D27 | **Accepted** 2026-10-14 | Test runs apply migrations with `migrate deploy` and clear data with TRUNCATE on a DB whose name must end in `_test`. A full rebuild (`db:test:reset`) is run by a human | Prisma 7 blocks `migrate reset` from AI agents without explicit user consent. This design is also safer for CI |
+| D28 | **Accepted** 2026-10-14 | Guests **cannot vote** (server rejects; `Vote.voterId` is a required User). Guests **can report**. Reports are rate-limited for everyone: registered users per minute + per day, guests at lower limits, plus one open report per (reporter, target) (P5.1) | Q12 answered. Prevents report flooding / brigading against a user
 
 ---
 
@@ -153,17 +154,17 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [x] **P1.9** Initial schema for all §16 entities (per D5), plus Session, EmailToken, Installation, UsernameHistory, ServiceArea, LocationCheck and RateLimitCounter. CHECK constraints for exactly-one target/author, vote value, required geography, no self-block. Integration tests prove each constraint rejects bad data
 - [x] **P1.10** Geography columns via `Unsupported("geography")` with GiST indexes; trigram GIN index on place names. Drift check: `migrate dev` produces an empty migration, so the hand-written CHECKs persist
 - [x] **P1.11** `AppConfiguration` seeded from `CONFIG_DEFAULTS` (§7 radius table, age offset 19, location freshness/accuracy, guest TTLs, session lengths, rate limits). Seeding never overwrites admin-edited values (tested). `getConfig()` treats the DB as authoritative, with a typed fallback (tested)
-- [~] **P1.12** Idempotent seed (tested: running twice gives the same counts): config, achievement definitions, 5 dev places. *Left:* dev users, added after P1.13 (needs argon2)
+- [x] **P1.12** Idempotent seed (tested: running twice gives the same counts): config, achievement definitions, 5 dev places, and 3 dev users (`dev_alice`, `dev_bob`, `dev_admin`), created only when `SEED_DEV_PASSWORD` is set
 
 **Authentication (§4.1, §4.2)**
-- [ ] **P1.13** Register: username (normalized and unique), email (private), password (argon2id), birth year, ToS acceptance, 18+ confirmation 🔒
-- [ ] **P1.14** Age screen: `birthYear <= currentYear − configuredOffset`. Tests at year boundaries (Dec 31 / Jan 1) and an explanation shown in the UI 🔒
-- [ ] **P1.15** Login, logout, session revoke; login throttling per account and per IP 🔒
-- [ ] **P1.16** Email verification (if D11 is accepted)
-- [ ] **P1.17** Password reset: hashed single-use tokens, expiry, no account-existence disclosure 🔒
-- [ ] **P1.18** Central `requireActor()` guard: loads the session and rejects deleted, banned, or suspended accounts 🔒
-- [ ] **P1.19** Public-serializer pattern: public API responses can never include email, birthYear, passwordHash, or notes. Test fails if they appear 🔒 ✅A2
-- [ ] **P1.20** Mobile: register, login, and logout screens wired end to end
+- [x] **P1.13** Register: username (normalized and unique), email (private, lowercased), argon2id password, birth year, ToS acceptance + version, 18+ confirmation 🔒. Negative tests: `role`/`status`/`id`/`emailVerifiedAt` rejected and nothing created; an already-used email gets the identical response plus a notice email (no account disclosure); rate limit 5/h per IP; values never echoed in errors
+- [x] **P1.14** Age screen on the server from `AppConfiguration` (`birthYear <= currentYear − offset`, Eastern year per D22). Tests at the year boundary (23:59:59 Dec 31 vs 00:00 Jan 1 Eastern) and with a changed offset; `422 AGE_INELIGIBLE` explains the conservative cutoff; the mobile register screen explains the 18+ rule and the birth-year purpose 🔒
+- [x] **P1.15** Login (username or email), logout (this device), sign-out-everywhere. Throttling: 50/15 min per IP for all attempts, 10/15 min per account for **failed** attempts only. Unknown user and wrong password give the same 401, and timing is equalized. Banned, suspended and deleted accounts are refused; an expired suspension no longer blocks 🔒
+- [x] **P1.16** Email verification (D11): hashed single-use tokens bound to their purpose, 24 h expiry, resend invalidates the old link (3/h). Web confirm page uses POST, so link scanners can't consume tokens. Tested live through Mailpit
+- [x] **P1.17** Password reset: hashed single-use 30-minute tokens, newest link only, all sessions revoked on reset. Known and unknown emails get the identical 202; at most 3 reset emails per account per hour (anti mail-bomb) 🔒
+- [x] **P1.18** `requireUser()` guard: bearer token → hashed lookup → revoked/expired check → account standing from the DB on **every** request (ban, suspension, deletion take effect immediately; a deleted account's session is revoked) → optional verified-email requirement → sliding 30-day expiry, written at most hourly. Mutation-checked: removing the ban check fails 2 tests 🔒
+- [x] **P1.19** Allow-list serializers (`toPublicUser`, `toMe`) plus `findForbiddenKeys` deep scan. Tests fail if email, birthYear, passwordHash, totp secret, token hashes, internal notes or suspension data appear in public output; `/me` and login responses checked 🔒 ✅A2 (public profile half is P4.8)
+- [~] **P1.20** Mobile: register, sign-in and home (sign-out, unverified-email banner with resend) built with Expo Router `Stack.Protected`; client-side checks reuse the shared schemas; token in SecureStore; 401 returns to sign-in. Typecheck clean, Android bundle exports, form helpers unit-tested. *Left:* run on a device/emulator (Q8)
 - [ ] **Phase gate:** Register → verify → login → logout works on a device; auth tests pass; secrets audit clean
 
 ## Phase 2 — Location & Directory (§6, §7, §9.1, §9.2)
@@ -210,7 +211,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 
 **Guests**
 - [ ] **P4.1** Guest session creation tied to an installation ID; rate-limited 🔒
-- [ ] **P4.2** Guest permissions: read the general feed and comment on general posts only. Server rejects guest top-level posts, business-room actions, uploads, and achievements 🔒 ✅A3
+- [ ] **P4.2** Guest permissions: read the general feed, comment on general posts, and report (D28). Server rejects guest top-level posts, **votes**, business-room actions, uploads, and achievements 🔒 ✅A3
 - [ ] **P4.3** **GUEST** label on content; internal ID never exposed 🔒
 - [ ] **P4.4** Guest inactivity tracked server-side; expire after 30 days; expiry warning in the UI ✅A4
 - [ ] **P4.5** Guest comments visible for one year, then **hard-deleted** by a scheduled job, skipping items under moderation or legal hold (D17) ✅A5
@@ -229,7 +230,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 ## Phase 5 — Moderation & Administration (§10, §11, §9.3)
 
 **User-facing safety**
-- [ ] **P5.1** Report posts, comments, profiles, images (reason categories plus details); dedupe repeated reports ✅MS1
+- [ ] **P5.1** Report posts, comments, profiles, images (reason categories plus details); dedupe repeated reports; per-minute + per-day report limits for users and (lower) guests (D28) 🔒 ✅MS1
 - [ ] **P5.2** Block and unblock users; blocked content hidden both ways ✅MS1
 - [ ] **P5.3** Rate limits (D8): registration, login, posts, comments, votes, uploads, reports, submissions; daily plus per-minute plus burst; guest-specific values 🔒 ✅MS2
 - [ ] **P5.4** Text screening: configurable term lists, normalization (leetspeak, spacing, homoglyphs), outcomes = allow / warn-and-confirm / hold-for-review / block. Profanity allowed by default
@@ -295,7 +296,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 
 **Accounts & guests**
 - [ ] A1 — Identity persists across username changes (P4.9)
-- [ ] A2 — Email and birth year never exposed (P1.19, P4.8)
+- [ ] A2 — Email and birth year never exposed (P1.19 ✓ tested, P4.8 pending)
 - [ ] A3 — Guests: no top-level posts, uploads, business rooms, achievements (P4.2)
 - [ ] A4 — Guests expire after 30 days inactive (P4.4)
 - [ ] A5 — Guest comments stay as GUEST for one year (P4.5)
@@ -340,7 +341,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [x] `.env.example` (placeholders only)
 - [~] `docs/SETUP.md` — local development (services, DB workflow; extend as features land)
 - [~] `docs/TESTING.md` — how to run tests (test DB guard; extend as suites land)
-- [ ] `docs/API.md` — endpoint reference
+- [~] `docs/API.md` — endpoint reference (health, auth and `/me` so far)
 - [ ] `docs/DATA_SOURCES.md` — attribution and refresh steps
 - [ ] `docs/ARCHITECTURE.md`
 - [ ] `docs/SECURITY_PRIVACY_CHECKLIST.md`
@@ -361,6 +362,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 | R6 | Repo inside OneDrive → sync and lock problems with node_modules | P0.5 |
 | R7 | OSM data quality / completeness for Jacksonville | Community submissions fill the gaps; admin can correct entries |
 | R8 | `npm audit`: 4 high advisories in `mysql2`, pulled in only by the `prisma` CLI (dev dependency). The app never connects to MySQL | The audit's suggested fix is a downgrade to Prisma 6, so it was not applied. Recheck when Prisma 7.x patches the dependency (P7.3) |
+| R9 | Per-account login lockout can be triggered by anyone who knows a username (10 failed attempts per 15 min) | Only failures count; the lock lifts after the window and password reset still works. Revisit with CAPTCHA or backoff if abused |
 
 ---
 
@@ -380,3 +382,5 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-14 | P0.5 / P0.6 | Files copied to the new folder. Docker Desktop open, but the engine returns HTTP 500 to `docker info` (WSL2 docker-desktop distro running). Git update not needed |
 | 2026-10-14 | P0.4, Phase 0 gate | Git repo initialized (`main`); Phase 0 gate passed |
 | 2026-10-14 | P1.1–P1.11, P1.12 partial | Monorepo, compose services, Next server (health, logger, env validation), Expo Router app (API client, secure store), shared schemas, Prisma 7 schema for all §16 entities with CHECK constraints, seed. 56 tests pass (shared 19, server 32, mobile 5); typecheck, lint and prettier clean; Android bundle exports. Added D22–D27, Q12, R8 |
+| 2026-10-14 | Q12, D22–D24 | Q12 answered → D28 (guests can report but not vote; report limits for everyone). D22–D24 accepted |
+| 2026-10-14 | P1.12–P1.19, P1.20 partial | Auth complete on the server: register, age screen, login/logout/revoke, email verification, password reset, requireUser guard, serializers, Postgres rate limiter (D8). 107 tests pass (shared 19, server 80, mobile 8); live flow verified through Mailpit; token URLs kept out of dev logs; security headers added. Mobile auth screens built; device run pending (Q8) |

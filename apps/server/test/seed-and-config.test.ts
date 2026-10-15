@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { CONFIG_DEFAULTS } from '@jax/shared';
 import { db } from '@/server/db';
 import { getConfig, invalidateConfigCache } from '@/server/config';
+import { verifyPassword } from '@/server/auth/crypto';
 import { seed } from '../prisma/seed';
 import { DEV_PLACES } from '../prisma/seed-data';
 import { resetDb } from './db-helpers';
@@ -40,6 +41,17 @@ describe('seed', () => {
       where: { key: 'age.birthYearOffset' },
     });
     expect(row.value).toBe(20);
+  });
+
+  it('creates dev users only with a dev password, idempotently, with a working hash', async () => {
+    await seed(db, { includeDevData: true });
+    expect(await db.user.count()).toBe(0);
+    await seed(db, { includeDevData: true, devPassword: 'dev password 123' });
+    await seed(db, { includeDevData: true, devPassword: 'dev password 123' });
+    expect(await db.user.count()).toBe(3);
+    const admin = await db.user.findUniqueOrThrow({ where: { usernameNormalized: 'dev_admin' } });
+    expect(admin.role).toBe('ADMIN');
+    expect(await verifyPassword(admin.passwordHash, 'dev password 123')).toBe(true);
   });
 
   it('skips dev places when includeDevData is false', async () => {
