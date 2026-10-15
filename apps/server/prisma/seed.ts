@@ -69,7 +69,10 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
     }
   }
 
-  if (opts.includeDevData) {
+  // Fixture places only fill an empty directory; once real OSM data is imported, they'd
+  // just be clutter (some are made up).
+  const hasRealPlaces = (await db.businessPlace.count({ where: { sourceName: 'osm' } })) > 0;
+  if (opts.includeDevData && !hasRealPlaces) {
     for (const p of DEV_PLACES) {
       await db.$executeRaw`
         INSERT INTO "BusinessPlace" (id, name, "nameNormalized", category, latitude, longitude, location,
