@@ -3,6 +3,8 @@
 What the app needs from outside services, what works today without them, and what needs your
 approval. **No paid service is set up without your explicit OK** (§1 rule 8).
 
+**For the launch hosting plan (AWS products and monthly costs), see `docs/LAUNCH_SERVICES.md`.**
+
 | Service                              | Used for                             | Status                                                                                       | Cost                                                                     | Needs                                                                                        |
 | ------------------------------------ | ------------------------------------ | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
 | **Census TIGER/Line**                | Duval County boundary (D15)          | ✅ In use (one-time download, committed)                                                     | Free, public domain                                                      | Nothing                                                                                      |

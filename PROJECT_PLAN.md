@@ -69,6 +69,8 @@ Questions marked **BLOCKING** must be answered before the phase listed. Each has
 - [x] **Q12 — Can guests vote? Can guests file reports? (BLOCKING Phase 4)** → Answered: no voting; reports allowed, with report rate limits for **all** users (D28). **Changed 2026-10-16: guests can't report either (D54)**
   §5 lists guest capabilities as browse and comment only, so voting isn't included. §5 also says guests "cannot bypass … reporting", which is unclear: it could mean they can be reported, or that they can report.
   *Recommendation:* Guests **cannot vote** (keeps vote totals tied to accountable accounts) but **can report** content (safety reports should be easy for anyone who can see content). The schema already supports this: `Vote.voterId` is a required User, and `Report` allows a guest reporter.
+- [ ] **Q15 — Launch hosting (P7, `docs/LAUNCH_SERVICES.md`)**
+  User prefers AWS. *Recommendation:* Lightsail server ($12) + RDS PostgreSQL/PostGIS db.t4g.micro (~$15) + S3 + SES + Parameter Store + Route 53: about **$30–35/month**, plus Apple $99/yr and Google $25 once. Avoid App Runner (reportedly closed to new customers) and Lightsail's managed Postgres (PostGIS unconfirmed). Needs your approval before anything is created.
 - [ ] **Q14 — Starter slur list for screening (P5.4)** *(no editor yet, D62: a list would go in the seed file)*
   Screening works, but only 7 starter rules (threat phrases) ship. Slurs aren't seeded, so none are caught until someone adds them.
   *Recommendation:* load a well-known open-source English slur list as **BLOCK** rules (kept out of the app's screens and editable in the admin portal), and add local terms over time. Alternatively, add terms by hand in the admin portal once it exists.
