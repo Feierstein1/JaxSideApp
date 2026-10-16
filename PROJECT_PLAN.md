@@ -22,7 +22,7 @@ This file tracks progress, decisions and open questions. Update it whenever work
 ## Current status
 
 **Phase:** 5 — Moderation & Administration (started 2026-10-15; Phase 3 gate pending only the on-device vote/comment check)
-**Next action:** Phase 5: admin portal: admin sign-in with TOTP and role checks (P5.11), then the moderation queue (P5.14).
+**Next action:** Phase 5: moderation queue (P5.14) with audit log (P5.15, P5.16), then config editor + screening rules (P5.17), then submissions (P5.8–P5.13).
 **Last updated:** 2026-10-16
 
 ---
@@ -162,6 +162,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D57 | **Accepted** 2026-10-16 | Spam checks (P5.5) on new posts and comments, after screening: **duplicates** (same person, same normalized text of 20+ characters within 24 h, across posts, rooms and comments) are refused with 409; **links**: more than 2 in one item, or any link from an account under 24 h old, is held for review with an automatic SPAM report; edits with more than 2 links are refused. All thresholds in AppConfiguration. Same text from *different* accounts (coordinated spam) is left to reports and the admin queue for now | §11.3 "duplicate-content and spam detection"; holding (not refusing) link posts avoids punishing honest users |
 | D58 | **Accepted** 2026-10-16 | Enforcement details (P5.6): strikes are `ModerationAction` rows (WARN, SUSPEND, BAN) on the permanent user ID; voided strikes and ones older than 180 days don't count. Direct suspensions/bans count as strikes. A suspension never shortens a longer one. A **ban** revokes all sessions and bans every phone (installation) the account signed in on; lifting it un-bans a phone only if no other banned account used it. **Admin accounts can't be sanctioned from the portal.** Users see their own active strikes with the reason (never the admin or internal note) under Account → Account standing; the suspension message shows the end time (Eastern). Maintenance flips ended suspensions back to ACTIVE | D9 ladder; ban carry-over for MS4; protects against a hijacked admin silencing other admins |
 | D59 | **Accepted** 2026-10-16 | Appeals (P5.7): one `Appeal` per strike at a time (DB index). Warnings/suspensions: appeal within 30 days, once. Bans: any time; after a rejection, again after 90 days. 3 appeals per day per person. Accepting voids the strike (lifting the suspension/ban it caused); the decision note is shown to the person. **Banned or suspended people appeal from the sign-in screen with their username/email + password** (user chose option A): the password routes share login's failed-attempt limits, work from a banned phone, only show standing and file appeals, and refuse accounts in good standing. The app keeps those credentials in memory only | User decision 2026-10-16; §11.3 "appeals or unban requests under configurable eligibility rules" |
+| D60 | **Accepted** 2026-10-16 | Admin portal access (P5.11): admins are existing confirmed accounts promoted by a **server-side command** (`admin:promote`), never from the app or portal. Sign-in = password (same checks and failed-attempt limits as the app), then a 6-digit authenticator code (TOTP, built on node:crypto; first sign-in shows a QR code; secret encrypted with the user's data key; each code works once; 5 wrong codes per 15 min). Session = httpOnly SameSite=Strict cookie + CSRF token (double-submit, hash stored), 8 h max, 30 min idle. App (Bearer) sessions never work on admin routes and admin sessions never work in the app. Losing the role ends access immediately | D3, D4, D10; §10 separate web experience with stronger authentication |
 | D43 | **Accepted** 2026-10-15 | The signed-in username shows in the top bar on every screen, with an eye button that hides it **on that device's screen only** (stored on the device). Posts still show the username to others | User request. Screen-privacy toggle, not anonymous posting. **Confirmed by the user 2026-10-15** |
 
 ---
@@ -282,7 +283,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [ ] **P5.10** Submissions hidden from the public until approved ✅D3
 
 **Admin portal**
-- [ ] **P5.11** Admin login with role check on the server for every `/admin` page and `/api/v1/admin/*` route; TOTP (D4); non-admin negative tests 🔒 ✅D8
+- [x] **P5.11** Admin login with role check on the server for every `/admin` page and `/api/v1/admin/*` route; TOTP (D4); non-admin negative tests 🔒 ✅D8 (D60, `admin-auth.test.ts` 16 tests incl. RFC 6238 vectors and a test that walks every admin route). Portal shell: sign-in with authenticator setup, dashboard with counts of waiting work, sign out
 - [ ] **P5.12** Submission queue: status tabs, filters (status, category, submitter, date), inline map preview, duplicate candidates, submitter history, approve, reject (reason required), edit metadata, merge into existing, bulk select with a confirmation that lists items ✅D4 ✅D5 ✅D6
 - [ ] **P5.13** Approval is idempotent: exactly one place record and one badge even on double-click or a race 🔒 ✅D5
 - [ ] **P5.14** Moderation queues: reported posts, comments, profiles, images, with context (thread, author history); remove or restore; warn, suspend, ban; internal notes; adjust per-user rate limits; suspicious-location view. CSAM escalation path (preserve, do not delete, report to NCMEC; see R4) ✅MS3
@@ -358,7 +359,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [ ] D5 — Badge awarded only on approval, only once (P5.13)
 - [ ] D6 — Admin can approve, reject, correct, merge (P5.12)
 - [ ] D7 — Admin actions audited (P5.16)
-- [ ] D8 — Non-admins blocked from admin (P5.11)
+- [x] D8 — Non-admins blocked from admin (P5.11 ✓ `admin-auth.test.ts`; every admin route checked)
 
 **Moderation & security**
 - [x] MS1 — Report and block work (P5.1 ✓ `reports.test.ts`, P5.2 ✓ `account.test.ts`)
@@ -449,3 +450,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-16 | P5.5, D57 | Spam checks: duplicate text from the same person within 24 h refused (normalized, so case/spacing tricks don't help; short replies exempt); link-heavy posts and links from new accounts held with an automatic report; link-heavy edits refused. 455 server tests pass |
 | 2026-10-16 | P5.6, D58 | Strikes/suspensions/bans service: D9 ladder with 180-day decay, direct suspend/ban, lift, void (for appeals); bans revoke sessions and ban the phones used; admins can't be sanctioned; maintenance ends expired suspensions. `GET /me/standing` + Account standing screen; suspension message shows the end time. Migration adds strike voiding fields. 465 server tests + build pass |
 | 2026-10-16 | P5.7, D59 | Appeals: `Appeal` table + migration, eligibility rules, decide (accept voids the strike). Login's credential check extracted so the password-based appeal routes share its limits. App: Account standing shows appeal status and "Appeal this"; sign-in offers "See why and appeal" when banned or suspended. 479 server tests + build + 28 app tests pass |
+| 2026-10-16 | P5.11, D60 | Admin portal sign-in: `admin:promote` command, password + authenticator (TOTP, QR setup on first sign-in, replay-proof), cookie session with CSRF, 8 h / 30 min idle, app and admin sessions kept apart. Pages: /admin/login, /admin dashboard (reports, held, appeals, submissions waiting). Admin routes get their own guard test that walks every route. 495 server tests + build pass; live: /admin redirects to sign-in, admin API 401 without a session |

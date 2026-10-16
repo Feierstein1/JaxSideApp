@@ -19,7 +19,8 @@ function bearer(req: Request): string {
 
 async function userFromToken(token: string, opts: RequireUserOptions, now: Date) {
   const session = await findLiveSession(token, now);
-  if (!session) return null;
+  // Admin portal sessions only work on admin routes (cookie + CSRF, D3).
+  if (!session || session.kind !== 'MOBILE') return null;
   try {
     assertAccountUsable(session.user, now);
   } catch (err) {

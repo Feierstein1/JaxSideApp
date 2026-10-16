@@ -18,6 +18,7 @@
     "fetch:boundary": "tsx scripts/boundary/fetch-duval.ts",
     "import:boundary": "tsx --env-file=../../.env scripts/boundary/import-service-area.ts",
     "jobs:maintenance": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/jobs/run-maintenance.ts",
+    "admin:promote": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/admin/promote.ts",
     "import:places": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/directory/import-osm.ts"
   },
   "dependencies": {
@@ -30,6 +31,7 @@
     "nodemailer": "^10.1.1",
     "pg": "^8.23.1",
     "pino": "^10.4.0",
+    "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "zod": "^4.6.7"
@@ -39,6 +41,7 @@
     "@types/node": "^22.0.0",
     "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "~19.2.0",
     "@types/react-dom": "~19.2.0",
     "@types/shapefile": "^0.6.4",

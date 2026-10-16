@@ -55,6 +55,20 @@ is on 5433 (`POSTGRES_PORT`).
 `npm run services:down` stops the services and keeps their data. Run `docker compose down -v` to
 also delete the data volumes.
 
+## Admin portal
+
+The admin portal is at `http://localhost:3000/admin`. Admins are existing app accounts with a
+confirmed email, promoted from the command line (never from the app or the portal):
+
+```sh
+npm run admin:promote -w @jax/server -- <username>          # make an admin
+npm run admin:promote -w @jax/server -- <username> --remove # remove admin access
+```
+
+On the first admin sign-in you'll scan a QR code with an authenticator app (Google
+Authenticator, Microsoft Authenticator, 1Password…). Every sign-in after that asks for the
+6-digit code. Admin sessions last 8 hours and end after 30 minutes idle.
+
 ## Database workflow
 
 - Change `apps/server/prisma/schema.prisma`, then run `npm run db:migrate -w @jax/server`.

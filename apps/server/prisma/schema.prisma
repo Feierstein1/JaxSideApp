@@ -157,6 +157,8 @@ model User {
   /// Admin TOTP secret, encrypted at rest (D4).
   totpSecretEnc       String?
   totpEnabledAt       DateTime?     @db.Timestamptz(3)
+  /// P5.11: the last 30-second step whose code was accepted, so a code can't be reused.
+  totpLastStep        Int?
   /// User-chosen radii in miles; null = config default. Clamped server-side (P2.15).
   generalRadiusMiles  Float?
   businessRadiusMiles Float?

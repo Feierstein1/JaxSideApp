@@ -147,6 +147,8 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.block.perMinute': 20,
   /** Wrong current-password attempts (password/email change, deletion) per account. */
   'rateLimit.passwordCheck.per15Min': 5,
+  /** Wrong admin authenticator codes per account (P5.11). */
+  'rateLimit.adminTotp.per15Min': 5,
   'rateLimit.feed.perMinute': 60,
 } as const;
 
