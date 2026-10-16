@@ -246,14 +246,21 @@ const REPORT_REASON_FOR: Record<ScreeningCategory, ReportReason> = {
  * never appears in anyone's "My reports".
  */
 export async function holdReport(
-  rule: Rule,
+  hold: Hold,
   target: { generalPostId: string } | { businessPostId: string } | { commentId: string },
 ) {
-  await db.report.create({
-    data: {
-      ...target,
-      reason: REPORT_REASON_FOR[rule.category],
-      details: `Held by automatic screening (${rule.category.toLowerCase()} rule ${rule.id}).`,
-    },
-  });
+  await db.report.create({ data: { ...target, reason: hold.reason, details: hold.details } });
+}
+
+/** Why content is held: becomes the automatic report (screening or spam checks). */
+export interface Hold {
+  reason: ReportReason;
+  details: string;
+}
+
+export function holdFor(rule: Rule): Hold {
+  return {
+    reason: REPORT_REASON_FOR[rule.category],
+    details: `Held by automatic screening (${rule.category.toLowerCase()} rule ${rule.id}).`,
+  };
 }

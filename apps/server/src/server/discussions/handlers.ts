@@ -17,6 +17,7 @@ import {
   type DiscussionKind,
   type LocationReading,
 } from '@jax/shared';
+import type { User } from '@/generated/prisma/client';
 import { requireActor, requireUser, type Actor } from '../auth/require-actor';
 import { db } from '../db';
 import { ApiError } from '../http';
@@ -47,7 +48,8 @@ import {
   listPlacePosts,
   postAnchor,
 } from './posts';
-import { holdReport, screenText, type ScreenResult } from '../moderation/screening';
+import { holdFor, holdReport, screenText, type Hold } from '../moderation/screening';
+import { checkEdit, checkNewContent } from '../moderation/spam';
 import { castVote } from './votes';
 
 export type IdCtx = { params: Promise<{ id: string }> };
@@ -154,14 +156,27 @@ export async function placePosts(req: Request, ctx: IdCtx) {
 // ───────────────────────────── Create ─────────────────────────────
 
 /**
+ * New posts and comments: text screening (P5.4), then duplicate and link checks (P5.5).
+ * Returns why the content must be held, or null to publish it.
+ */
+async function screenNew(
+  user: User,
+  input: { body: string; confirmWarning?: true },
+): Promise<Hold | null> {
+  const screen = await screenText(input.body, 'new-content', input);
+  const spamHold = await checkNewContent(user, input.body);
+  return screen.held ? holdFor(screen.rule) : spamHold;
+}
+
+/**
  * P5.4: held content goes to the moderation queue as an automatic report, and the
  * author is told it will appear after review (202, not an error).
  */
 async function heldResponse(
-  screen: Extract<ScreenResult, { held: true }>,
+  hold: Hold,
   target: { generalPostId: string } | { businessPostId: string } | { commentId: string },
 ) {
-  await holdReport(screen.rule, target);
+  await holdReport(hold, target);
   return NextResponse.json(
     {
       held: true,
@@ -183,9 +198,9 @@ export async function createGeneral(req: Request) {
   const input = await parseBody(req, createPostSchema);
   await limits(user.id, ...POST_LIMITS);
   const at = await assertLocationEligible({ kind: 'user', user }, input.reading, 'general.post');
-  const screen = await screenText(input.body, 'new-content', input);
-  const id = await createGeneralPost(user.id, coarsenPoint(at), input.body, screen.held);
-  if (screen.held) return heldResponse(screen, { generalPostId: id });
+  const hold = await screenNew(user, input);
+  const id = await createGeneralPost(user.id, coarsenPoint(at), input.body, !!hold);
+  if (hold) return heldResponse(hold, { generalPostId: id });
   return NextResponse.json(
     { post: await getPostView('general', id, user.id, at) },
     { status: 201 },
@@ -203,9 +218,9 @@ export async function createBusiness(req: Request, ctx: IdCtx) {
     kind: 'business',
     point: place,
   });
-  const screen = await screenText(input.body, 'new-content', input);
-  const id = await createBusinessPost(user.id, placeId, input.body, screen.held);
-  if (screen.held) return heldResponse(screen, { businessPostId: id });
+  const hold = await screenNew(user, input);
+  const id = await createBusinessPost(user.id, placeId, input.body, !!hold);
+  if (hold) return heldResponse(hold, { businessPostId: id });
   return NextResponse.json({ post: await getPostView('business', id, user.id) }, { status: 201 });
 }
 
@@ -240,6 +255,7 @@ export function postEdit(kind: DiscussionKind) {
     const input = await parseBody(req, editPostSchema);
     await limits(user.id, ['edit', 'rateLimit.edit.perMinute', 60]);
     await screenText(input.body, 'edit', input);
+    await checkEdit(input.body);
     await editPost(kind, id, user.id, input.body);
     return NextResponse.json({ post: await getPostView(kind, id, user.id) });
   };
@@ -269,16 +285,16 @@ export function commentCreate(kind: DiscussionKind) {
       ['comment-day', 'rateLimit.comment.perDay', 86_400],
     );
     await checkPostAccess({ kind: 'user', user }, input.reading, kind, postId, 'comment');
-    const screen = await screenText(input.body, 'new-content', input);
+    const hold = await screenNew(user, input);
     const id = await createComment({
       kind,
       postId,
       author: { kind: 'USER', userId: user.id },
       body: input.body,
       parentCommentId: input.parentCommentId,
-      held: screen.held,
+      held: !!hold,
     });
-    if (screen.held) return heldResponse(screen, { commentId: id });
+    if (hold) return heldResponse(hold, { commentId: id });
     return NextResponse.json({ id }, { status: 201 });
   };
 }
@@ -314,6 +330,7 @@ export async function commentEdit(req: Request, ctx: IdCtx) {
   const input = await parseBody(req, editCommentSchema);
   await limits(user.id, ['edit', 'rateLimit.edit.perMinute', 60]);
   await screenText(input.body, 'edit', input);
+  await checkEdit(input.body);
   await editComment(id, user.id, input.body);
   return NextResponse.json({ edited: true });
 }

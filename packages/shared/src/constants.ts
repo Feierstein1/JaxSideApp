@@ -66,6 +66,16 @@ export const CONFIG_DEFAULTS = {
   /** Comments returned per post (MVP: one page, oldest thread first). */
   'comments.maxPerPost': 300,
 
+  // P5.5 / D57 spam checks
+  /** Same text again from the same person within this many hours is refused. */
+  'spam.duplicateWindowHours': 24,
+  /** Shorter texts ("thanks!") may repeat. Counted after normalization. */
+  'spam.duplicateMinLength': 20,
+  /** More links than this in one post/comment → held for review. */
+  'spam.maxLinks': 2,
+  /** Any link from an account younger than this → held for review. */
+  'spam.newAccountLinkHoldHours': 24,
+
   // §5.1 / D17 guests
   'guest.inactivityDays': 30,
   'guest.expiryWarningDays': 5,
