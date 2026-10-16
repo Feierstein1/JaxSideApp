@@ -11,12 +11,16 @@ export async function callRoute(
     /** Route params other than `id` (e.g. `{ username }`). */
     params?: Record<string, string>;
     headers?: Record<string, string>;
+    /** Query string, e.g. `{ q: 'ali' }`. */
+    query?: Record<string, string>;
   } = {},
 ) {
   const headers: Record<string, string> = { ...opts.headers };
   if (opts.token) headers.authorization = `Bearer ${opts.token}`;
   if (opts.body !== undefined) headers['content-type'] = 'application/json';
-  const req = new Request('http://localhost/x', {
+  const url = new URL('http://localhost/x');
+  for (const [k, v] of Object.entries(opts.query ?? {})) url.searchParams.set(k, v);
+  const req = new Request(url, {
     method,
     headers,
     body: opts.body === undefined ? undefined : JSON.stringify(opts.body),

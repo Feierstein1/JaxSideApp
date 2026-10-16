@@ -613,8 +613,7 @@ describe('write route table (P3.7)', () => {
         // Admin routes use cookie sessions + CSRF; `admin-routes.test.ts` covers them.
         if (statSync(p).isDirectory()) {
           if (path.relative(root, p) !== 'admin') walk(p);
-        }
-        else if (name === 'route.ts') {
+        } else if (name === 'route.ts') {
           const rel = path.relative(root, dir).split(path.sep).join('/');
           for (const m of readFileSync(p, 'utf8').matchAll(
             /export const (POST|PUT|PATCH|DELETE)\b/g,

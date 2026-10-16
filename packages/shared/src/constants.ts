@@ -149,6 +149,8 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.passwordCheck.per15Min': 5,
   /** Wrong admin authenticator codes per account (P5.11). */
   'rateLimit.adminTotp.per15Min': 5,
+  /** Admin portal changes per admin (P5.14). Generous; stops runaway scripts. */
+  'rateLimit.adminAction.perMinute': 60,
   'rateLimit.feed.perMinute': 60,
 } as const;
 
