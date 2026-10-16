@@ -27,6 +27,9 @@ export const COLORS = {
   onAccent: BRAND.black,
   accentSoft: '#F7ECD3', // light gold tint for banners; black text 17.9:1
 
+  primarySoft: '#E2F0F2', // light teal tint for selected rows; black text 18:1
+  scrim: 'rgba(0,0,0,0.45)', // dim layer behind sheets
+
   accentDark: BRAND.oldGold, // medals, borders, large text/icons only (4.0:1 on white)
 
   surfaceInverse: BRAND.black, // dark header or hero areas

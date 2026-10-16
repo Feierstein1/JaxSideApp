@@ -18,6 +18,7 @@ import {
   type CommentView,
   type DiscussionKind,
   type PostView,
+  type ReportTarget,
 } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import { timeAgo } from '@/format';
@@ -25,6 +26,7 @@ import { Button, styles } from '@/ui';
 import { createComment, deleteComment, deletePost, fetchPost, markFeedsDirty } from './api';
 import { authorName, openAuthor, PostCard } from './PostCard';
 import { useGuest } from '@/auth/guest';
+import { ReportSheet } from '@/report/ReportSheet';
 import { VoteControl } from './VoteControl';
 
 const MAX_DEPTH = CONFIG_DEFAULTS['comments.maxDepth'];
@@ -38,6 +40,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
   const [replyTo, setReplyTo] = useState<CommentView>();
   const [sending, setSending] = useState(false);
   const { isGuest, canComment, promptAccount } = useGuest();
+  const [reporting, setReporting] = useState<ReportTarget>();
 
   const load = useCallback(async () => {
     setError(undefined);
@@ -122,11 +125,17 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
         keyboardShouldPersistTaps="handled"
       >
         <PostCard post={post} full onError={setError} />
-        {post.isMine ? (
-          <View style={{ paddingHorizontal: 16 }}>
+        <View style={{ paddingHorizontal: 16, flexDirection: 'row', gap: 16 }}>
+          {post.isMine ? (
             <Button variant="link" title="Delete my post" onPress={confirmDeletePost} />
-          </View>
-        ) : null}
+          ) : (
+            <Button
+              variant="link"
+              title="Report post"
+              onPress={() => setReporting({ type: kind, id: post.id })}
+            />
+          )}
+        </View>
 
         <Text style={[styles.label, { marginHorizontal: 16, marginTop: 8 }]}>
           {comments.length === 0 ? 'No comments yet. Start the conversation.' : 'Comments'}
@@ -143,6 +152,11 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
             onDelete={
               c.isMine && !isGuest && c.status === 'visible'
                 ? () => void removeComment(c)
+                : undefined
+            }
+            onReport={
+              !c.isMine && c.status === 'visible'
+                ? () => setReporting({ type: 'comment', id: c.id })
                 : undefined
             }
             onError={setError}
@@ -203,6 +217,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
           </Pressable>
         </View>
       </View>
+      <ReportSheet target={reporting} onClose={() => setReporting(undefined)} />
     </KeyboardAvoidingView>
   );
 }
@@ -211,11 +226,13 @@ function CommentRow({
   c,
   onReply,
   onDelete,
+  onReport,
   onError,
 }: {
   c: CommentView;
   onReply?: () => void;
   onDelete?: () => void;
+  onReport?: () => void;
   onError: (m: string) => void;
 }) {
   const visible = c.status === 'visible';
@@ -267,6 +284,7 @@ function CommentRow({
             />
             {onReply ? <Button variant="link" title="Reply" onPress={onReply} /> : null}
             {onDelete ? <Button variant="link" title="Delete" onPress={onDelete} /> : null}
+            {onReport ? <Button variant="link" title="Report" onPress={onReport} /> : null}
           </View>
         ) : null}
       </View>

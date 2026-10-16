@@ -7,6 +7,7 @@ import { ApiRequestError } from '@/api/client';
 import { useGuest } from '@/auth/guest';
 import { PostCard } from '@/discussion/PostCard';
 import { getFreshReading } from '@/location/device';
+import { ReportSheet } from '@/report/ReportSheet';
 import { plural } from '@/format';
 import { Button, styles } from '@/ui';
 
@@ -17,6 +18,7 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
   const [posts, setPosts] = useState<PostView[]>([]);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   const load = useCallback(async () => {
     setError(undefined);
@@ -136,6 +138,9 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
             <Button variant="link" title="Block" onPress={confirmBlock} />
           )
         ) : null}
+        {!profile.isMe ? (
+          <Button variant="link" title="Report profile" onPress={() => setReporting(true)} />
+        ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Text style={[styles.label, { marginTop: 12 }]}>Recent posts nearby</Text>
         {posts.length === 0 ? <Text style={styles.muted}>Nothing in your area yet.</Text> : null}
@@ -143,6 +148,10 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
       {posts.map((p) => (
         <PostCard key={p.id} post={p} onOpen={() => router.push(`${postPath}/${p.id}` as never)} />
       ))}
+      <ReportSheet
+        target={reporting ? { type: 'user', username: profile.username } : undefined}
+        onClose={() => setReporting(false)}
+      />
     </ScrollView>
   );
 }

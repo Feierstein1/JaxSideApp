@@ -236,8 +236,8 @@ function SettingsTab() {
         ))
       )}
 
-      <Section title="My reports">
-        <Text style={styles.muted}>Reports you send will show here with their status.</Text>
+      <Section title="Safety">
+        <Row icon="flag-outline" label="My reports" href="/account/reports" />
       </Section>
 
       <LocationHelp />

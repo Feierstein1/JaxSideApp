@@ -6,5 +6,6 @@ export * from './schemas/account';
 export * from './schemas/location';
 export * from './schemas/directory';
 export * from './schemas/discussion';
+export * from './schemas/report';
 export * from './policies';
 export * from './theme';

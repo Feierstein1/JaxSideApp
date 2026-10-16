@@ -22,7 +22,7 @@ This file tracks progress, decisions and open questions. Update it whenever work
 ## Current status
 
 **Phase:** 5 — Moderation & Administration (started 2026-10-15; Phase 3 gate pending only the on-device vote/comment check)
-**Next action:** Phase 5: reports (P5.1), then rate-limit review (P5.3) and text screening (P5.4).
+**Next action:** Phase 5: rate-limit review (P5.3), then text screening (P5.4) and spam detection (P5.5).
 **Last updated:** 2026-10-15
 
 ---
@@ -152,6 +152,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D50 | **Accepted** 2026-10-15 | P4.7 guest-to-registered upgrade: **deferred**. Guests sign up normally; their guest comments stay as GUEST | Linking a guest to an account adds risk (a shared phone's guest history would join someone's account) for little benefit. Revisit after launch |
 | D51 | **Accepted** 2026-10-15 | **What a guest is:** someone who wants to use the app right away with very limited access, **not** an out-of-town user. Guests follow the same in-Duval location rules as everyone (D16). They browse area posts; for now they may also comment, but `guest.commentsEnabled` (server setting, default on) turns guests **read-only** without an app update. Never top-level posts, votes or business rooms | User decision. The user may take commenting away later; the switch is enforced by the server and the app hides the comment box when off |
 | D52 | **Accepted** 2026-10-15 | Policy text (Q11): the written Terms, Privacy, Guidelines and Retention pages are used **as-is for the beta**, labeled "Beta". A lawyer's review is optional and the user's call before a wide public launch; it does not block any phase | User: doesn't want a blocker for a beta. Not legally required to have a lawyer write them; it's risk reduction (R3, R4) |
+| D53 | **Accepted** 2026-10-15 | Reports (P5.1): a report targets exactly one thing (post, comment or profile; DB check). Content reports reach the author through the content, not a copied user ID. The same person reporting the same item again while it's still open is folded into the first report; after it's resolved, a new report opens a new case. The reporter sees status only (waiting / action taken / no action), never moderator names or notes. Reporting needs an in-Duval reading like viewing (D16). "Child safety" shows a "call 911 if a child is in immediate danger" note | Stops report flooding, keeps one case per item per person, and avoids leaking moderation details |
 | D43 | **Accepted** 2026-10-15 | The signed-in username shows in the top bar on every screen, with an eye button that hides it **on that device's screen only** (stored on the device). Posts still show the username to others | User request. Screen-privacy toggle, not anonymous posting. **Confirmed by the user 2026-10-15** |
 
 ---
@@ -258,7 +259,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 ## Phase 5 — Moderation & Administration (§10, §11, §9.3)
 
 **User-facing safety**
-- [ ] **P5.1** Report posts, comments, profiles, images (reason categories plus details); dedupe repeated reports; per-minute + per-day report limits for users and (lower) guests (D28) 🔒 ✅MS1
+- [x] **P5.1** Report posts, comments, profiles, images (reason categories plus details); dedupe repeated reports; per-minute + per-day report limits for users and (lower) guests (D28) 🔒 ✅MS1. `POST /reports` (10 reasons, optional details ≤1000), same 202 for new and repeat reports, advisory lock against double taps, not your own content, profiles follow block visibility, guests can't report business rooms. "My reports" list with status in Settings. App: Report on posts, comments and profiles. `reports.test.ts` (12) + write-route table. **Image reports come with photos (P6)** (D53)
 - [x] **P5.2** Block and unblock users; blocked content hidden both ways ✅MS1 (built early with profiles, D49; `account.test.ts`)
 - [ ] **P5.3** Rate limits (D8): registration, login, posts, comments, votes, uploads, reports, submissions; daily plus per-minute plus burst; guest-specific values 🔒 ✅MS2
 - [ ] **P5.4** Text screening: configurable term lists, normalization (leetspeak, spacing, homoglyphs), outcomes = allow / warn-and-confirm / hold-for-review / block. Profanity allowed by default
@@ -351,7 +352,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [ ] D8 — Non-admins blocked from admin (P5.11)
 
 **Moderation & security**
-- [ ] MS1 — Report and block work (P5.1, P5.2)
+- [x] MS1 — Report and block work (P5.1 ✓ `reports.test.ts`, P5.2 ✓ `account.test.ts`)
 - [ ] MS2 — Server-side rate limits (P5.3)
 - [ ] MS3 — Remove content, suspend, ban (P5.6, P5.14)
 - [x] MS4 — Username change or new guest doesn't bypass enforcement (P4.6 ✓, P4.9 ✓ same user ID and release hold)
@@ -433,3 +434,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-15 | D43, Q13, P3.11 | User confirmed D43 (screen-only hiding). Q13 deferred, free map preferred. Posting in the area feed and in a business room confirmed on the phone |
 | 2026-10-15 | Phase 4 (P4.1–P4.13, P5.2 early, D44–D50) | Server: guest sessions (one per install, token rotation, ban carry-over), guest feed/comments with lower limits, expiry + 180-day purge, 1-year guest comment removal; username/email/password change; account deletion with 30-day crypto-shred (legal hold respected); public profiles; blocking; draft policy text served in the app and at `/legal/*`. App: Continue as guest (Places hidden, sign-up prompts for votes/posts, GUEST in top bar, expiry banner), tap a name for a profile with Block, Account settings screens (username, email with code, password, blocked users, policies, location help, delete account). 400 server tests + 28 app tests, production build and Android bundle pass. One verify run hung during tests and passed on rerun |
 | 2026-10-15 | D51, D52, Phase 4 gate | User: guests are "use it right away with limited access", not out-of-town users (already true: same Duval rules). Guest commenting kept for now behind a server switch `guest.commentsEnabled` (bypass test: 403 when off; app hides the comment box). Policy text used as-is for beta, no lawyer blocker (Q11 closed). Phase 4 gate checked; Phase 5 started |
+| 2026-10-15 | P5.1, D53 | Reports: `POST /reports` for posts, comments and profiles (users and guests, separate limits), dedupe with an advisory lock, `GET /me/reports`. The DB's one-target check caught an early version that also copied the author's ID onto content reports. App: report sheet (reasons, details, child-safety note), Report links on posts/comments/profiles, My reports screen. 12 new tests + write-route row |

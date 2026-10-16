@@ -35,6 +35,7 @@ import * as prefs from '@/app/api/v1/me/preferences/route';
 import * as meUsername from '@/app/api/v1/me/username/route';
 import * as userBlock from '@/app/api/v1/users/[username]/block/route';
 import * as userProfile from '@/app/api/v1/users/[username]/route';
+import * as reports from '@/app/api/v1/reports/route';
 import * as profile from '@/app/api/v1/me/profile/route';
 import * as favorite from '@/app/api/v1/places/[id]/favorite/route';
 import * as roomList from '@/app/api/v1/places/[id]/posts/list/route';
@@ -268,6 +269,19 @@ const ROWS: Row[] = [
     id: 'username',
     location: true,
     body: (at) => ({ reading: r(at) }),
+  },
+  {
+    route: 'reports',
+    method: 'POST',
+    handler: h(reports, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({
+      reading: r(at),
+      target: { type: 'user', username: 'owner_w' },
+      reason: 'SPAM',
+    }),
   },
   {
     route: 'me/preferences',
