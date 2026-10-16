@@ -1,4 +1,5 @@
 import { evaluateAchievements } from '../achievements';
+import { purgeUnusedPhotos } from '../media/photos';
 import { purgeDeletedAccounts } from '../auth/account';
 import { getConfig } from '../config';
 import { db } from '../db';
@@ -20,6 +21,7 @@ export interface MaintenanceReport {
   accountsPurged: number;
   suspensionsEnded: number;
   achievementsAwarded: number;
+  unusedPhotosDeleted: number;
 }
 
 /**
@@ -142,6 +144,8 @@ export async function runMaintenance(now: Date = new Date()): Promise<Maintenanc
         suspensionsEnded: suspensionsEnded.count,
         // P6.8: medals that depend on time (First Contribution after 24 h).
         achievementsAwarded: await evaluateAchievements(now, undefined, tx),
+        // P6.2: uploads never attached to a post or profile within a day.
+        unusedPhotosDeleted: await purgeUnusedPhotos(now),
       };
       logger.info({ report }, 'maintenance complete');
       return report;

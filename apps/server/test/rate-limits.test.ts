@@ -123,3 +123,18 @@ describe('429 responses (P5.3)', () => {
     await expect(enforce([rule])).rejects.toMatchObject({ status: 429 });
   });
 });
+
+describe('burst limits at a window edge (D55)', () => {
+  it('two requests 2 s apart across a 10 s boundary are still caught', async () => {
+    const rule = {
+      key: 'edge:test',
+      limitKey: 'rateLimit.post.burstPer10s' as const,
+      windowSeconds: 10,
+    };
+    const t0 = new Date(Math.ceil(Date.now() / 10_000) * 10_000 + 9_000); // 1 s before a boundary
+    await enforce([rule], t0);
+    await expect(enforce([rule], new Date(t0.getTime() + 2_000))).rejects.toMatchObject({
+      status: 429,
+    });
+  });
+});

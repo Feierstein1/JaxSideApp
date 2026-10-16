@@ -127,6 +127,9 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.vote.perMinute': 60,
   'rateLimit.vote.perDay': 1000,
   'rateLimit.upload.perDay': 30,
+  /** P6.2 photo limits. */
+  'photos.maxUploadMB': 10,
+  'photos.maxPerPost': 4,
   // D28: reports are limited for everyone (guests can't report, D54).
   'rateLimit.report.perMinute': 3,
   'rateLimit.report.perDay': 20,

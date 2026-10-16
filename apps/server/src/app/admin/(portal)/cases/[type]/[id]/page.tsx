@@ -38,7 +38,11 @@ export default async function CasePage(ctx: { params: Promise<{ type: string; id
         {c.context.place ? <p style={ui.muted}>In {c.context.place}’s discussion</p> : null}
         {c.context.post ? <p style={quote}>On post: {c.context.post}</p> : null}
         {c.context.parent ? <p style={quote}>Replying to: {c.context.parent}</p> : null}
-        <p style={{ fontSize: 18, whiteSpace: 'pre-wrap' }}>{c.body}</p>
+        {c.photoUrl ? (
+          <img src={c.photoUrl} alt="Reported photo" style={{ maxWidth: '100%', maxHeight: 480 }} />
+        ) : (
+          <p style={{ fontSize: 18, whiteSpace: 'pre-wrap' }}>{c.body}</p>
+        )}
       </div>
 
       <CaseDecision

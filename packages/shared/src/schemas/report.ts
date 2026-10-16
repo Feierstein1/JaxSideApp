@@ -35,6 +35,8 @@ export const reportTargetSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('general'), id: z.uuid() }),
   z.strictObject({ type: z.literal('business'), id: z.uuid() }),
   z.strictObject({ type: z.literal('comment'), id: z.uuid() }),
+  /** P6.5: a photo on a post or a profile photo. */
+  z.strictObject({ type: z.literal('photo'), id: z.uuid() }),
   z.strictObject({
     type: z.literal('user'),
     // Any existing name (old names can predate today's rules), so no reserved-word check.
@@ -54,7 +56,7 @@ export const reportCreateSchema = z.strictObject({
 /** What you see in "My reports". Never the moderator's identity or notes. */
 export interface MyReport {
   id: string;
-  targetType: 'general' | 'business' | 'comment' | 'user';
+  targetType: 'general' | 'business' | 'comment' | 'user' | 'photo';
   /** A short preview of what was reported (or the username). */
   preview: string;
   reason: ReportReason;

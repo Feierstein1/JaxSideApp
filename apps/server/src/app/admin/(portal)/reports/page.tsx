@@ -5,7 +5,13 @@ import { Pill, Table, td, when, words } from '../admin-table';
 
 export const dynamic = 'force-dynamic';
 
-const KIND = { general: 'Area post', business: 'Room post', comment: 'Comment', user: 'Profile' };
+const KIND = {
+  general: 'Area post',
+  business: 'Room post',
+  comment: 'Comment',
+  photo: 'Photo',
+  user: 'Profile',
+};
 
 /** P5.14: open reports, one row per reported item, most urgent first. */
 export default async function ReportsQueue() {

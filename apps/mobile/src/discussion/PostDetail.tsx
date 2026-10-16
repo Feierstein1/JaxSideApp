@@ -130,7 +130,14 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
         contentContainerStyle={{ paddingVertical: 6 }}
         keyboardShouldPersistTaps="handled"
       >
-        <PostCard post={post} full onError={setError} />
+        <PostCard
+          post={post}
+          full
+          onError={setError}
+          onReportPhoto={
+            !isGuest && !post.isMine ? (id) => setReporting({ type: 'photo', id }) : undefined
+          }
+        />
         <View style={{ paddingHorizontal: 16, flexDirection: 'row', gap: 16 }}>
           {post.isMine ? (
             <Button variant="link" title="Delete my post" onPress={confirmDeletePost} />

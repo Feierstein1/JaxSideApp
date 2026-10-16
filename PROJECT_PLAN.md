@@ -21,8 +21,8 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 ## Current status
 
-**Phase:** 6 — Photos & Achievements (Phase 5 gate met 2026-10-16; Phase 3 gate pending only the on-device vote/comment check)
-**Next action:** Phase 6 — photos (P6.1–P6.6). On-phone checklist: `docs/MANUAL_TESTS.md`.
+**Phase:** 6 complete (2026-10-16). Phase 7 next. Phase 3 gate pending only the on-device vote/comment check
+**Next action:** Phase 7 — verification & release readiness (needs the user's go-ahead). On-phone checklist: `docs/MANUAL_TESTS.md`.
 **Last updated:** 2026-10-16
 
 ---
@@ -167,6 +167,8 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D62 | **Accepted** 2026-10-16 | The admin portal is a **desktop web portal** (browser, not the phone app) and, for now, is used **only on the user's own computer against the dev server**: not hosted. Keep it lean until there are more users: no settings editor or screening-rules editor yet (P5.17), no reveal-email/legal-hold screens yet (P5.18), no per-user rate-limit or location-flag screens (P5.14 extras). Settings and screening rules are changed in the seed file or database meanwhile. **Before the API is deployed publicly (Phase 7), `/admin` and `/api/v1/admin/*` must be turned off or restricted on the public server** | User decision 2026-10-16: avoid small-screen limits; don't over-engineer the portal yet |
 | D63 | **Accepted** 2026-10-16 | Place suggestions (P5.8–P5.13): the person suggests a place **while standing at it**, and their current reading is the pin (works on Android without a map, Q13; answers Q10 without a geocoder); address is optional text. Limits: confirmed email, account at least 24 h old, 5 per day, 10 waiting at once, no repeat of your own pending suggestion; name and notes are screened. Possible duplicates (similar name within 300 m, or anything within 20 m, plus other pending suggestions) are shown while typing and to the admin. Suggestions are a separate table, so never in the directory until approved. Approve (optionally correcting name/category/address) creates a `community` place and awards Approved Contributor once (claim-first transaction + unique source ID + badge primary key); reject needs a reason the person sees, and they may suggest again; merge links to an existing place (no badge). Bulk approve/reject with a confirmation listing the items. The portal shows a small OpenStreetMap preview of each pin (free, no key) | §9.3; Phase 5 gate |
 | D64 | **Accepted** 2026-10-16 | Achievements (P6.7–P6.9): definitions and thresholds live in the `Achievement` table (seeded; `active` switches one off everywhere). Awarding is server-side SQL with ON CONFLICT DO NOTHING on the (user, achievement) key, only for ACTIVE users. **First Contribution** = a post or comment still visible after 24 h (daily job); **Well Received** = at least 5 *different* posts each at +3 or more (checked on each upvote and daily), so volume or one viral post doesn't count; **Approved Contributor** = on place approval. Medal keys ride along with every post/comment author (small old-gold icons, D33) and full medals appear on profiles | §13: small, configurable, server-side, no rewards for spam or volume |
+| D65 | **Accepted** 2026-10-16 | Photos (P6.1–P6.6): the app uploads the image bytes **to the API** (not a presigned URL to a quarantine bucket), so the server checks everything before anything is stored: confirmed, registered users only; 10 MB and 40-megapixel limits; daily upload limit; real type from the first bytes (JPEG, PNG, WebP, HEIC; anything else refused); re-encoded with sharp to an upright JPEG of at most 1600 px with **all metadata dropped**; stored under a random key in the private bucket; the original is never stored. Posts attach up to 4 of the uploader's own unused photos (checked in the post's transaction); unused uploads are deleted after a day. Delivery = **HMAC-signed links to `/api/v1/photos/:id` valid ~1 h**, served only while the post is visible / the account active (removed → 404, forged/expired → 403); the bucket is never exposed (the phone can't reach it on the LAN anyway). Photos and profile photos are reportable and removable in the moderation queue (object kept as evidence). Image classification: interface only, none configured ("hold" treated as "block" until a review flow exists). Location isn't checked at upload (binary body); it's checked when the post is created | Simpler and safer for the MVP than presign + quarantine + processing worker: nothing unchecked is ever stored. Deviation from P6.1's wording |
+| D66 | **Accepted** 2026-10-16 | Rate limiter: for windows of a minute or less, each request also counts in a second set of windows shifted by half a window (D55 follow-up). Two requests less than half a window apart now always share a window, so the 10 s burst limits can't be slipped at a window edge | The live check caught a second post 3 s after the first passing because it straddled a boundary |
 | D43 | **Accepted** 2026-10-15 | The signed-in username shows in the top bar on every screen, with an eye button that hides it **on that device's screen only** (stored on the device). Posts still show the username to others | User request. Screen-privacy toggle, not anonymous posting. **Confirmed by the user 2026-10-15** |
 
 ---
@@ -299,16 +301,16 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 
 ## Phase 6 — Photos & Achievements (§12, §13)
 
-- [ ] **P6.1** Upload grant endpoint: checks auth (registered only), location, and rate limit before issuing a presigned URL to quarantine 🔒
-- [ ] **P6.2** Processing: magic-byte validation, size and dimension limits, allow-list (JPEG, PNG, WebP, HEIC→JPEG), EXIF/GPS strip, re-encode with `sharp`, random storage keys 🔒
-- [ ] **P6.3** Test: an uploaded image containing GPS EXIF has none after processing ✅MS5
-- [ ] **P6.4** Delivery via short-lived signed URLs only; removed or private images return 403/404 🔒 ✅MS6
-- [ ] **P6.5** Images reportable and removable; avatar uploads use the same pipeline
-- [ ] **P6.6** Hook for future automated image classification (interface only)
+- [x] **P6.1** Upload grant endpoint: checks auth (registered only), location, and rate limit before issuing a presigned URL to quarantine 🔒 (D65: upload goes through the API, which checks auth, confirmed email and limits first; `photos.test.ts`)
+- [x] **P6.2** Processing: magic-byte validation, size and dimension limits, allow-list (JPEG, PNG, WebP, HEIC→JPEG), EXIF/GPS strip, re-encode with `sharp`, random storage keys 🔒 (magic bytes; 10 MB / 40 MP; JPEG/PNG/WebP/HEIC → clean JPEG ≤1600 px; random keys)
+- [x] **P6.3** Test: an uploaded image containing GPS EXIF has none after processing ✅MS5 (photo with GPS + camera EXIF → none after processing; mutation-checked; also verified live against SeaweedFS)
+- [x] **P6.4** Delivery via short-lived signed URLs only; removed or private images return 403/404 🔒 ✅MS6 (HMAC-signed 1 h links; forged/expired 403; deleted post or removed photo 404; storage keys never sent)
+- [x] **P6.5** Images reportable and removable; avatar uploads use the same pipeline (photo report type + moderation queue with image preview; profile photos via `PUT /me/avatar`)
+- [x] **P6.6** Hook for future automated image classification (interface only) (`ImageClassifier` interface + `setImageClassifier`; tested with a blocking classifier)
 - [x] **P6.7** Achievement framework: definitions in the DB, server-side evaluation, unique (user, achievement), never awarded to guests 🔒 (D64, `achievements.test.ts`)
 - [x] **P6.8** Initial set: First Contribution, Approved Contributor (on submission approval), Well Received (net positive votes across N distinct posts, not raw volume) (tested: 24 h rule, removed content and banned users excluded, idempotent, 5 distinct posts vs one viral post)
 - [x] **P6.9** Medals shown next to usernames and on profiles (posts, comments, profiles, Account → Profile)
-- [ ] **Phase gate:** EXIF test green; unauthorized image access tests green
+- [x] **Phase gate:** EXIF test green; unauthorized image access tests green (2026-10-16: `photos.test.ts` 19 tests; live check 97/97)
 
 ## Phase 7 — Verification & Release Readiness (§20, §21 P7, §22)
 
@@ -341,7 +343,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 **Accounts & guests**
 - [x] A1 — Identity persists across username changes (P4.9 ✓ `account.test.ts`)
 - [x] A2 — Email and birth year never exposed (P1.19 ✓, P4.8 ✓ profile response scanned)
-- [~] A3 — Guests: no top-level posts, uploads, business rooms, achievements (P4.2 ✓ posts and rooms; uploads/achievements re-check in P6)
+- [x] A3 — Guests: no top-level posts, uploads, business rooms, achievements (P4.2 ✓, P6 ✓ upload refused in `guests.test.ts`; medals are only for user accounts)
 - [x] A4 — Guests expire after 30 days inactive (P4.4 ✓ `guests.test.ts`)
 - [x] A5 — Guest comments stay as GUEST for one year (P4.5 ✓)
 - [x] A6 — Deleted or banned users can't participate (P4.12 ✓ deleted; P5.6 ✓ banned/suspended, `enforcement.test.ts`)
@@ -370,8 +372,8 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [x] MS2 — Server-side rate limits (P5.3 ✓ `rate-limits.test.ts`; uploads/submissions re-check in P6/P5.8)
 - [x] MS3 — Remove content, suspend, ban (P5.6 ✓ `enforcement.test.ts`, P5.14 ✓ `moderation-queue.test.ts`)
 - [x] MS4 — Username change or new guest doesn't bypass enforcement (P4.6 ✓, P4.9 ✓ same user ID and release hold)
-- [ ] MS5 — EXIF stripped (P6.3)
-- [ ] MS6 — No unauthorized image or admin data access (P6.4, P5.11)
+- [x] MS5 — EXIF stripped (P6.3 ✓ `photos.test.ts`, live check)
+- [x] MS6 — No unauthorized image or admin data access (P6.4 ✓, P5.11 ✓)
 - [ ] MS7 — Automated tests cover authorization and location failures (P7.1)
 
 ---
@@ -466,3 +468,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-16 | D62, live E2E, checklist | User: admin portal is desktop-only and local for now; don't over-engineer (P5.17, P5.18 and P5.14 extras deferred). New `npm run e2e:live`: temporary accounts exercise the whole app over HTTP against the dev server (sign-up via Mailpit codes, guests, posts, rooms, blocks, screening, spam, reports, account changes, admin portal with TOTP, strikes, suspension, appeal, ban, deletion) and clean up after themselves: **82/82 passed**, dev database verified clean. On-phone checklist written (`docs/MANUAL_TESTS.md`). Feed-refresh idea parked under Future ideas |
 | 2026-10-16 | P5.8–P5.13, D63, Phase 5 gate | Place suggestions: suggest from where you stand (no map needed), duplicate check while typing, risk limits, screening; admin queue with tabs, filters, OSM map preview, duplicates/merge, approve with corrections, reject with reason, bulk with confirmation; approval creates one place and one badge even when clicked twice at once. 526 server tests + build pass; live check extended to 91 checks, **91/91 passed**, dev database verified clean afterwards. Phase 5 gate met |
 | 2026-10-16 | P6.7–P6.9, D64 | Achievements: SQL-based idempotent awarding from DB definitions (First Contribution after 24 h, Well Received across 5 distinct well-liked posts, Approved Contributor on approval), evaluated on upvotes and in the daily job; medals next to names on posts/comments and on profiles. 532 server tests + 28 app tests pass |
+| 2026-10-16 | P6.1–P6.6, D65, D66, Phase 6 gate | Photos: upload through the API, magic-byte check, sharp re-encode to metadata-free JPEG, private storage with random keys, signed 1 h links, attach up to 4 to posts, profile photos, photo reports/removal in the portal, classifier hook, daily cleanup of unused uploads. App: add photos in compose, photos on posts, change profile photo, long-press to report. Live check found burst limits could be slipped at a window edge → staggered windows (D66). 556 server tests + 28 app tests + Android bundle; **live check 97/97** with real SeaweedFS, dev database clean afterwards |

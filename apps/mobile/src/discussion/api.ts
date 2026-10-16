@@ -38,11 +38,17 @@ export async function createPost(
   target: { kind: 'general' } | { kind: 'business'; placeId: string },
   body: string,
   confirmWarning?: true,
+  photoIds: string[] = [],
 ) {
   const reading = await getFreshReading({ fresh: true });
   const path =
     target.kind === 'general' ? '/api/v1/posts' : `/api/v1/places/${target.placeId}/posts`;
-  return api.post<{ post: PostView } | HeldResponse>(path, { reading, body, confirmWarning });
+  return api.post<{ post: PostView } | HeldResponse>(path, {
+    reading,
+    body,
+    confirmWarning,
+    ...(photoIds.length ? { photoIds } : {}),
+  });
 }
 
 export async function createComment(

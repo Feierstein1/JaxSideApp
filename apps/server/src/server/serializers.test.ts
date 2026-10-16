@@ -22,7 +22,7 @@ describe('serializers (P1.19)', () => {
   // 🔒 Public output is an allow-list: exactly these keys, nothing else.
   it('toPublicUser exposes only the allow-listed fields', () => {
     const out = toPublicUser(row);
-    expect(Object.keys(out).sort()).toEqual(['bio', 'id', 'joinedAt', 'username']);
+    expect(Object.keys(out).sort()).toEqual(['avatarUrl', 'bio', 'id', 'joinedAt', 'username']);
     expect(findForbiddenKeys(out)).toEqual([]);
     expect(JSON.stringify(out)).not.toMatch(/argon2|1990|river@|ADMIN|SUSPENDED/);
   });

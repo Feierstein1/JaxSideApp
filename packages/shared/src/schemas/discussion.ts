@@ -42,10 +42,13 @@ export const feedRequestSchema = z.strictObject({
 /** Sent after the person saw a screening warning and chose "post anyway" (P5.4). */
 const confirmWarning = z.literal(true).optional();
 
+/** P6.1: photos uploaded first (`POST /photos`), then attached by ID. Max 4 (config). */
+export const PHOTOS_MAX = 4;
 export const createPostSchema = z.strictObject({
   reading: locationReadingSchema,
   body: postBodySchema,
   confirmWarning,
+  photoIds: z.array(z.uuid()).max(PHOTOS_MAX).optional(),
 });
 
 export const editPostSchema = z.strictObject({ body: postBodySchema, confirmWarning });
@@ -86,6 +89,15 @@ export interface PostView {
   /** General posts: rounded distance from the reader. Business posts: null. */
   distanceMeters: number | null;
   place: { id: string; name: string } | null;
+  /** P6.4: short-lived signed links (relative to the API base URL). */
+  photos: PhotoView[];
+}
+
+export interface PhotoView {
+  id: string;
+  url: string;
+  width: number;
+  height: number;
 }
 
 export interface CommentView {

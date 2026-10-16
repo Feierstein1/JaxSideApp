@@ -41,6 +41,8 @@ export interface PublicProfile {
   blockedByMe: boolean;
   /** P6.9: medals earned. */
   medals: Medal[];
+  /** P6.5: short-lived signed link, or null. */
+  avatarUrl: string | null;
 }
 
 /** P6.9: an earned achievement as shown on a profile. */
@@ -67,3 +69,6 @@ const restrictedCredentials = {
 };
 export const restrictedStandingSchema = z.strictObject(restrictedCredentials);
 export const restrictedAppealSchema = z.strictObject({ ...restrictedCredentials, ...appealFields });
+
+/** P6.5: set your profile photo (uploaded first with `POST /photos`). */
+export const avatarSchema = z.strictObject({ photoId: z.uuid() });

@@ -1,3 +1,5 @@
+import { signedPhotoUrl } from './media/photos';
+
 /**
  * Serializers are the ONLY way user data leaves the server (P1.19, §17).
  * Each one builds its output from an explicit allow-list, so new DB columns are
@@ -21,6 +23,8 @@ export interface PublicUser {
   username: string;
   bio: string | null;
   joinedAt: string;
+  /** P6.5: short-lived signed link to the profile photo, or null. */
+  avatarUrl: string | null;
 }
 
 export function toPublicUser(u: UserLike): PublicUser {
@@ -29,6 +33,7 @@ export function toPublicUser(u: UserLike): PublicUser {
     username: u.username,
     bio: u.profile?.bio ?? null,
     joinedAt: u.createdAt.toISOString(),
+    avatarUrl: u.profile?.avatarPhotoId ? signedPhotoUrl(u.profile.avatarPhotoId) : null,
   };
 }
 

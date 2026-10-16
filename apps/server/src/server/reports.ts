@@ -17,6 +17,7 @@ interface ResolvedTarget {
     generalPostId?: string;
     businessPostId?: string;
     commentId?: string;
+    photoId?: string;
     /** Profile reports only; content reports reach the author through the content. */
     reportedUserId?: string;
   };
@@ -59,6 +60,20 @@ async function resolveTarget(target: ReportTarget, viewerUserId: string | null) 
       authorUserId: post.authorId,
       authorGuestId: null,
       business: target.type === 'business',
+    } satisfies ResolvedTarget;
+  }
+  if (target.type === 'photo') {
+    const p = await db.photo.findFirst({
+      where: { id: target.id, status: 'ACTIVE' },
+      select: { uploaderId: true, businessPostId: true },
+    });
+    if (!p) throw NOT_FOUND();
+    return {
+      key: `photo:${target.id}`,
+      data: { photoId: target.id },
+      authorUserId: p.uploaderId,
+      authorGuestId: null,
+      business: p.businessPostId !== null,
     } satisfies ResolvedTarget;
   }
   const c = await db.comment.findFirst({
@@ -115,6 +130,7 @@ function targetWhere(t: ResolvedTarget) {
   if (t.data.generalPostId) return { generalPostId: t.data.generalPostId };
   if (t.data.businessPostId) return { businessPostId: t.data.businessPostId };
   if (t.data.commentId) return { commentId: t.data.commentId };
+  if (t.data.photoId) return { photoId: t.data.photoId };
   // A report has exactly one target column (DB check `Report_one_target`).
   return { reportedUserId: t.data.reportedUserId };
 }
@@ -142,6 +158,7 @@ export async function listMyReports(userId: string): Promise<MyReport[]> {
       generalPost: { select: { body: true, status: true } },
       businessPost: { select: { body: true, status: true } },
       comment: { select: { body: true, status: true } },
+      photo: { select: { status: true } },
       reportedUser: { select: { username: true, status: true } },
     },
   });
@@ -153,15 +170,21 @@ export async function listMyReports(userId: string): Promise<MyReport[]> {
         ? 'business'
         : r.comment
           ? 'comment'
-          : 'user';
+          : r.photo
+            ? 'photo'
+            : 'user';
     return {
       id: r.id,
       targetType,
-      preview: content
-        ? preview(content.body, content.status)
-        : r.reportedUser && r.reportedUser.status !== 'DELETED'
-          ? r.reportedUser.username
-          : '[no longer visible]',
+      preview: r.photo
+        ? r.photo.status === 'ACTIVE'
+          ? '[photo]'
+          : '[no longer visible]'
+        : content
+          ? preview(content.body, content.status)
+          : r.reportedUser && r.reportedUser.status !== 'DELETED'
+            ? r.reportedUser.username
+            : '[no longer visible]',
       reason: r.reason,
       status: r.status,
       createdAt: r.createdAt.toISOString(),

@@ -9,6 +9,8 @@ import { useAuth } from '@/auth/AuthContext';
 import { EmailCodeCard } from '@/auth/EmailCodeCard';
 import { sendScreened } from '@/discussion/screening';
 import { MedalList } from '@/profile/Medals';
+import { ProfileAvatar } from '@/profile/ProfileAvatar';
+import { pickPhoto, uploadPhoto } from '@/discussion/photos';
 import { categoryLabel } from '@/format';
 import { Button, Segmented, styles } from '@/ui';
 
@@ -66,6 +68,23 @@ function ProfileTab() {
         .catch(() => setMedals([]));
     }, []),
   );
+  const [photoBusy, setPhotoBusy] = useState(false);
+  /** P6.5: pick, upload (cleaned on the server), then set as the profile photo. */
+  async function changePhoto() {
+    const asset = await pickPhoto({ square: true });
+    if (!asset) return;
+    setPhotoBusy(true);
+    setError(undefined);
+    try {
+      const up = await uploadPhoto(asset.uri);
+      await api.put('/api/v1/me/avatar', { photoId: up.id });
+      await refresh();
+    } catch (e) {
+      setError(e instanceof ApiRequestError ? e.message : 'Couldn’t change the photo.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
   if (!user) return null;
 
   const joined = new Date(user.joinedAt).toLocaleDateString('en-US', {
@@ -102,22 +121,20 @@ function ProfileTab() {
           borderBottomColor: BRAND.gold,
         }}
       >
-        <View
-          style={{
-            width: 72,
-            height: 72,
-            borderRadius: 36,
-            backgroundColor: COLORS.primary,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 3,
-            borderColor: BRAND.gold,
-          }}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Change profile photo"
+          onPress={() => void changePhoto()}
+          disabled={photoBusy}
         >
-          <Text style={{ color: COLORS.onPrimary, fontSize: 30, fontWeight: '700' }}>
-            {user.username.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+          <ProfileAvatar name={user.username} url={user.avatarUrl} />
+        </Pressable>
+        <Text
+          style={{ color: BRAND.gold, marginTop: 6, fontSize: 13 }}
+          onPress={() => void changePhoto()}
+        >
+          {photoBusy ? 'Uploading…' : user.avatarUrl ? 'Change photo' : 'Add a photo'}
+        </Text>
         <Text
           style={{ color: COLORS.onSurfaceInverse, fontSize: 22, fontWeight: '700', marginTop: 10 }}
         >

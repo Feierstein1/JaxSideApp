@@ -7,6 +7,7 @@ import { POST as postsPOST } from '@/app/api/v1/posts/route';
 import { POST as postDetailPOST } from '@/app/api/v1/posts/[id]/route';
 import { POST as commentPOST } from '@/app/api/v1/posts/[id]/comments/route';
 import { POST as reportPOST } from '@/app/api/v1/reports/route';
+import { POST as photosPOST } from '@/app/api/v1/photos/route';
 import { PUT as votePUT } from '@/app/api/v1/posts/[id]/vote/route';
 import { POST as roomListPOST } from '@/app/api/v1/places/[id]/posts/list/route';
 import { POST as searchPOST } from '@/app/api/v1/places/search/route';
@@ -176,6 +177,7 @@ describe('what guests can do (P4.2)', () => {
   it.each([
     ['create a post', postsPOST, 'POST', () => ({ reading: reading(), body: 'x' }), false],
     ['comment', commentPOST, 'POST', () => ({ reading: reading(), body: 'x' }), true],
+    ['upload a photo', photosPOST, 'POST', () => ({}), false],
     [
       'report',
       reportPOST,

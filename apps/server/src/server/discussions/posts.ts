@@ -1,4 +1,5 @@
 import { medalKeysSql } from '../achievements';
+import { attachPhotos, signedPhotoUrl } from '../media/photos';
 import { milesToMeters, type DiscussionKind, type FeedSort, type PostView } from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
 import { getConfig } from '../config';
@@ -35,6 +36,7 @@ interface PostRow {
   username: string;
   author_status: string;
   medals: string[];
+  photos: { id: string; width: number; height: number }[] | null;
   my_vote: number | null;
   distance: number | null;
   place_id: string | null;
@@ -61,6 +63,7 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
     // Coarse point (~100 m grid, D7), rounded again: an approximate "how far".
     distanceMeters: r.distance === null ? null : Math.round(r.distance / 50) * 50,
     place: r.place_id ? { id: r.place_id, name: r.place_name! } : null,
+    photos: (r.photos ?? []).map((p) => ({ ...p, url: signedPhotoUrl(p.id) })),
   };
 }
 
@@ -90,6 +93,10 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
     SELECT p.id, p.body, p."createdAt", p."editedAt", p.score, p."upCount", p."downCount",
            p."commentCount", p."authorId", u.username, u.status::text AS author_status,
            ${medalKeysSql(Prisma.sql`p."authorId"`)} AS medals,
+           (SELECT json_agg(json_build_object('id', ph.id, 'width', ph.width, 'height', ph.height)
+                            ORDER BY ph."createdAt")
+            FROM "Photo" ph
+            WHERE ph.${VOTE_COLUMN[kind]} = p.id AND ph.status = 'ACTIVE') AS photos,
            v.value AS my_vote, ${distance} AS distance, ${place}
     FROM ${TABLE[kind]} p
     JOIN "User" u ON u.id = p."authorId"
@@ -214,15 +221,19 @@ export async function createGeneralPost(
   at: GeoPoint,
   body: string,
   held = false,
+  photoIds: string[] = [],
 ) {
   // P5.4: a held post is stored hidden until a moderator reviews it.
   const status = held ? 'HELD_FOR_REVIEW' : 'VISIBLE';
-  const [row] = await db.$queryRaw<{ id: string }[]>`
+  return db.$transaction(async (tx) => {
+    const [row] = await tx.$queryRaw<{ id: string }[]>`
     INSERT INTO "GeneralPost" (id, "authorId", body, location, status, "updatedAt")
     VALUES (gen_random_uuid(), ${authorId}::uuid, ${body}, ${point(at)},
             ${status}::"ContentStatus", now())
     RETURNING id`;
-  return row!.id;
+    await attachPhotos(tx, authorId, photoIds, { generalPostId: row!.id });
+    return row!.id;
+  });
 }
 
 /** P3.2: a room post; the place's post count moves in the same transaction (D41). */
@@ -231,12 +242,14 @@ export async function createBusinessPost(
   placeId: string,
   body: string,
   held = false,
+  photoIds: string[] = [],
 ) {
   return db.$transaction(async (tx) => {
     const post = await tx.businessPost.create({
       data: { authorId, placeId, body, status: held ? 'HELD_FOR_REVIEW' : 'VISIBLE' },
       select: { id: true },
     });
+    await attachPhotos(tx, authorId, photoIds, { businessPostId: post.id });
     if (held) return post.id; // counted once a moderator approves it
     await tx.businessPlace.update({
       where: { id: placeId },

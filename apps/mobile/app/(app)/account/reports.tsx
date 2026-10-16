@@ -16,6 +16,7 @@ const KIND: Record<MyReport['targetType'], string> = {
   general: 'Post',
   business: 'Business post',
   comment: 'Comment',
+  photo: 'Photo',
   user: 'Profile',
 };
 

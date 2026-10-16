@@ -36,6 +36,14 @@
           "isAndroidBackgroundLocationEnabled": false,
           "isIosBackgroundLocationEnabled": false
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Jax lets you add photos from your library to posts and your profile. Photos are cleaned of location and camera details before they're shared.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ]
     ]
   }

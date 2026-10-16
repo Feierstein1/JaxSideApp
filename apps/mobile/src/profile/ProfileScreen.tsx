@@ -9,6 +9,7 @@ import { PostCard } from '@/discussion/PostCard';
 import { getFreshReading } from '@/location/device';
 import { ReportSheet } from '@/report/ReportSheet';
 import { MedalList } from './Medals';
+import { ProfileAvatar } from './ProfileAvatar';
 import { plural } from '@/format';
 import { Button, styles } from '@/ui';
 
@@ -98,22 +99,7 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
           borderBottomColor: BRAND.gold,
         }}
       >
-        <View
-          style={{
-            width: 72,
-            height: 72,
-            borderRadius: 36,
-            backgroundColor: COLORS.primary,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 3,
-            borderColor: BRAND.gold,
-          }}
-        >
-          <Text style={{ color: COLORS.onPrimary, fontSize: 30, fontWeight: '700' }}>
-            {profile.username.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        <ProfileAvatar name={profile.username} url={profile.avatarUrl} />
         <Text
           style={{ color: COLORS.onSurfaceInverse, fontSize: 22, fontWeight: '700', marginTop: 10 }}
         >

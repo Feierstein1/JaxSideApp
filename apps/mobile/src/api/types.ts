@@ -5,6 +5,7 @@ export interface MeUser {
   username: string;
   bio: string | null;
   joinedAt: string;
+  avatarUrl: string | null;
   email: string;
   emailVerified: boolean;
   generalRadiusMiles: number | null;

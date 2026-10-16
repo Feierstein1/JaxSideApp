@@ -36,6 +36,8 @@ import * as meUsername from '@/app/api/v1/me/username/route';
 import * as userBlock from '@/app/api/v1/users/[username]/block/route';
 import * as userProfile from '@/app/api/v1/users/[username]/route';
 import * as reports from '@/app/api/v1/reports/route';
+import * as photos from '@/app/api/v1/photos/route';
+import * as meAvatar from '@/app/api/v1/me/avatar/route';
 import * as submissions from '@/app/api/v1/submissions/route';
 import * as submissionCheck from '@/app/api/v1/submissions/check/route';
 import * as meAppeals from '@/app/api/v1/me/appeals/route';
@@ -307,6 +309,32 @@ const ROWS: Row[] = [
     id: 'username',
     location: true,
     body: (at) => ({ reading: r(at) }),
+  },
+  // P6.1: the body is the image itself, so no JSON smuggling check here (photos.test.ts).
+  {
+    route: 'photos',
+    method: 'POST',
+    handler: h(photos, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+  },
+  {
+    route: 'me/avatar',
+    method: 'PUT',
+    handler: h(meAvatar, 'PUT'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ photoId: '00000000-0000-7000-8000-000000000000' }),
+  },
+  {
+    route: 'me/avatar',
+    method: 'DELETE',
+    handler: h(meAvatar, 'DELETE'),
+    auth: true,
+    id: null,
+    location: false,
   },
   {
     route: 'submissions',

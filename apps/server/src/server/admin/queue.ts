@@ -13,7 +13,7 @@ import { audit } from './audit';
  * (P5.15) and an audit entry (P5.16), and can add a strike to the author (P5.6).
  */
 
-export type CaseType = 'general' | 'business' | 'comment' | 'user';
+export type CaseType = 'general' | 'business' | 'comment' | 'photo' | 'user';
 export interface CaseRef {
   type: CaseType;
   id: string;
@@ -21,29 +21,38 @@ export interface CaseRef {
 
 const COLUMN: Record<
   Exclude<CaseType, 'user'>,
-  'generalPostId' | 'businessPostId' | 'commentId'
+  'generalPostId' | 'businessPostId' | 'commentId' | 'photoId'
 > = {
   general: 'generalPostId',
   business: 'businessPostId',
   comment: 'commentId',
+  photo: 'photoId',
 };
 
 function refOf(r: {
   generalPostId: string | null;
   businessPostId: string | null;
   commentId: string | null;
+  photoId: string | null;
   reportedUserId: string | null;
 }): CaseRef | null {
   if (r.generalPostId) return { type: 'general', id: r.generalPostId };
   if (r.businessPostId) return { type: 'business', id: r.businessPostId };
   if (r.commentId) return { type: 'comment', id: r.commentId };
+  if (r.photoId) return { type: 'photo', id: r.photoId };
   if (r.reportedUserId) return { type: 'user', id: r.reportedUserId };
-  return null; // photo reports come with P6
+  return null;
 }
 
 const reportWhere = (ref: CaseRef): Prisma.ReportWhereInput =>
   ref.type === 'user'
-    ? { reportedUserId: ref.id, generalPostId: null, businessPostId: null, commentId: null }
+    ? {
+        reportedUserId: ref.id,
+        generalPostId: null,
+        businessPostId: null,
+        commentId: null,
+        photoId: null,
+      }
     : { [COLUMN[ref.type]]: ref.id };
 
 const preview = (s: string, n = 140) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
@@ -55,13 +64,14 @@ const URGENT: ReportReason[] = ['CHILD_SAFETY', 'THREAT'];
 
 export async function listCases(opts: { type?: CaseType } = {}) {
   const reports = await db.report.findMany({
-    where: { status: 'OPEN', photoId: null },
+    where: { status: 'OPEN' },
     orderBy: { createdAt: 'asc' },
     take: 2000,
     select: {
       generalPostId: true,
       businessPostId: true,
       commentId: true,
+      photoId: true,
       reportedUserId: true,
       reason: true,
       reporterUserId: true,
@@ -144,6 +154,21 @@ async function subject(
       }
     );
   }
+  if (ref.type === 'photo') {
+    const ph = await db.photo.findUnique({ where: { id: ref.id }, include: { uploader: user } });
+    return (
+      ph && {
+        body: '[photo]',
+        status:
+          ph.status === 'ACTIVE'
+            ? 'VISIBLE'
+            : ph.status === 'REMOVED'
+              ? 'REMOVED'
+              : 'HELD_FOR_REVIEW',
+        author: ph.uploader,
+      }
+    );
+  }
   const u = await db.user.findUnique({ where: { id: ref.id }, include: { profile: true } });
   return (
     u && {
@@ -202,6 +227,8 @@ export async function getCase(ref: CaseRef) {
     type: ref.type,
     id: ref.id,
     body: s.body,
+    /** Admin-only image link (cookie-authenticated), for photo cases. */
+    photoUrl: ref.type === 'photo' ? `/api/v1/admin/photos/${ref.id}` : null,
     contentStatus: s.status,
     author: s.author,
     authorHistory: authorId ? await userHistory(authorId) : null,
@@ -277,6 +304,17 @@ async function setStatus(
   ref: { type: Exclude<CaseType, 'user'>; id: string },
   to: 'VISIBLE' | 'REMOVED',
 ) {
+  if (ref.type === 'photo') {
+    // The object stays in storage (evidence); a removed photo is never served (P6.4).
+    await tx.photo.update({
+      where: { id: ref.id },
+      data: {
+        status: to === 'VISIBLE' ? 'ACTIVE' : 'REMOVED',
+        removedAt: to === 'VISIBLE' ? null : new Date(),
+      },
+    });
+    return true;
+  }
   const visibleBefore = await (async () => {
     if (ref.type === 'general') {
       const p = await tx.generalPost.findUniqueOrThrow({ where: { id: ref.id } });

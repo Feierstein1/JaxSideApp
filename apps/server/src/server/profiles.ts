@@ -1,5 +1,6 @@
 import { normalizeUsername, type PublicProfile } from '@jax/shared';
 import { medalsFor } from './achievements';
+import { signedPhotoUrl } from './media/photos';
 import { db } from './db';
 import { ApiError } from './http';
 
@@ -40,6 +41,7 @@ export async function getPublicProfile(username: string, viewerUserId: string | 
     isMe: viewerUserId === user.id,
     blockedByMe,
     medals: await medalsFor(user.id),
+    avatarUrl: user.profile?.avatarPhotoId ? signedPhotoUrl(user.profile.avatarPhotoId) : null,
   };
   return { id: user.id, profile };
 }

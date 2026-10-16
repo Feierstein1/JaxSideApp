@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { BRAND, COLORS, type PostView } from '@jax/shared';
 import { formatDistance, timeAgo } from '@/format';
 import { MedalIcons } from '@/profile/Medals';
+import { PhotoGrid } from './PhotoGrid';
 import { VoteControl } from './VoteControl';
 
 export function authorName(a: PostView['author'] | { guest: true }): string {
@@ -45,11 +46,14 @@ export function PostCard({
   post,
   onOpen,
   onError,
+  onReportPhoto,
   full = false,
 }: {
   post: PostView;
   onOpen?: () => void;
   onError?: (m: string) => void;
+  /** P6.5: long-press a photo to report it. */
+  onReportPhoto?: (photoId: string) => void;
   full?: boolean;
 }) {
   const business = post.kind === 'business';
@@ -110,6 +114,10 @@ export function PostCard({
       >
         {post.body}
       </Text>
+      <PhotoGrid
+        photos={post.photos}
+        onLongPress={onReportPhoto ? (p) => onReportPhoto(p.id) : undefined}
+      />
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 }}>
         <VoteControl
           target={{ type: post.kind, id: post.id }}

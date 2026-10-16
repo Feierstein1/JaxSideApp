@@ -15,19 +15,32 @@ export interface LimitRule {
   windowSeconds: number;
 }
 
-function windowStart(now: Date, windowSeconds: number): Date {
+function windowStart(now: Date, windowSeconds: number, offsetMs = 0): Date {
   const ms = windowSeconds * 1000;
-  return new Date(Math.floor(now.getTime() / ms) * ms);
+  return new Date(Math.floor((now.getTime() - offsetMs) / ms) * ms + offsetMs);
 }
 
-function retryAfter(now: Date, windowSeconds: number): number {
-  const end = windowStart(now, windowSeconds).getTime() + windowSeconds * 1000;
+function retryAfter(now: Date, windowSeconds: number, offsetMs = 0): number {
+  const end = windowStart(now, windowSeconds, offsetMs).getTime() + windowSeconds * 1000;
   return Math.max(1, Math.ceil((end - now.getTime()) / 1000));
 }
 
+/**
+ * Fixed windows let two requests just either side of a boundary both through, which
+ * matters for short burst limits (D55). For windows up to a minute, each request is
+ * also counted in a second set of windows shifted by half a window: any two requests
+ * less than half a window apart then always share a window.
+ */
+const STAGGER_UP_TO_SECONDS = 60;
+
 /** Atomically increments the counter and returns the new count. */
-export async function hit(key: string, windowSeconds: number, now = new Date()): Promise<number> {
-  const start = windowStart(now, windowSeconds);
+export async function hit(
+  key: string,
+  windowSeconds: number,
+  now = new Date(),
+  offsetMs = 0,
+): Promise<number> {
+  const start = windowStart(now, windowSeconds, offsetMs);
   const expires = new Date(start.getTime() + windowSeconds * 1000);
   const rows = await db.$queryRaw<{ count: number }[]>`
     INSERT INTO "RateLimitCounter" (key, "windowStart", count, "expiresAt")
@@ -53,8 +66,8 @@ export function waitText(seconds: number): string {
   return `${Math.ceil(seconds / 3600)} hours`;
 }
 
-function tooMany(now: Date, windowSeconds: number): ApiError {
-  const wait = retryAfter(now, windowSeconds);
+function tooMany(now: Date, windowSeconds: number, offsetMs = 0): ApiError {
+  const wait = retryAfter(now, windowSeconds, offsetMs);
   return new ApiError(
     429,
     'RATE_LIMITED',
@@ -66,9 +79,14 @@ function tooMany(now: Date, windowSeconds: number): ApiError {
 /** Counts this request against every rule; throws 429 if any limit is exceeded. */
 export async function enforce(rules: LimitRule[], now = new Date()): Promise<void> {
   for (const r of rules) {
-    const limit = await getConfig(r.limitKey);
+    const limit = (await getConfig(r.limitKey)) as number;
     const count = await hit(r.key, r.windowSeconds, now);
-    if (count > (limit as number)) throw tooMany(now, r.windowSeconds);
+    if (count > limit) throw tooMany(now, r.windowSeconds);
+    if (r.windowSeconds <= STAGGER_UP_TO_SECONDS) {
+      const half = (r.windowSeconds * 1000) / 2;
+      const shifted = await hit(`${r.key}~`, r.windowSeconds, now, half);
+      if (shifted > limit) throw tooMany(now, r.windowSeconds, half);
+    }
   }
 }
 

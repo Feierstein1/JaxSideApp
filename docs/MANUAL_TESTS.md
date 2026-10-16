@@ -2,7 +2,7 @@
 
 The server behavior behind every item here is already covered by automated tests and by
 `npm run e2e:live -w @jax/server`, which plays temporary people through the whole app over
-real HTTP and then deletes them (91 checks; see `docs/TESTING.md`). This list is what a
+real HTTP and then deletes them (97 checks; see `docs/TESTING.md`). This list is what a
 person needs to check on a real phone: screens, wording, GPS, permissions, and how it feels.
 
 **Before you start:** dev server and Expo running (`npm run dev`, `npm run dev:mobile`), Docker
@@ -46,6 +46,17 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Posting the exact same text again is refused ("You already posted this").
 - [ ] Open your post: **Delete my post** works (after confirming).
 - [ ] The top-bar username shows; the eye button hides it and it stays hidden after restarting.
+
+## 4b. Photos
+
+- [ ] New post → the dashed **photo** box asks for photo access once, then opens your library.
+- [ ] Add up to 4 photos (thumbnails with an ✕ to remove); post: the first shows large in the feed,
+      the rest as small squares.
+- [ ] An iPhone HEIC photo uploads fine (it's converted to JPEG).
+- [ ] Account → Profile → tap the circle (or **Add a photo**): pick and crop a square photo; it
+      shows on your profile and to others who open your profile.
+- [ ] On someone else's post, long-press a photo → the report sheet opens (type: photo).
+- [ ] In the portal, the photo report shows the image; **Remove** makes it disappear in the app.
 
 ## 5. Comments, votes, reports (two accounts)
 

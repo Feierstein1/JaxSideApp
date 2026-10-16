@@ -16,7 +16,9 @@ import { hashPassword } from '../../src/server/auth/crypto';
 import { encryptedEmailFields } from '../../src/server/crypto/field-encryption';
 import { uuidv7 } from '../../src/server/crypto/uuid';
 import { db } from '../../src/server/db';
+import sharp from 'sharp';
 import { timeStep, totpAt } from '../../src/server/admin/totp';
+import { objectStore } from '../../src/server/media/store';
 
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 const MAIL = process.env.E2E_MAILPIT_URL ?? 'http://localhost:8025';
@@ -303,6 +305,62 @@ async function run() {
   });
   check('extra fields rejected (strict schema)', smuggle.status === 400, smuggle.body);
 
+  // ── Photos (P6) ──
+  section('Photos');
+  const gpsJpeg = await sharp({
+    create: { width: 1000, height: 750, channels: 3, background: '#136677' },
+  })
+    .jpeg()
+    .withExif({
+      IFD0: { Make: 'ZztPhone' },
+      IFD3: { GPSLatitudeRef: 'N', GPSLatitude: '30/1 18/1 5364/100' },
+    })
+    .toBuffer();
+  const upRes = await fetch(`${BASE}/api/v1/photos`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${cat.token}`, 'content-type': 'image/jpeg' },
+    body: new Uint8Array(gpsJpeg),
+  });
+  const upBody: any = await upRes.json();
+  check('Cat uploads a photo with GPS data in it', upRes.status === 201, upBody);
+  const fake = await fetch(`${BASE}/api/v1/photos`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${cat.token}`, 'content-type': 'image/jpeg' },
+    body: '<svg onload="alert(1)"></svg>'.repeat(5),
+  });
+  check('a script pretending to be a JPEG is refused', fake.status === 422, fake.status);
+  await new Promise((r) => setTimeout(r, 10_500)); // Cat's 10 s post burst window
+  const photoPost = await http('POST', '/api/v1/posts', {
+    token: cat.token,
+    body: { reading: reading(), body: `Photo from the Riverwalk ${RUN}`, photoIds: [upBody.id] },
+  });
+  check(
+    'Cat posts it',
+    photoPost.status === 201 && photoPost.body?.post?.photos?.length === 1,
+    photoPost.body,
+  );
+  const photoUrl = photoPost.body?.post?.photos?.[0]?.url as string;
+  const img = await fetch(`${BASE}${photoUrl}`);
+  const imgBytes = Buffer.from(await img.arrayBuffer());
+  const imgMeta = await sharp(imgBytes)
+    .metadata()
+    .catch(() => null);
+  check(
+    'the served photo is a JPEG with no EXIF/GPS',
+    img.status === 200 &&
+      imgMeta?.format === 'jpeg' &&
+      !imgMeta.exif &&
+      !imgBytes.toString('latin1').includes('ZztPhone'),
+    { s: img.status, exif: !!imgMeta?.exif },
+  );
+  const forged = await fetch(`${BASE}${photoUrl.replace(/sig=./, 'sig=Z')}`);
+  check('a forged photo link is refused', forged.status === 403, forged.status);
+  const stealPhoto = await http('POST', '/api/v1/posts', {
+    token: bob.token,
+    body: { reading: reading(), body: `stealing ${RUN}`, photoIds: [upBody.id] },
+  });
+  check('Bob can’t attach Cat’s photo', stealPhoto.status === 400, stealPhoto.body);
+
   // ── Places / business rooms ──
   section('Places and business rooms');
   const search = await http('POST', '/api/v1/places/search', {
@@ -322,6 +380,7 @@ async function run() {
   };
   const placeId = place?.id as string;
   const before = await db.businessPlace.findUnique({ where: { id: placeId } });
+  await new Promise((r) => setTimeout(r, 10_500)); // Cat's 10 s post burst window
   const roomPost = await http('POST', `/api/v1/places/${placeId}/posts`, {
     token: cat.token,
     body: { reading: reading(atPlace), body: `Great coffee here ${RUN}` },
@@ -339,6 +398,7 @@ async function run() {
     fav.status === 200 && favs.body?.favorites?.some((f: any) => f.id === placeId),
     favs.body,
   );
+  await new Promise((r) => setTimeout(r, 10_500)); // Bob's 10 s post burst window
   const farRoom = await http('POST', `/api/v1/places/${placeId}/posts`, {
     token: bob.token,
     body: {
@@ -854,6 +914,17 @@ async function cleanup() {
   const bposts = (
     await db.businessPost.findMany({ where: { authorId: { in: ids } }, select: { id: true } })
   ).map((p) => p.id);
+  // Photos (rows and stored files).
+  const photos = await db.photo.findMany({
+    where: { uploaderId: { in: ids } },
+    select: { id: true, storageKey: true },
+  });
+  for (const p of photos)
+    if (p.storageKey)
+      await objectStore()
+        .delete(p.storageKey)
+        .catch(() => undefined);
+  await db.profile.updateMany({ where: { userId: { in: ids } }, data: { avatarPhotoId: null } });
   await db.appeal.deleteMany({ where: { userId: { in: ids } } });
   await db.report.deleteMany({
     where: {
@@ -884,6 +955,7 @@ async function cleanup() {
       },
     });
   }
+  await db.photo.deleteMany({ where: { uploaderId: { in: ids } } });
   await db.generalPost.deleteMany({ where: { id: { in: posts } } });
   await db.businessPost.deleteMany({ where: { id: { in: bposts } } });
   // Suggested places, and any places created by approving them.
@@ -912,14 +984,13 @@ async function cleanup() {
   await db.rateLimitCounter.deleteMany({
     where: {
       windowStart: { gte: new Date(startedAt.getTime() - 86_400_000) },
-      OR: ids
-        .map((id) => ({ key: { contains: id } }))
-        .concat([
-          { key: { startsWith: 'login-fail:' } },
-          { key: { startsWith: 'register:' } },
-          { key: { startsWith: 'guest-session' } },
-          { key: { startsWith: 'installation' } },
-        ]),
+      OR: [
+        ...ids.map((id) => ({ key: { contains: id } })),
+        { key: { startsWith: 'login-fail:' } },
+        { key: { startsWith: 'register:' } },
+        { key: { startsWith: 'guest-session' } },
+        { key: { startsWith: 'installation' } },
+      ],
     },
   });
   // Test emails in Mailpit.

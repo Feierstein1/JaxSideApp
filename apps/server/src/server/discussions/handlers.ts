@@ -200,7 +200,7 @@ export async function createGeneral(req: Request) {
   await limits(user.id, ...POST_LIMITS);
   const at = await assertLocationEligible({ kind: 'user', user }, input.reading, 'general.post');
   const hold = await screenNew(user, input);
-  const id = await createGeneralPost(user.id, coarsenPoint(at), input.body, !!hold);
+  const id = await createGeneralPost(user.id, coarsenPoint(at), input.body, !!hold, input.photoIds);
   if (hold) return heldResponse(hold, { generalPostId: id });
   return NextResponse.json(
     { post: await getPostView('general', id, user.id, at) },
@@ -220,7 +220,7 @@ export async function createBusiness(req: Request, ctx: IdCtx) {
     point: place,
   });
   const hold = await screenNew(user, input);
-  const id = await createBusinessPost(user.id, placeId, input.body, !!hold);
+  const id = await createBusinessPost(user.id, placeId, input.body, !!hold, input.photoIds);
   if (hold) return heldResponse(hold, { businessPostId: id });
   return NextResponse.json({ post: await getPostView('business', id, user.id) }, { status: 201 });
 }
