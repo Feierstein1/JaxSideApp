@@ -36,6 +36,8 @@ import * as meUsername from '@/app/api/v1/me/username/route';
 import * as userBlock from '@/app/api/v1/users/[username]/block/route';
 import * as userProfile from '@/app/api/v1/users/[username]/route';
 import * as reports from '@/app/api/v1/reports/route';
+import * as submissions from '@/app/api/v1/submissions/route';
+import * as submissionCheck from '@/app/api/v1/submissions/check/route';
 import * as meAppeals from '@/app/api/v1/me/appeals/route';
 import * as restrictedAppeal from '@/app/api/v1/appeals/restricted/route';
 import * as restrictedStanding from '@/app/api/v1/appeals/restricted/standing/route';
@@ -305,6 +307,24 @@ const ROWS: Row[] = [
     id: 'username',
     location: true,
     body: (at) => ({ reading: r(at) }),
+  },
+  {
+    route: 'submissions',
+    method: 'POST',
+    handler: h(submissions, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at), name: 'Corner Cafe', category: 'cafe' }),
+  },
+  {
+    route: 'submissions/check',
+    method: 'POST',
+    handler: h(submissionCheck, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at), name: 'Corner Cafe' }),
   },
   {
     route: 'reports',

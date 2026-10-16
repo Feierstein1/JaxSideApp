@@ -231,6 +231,14 @@ export default function PlacesScreen() {
           }
           ListFooterComponent={
             <>
+              {/* P5.8: suggest a missing place. */}
+              <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+                <Button
+                  variant="secondary"
+                  title="Missing a place? Suggest it"
+                  onPress={() => router.push('/places/suggest')}
+                />
+              </View>
               {loading ? <ActivityIndicator style={{ margin: 16 }} color={COLORS.primary} /> : null}
               <OsmAttribution />
             </>

@@ -2,7 +2,7 @@
 
 The server behavior behind every item here is already covered by automated tests and by
 `npm run e2e:live -w @jax/server`, which plays temporary people through the whole app over
-real HTTP and then deletes them (82 checks; see `docs/TESTING.md`). This list is what a
+real HTTP and then deletes them (91 checks; see `docs/TESTING.md`). This list is what a
 person needs to check on a real phone: screens, wording, GPS, permissions, and how it feels.
 
 **Before you start:** dev server and Expo running (`npm run dev`, `npm run dev:mobile`), Docker
@@ -73,6 +73,18 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Within about 0.3 mi of a place, its discussion opens and you can post; farther away you see
       the "get closer" message.
 - [ ] iPhone only: the Map view shows pins (hidden on Android for now, Q13).
+
+## 7b. Suggest a place
+
+- [ ] Places → **Missing a place? Suggest it** (bottom of the list) opens the form, which says your
+      current location is used as the pin.
+- [ ] Typing the name of a place that's already listed nearby shows **Already listed nearby?**;
+      tapping one opens that place.
+- [ ] Pick a category, send: "Thanks for the suggestion". It's **not** in the Places list yet.
+- [ ] Account → Settings → **My suggestions** shows it as "Waiting for review".
+- [ ] In the portal (section 10), **Places** shows it with a small map. Approve it: it appears in
+      the app's Places list, and My suggestions says "Approved". Reject another with a reason:
+      My suggestions shows the reason.
 
 ## 8. Profiles and blocking
 

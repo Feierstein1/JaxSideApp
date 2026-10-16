@@ -230,13 +230,20 @@ describe('assertLocationEligible', () => {
       return { kind: 'guest', guest: await createTestGuest(new Date(NOW.getTime() + 86_400_000)) };
     }
 
-    it.each(['general.post', 'general.vote', 'business.read', 'business.post'] as const)(
+    it.each([
+      'general.post',
+      'general.comment',
+      'general.vote',
+      'business.read',
+      'business.post',
+      'directory.submit',
+    ] as const)(
       'guests cannot %s',
       async (action) => {
         const guest = await realGuest();
         const target = action.startsWith('business')
           ? { kind: 'business' as const, point: P.downtown }
-          : action === 'general.vote'
+          : action === 'general.vote' || action === 'general.comment'
             ? { kind: 'general' as const, point: P.downtown }
             : undefined;
         expect(
@@ -245,11 +252,10 @@ describe('assertLocationEligible', () => {
       },
     );
 
-    it('guests can comment on a nearby general post, and the check is audited to the guest', async () => {
+    it('guests can read the area feed, and the check is audited to the guest', async () => {
       const guest = await realGuest();
-      const post = { kind: 'general' as const, point: P.downtown };
       await expect(
-        assertLocationEligible(guest, reading(P.downtown), 'general.comment', post, NOW),
+        assertLocationEligible(guest, reading(P.downtown), 'general.read', undefined, NOW),
       ).resolves.toBeDefined();
       const row = await db.locationCheck.findFirstOrThrow();
       expect(row.guestSessionId).toBe((guest as { guest: { id: string } }).guest.id);

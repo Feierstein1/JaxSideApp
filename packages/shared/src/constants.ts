@@ -135,6 +135,12 @@ export const CONFIG_DEFAULTS = {
   /** Wrong email codes per IP, across all accounts (D31). */
   'rateLimit.codeAttempt.per15MinPerIp': 20,
   'rateLimit.submission.perDay': 5,
+  /** P5.8 risk limits: brand-new accounts wait before suggesting places. */
+  'submission.minAccountAgeHours': 24,
+  /** At most this many of your suggestions waiting for review at once. */
+  'submission.maxPending': 10,
+  /** Places within this distance with a similar name are shown as possible duplicates. */
+  'submission.duplicateRadiusMeters': 300,
   'rateLimit.guestSession.perDayPerInstallation': 3,
   'rateLimit.guestSession.perHourPerIp': 10,
   'rateLimit.installation.perHourPerIp': 10,

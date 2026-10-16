@@ -648,6 +648,84 @@ async function run() {
     catStanding.body,
   );
 
+  // Place suggestions (P5.8–P5.13)
+  section('Place suggestions');
+  const sugName = `Zzt ${RUN} Taqueria`;
+  const sug = await http('POST', '/api/v1/submissions', {
+    token: bob.token,
+    body: { reading: reading(), name: sugName, category: 'restaurant', notes: 'Opened last week' },
+  });
+  check('Bob suggests a missing place from where he stands', sug.status === 201, sug.body);
+  const hidden = await http('POST', '/api/v1/places/search', {
+    token: bob.token,
+    body: { reading: reading(), q: sugName },
+  });
+  check(
+    'it is not searchable before approval',
+    !hidden.body?.places?.some((p: any) => p.name === sugName),
+    hidden.body?.places,
+  );
+  const dupCheck = await http('POST', '/api/v1/submissions/check', {
+    token: cat.token,
+    body: { reading: reading(atPlace), name: place?.name ?? 'x' },
+  });
+  check(
+    'duplicate check finds the existing place',
+    dupCheck.body?.places?.some((p: any) => p.id === placeId),
+    dupCheck.body,
+  );
+  const sugReject = await http('POST', '/api/v1/submissions', {
+    token: bob.token,
+    body: { reading: reading(), name: `Zzt ${RUN} Ghost Shop`, category: 'shop' },
+  });
+  const queue = await http('GET', '/api/v1/admin/submissions', { headers: adminH });
+  check(
+    'both suggestions are in the admin queue',
+    [sug.body?.id, sugReject.body?.id].every((id) =>
+      queue.body?.submissions?.some((x: any) => x.id === id),
+    ),
+    queue.body?.submissions?.length,
+  );
+  const subPage = await http('GET', '/admin/submissions', { headers: { cookie: adminCookie } });
+  check('suggestions page renders for the admin', subPage.status === 200, subPage.status);
+  const [ap1, ap2] = await Promise.all([
+    http('POST', `/api/v1/admin/submissions/${sug.body?.id}`, {
+      headers: adminH,
+      body: { decision: 'approve', category: 'fast_food' },
+    }),
+    http('POST', `/api/v1/admin/submissions/${sug.body?.id}`, {
+      headers: adminH,
+      body: { decision: 'approve', category: 'fast_food' },
+    }),
+  ]);
+  check(
+    'double approval: one succeeds, one is refused',
+    [ap1.status, ap2.status].sort().join() === '200,409',
+    [ap1.body, ap2.body],
+  );
+  const found = await http('POST', '/api/v1/places/search', {
+    token: cat.token,
+    body: { reading: reading(), q: sugName },
+  });
+  check(
+    'approved place is now searchable, with the corrected category',
+    found.body?.places?.some((p: any) => p.name === sugName && p.category === 'fast_food'),
+    found.body?.places,
+  );
+  const badges = await db.userAchievement.count({ where: { userId: bob.id } });
+  check('Bob got the Approved Contributor badge once', badges === 1, badges);
+  await http('POST', `/api/v1/admin/submissions/${sugReject.body?.id}`, {
+    headers: adminH,
+    body: { decision: 'reject', reason: 'Couldn’t find it' },
+  });
+  const bobSugs = await http('GET', '/api/v1/me/submissions', { token: bob.token });
+  check(
+    'Bob sees one approved and one not approved, with the reason',
+    bobSugs.body?.submissions?.some((x: any) => x.status === 'APPROVED') &&
+      bobSugs.body?.submissions?.some((x: any) => x.decisionReason === 'Couldn’t find it'),
+    bobSugs.body,
+  );
+
   // Strike ladder → suspension → appeal → accepted
   section('Strikes, suspension, appeal');
   const s2 = await http('POST', `/api/v1/admin/users/${cat.id}/actions`, {
@@ -808,6 +886,15 @@ async function cleanup() {
   }
   await db.generalPost.deleteMany({ where: { id: { in: posts } } });
   await db.businessPost.deleteMany({ where: { id: { in: bposts } } });
+  // Suggested places, and any places created by approving them.
+  const subs = await db.businessSubmission.findMany({
+    where: { submitterId: { in: ids } },
+    select: { id: true },
+  });
+  await db.businessSubmission.deleteMany({ where: { submitterId: { in: ids } } });
+  await db.businessPlace.deleteMany({
+    where: { sourceName: 'community', sourceId: { in: subs.map((x) => x.id) } },
+  });
   await db.accountDeletion.deleteMany({ where: { userId: { in: ids } } });
   await db.locationFlag.deleteMany({
     where: { OR: [{ userId: { in: ids } }, { reviewedById: { in: ids } }] },

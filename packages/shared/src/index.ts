@@ -8,5 +8,6 @@ export * from './schemas/location';
 export * from './schemas/directory';
 export * from './schemas/discussion';
 export * from './schemas/report';
+export * from './schemas/submission';
 export * from './policies';
 export * from './theme';

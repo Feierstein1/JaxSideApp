@@ -7,6 +7,7 @@ export default function PlacesLayout() {
       <Stack.Screen name="index" options={{ title: 'Places' }} />
       <Stack.Screen name="[id]" options={{ title: 'Place' }} />
       <Stack.Screen name="post/[id]" options={{ title: 'Post' }} />
+      <Stack.Screen name="suggest" options={{ title: 'Suggest a place' }} />
       <Stack.Screen name="compose" options={{ title: 'New post', presentation: 'modal' }} />
     </Stack>
   );

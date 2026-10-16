@@ -21,7 +21,9 @@ export const LOCATION_ACTIONS = {
   /** Directory search and place info: inside Duval, no radius (D16, D19). Not for guests (§5). */
   'directory.read': ['user'],
   'general.post': ['user'],
-  'general.comment': ['user', 'guest'],
+  /** Suggesting a place: inside Duval; the reading is the place's pin (D63). */
+  'directory.submit': ['user'],
+  'general.comment': ['user'], // guests are view-only (D54)
   'general.vote': ['user'],
   'business.read': ['user'],
   'business.post': ['user'],

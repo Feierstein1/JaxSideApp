@@ -242,6 +242,7 @@ function SettingsTab() {
 
       <Section title="Safety">
         <Row icon="flag-outline" label="My reports" href="/account/reports" />
+        <Row icon="add-circle-outline" label="My suggestions" href="/account/suggestions" />
         <Row icon="shield-checkmark-outline" label="Account standing" href="/account/standing" />
       </Section>
 

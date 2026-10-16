@@ -21,8 +21,8 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 ## Current status
 
-**Phase:** 5 — Moderation & Administration (started 2026-10-15; Phase 3 gate pending only the on-device vote/comment check)
-**Next action:** User's choice: place submissions (P5.8–P5.13, needed for the Phase 5 gate) or Phase 6 (photos & achievements). On-phone checklist: `docs/MANUAL_TESTS.md`.
+**Phase:** 6 — Photos & Achievements (Phase 5 gate met 2026-10-16; Phase 3 gate pending only the on-device vote/comment check)
+**Next action:** Phase 6 — photos (P6.1–P6.5) and achievements (P6.6–P6.10). On-phone checklist: `docs/MANUAL_TESTS.md`.
 **Last updated:** 2026-10-16
 
 ---
@@ -61,7 +61,7 @@ Questions marked **BLOCKING** must be answered before the phase listed. Each has
 - [x] **Q9 — Map provider (needed by Phase 2 UI and the admin map preview)** → `react-native-maps` (Google Maps on Android, Apple Maps on iOS; works in Expo Go). The user's main need is a filterable, sortable nearby list; the map is a second view of the same results (D40). A Google Maps API key is needed only for published Android builds (ask before creating; billing account)
   `react-native-maps` uses Apple Maps on iOS and Google Maps on Android. Android needs a Google Maps API key (free tier with a billing account). Alternative: MapLibre with a free tile provider.
   *Recommendation:* react-native-maps for the MVP, and record the Google key as an external dependency.
-- [ ] **Q10 — Geocoding of submitted addresses (§9.3)**
+- [x] **Q10 — Geocoding of submitted addresses (§9.3)** → Answered by design: the pin is the suggester's own location while standing at the place, address optional (D63)
   Turning a typed address into coordinates needs a geocoder. The public Nominatim service has strict usage limits.
   *Recommendation:* For the MVP, require a **map pin** (the address is optional text), so no geocoder is needed. Add one later.
 - [x] **Q11 — Legal / policy text** → Answered: beta policy text written (P4.13) and used as-is; legal review is **not a blocker** (D52)
@@ -165,6 +165,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D60 | **Accepted** 2026-10-16 | Admin portal access (P5.11): admins are existing confirmed accounts promoted by a **server-side command** (`admin:promote`), never from the app or portal. Sign-in = password (same checks and failed-attempt limits as the app), then a 6-digit authenticator code (TOTP, built on node:crypto; first sign-in shows a QR code; secret encrypted with the user's data key; each code works once; 5 wrong codes per 15 min). Session = httpOnly SameSite=Strict cookie + CSRF token (double-submit, hash stored), 8 h max, 30 min idle. App (Bearer) sessions never work on admin routes and admin sessions never work in the app. Losing the role ends access immediately | D3, D4, D10; §10 separate web experience with stronger authentication |
 | D61 | **Accepted** 2026-10-16 | Moderation queue (P5.14): open reports are grouped into one **case** per item (post, room post, comment, profile), sorted child safety/threats first, then held content, then by report count. Decisions: **remove** (hidden, counts adjusted), **approve/restore** (held content goes live or removed content comes back, counted again), **dismiss** (content stays), **escalate** (child safety: hidden, kept, author put on legal hold, admin reminded to report to NCMEC). Each closes all the case's open reports, writes a `ModerationAction` and an audit entry, and can add a strike. Admin pages show usernames and account facts but **never emails**. Every admin page checks the session itself, not just the layout. Admin changes limited to 60/min per admin | §10.3; R4 (preserve, don't delete); defense in depth for Next's partial rendering |
 | D62 | **Accepted** 2026-10-16 | The admin portal is a **desktop web portal** (browser, not the phone app) and, for now, is used **only on the user's own computer against the dev server**: not hosted. Keep it lean until there are more users: no settings editor or screening-rules editor yet (P5.17), no reveal-email/legal-hold screens yet (P5.18), no per-user rate-limit or location-flag screens (P5.14 extras). Settings and screening rules are changed in the seed file or database meanwhile. **Before the API is deployed publicly (Phase 7), `/admin` and `/api/v1/admin/*` must be turned off or restricted on the public server** | User decision 2026-10-16: avoid small-screen limits; don't over-engineer the portal yet |
+| D63 | **Accepted** 2026-10-16 | Place suggestions (P5.8–P5.13): the person suggests a place **while standing at it**, and their current reading is the pin (works on Android without a map, Q13; answers Q10 without a geocoder); address is optional text. Limits: confirmed email, account at least 24 h old, 5 per day, 10 waiting at once, no repeat of your own pending suggestion; name and notes are screened. Possible duplicates (similar name within 300 m, or anything within 20 m, plus other pending suggestions) are shown while typing and to the admin. Suggestions are a separate table, so never in the directory until approved. Approve (optionally correcting name/category/address) creates a `community` place and awards Approved Contributor once (claim-first transaction + unique source ID + badge primary key); reject needs a reason the person sees, and they may suggest again; merge links to an existing place (no badge). Bulk approve/reject with a confirmation listing the items. The portal shows a small OpenStreetMap preview of each pin (free, no key) | §9.3; Phase 5 gate |
 | D43 | **Accepted** 2026-10-15 | The signed-in username shows in the top bar on every screen, with an eye button that hides it **on that device's screen only** (stored on the device). Posts still show the username to others | User request. Screen-privacy toggle, not anonymous posting. **Confirmed by the user 2026-10-15** |
 
 ---
@@ -280,20 +281,20 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [x] **P5.7** Appeals and unban requests with eligibility rules (D59, `appeals.test.ts` 10 tests). Signed-in appeals from Account standing; banned/suspended people use "See why and appeal" on sign-in. Admins decide in the moderation queue (P5.14)
 
 **Community submissions (§9.3)**
-- [ ] **P5.8** Submit a place: name, category, map pin (address optional), notes; boundary check; per-account limits 🔒
-- [ ] **P5.9** Duplicate candidate detection (normalized name plus proximity plus source ID) shown to the submitter and the admin ✅D2
-- [ ] **P5.10** Submissions hidden from the public until approved ✅D3
+- [x] **P5.8** Submit a place: name, category, map pin (address optional), notes; boundary check; per-account limits 🔒 (D63, `submissions.test.ts`). App: Places → "Missing a place? Suggest it", Account → My suggestions
+- [x] **P5.9** Duplicate candidate detection (normalized name plus proximity plus source ID) shown to the submitter and the admin ✅D2 (similar name within 300 m or anything within 20 m; other pending suggestions too; shown while typing and in the portal)
+- [x] **P5.10** Submissions hidden from the public until approved ✅D3 (separate table; tested with a directory search)
 
 **Admin portal**
 - [x] **P5.11** Admin login with role check on the server for every `/admin` page and `/api/v1/admin/*` route; TOTP (D4); non-admin negative tests 🔒 ✅D8 (D60, `admin-auth.test.ts` 16 tests incl. RFC 6238 vectors and a test that walks every admin route). Portal shell: sign-in with authenticator setup, dashboard with counts of waiting work, sign out
-- [ ] **P5.12** Submission queue: status tabs, filters (status, category, submitter, date), inline map preview, duplicate candidates, submitter history, approve, reject (reason required), edit metadata, merge into existing, bulk select with a confirmation that lists items ✅D4 ✅D5 ✅D6
-- [ ] **P5.13** Approval is idempotent: exactly one place record and one badge even on double-click or a race 🔒 ✅D5
+- [x] **P5.12** Submission queue: status tabs, filters (status, category, submitter, date), inline map preview, duplicate candidates, submitter history, approve, reject (reason required), edit metadata, merge into existing, bulk select with a confirmation that lists items ✅D4 ✅D5 ✅D6 (portal /admin/submissions: status tabs, category/submitter/date filters, OSM map preview, duplicates with "Merge into this", submitter history, approve with edits, reject with reason, bulk with confirmation list)
+- [x] **P5.13** Approval is idempotent: exactly one place record and one badge even on double-click or a race 🔒 ✅D5 (two simultaneous approvals: one place, one badge; tested in unit tests and the live check)
 - [x] **P5.14** Moderation queues: reported posts, comments, profiles, images, with context (thread, author history); remove or restore; warn, suspend, ban; internal notes; adjust per-user rate limits; suspicious-location view. CSAM escalation path (preserve, do not delete, report to NCMEC; see R4) ✅MS3. *Done (D61, `moderation-queue.test.ts` 10 tests):* reports queue grouped by item, case page with thread context, all reports and author history, remove/approve/restore/dismiss/escalate with optional strike, user search and record (previous usernames, strikes incl. cancelled), strike/suspend/ban/lift/note/cancel strike, appeals queue, internal notes. *Deferred (D62):* per-user rate-limit adjustment, a location-flag review screen (counts are shown). Image reports come with photos (P6)
 - [x] **P5.15** `ModerationAction` records reason, timestamp, admin, and target for every action (queue decisions, strikes, suspensions, bans, lifts, notes, cancellations; tested)
 - [x] **P5.16** `AdminAuditLog` for every consequential admin action; viewer page ✅D7 (sign-in, 2FA setup, case decisions, strikes, user actions, appeal decisions; /admin/audit)
 - [-] **P5.18** *(deferred, D62; legal hold is already set automatically by child-safety escalation, P5.14)* Legal hold (D37): set/release with reason (audited); "reveal email" with a required reason (audited); key-rotation rewrap job (`docs/KEY_MANAGEMENT.md`) 🔒
 - [-] **P5.17** Admin config editor for `AppConfiguration` (validated ranges, audited) *(deferred, D62: values and screening rules are edited in the seed file or database for now)*
-- [ ] **Phase gate:** One admin can clear 50 seeded submissions quickly; all admin routes reject non-admins in tests
+- [x] **Phase gate:** One admin can clear 50 seeded submissions quickly; all admin routes reject non-admins in tests. *2026-10-16:* 50 seeded suggestions bulk-approved in one action (test); every admin route walked by `admin-auth.test.ts`. P5.17/P5.18 deferred by the user (D62)
 
 ## Phase 6 — Photos & Achievements (§12, §13)
 
@@ -355,11 +356,11 @@ Every row needs a linked test or a written manual procedure before it can be che
 
 **Directory & admin**
 - [ ] D1 — Import is idempotent (P2.11)
-- [ ] D2 — Duplicate submissions flagged (P5.9)
-- [ ] D3 — Unapproved submissions hidden (P5.10)
-- [ ] D4 — Approved submission appears in the directory (P5.12)
-- [ ] D5 — Badge awarded only on approval, only once (P5.13)
-- [ ] D6 — Admin can approve, reject, correct, merge (P5.12)
+- [x] D2 — Duplicate submissions flagged (P5.9 ✓ `submissions.test.ts`)
+- [x] D3 — Unapproved submissions hidden (P5.10 ✓)
+- [x] D4 — Approved submission appears in the directory (P5.12 ✓)
+- [x] D5 — Badge awarded only on approval, only once (P5.13 ✓ incl. simultaneous approvals)
+- [x] D6 — Admin can approve, reject, correct, merge (P5.12 ✓)
 - [x] D7 — Admin actions audited (P5.16 ✓ `moderation-queue.test.ts`, `admin-auth.test.ts`)
 - [x] D8 — Non-admins blocked from admin (P5.11 ✓ `admin-auth.test.ts`; every admin route checked)
 
@@ -462,3 +463,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-16 | P5.11, D60 | Admin portal sign-in: `admin:promote` command, password + authenticator (TOTP, QR setup on first sign-in, replay-proof), cookie session with CSRF, 8 h / 30 min idle, app and admin sessions kept apart. Pages: /admin/login, /admin dashboard (reports, held, appeals, submissions waiting). Admin routes get their own guard test that walks every route. 495 server tests + build pass; live: /admin redirects to sign-in, admin API 401 without a session |
 | 2026-10-16 | P5.14 (most), P5.15, P5.16, D61 | Moderation in the admin portal: reports queue grouped by item (urgent first), case page with context and author history, remove/approve/restore/dismiss/child-safety escalate with optional strike, user search + record + strike/suspend/ban/lift/note/cancel, appeals queue, audit log page. Every decision writes a ModerationAction and an audit entry. 505 server tests + build pass; live: all admin pages render with a temporary admin session (removed afterwards) |
 | 2026-10-16 | D62, live E2E, checklist | User: admin portal is desktop-only and local for now; don't over-engineer (P5.17, P5.18 and P5.14 extras deferred). New `npm run e2e:live`: temporary accounts exercise the whole app over HTTP against the dev server (sign-up via Mailpit codes, guests, posts, rooms, blocks, screening, spam, reports, account changes, admin portal with TOTP, strikes, suspension, appeal, ban, deletion) and clean up after themselves: **82/82 passed**, dev database verified clean. On-phone checklist written (`docs/MANUAL_TESTS.md`). Feed-refresh idea parked under Future ideas |
+| 2026-10-16 | P5.8–P5.13, D63, Phase 5 gate | Place suggestions: suggest from where you stand (no map needed), duplicate check while typing, risk limits, screening; admin queue with tabs, filters, OSM map preview, duplicates/merge, approve with corrections, reject with reason, bulk with confirmation; approval creates one place and one badge even when clicked twice at once. 526 server tests + build pass; live check extended to 91 checks, **91/91 passed**, dev database verified clean afterwards. Phase 5 gate met |
