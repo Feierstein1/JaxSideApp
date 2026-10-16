@@ -1,4 +1,5 @@
 import type { AccountStatus } from '@/generated/prisma/client';
+import { APP_TIME_ZONE } from '@jax/shared';
 import { ApiError } from '../http';
 
 interface StandingFields {
@@ -18,10 +19,23 @@ export function assertAccountUsable(u: StandingFields, now: Date = new Date()): 
     throw new ApiError(401, 'UNAUTHENTICATED', 'Please sign in');
   }
   if (u.status === 'BANNED') {
-    throw new ApiError(403, 'ACCOUNT_BANNED', 'This account has been banned');
+    throw new ApiError(
+      403,
+      'ACCOUNT_BANNED',
+      'This account has been banned for breaking the Community Guidelines.',
+    );
   }
   if (u.status === 'SUSPENDED' && (!u.suspendedUntil || u.suspendedUntil > now)) {
-    throw new ApiError(403, 'ACCOUNT_SUSPENDED', 'This account is suspended', {
+    const when = u.suspendedUntil
+      ? ` until ${u.suspendedUntil.toLocaleString('en-US', {
+          timeZone: APP_TIME_ZONE,
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        })}`
+      : '';
+    throw new ApiError(403, 'ACCOUNT_SUSPENDED', `This account is suspended${when}.`, {
       until: u.suspendedUntil?.toISOString() ?? null,
     });
   }

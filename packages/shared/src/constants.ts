@@ -76,6 +76,13 @@ export const CONFIG_DEFAULTS = {
   /** Any link from an account younger than this → held for review. */
   'spam.newAccountLinkHoldHours': 24,
 
+  // P5.6 / D9 strike ladder
+  'strikes.decayDays': 180,
+  'strikes.firstSuspensionHours': 24,
+  'strikes.secondSuspensionHours': 168,
+  /** The strike number that becomes a permanent ban. */
+  'strikes.banAtStrike': 4,
+
   // §5.1 / D17 guests
   'guest.inactivityDays': 30,
   'guest.expiryWarningDays': 5,

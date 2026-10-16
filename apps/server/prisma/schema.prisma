@@ -666,6 +666,10 @@ model ModerationAction {
   photoId              String?              @db.Uuid
   submissionId         String?              @db.Uuid
   reportId             String?              @db.Uuid
+  /// P5.6/P5.7: a strike cancelled (e.g. after a successful appeal) no longer counts.
+  voidedAt             DateTime?            @db.Timestamptz(3)
+  voidedById           String?              @db.Uuid
+  voidReason           String?              @db.VarChar(500)
   createdAt            DateTime             @default(now()) @db.Timestamptz(3)
   admin                User                 @relation("ModActor", fields: [adminId], references: [id])
   targetUser           User?                @relation("ModTargetUser", fields: [targetUserId], references: [id])

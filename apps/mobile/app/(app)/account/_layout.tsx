@@ -10,6 +10,7 @@ export default function AccountLayout() {
       <Stack.Screen name="email" options={{ title: 'Change email' }} />
       <Stack.Screen name="blocked" options={{ title: 'Blocked users' }} />
       <Stack.Screen name="reports" options={{ title: 'My reports' }} />
+      <Stack.Screen name="standing" options={{ title: 'Account standing' }} />
       <Stack.Screen name="delete" options={{ title: 'Delete account' }} />
       <Stack.Screen name="legal/[key]" options={{ title: 'Policies' }} />
     </Stack>

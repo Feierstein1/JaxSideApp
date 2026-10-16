@@ -17,6 +17,7 @@ export interface MaintenanceReport {
   guestCommentsDeleted: number;
   guestCommentsBlanked: number;
   accountsPurged: number;
+  suspensionsEnded: number;
 }
 
 /**
@@ -118,6 +119,13 @@ export async function runMaintenance(now: Date = new Date()): Promise<Maintenanc
         ? (await tx.comment.deleteMany({ where: { id: { in: remove } } })).count
         : 0;
 
+      // P5.6: suspensions that have run out go back to ACTIVE (they already stopped
+      // blocking at suspendedUntil; this tidies the status).
+      const suspensionsEnded = await tx.user.updateMany({
+        where: { status: 'SUSPENDED', suspendedUntil: { lte: now } },
+        data: { status: 'ACTIVE', suspendedUntil: null },
+      });
+
       const report = {
         locationChecks: locationChecks.count,
         sessions: sessions.count,
@@ -129,6 +137,7 @@ export async function runMaintenance(now: Date = new Date()): Promise<Maintenanc
         guestCommentsBlanked,
         // D37: crypto-shred deleted accounts past retention (skipping legal holds).
         accountsPurged: await purgeDeletedAccounts(now, tx),
+        suspensionsEnded: suspensionsEnded.count,
       };
       logger.info({ report }, 'maintenance complete');
       return report;

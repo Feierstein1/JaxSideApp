@@ -22,7 +22,7 @@ This file tracks progress, decisions and open questions. Update it whenever work
 ## Current status
 
 **Phase:** 5 — Moderation & Administration (started 2026-10-15; Phase 3 gate pending only the on-device vote/comment check)
-**Next action:** Phase 5: strikes, suspensions and bans (P5.6), then appeals (P5.7).
+**Next action:** Phase 5: appeals (P5.7), then the admin portal (P5.11 onward).
 **Last updated:** 2026-10-16
 
 ---
@@ -160,6 +160,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D55 | **Accepted** 2026-10-16 | Rate limits (P5.3): 10-second **burst** limits on top of per-minute and daily ones (posts 1, comments 3, votes 15), a daily vote cap (1,000). 429 responses say how long to wait ("Try again in 3 minutes") and carry a `Retry-After` header. All values in AppConfiguration. Upload and place-submission limits are configured and get wired up with those features (P6, P5.8) | §11.3 asks for per-minute **and** burst limits; fixed windows alone allow a double burst at a window edge |
 | D56 | **Accepted** 2026-10-16 | Text screening (P5.4): rules live in a `ScreeningRule` table (term, WORD or CONTAINS match, action, category, optional message, on/off), cached 30 s. Text is normalized before matching (accents, look-alike letters, leetspeak with 1 read as i or l, stretched letters, spaced or dotted letters, zero-width characters). **BLOCK** → refused with the reason; **WARN** → "Post anyway?" (resend with `confirmWarning: true`); **HOLD** → saved hidden (not counted) plus an automatic report with no reporter, so it lands in the moderation queue. Edits, bios and usernames can't be held, so HOLD refuses them; usernames are refused on any match. No profanity rules by default. Starter rules: 7 threat/"kill yourself" phrases, all HOLD | §11.2: configurable, normalized, explanatory prompts, high-risk content blocked or held; automated screening never punishes by itself |
 | D57 | **Accepted** 2026-10-16 | Spam checks (P5.5) on new posts and comments, after screening: **duplicates** (same person, same normalized text of 20+ characters within 24 h, across posts, rooms and comments) are refused with 409; **links**: more than 2 in one item, or any link from an account under 24 h old, is held for review with an automatic SPAM report; edits with more than 2 links are refused. All thresholds in AppConfiguration. Same text from *different* accounts (coordinated spam) is left to reports and the admin queue for now | §11.3 "duplicate-content and spam detection"; holding (not refusing) link posts avoids punishing honest users |
+| D58 | **Accepted** 2026-10-16 | Enforcement details (P5.6): strikes are `ModerationAction` rows (WARN, SUSPEND, BAN) on the permanent user ID; voided strikes and ones older than 180 days don't count. Direct suspensions/bans count as strikes. A suspension never shortens a longer one. A **ban** revokes all sessions and bans every phone (installation) the account signed in on; lifting it un-bans a phone only if no other banned account used it. **Admin accounts can't be sanctioned from the portal.** Users see their own active strikes with the reason (never the admin or internal note) under Account → Account standing; the suspension message shows the end time (Eastern). Maintenance flips ended suspensions back to ACTIVE | D9 ladder; ban carry-over for MS4; protects against a hijacked admin silencing other admins |
 | D43 | **Accepted** 2026-10-15 | The signed-in username shows in the top bar on every screen, with an eye button that hides it **on that device's screen only** (stored on the device). Posts still show the username to others | User request. Screen-privacy toggle, not anonymous posting. **Confirmed by the user 2026-10-15** |
 
 ---
@@ -271,7 +272,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [x] **P5.3** Rate limits (D8): registration, login, posts, comments, votes, uploads, reports, submissions; daily plus per-minute plus burst; guest-specific values 🔒 ✅MS2 (D55, `rate-limits.test.ts`). Guest values: guest sessions per install/IP; guests can't write (D54). Uploads/submissions wired with P6/P5.8
 - [x] **P5.4** Text screening: configurable term lists, normalization (leetspeak, spacing, homoglyphs), outcomes = allow / warn-and-confirm / hold-for-review / block. Profanity allowed by default (D56, `screening.test.ts` 26 tests). Applied to posts, comments, edits, bios and usernames. App: "Post anyway?" prompt and "Sent for review" notice. Rule editing comes with the admin portal (P5.17); slur list: Q14
 - [x] **P5.5** Duplicate-content and spam detection (same text hash within a window, link-heavy posts) (D57, `spam.test.ts` 9 tests)
-- [ ] **P5.6** Strike system (D9); suspensions and bans enforced in `requireActor()` 🔒 ✅MS3
+- [x] **P5.6** Strike system (D9); suspensions and bans enforced in `requireActor()` 🔒 ✅MS3 (D58, `enforcement.test.ts` 10 tests). Service layer + `GET /me/standing` + Account standing screen; admin buttons come with the moderation queue (P5.14)
 - [ ] **P5.7** Appeals and unban requests with eligibility rules
 
 **Community submissions (§9.3)**
@@ -337,7 +338,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [~] A3 — Guests: no top-level posts, uploads, business rooms, achievements (P4.2 ✓ posts and rooms; uploads/achievements re-check in P6)
 - [x] A4 — Guests expire after 30 days inactive (P4.4 ✓ `guests.test.ts`)
 - [x] A5 — Guest comments stay as GUEST for one year (P4.5 ✓)
-- [~] A6 — Deleted or banned users can't participate (P4.12 ✓ deleted; banned users P5.6)
+- [x] A6 — Deleted or banned users can't participate (P4.12 ✓ deleted; P5.6 ✓ banned/suspended, `enforcement.test.ts`)
 - [x] A7 — Deletion hides the profile and runs the retention workflow (P4.12 ✓)
 
 **Discussions & voting**
@@ -445,3 +446,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-16 | D54, P5.3, D55 | User: guests are view-only. Server refuses guest comments and reports; the app hides comment boxes and Report links for guests; copy and retention policy updated. Rate limits: burst (10 s) for posts/comments/votes, daily vote cap, plain-language 429 message + `Retry-After`. Content-heavy test files lift burst limits via `relaxBurstLimits()`; burst rules have their own tests. 420 server tests + build + 28 app tests pass. Docker Desktop's engine failed twice mid-run (user restarted it) |
 | 2026-10-16 | P5.4, D56, Q14 | Text screening: `ScreeningRule` table + migration, normalizer (accents, homoglyphs, leetspeak, stretched/spaced letters, zero-width), BLOCK/WARN/HOLD outcomes; held content hidden and auto-reported. Wired into posts, comments, edits, bio and usernames; starter threat rules seeded. App: "Post anyway?" prompt and "Sent for review" notice. 446 server tests + build + 28 app tests pass |
 | 2026-10-16 | P5.5, D57 | Spam checks: duplicate text from the same person within 24 h refused (normalized, so case/spacing tricks don't help; short replies exempt); link-heavy posts and links from new accounts held with an automatic report; link-heavy edits refused. 455 server tests pass |
+| 2026-10-16 | P5.6, D58 | Strikes/suspensions/bans service: D9 ladder with 180-day decay, direct suspend/ban, lift, void (for appeals); bans revoke sessions and ban the phones used; admins can't be sanctioned; maintenance ends expired suspensions. `GET /me/standing` + Account standing screen; suspension message shows the end time. Migration adds strike voiding fields. 465 server tests + build pass |
