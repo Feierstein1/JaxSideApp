@@ -7,6 +7,7 @@ import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
 import { EmailCodeCard } from '@/auth/EmailCodeCard';
+import { sendScreened } from '@/discussion/screening';
 import { categoryLabel } from '@/format';
 import { Button, Segmented, styles } from '@/ui';
 
@@ -66,7 +67,10 @@ function ProfileTab() {
     setBusy(true);
     setError(undefined);
     try {
-      await api.patch('/api/v1/me/profile', { bio: bio.trim() });
+      const sent = await sendScreened((confirmWarning) =>
+        api.patch('/api/v1/me/profile', { bio: bio.trim(), confirmWarning }),
+      );
+      if (!sent) return;
       await refresh();
       setEditing(false);
     } catch (e) {

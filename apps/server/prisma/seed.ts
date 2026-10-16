@@ -13,7 +13,13 @@ import { encryptedEmailFields } from '../src/server/crypto/field-encryption';
 import { uuidv7 } from '../src/server/crypto/uuid';
 import { readBoundaryFile } from '../src/server/location/boundary-file';
 import { importServiceArea } from '../src/server/location/service-area';
-import { ACHIEVEMENTS, CONFIG_DESCRIPTIONS, DEV_PLACES, DEV_USERS } from './seed-data';
+import {
+  ACHIEVEMENTS,
+  CONFIG_DESCRIPTIONS,
+  DEV_PLACES,
+  DEV_USERS,
+  STARTER_SCREENING_RULES,
+} from './seed-data';
 
 export interface SeedOptions {
   includeDevData: boolean;
@@ -31,6 +37,14 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
   }
 
   await importServiceArea(db, readBoundaryFile());
+
+  for (const r of STARTER_SCREENING_RULES) {
+    await db.screeningRule.upsert({
+      where: { term_match: { term: r.term, match: 'WORD' } },
+      create: { ...r, match: 'WORD' },
+      update: {},
+    });
+  }
 
   for (const a of ACHIEVEMENTS) {
     const data = { name: a.name, description: a.description, icon: a.icon, criteria: a.criteria };

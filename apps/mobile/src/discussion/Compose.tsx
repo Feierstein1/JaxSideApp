@@ -5,6 +5,7 @@ import { COLORS, POST_MAX } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import { Button, styles } from '@/ui';
 import { createPost, markFeedsDirty } from './api';
+import { sendScreened } from './screening';
 
 /**
  * Write a post (P3.11). Area posts are placed at the author's (rounded) location by the
@@ -26,7 +27,8 @@ export function Compose({
     setBusy(true);
     setError(undefined);
     try {
-      await createPost(target, body.trim());
+      const sent = await sendScreened((ok) => createPost(target, body.trim(), ok));
+      if (!sent) return; // chose to edit after a warning
       markFeedsDirty();
       router.back();
     } catch (e) {

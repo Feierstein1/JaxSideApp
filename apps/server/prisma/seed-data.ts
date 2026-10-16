@@ -13,6 +13,21 @@ export const CONFIG_DESCRIPTIONS: Partial<Record<keyof typeof CONFIG_DEFAULTS, s
 };
 
 /** Initial achievement definitions (P6.8). Criteria are evaluated server-side only. */
+/**
+ * Starter screening rules (P5.4, D56). Threats and self-harm taunts are held for a
+ * moderator, not refused, since context matters (quotes, news). Admins add more,
+ * including slurs, in the admin portal (P5.17). Seeding never overwrites admin edits.
+ */
+export const STARTER_SCREENING_RULES = [
+  { term: 'i will kill you', category: 'THREAT', action: 'HOLD' },
+  { term: 'im going to kill you', category: 'THREAT', action: 'HOLD' },
+  { term: 'gonna kill you', category: 'THREAT', action: 'HOLD' },
+  { term: 'i know where you live', category: 'THREAT', action: 'HOLD' },
+  { term: 'shoot up the', category: 'THREAT', action: 'HOLD' },
+  { term: 'kill yourself', category: 'HARASSMENT', action: 'HOLD' },
+  { term: 'kys', category: 'HARASSMENT', action: 'HOLD' },
+] as const;
+
 export const ACHIEVEMENTS = [
   {
     key: 'first_contribution',

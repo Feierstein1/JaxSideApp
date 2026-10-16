@@ -23,6 +23,7 @@ export const BIO_MAX = 300;
 /** P4.8 (early): the public profile bio. Empty string clears it. */
 export const profileUpdateSchema = z.strictObject({
   bio: z.union([z.literal(''), text(BIO_MAX)]),
+  confirmWarning: z.literal(true).optional(),
 });
 export const commentBodySchema = text(COMMENT_MAX);
 
@@ -38,13 +39,17 @@ export const feedRequestSchema = z.strictObject({
   sort: z.enum(FEED_SORTS).default('new'),
 });
 
+/** Sent after the person saw a screening warning and chose "post anyway" (P5.4). */
+const confirmWarning = z.literal(true).optional();
+
 export const createPostSchema = z.strictObject({
   reading: locationReadingSchema,
   body: postBodySchema,
+  confirmWarning,
 });
 
-export const editPostSchema = z.strictObject({ body: postBodySchema });
-export const editCommentSchema = z.strictObject({ body: commentBodySchema });
+export const editPostSchema = z.strictObject({ body: postBodySchema, confirmWarning });
+export const editCommentSchema = z.strictObject({ body: commentBodySchema, confirmWarning });
 
 export const listCommentsSchema = z.strictObject({ reading: locationReadingSchema });
 
@@ -52,6 +57,7 @@ export const createCommentSchema = z.strictObject({
   reading: locationReadingSchema,
   body: commentBodySchema,
   parentCommentId: z.uuid().optional(),
+  confirmWarning,
 });
 
 /** +1 upvote, -1 downvote, 0 removes your vote (D6). */

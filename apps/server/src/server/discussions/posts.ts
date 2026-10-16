@@ -203,21 +203,35 @@ export async function postAnchor(kind: DiscussionKind, id: string) {
 }
 
 /** P3.1: the server assigns the (already coarsened) point; the client can't choose it. */
-export async function createGeneralPost(authorId: string, at: GeoPoint, body: string) {
+export async function createGeneralPost(
+  authorId: string,
+  at: GeoPoint,
+  body: string,
+  held = false,
+) {
+  // P5.4: a held post is stored hidden until a moderator reviews it.
+  const status = held ? 'HELD_FOR_REVIEW' : 'VISIBLE';
   const [row] = await db.$queryRaw<{ id: string }[]>`
-    INSERT INTO "GeneralPost" (id, "authorId", body, location, "updatedAt")
-    VALUES (gen_random_uuid(), ${authorId}::uuid, ${body}, ${point(at)}, now())
+    INSERT INTO "GeneralPost" (id, "authorId", body, location, status, "updatedAt")
+    VALUES (gen_random_uuid(), ${authorId}::uuid, ${body}, ${point(at)},
+            ${status}::"ContentStatus", now())
     RETURNING id`;
   return row!.id;
 }
 
 /** P3.2: a room post; the place's post count moves in the same transaction (D41). */
-export async function createBusinessPost(authorId: string, placeId: string, body: string) {
+export async function createBusinessPost(
+  authorId: string,
+  placeId: string,
+  body: string,
+  held = false,
+) {
   return db.$transaction(async (tx) => {
     const post = await tx.businessPost.create({
-      data: { authorId, placeId, body },
+      data: { authorId, placeId, body, status: held ? 'HELD_FOR_REVIEW' : 'VISIBLE' },
       select: { id: true },
     });
+    if (held) return post.id; // counted once a moderator approves it
     await tx.businessPlace.update({
       where: { id: placeId },
       data: { postCount: { increment: 1 } },

@@ -24,6 +24,7 @@ import { ApiRequestError } from '@/api/client';
 import { timeAgo } from '@/format';
 import { Button, styles } from '@/ui';
 import { createComment, deleteComment, deletePost, fetchPost, markFeedsDirty } from './api';
+import { sendScreened } from './screening';
 import { authorName, openAuthor, PostCard } from './PostCard';
 import { useGuest } from '@/auth/guest';
 import { ReportSheet } from '@/report/ReportSheet';
@@ -63,7 +64,10 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
     setSending(true);
     setError(undefined);
     try {
-      await createComment(kind, id, text.trim(), replyTo?.id);
+      const sent = await sendScreened((ok) =>
+        createComment(kind, id, text.trim(), replyTo?.id, ok),
+      );
+      if (!sent) return; // chose to edit after a warning
       setText('');
       setReplyTo(undefined);
       markFeedsDirty(); // comment count changed

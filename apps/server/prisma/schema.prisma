@@ -716,6 +716,45 @@ model AccountDeletion {
 // ──────────────────────── Config & infrastructure ────────────────────────
 
 /// Server-authoritative settings (§7, §18). Keys match CONFIG_DEFAULTS in @jax/shared.
+/// P5.4 text screening (§11.2): what happens when text matches a rule.
+enum ScreeningAction {
+  WARN // ask "post anyway?"
+  HOLD // saved but hidden until a moderator reviews it
+  BLOCK // refused
+}
+
+enum ScreeningMatch {
+  WORD // whole words or phrases, after normalization
+  CONTAINS // anywhere, ignoring spaces and punctuation (catches "k.i.l.l")
+}
+
+enum ScreeningCategory {
+  SLUR
+  THREAT
+  SEXUAL
+  HARASSMENT
+  DOXXING
+  SPAM
+  OTHER
+}
+
+/// Configurable screening rules (P5.4). Edited by admins (P5.17); cached briefly.
+model ScreeningRule {
+  id        String            @id @default(uuid(7)) @db.Uuid
+  /// The term or phrase as an admin typed it; matched after normalization.
+  term      String            @db.VarChar(100)
+  match     ScreeningMatch    @default(WORD)
+  action    ScreeningAction
+  category  ScreeningCategory
+  /// Shown to the person when it matches (optional; a default is used otherwise).
+  message   String?           @db.VarChar(300)
+  enabled   Boolean           @default(true)
+  createdAt DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@unique([term, match])
+}
+
 model AppConfiguration {
   key         String   @id @db.VarChar(80)
   value       Json

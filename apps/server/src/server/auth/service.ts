@@ -13,6 +13,7 @@ import { getConfig } from '../config';
 import { db } from '../db';
 import { getEnv } from '../env';
 import { ApiError } from '../http';
+import { screenText } from '../moderation/screening';
 import { sendSafely } from '../mail/mailer';
 import { passwordResetEmail, registrationAttemptEmail, verificationEmail } from '../mail/templates';
 import { decryptUserEmail, emailIndex, encryptedEmailFields } from '../crypto/field-encryption';
@@ -238,6 +239,7 @@ export async function register(input: RegisterRequest, ctx: RequestContext) {
   // The birth year is used here and never stored (D36).
   const ageCutoffYear = await assertAgeEligible(input.birthYear, now);
 
+  await screenText(input.username, 'username'); // P5.4
   const usernameNormalized = normalizeUsername(input.username);
   if (await db.user.findUnique({ where: { usernameNormalized }, select: { id: true } })) {
     throw new ApiError(409, 'USERNAME_TAKEN', 'That username is taken');

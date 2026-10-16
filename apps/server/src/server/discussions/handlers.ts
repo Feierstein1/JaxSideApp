@@ -47,6 +47,7 @@ import {
   listPlacePosts,
   postAnchor,
 } from './posts';
+import { holdReport, screenText, type ScreenResult } from '../moderation/screening';
 import { castVote } from './votes';
 
 export type IdCtx = { params: Promise<{ id: string }> };
@@ -152,6 +153,24 @@ export async function placePosts(req: Request, ctx: IdCtx) {
 
 // ───────────────────────────── Create ─────────────────────────────
 
+/**
+ * P5.4: held content goes to the moderation queue as an automatic report, and the
+ * author is told it will appear after review (202, not an error).
+ */
+async function heldResponse(
+  screen: Extract<ScreenResult, { held: true }>,
+  target: { generalPostId: string } | { businessPostId: string } | { commentId: string },
+) {
+  await holdReport(screen.rule, target);
+  return NextResponse.json(
+    {
+      held: true,
+      message: 'Thanks. A moderator will review this before it appears to others.',
+    },
+    { status: 202 },
+  );
+}
+
 const POST_LIMITS: [string, ConfigKey, number][] = [
   ['post-burst', 'rateLimit.post.burstPer10s', 10],
   ['post-min', 'rateLimit.post.perMinute', 60],
@@ -164,7 +183,9 @@ export async function createGeneral(req: Request) {
   const input = await parseBody(req, createPostSchema);
   await limits(user.id, ...POST_LIMITS);
   const at = await assertLocationEligible({ kind: 'user', user }, input.reading, 'general.post');
-  const id = await createGeneralPost(user.id, coarsenPoint(at), input.body);
+  const screen = await screenText(input.body, 'new-content', input);
+  const id = await createGeneralPost(user.id, coarsenPoint(at), input.body, screen.held);
+  if (screen.held) return heldResponse(screen, { generalPostId: id });
   return NextResponse.json(
     { post: await getPostView('general', id, user.id, at) },
     { status: 201 },
@@ -182,7 +203,9 @@ export async function createBusiness(req: Request, ctx: IdCtx) {
     kind: 'business',
     point: place,
   });
-  const id = await createBusinessPost(user.id, placeId, input.body);
+  const screen = await screenText(input.body, 'new-content', input);
+  const id = await createBusinessPost(user.id, placeId, input.body, screen.held);
+  if (screen.held) return heldResponse(screen, { businessPostId: id });
   return NextResponse.json({ post: await getPostView('business', id, user.id) }, { status: 201 });
 }
 
@@ -214,9 +237,10 @@ export function postEdit(kind: DiscussionKind) {
   return async (req: Request, ctx: IdCtx) => {
     const { user } = await requireUser(req, VERIFIED);
     const id = await idFrom(ctx);
-    const { body } = await parseBody(req, editPostSchema);
+    const input = await parseBody(req, editPostSchema);
     await limits(user.id, ['edit', 'rateLimit.edit.perMinute', 60]);
-    await editPost(kind, id, user.id, body);
+    await screenText(input.body, 'edit', input);
+    await editPost(kind, id, user.id, input.body);
     return NextResponse.json({ post: await getPostView(kind, id, user.id) });
   };
 }
@@ -245,13 +269,16 @@ export function commentCreate(kind: DiscussionKind) {
       ['comment-day', 'rateLimit.comment.perDay', 86_400],
     );
     await checkPostAccess({ kind: 'user', user }, input.reading, kind, postId, 'comment');
+    const screen = await screenText(input.body, 'new-content', input);
     const id = await createComment({
       kind,
       postId,
       author: { kind: 'USER', userId: user.id },
       body: input.body,
       parentCommentId: input.parentCommentId,
+      held: screen.held,
     });
+    if (screen.held) return heldResponse(screen, { commentId: id });
     return NextResponse.json({ id }, { status: 201 });
   };
 }
@@ -284,9 +311,10 @@ export async function commentVote(req: Request, ctx: IdCtx) {
 export async function commentEdit(req: Request, ctx: IdCtx) {
   const { user } = await requireUser(req, VERIFIED);
   const id = await idFrom(ctx);
-  const { body } = await parseBody(req, editCommentSchema);
+  const input = await parseBody(req, editCommentSchema);
   await limits(user.id, ['edit', 'rateLimit.edit.perMinute', 60]);
-  await editComment(id, user.id, body);
+  await screenText(input.body, 'edit', input);
+  await editComment(id, user.id, input.body);
   return NextResponse.json({ edited: true });
 }
 

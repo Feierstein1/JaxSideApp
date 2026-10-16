@@ -1,6 +1,7 @@
 import type { CommentView, DiscussionKind, FeedSort, PostView } from '@jax/shared';
 import { api } from '@/api';
 import { getFreshReading } from '@/location/device';
+import type { HeldResponse } from './screening';
 
 /**
  * Discussion requests (Phase 3). Each one carries a recent location reading; the server
@@ -36,11 +37,12 @@ export async function fetchPost(kind: DiscussionKind, id: string) {
 export async function createPost(
   target: { kind: 'general' } | { kind: 'business'; placeId: string },
   body: string,
+  confirmWarning?: true,
 ) {
   const reading = await getFreshReading({ fresh: true });
   const path =
     target.kind === 'general' ? '/api/v1/posts' : `/api/v1/places/${target.placeId}/posts`;
-  return api.post<{ post: PostView }>(path, { reading, body });
+  return api.post<{ post: PostView } | HeldResponse>(path, { reading, body, confirmWarning });
 }
 
 export async function createComment(
@@ -48,11 +50,13 @@ export async function createComment(
   postId: string,
   body: string,
   parentCommentId?: string,
+  confirmWarning?: true,
 ) {
   const reading = await getFreshReading({ fresh: true });
-  return api.post<{ id: string }>(`${base(kind)}/${postId}/comments`, {
+  return api.post<{ id: string } | HeldResponse>(`${base(kind)}/${postId}/comments`, {
     reading,
     body,
+    confirmWarning,
     ...(parentCommentId ? { parentCommentId } : {}),
   });
 }

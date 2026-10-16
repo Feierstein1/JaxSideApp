@@ -109,6 +109,8 @@ export async function createComment(opts: {
   author: { kind: 'USER'; userId: string } | { kind: 'GUEST'; guestId: string };
   body: string;
   parentCommentId?: string;
+  /** P5.4: stored hidden (and not counted) until a moderator reviews it. */
+  held?: boolean;
 }): Promise<string> {
   const maxDepth = await getConfig('comments.maxDepth');
   return db.$transaction(async (tx) => {
@@ -138,9 +140,11 @@ export async function createComment(opts: {
           ? { authorKind: 'USER' as const, authorUserId: opts.author.userId }
           : { authorKind: 'GUEST' as const, authorGuestId: opts.author.guestId }),
         body: opts.body,
+        status: opts.held ? 'HELD_FOR_REVIEW' : 'VISIBLE',
       },
       select: { id: true },
     });
+    if (opts.held) return c.id;
     await tx.$executeRaw`
       UPDATE ${TABLE[opts.kind]} SET "commentCount" = "commentCount" + 1 WHERE id = ${opts.postId}::uuid`;
     return c.id;

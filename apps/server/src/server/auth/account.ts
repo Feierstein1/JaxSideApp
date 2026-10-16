@@ -15,6 +15,7 @@ import {
 } from '../crypto/field-encryption';
 import { db } from '../db';
 import { ApiError } from '../http';
+import { screenText } from '../moderation/screening';
 import { sendSafely } from '../mail/mailer';
 import {
   accountDeletedEmail,
@@ -57,6 +58,7 @@ export async function changeUsername(user: User, username: string, now = new Dat
     // Only capitalization changed: no cooldown, nothing to reserve.
     return db.user.update({ where: { id: user.id }, data: { username: username.trim() } });
   }
+  await screenText(username, 'username'); // P5.4
   const [cooldownDays, holdDays] = await Promise.all([
     getConfig('username.changeCooldownDays'),
     getConfig('username.releaseHoldDays'),
