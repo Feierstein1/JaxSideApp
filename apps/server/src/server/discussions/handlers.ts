@@ -51,6 +51,7 @@ import {
 import { holdFor, holdReport, screenText, type Hold } from '../moderation/screening';
 import { checkEdit, checkNewContent } from '../moderation/spam';
 import { castVote } from './votes';
+import { evaluateForPostAuthor } from '../achievements';
 
 export type IdCtx = { params: Promise<{ id: string }> };
 
@@ -307,7 +308,9 @@ export function postVote(kind: DiscussionKind) {
     const input = await parseBody(req, voteSchema);
     await limits(user.id, ...VOTE_RULES);
     await checkPostAccess({ kind: 'user', user }, input.reading, kind, id, 'vote');
-    return NextResponse.json(await castVote(user.id, { type: kind, id }, input.value));
+    const result = await castVote(user.id, { type: kind, id }, input.value);
+    if (input.value === 1) await evaluateForPostAuthor(kind, id); // P6.8 Well Received
+    return NextResponse.json(result);
   };
 }
 

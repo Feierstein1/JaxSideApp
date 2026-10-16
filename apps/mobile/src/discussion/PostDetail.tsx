@@ -27,6 +27,7 @@ import { createComment, deleteComment, deletePost, fetchPost, markFeedsDirty } f
 import { sendScreened } from './screening';
 import { authorName, openAuthor, PostCard } from './PostCard';
 import { useGuest } from '@/auth/guest';
+import { MedalIcons } from '@/profile/Medals';
 import { ReportSheet } from '@/report/ReportSheet';
 import { VoteControl } from './VoteControl';
 
@@ -267,6 +268,9 @@ function CommentRow({
             onPress={visible && 'username' in c.author ? () => openAuthor(c.author) : undefined}
           >
             {visible ? authorName(c.author) : ' '}
+            {visible && 'medals' in c.author ? (
+              <MedalIcons keys={c.author.medals} size={12} />
+            ) : null}
           </Text>
           {visible ? ` · ${timeAgo(c.createdAt)}${c.editedAt ? ' · edited' : ''}` : ''}
         </Text>

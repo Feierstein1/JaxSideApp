@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BRAND, COLORS, type PostView } from '@jax/shared';
 import { formatDistance, timeAgo } from '@/format';
+import { MedalIcons } from '@/profile/Medals';
 import { VoteControl } from './VoteControl';
 
 export function authorName(a: PostView['author'] | { guest: true }): string {
@@ -94,6 +95,7 @@ export function PostCard({
             accessibilityRole={'username' in post.author ? 'link' : undefined}
           >
             {name}
+            {'medals' in post.author ? <MedalIcons keys={post.author.medals} /> : null}
             {post.isMine ? (
               <Text style={{ color: COLORS.textMuted, fontWeight: '400' }}> (you)</Text>
             ) : null}

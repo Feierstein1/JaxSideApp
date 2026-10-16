@@ -1,3 +1,4 @@
+import { medalKeysSql } from '../achievements';
 import type { CommentView, DiscussionKind } from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
 import { getConfig } from '../config';
@@ -25,6 +26,7 @@ interface CommentRow {
   authorGuestId: string | null;
   username: string | null;
   author_status: string | null;
+  medals: string[] | null;
   score: number;
   my_vote: number | null;
 }
@@ -46,7 +48,7 @@ function toView(r: CommentRow, viewer: CommentViewer): CommentView {
         ? { guest: true }
         : r.author_status === 'DELETED' || !r.username
           ? { deleted: true }
-          : { username: r.username },
+          : { username: r.username, medals: r.medals ?? [] },
     score: r.score,
     myVote: (r.my_vote ?? 0) as -1 | 0 | 1,
     isMine:
@@ -85,7 +87,8 @@ export async function listComments(kind: DiscussionKind, postId: string, viewer:
     )
     SELECT t.id, t."parentCommentId", t.depth, t.body, t.status::text, t."createdAt", t."editedAt",
            t."authorKind"::text AS "authorKind", t."authorUserId", t."authorGuestId", u.username,
-           u.status::text AS author_status, t.score, v.value AS my_vote
+           u.status::text AS author_status, t.score, v.value AS my_vote,
+           ${medalKeysSql(Prisma.sql`t."authorUserId"`)} AS medals
     FROM thread t
     LEFT JOIN "User" u ON u.id = t."authorUserId"
     LEFT JOIN "Vote" v ON v."commentId" = t.id AND v."voterId" = ${viewerId}::uuid

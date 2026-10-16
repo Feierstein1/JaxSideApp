@@ -8,6 +8,7 @@ import { useGuest } from '@/auth/guest';
 import { PostCard } from '@/discussion/PostCard';
 import { getFreshReading } from '@/location/device';
 import { ReportSheet } from '@/report/ReportSheet';
+import { MedalList } from './Medals';
 import { plural } from '@/format';
 import { Button, styles } from '@/ui';
 
@@ -142,6 +143,8 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
           <Button variant="link" title="Report profile" onPress={() => setReporting(true)} />
         ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
+        <Text style={[styles.label, { marginTop: 12 }]}>Medals</Text>
+        <MedalList medals={profile.medals} />
         <Text style={[styles.label, { marginTop: 12 }]}>Recent posts nearby</Text>
         {posts.length === 0 ? <Text style={styles.muted}>Nothing in your area yet.</Text> : null}
       </View>

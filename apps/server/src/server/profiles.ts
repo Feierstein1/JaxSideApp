@@ -1,4 +1,5 @@
 import { normalizeUsername, type PublicProfile } from '@jax/shared';
+import { medalsFor } from './achievements';
 import { db } from './db';
 import { ApiError } from './http';
 
@@ -38,6 +39,7 @@ export async function getPublicProfile(username: string, viewerUserId: string | 
     postCount,
     isMe: viewerUserId === user.id,
     blockedByMe,
+    medals: await medalsFor(user.id),
   };
   return { id: user.id, profile };
 }

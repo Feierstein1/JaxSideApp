@@ -2,12 +2,13 @@ import { useCallback, useState, type ComponentProps, type ReactNode } from 'reac
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect, type Href } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { BIO_MAX, BRAND, COLORS, CONFIG_DEFAULTS } from '@jax/shared';
+import { BIO_MAX, BRAND, COLORS, CONFIG_DEFAULTS, type Medal } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
 import { EmailCodeCard } from '@/auth/EmailCodeCard';
 import { sendScreened } from '@/discussion/screening';
+import { MedalList } from '@/profile/Medals';
 import { categoryLabel } from '@/format';
 import { Button, Segmented, styles } from '@/ui';
 
@@ -56,6 +57,15 @@ function ProfileTab() {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [medals, setMedals] = useState<Medal[]>();
+  useFocusEffect(
+    useCallback(() => {
+      api
+        .get<{ medals: Medal[] }>('/api/v1/me/medals')
+        .then((r) => setMedals(r.medals))
+        .catch(() => setMedals([]));
+    }, []),
+  );
   if (!user) return null;
 
   const joined = new Date(user.joinedAt).toLocaleDateString('en-US', {
@@ -153,9 +163,12 @@ function ProfileTab() {
           />
         </>
       )}
+      <Text style={[styles.label, { marginTop: 16 }]}>Medals</Text>
+      {medals ? <MedalList medals={medals} /> : null}
       <Text style={[styles.muted, { marginTop: 12, fontSize: 13 }]}>
-        This is what other people see. Your email is never shown. Profile photos and medals come in
-        a later update.
+        This is what other people see. Your email is never shown. Medals are earned for good
+        contributions: a post that stays up, a place you suggested being approved, and posts your
+        neighbors find helpful.
       </Text>
     </View>
   );

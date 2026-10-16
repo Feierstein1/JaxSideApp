@@ -1,3 +1,4 @@
+import { medalKeysSql } from '../achievements';
 import { milesToMeters, type DiscussionKind, type FeedSort, type PostView } from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
 import { getConfig } from '../config';
@@ -33,6 +34,7 @@ interface PostRow {
   authorId: string;
   username: string;
   author_status: string;
+  medals: string[];
   my_vote: number | null;
   distance: number | null;
   place_id: string | null;
@@ -46,7 +48,10 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
     body: r.body,
     createdAt: r.createdAt.toISOString(),
     editedAt: r.editedAt?.toISOString() ?? null,
-    author: r.author_status === 'DELETED' ? { deleted: true } : { username: r.username },
+    author:
+      r.author_status === 'DELETED'
+        ? { deleted: true }
+        : { username: r.username, medals: r.medals },
     score: r.score,
     upCount: r.upCount,
     downCount: r.downCount,
@@ -84,6 +89,7 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
   return Prisma.sql`
     SELECT p.id, p.body, p."createdAt", p."editedAt", p.score, p."upCount", p."downCount",
            p."commentCount", p."authorId", u.username, u.status::text AS author_status,
+           ${medalKeysSql(Prisma.sql`p."authorId"`)} AS medals,
            v.value AS my_vote, ${distance} AS distance, ${place}
     FROM ${TABLE[kind]} p
     JOIN "User" u ON u.id = p."authorId"

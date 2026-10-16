@@ -39,6 +39,17 @@ export interface PublicProfile {
   isMe: boolean;
   /** Whether *you* have blocked this person (P5.2). */
   blockedByMe: boolean;
+  /** P6.9: medals earned. */
+  medals: Medal[];
+}
+
+/** P6.9: an earned achievement as shown on a profile. */
+export interface Medal {
+  key: string;
+  name: string;
+  description: string;
+  icon: string;
+  awardedAt: string;
 }
 
 /** P5.7: appeal one strike. */

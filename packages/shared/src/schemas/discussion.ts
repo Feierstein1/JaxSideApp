@@ -75,7 +75,8 @@ export interface PostView {
   body: string;
   createdAt: string;
   editedAt: string | null;
-  author: { username: string } | { deleted: true };
+  /** `medals`: achievement keys earned (P6.9), shown as small icons by the name. */
+  author: { username: string; medals: string[] } | { deleted: true };
   score: number;
   upCount: number;
   downCount: number;
@@ -96,7 +97,7 @@ export interface CommentView {
   status: 'visible' | 'deleted' | 'removed';
   createdAt: string;
   editedAt: string | null;
-  author: { username: string } | { guest: true } | { deleted: true };
+  author: { username: string; medals: string[] } | { guest: true } | { deleted: true };
   score: number;
   myVote: -1 | 0 | 1;
   isMine: boolean;

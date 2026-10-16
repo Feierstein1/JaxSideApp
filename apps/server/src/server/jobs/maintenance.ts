@@ -1,3 +1,4 @@
+import { evaluateAchievements } from '../achievements';
 import { purgeDeletedAccounts } from '../auth/account';
 import { getConfig } from '../config';
 import { db } from '../db';
@@ -18,6 +19,7 @@ export interface MaintenanceReport {
   guestCommentsBlanked: number;
   accountsPurged: number;
   suspensionsEnded: number;
+  achievementsAwarded: number;
 }
 
 /**
@@ -138,6 +140,8 @@ export async function runMaintenance(now: Date = new Date()): Promise<Maintenanc
         // D37: crypto-shred deleted accounts past retention (skipping legal holds).
         accountsPurged: await purgeDeletedAccounts(now, tx),
         suspensionsEnded: suspensionsEnded.count,
+        // P6.8: medals that depend on time (First Contribution after 24 h).
+        achievementsAwarded: await evaluateAchievements(now, undefined, tx),
       };
       logger.info({ report }, 'maintenance complete');
       return report;
