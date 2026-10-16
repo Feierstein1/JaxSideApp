@@ -33,6 +33,19 @@ npm run db:test:reset -w @jax/server
 - The mobile app has unit tests only for pure TypeScript modules (`src/**/*.test.ts`) so far.
   Device end-to-end tests come in Phase 7 (P7.5).
 
+## Live end-to-end check (dev server)
+
+`npm run e2e:live -w @jax/server` plays temporary people (usernames starting `zzt`) through the
+whole app over real HTTP against the running dev server: sign-up with the emailed code
+(read from Mailpit), password reset, location rules, posts, comments, votes, rooms, guests,
+profiles, blocking, screening, spam, reports, account changes, the admin portal (password +
+authenticator code), strikes, suspension, appeals, bans and account deletion. It then deletes
+everything it created (accounts, content, installations, rate-limit counters, test emails)
+and restores place post counts. Exit code 1 if any check fails.
+
+It needs the dev server, Docker services and a seeded dev database. The on-phone checklist is
+`docs/MANUAL_TESTS.md`.
+
 ## Full verification before committing
 
 ```sh
