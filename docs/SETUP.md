@@ -55,6 +55,26 @@ is on 5433 (`POSTGRES_PORT`).
 `npm run services:down` stops the services and keeps their data. Run `docker compose down -v` to
 also delete the data volumes.
 
+## Testing on your phone away from home Wi-Fi
+
+```sh
+npm run dev           # terminal 1: the server, as usual
+npm run dev:remote    # terminal 2: tunnels + Expo; scan the QR code it prints
+```
+
+`dev:remote` opens a free Cloudflare quick tunnel to the API (a new random
+`https://….trycloudflare.com` address each run, no account) and starts Expo in tunnel mode on
+port 8082 with the app pointed at that address. Your phone can then use the app on mobile data
+anywhere. Notes:
+
+- Your computer must stay **on and awake** with both commands running.
+- While it runs, the API is reachable by anyone who has the random address. Stop it with Ctrl+C
+  when you're done.
+- The **admin portal never answers through the tunnel** (D68): use it on this computer only.
+- **Mailpit** (sign-up and reset codes) is only on this computer, so create test accounts and
+  confirm their emails before you leave, or check codes when you're back.
+- The first time, Windows may take ~15 seconds to find the new tunnel address; the script waits.
+
 ## Admin portal
 
 The admin portal is at `http://localhost:3000/admin`. Admins are existing app accounts with a

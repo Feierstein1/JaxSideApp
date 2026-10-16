@@ -47,7 +47,7 @@ async function signIn() {
   const r1 = await step1();
   const secret: string = r1.body.enroll.secret;
   const res = await (adminVerifyPOST as H)(
-    new Request('http://x', {
+    new Request('http://localhost/x', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -245,5 +245,38 @@ describe('portal switch (D62)', () => {
       delete process.env.ADMIN_PORTAL_ENABLED;
     }
     expect((await call(adminSummaryGET as H, 'GET', { headers: { cookie } })).status).toBe(200);
+  });
+});
+
+describe('local only (D68)', () => {
+  it('requests through a tunnel or proxy get 404, even with a valid admin session', async () => {
+    const { cookie } = await signIn();
+    const tunnels: Record<string, string>[] = [
+      { 'x-forwarded-for': '203.0.113.9' },
+      { 'cf-connecting-ip': '203.0.113.9' },
+      { host: 'random-words.trycloudflare.com' },
+      { host: '192.168.1.20:3000' },
+    ];
+    for (const extra of tunnels) {
+      const r = await call(adminSummaryGET as H, 'GET', { headers: { cookie, ...extra } });
+      expect([extra, r.status]).toEqual([extra, 404]);
+    }
+    const tunnelLogin = await call(adminLoginPOST as H, 'POST', {
+      headers: { 'cf-connecting-ip': '203.0.113.9' },
+      body: { identifier: 'boss_ad', password: PW },
+    });
+    expect(tunnelLogin.status).toBe(404);
+    // On this computer it still works, including Next's own loopback X-Forwarded-For.
+    expect(
+      (
+        await call(adminSummaryGET as H, 'GET', {
+          headers: { cookie, host: 'localhost:3000', 'x-forwarded-for': '::1' },
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await call(adminSummaryGET as H, 'GET', { headers: { cookie, host: 'localhost:3000' } }))
+        .status,
+    ).toBe(200);
   });
 });

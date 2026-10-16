@@ -47,6 +47,38 @@ export function assertAdminPortalEnabled() {
   if (!adminPortalEnabled()) throw new ApiError(404, 'NOT_FOUND', 'Not found');
 }
 
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+
+/**
+ * D68: the portal only answers requests made on this computer: Host is localhost and
+ * nothing in between (tunnels and proxies add forwarding headers). So a dev tunnel for
+ * testing the app away from home never exposes /admin. ADMIN_PORTAL_ALLOW_REMOTE=true
+ * lifts this (only for a future, access-restricted setup).
+ */
+export function isLocalRequest(headers: Headers, url?: string): boolean {
+  if (process.env.ADMIN_PORTAL_ALLOW_REMOTE === 'true') return true;
+  const raw = headers.get('host') ?? (url ? new URL(url).host : '');
+  const host = raw.replace(/:\d+$/, '').toLowerCase();
+  if (!LOCAL_HOSTS.has(host)) return false;
+  // Tunnels and proxies say who the real client was. Next's own dev server adds
+  // X-Forwarded-For with this computer's loopback address, which is fine.
+  if (headers.has('cf-connecting-ip') || headers.has('forwarded') || headers.has('x-real-ip')) {
+    return false;
+  }
+  const chain = (headers.get('x-forwarded-for') ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return chain.every((ip) => LOOPBACK.has(ip));
+}
+
+/** Portal enabled and the request is local; otherwise 404 as if /admin didn't exist. */
+export function assertAdminReachable(req: Request) {
+  assertAdminPortalEnabled();
+  if (!isLocalRequest(req.headers, req.url)) throw new ApiError(404, 'NOT_FOUND', 'Not found');
+}
+
 // ───────────────────────────── Step 1 ─────────────────────────────
 
 function sign(payload: string): string {
@@ -246,6 +278,7 @@ export async function adminFromToken(
 }
 
 export function requireAdmin(req: Request, now = new Date()) {
+  assertAdminReachable(req);
   const mutation = !['GET', 'HEAD'].includes(req.method);
   return adminFromToken(
     readCookie(req, ADMIN_COOKIE),
