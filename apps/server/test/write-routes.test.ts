@@ -36,6 +36,9 @@ import * as meUsername from '@/app/api/v1/me/username/route';
 import * as userBlock from '@/app/api/v1/users/[username]/block/route';
 import * as userProfile from '@/app/api/v1/users/[username]/route';
 import * as reports from '@/app/api/v1/reports/route';
+import * as meAppeals from '@/app/api/v1/me/appeals/route';
+import * as restrictedAppeal from '@/app/api/v1/appeals/restricted/route';
+import * as restrictedStanding from '@/app/api/v1/appeals/restricted/standing/route';
 import * as profile from '@/app/api/v1/me/profile/route';
 import * as favorite from '@/app/api/v1/places/[id]/favorite/route';
 import * as roomList from '@/app/api/v1/places/[id]/posts/list/route';
@@ -233,6 +236,39 @@ const ROWS: Row[] = [
     id: null,
     location: false,
     body: () => ({ code: '123456' }),
+  },
+  {
+    route: 'me/appeals',
+    method: 'POST',
+    handler: h(meAppeals, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ actionId: '00000000-0000-7000-8000-000000000000', message: 'please review' }),
+  },
+  // P5.7: password instead of a session (banned/suspended people can't sign in).
+  {
+    route: 'appeals/restricted',
+    method: 'POST',
+    handler: h(restrictedAppeal, 'POST'),
+    auth: false,
+    id: null,
+    location: false,
+    body: () => ({
+      identifier: 'nobody',
+      password: 'x',
+      actionId: '00000000-0000-7000-8000-000000000000',
+      message: 'please review',
+    }),
+  },
+  {
+    route: 'appeals/restricted/standing',
+    method: 'POST',
+    handler: h(restrictedStanding, 'POST'),
+    auth: false,
+    id: null,
+    location: false,
+    body: () => ({ identifier: 'nobody', password: 'x' }),
   },
   {
     route: 'me/delete',

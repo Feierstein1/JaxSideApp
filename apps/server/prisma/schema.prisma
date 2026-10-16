@@ -173,6 +173,7 @@ model User {
   votes           Vote[]
   photos          Photo[]
   favorites       FavoritePlace[]
+  appeals         Appeal[]             @relation("Appellant")
   achievements    UserAchievement[]
   submissions     BusinessSubmission[] @relation("Submitter")
   reviewedSubs    BusinessSubmission[] @relation("Reviewer")
@@ -681,6 +682,7 @@ model ModerationAction {
   photo                Photo?               @relation(fields: [photoId], references: [id], onDelete: SetNull)
   submission           BusinessSubmission?  @relation(fields: [submissionId], references: [id], onDelete: SetNull)
   report               Report?              @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  appeals              Appeal[]
 
   @@index([targetUserId, createdAt])
   @@index([targetGuestId])
@@ -720,6 +722,33 @@ model AccountDeletion {
 // ──────────────────────── Config & infrastructure ────────────────────────
 
 /// Server-authoritative settings (§7, §18). Keys match CONFIG_DEFAULTS in @jax/shared.
+enum AppealStatus {
+  OPEN
+  ACCEPTED
+  REJECTED
+}
+
+/// P5.7: a request to cancel one strike (warning, suspension or ban). Accepting it voids
+/// the strike, which also lifts the suspension or ban it caused.
+model Appeal {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  userId       String           @db.Uuid
+  actionId     String           @db.Uuid
+  message      String           @db.VarChar(1000)
+  status       AppealStatus     @default(OPEN)
+  /// Shown to the user with the decision.
+  decisionNote String?          @db.VarChar(500)
+  decidedById  String?          @db.Uuid
+  decidedAt    DateTime?        @db.Timestamptz(3)
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  user         User             @relation("Appellant", fields: [userId], references: [id], onDelete: Cascade)
+  action       ModerationAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([actionId])
+}
+
 /// P5.4 text screening (§11.2): what happens when text matches a rule.
 enum ScreeningAction {
   WARN // ask "post anyway?"

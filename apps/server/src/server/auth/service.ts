@@ -295,7 +295,16 @@ export async function register(input: RegisterRequest, ctx: RequestContext) {
 
 // ───────────────────────────── Login (P1.15) ─────────────────────────────
 
-export async function login(input: LoginRequest, ctx: RequestContext) {
+/**
+ * Username/email + password check with the failed-attempt limits (D29). Returns the
+ * user (any status but deleted); callers decide what that status allows. Shared by
+ * login and the restricted-account appeal route (P5.7).
+ */
+export async function checkCredentials(
+  input: LoginRequest,
+  ctx: RequestContext,
+  opts: { refuseBannedInstallation: boolean },
+) {
   const now = ctx.now ?? new Date();
   const identifier = input.identifier.trim().toLowerCase();
   const accountRule = {
@@ -315,7 +324,7 @@ export async function login(input: LoginRequest, ctx: RequestContext) {
   // normal sign-ins, and a user who knows their password isn't locked out.
   await assertUnder(ipRule, now);
   await assertUnder(accountRule, now);
-  assertInstallationNotBanned(ctx.installation ?? null);
+  if (opts.refuseBannedInstallation) assertInstallationNotBanned(ctx.installation ?? null);
 
   const fail = async () => {
     await hit(ipRule.key, ipRule.windowSeconds, now);
@@ -338,6 +347,12 @@ export async function login(input: LoginRequest, ctx: RequestContext) {
   if (!(await verifyPassword(user.passwordHash, input.password))) {
     throw await fail();
   }
+  return user;
+}
+
+export async function login(input: LoginRequest, ctx: RequestContext) {
+  const now = ctx.now ?? new Date();
+  const user = await checkCredentials(input, ctx, { refuseBannedInstallation: true });
 
   // Correct password: now it's safe to say the account is banned or suspended.
   assertAccountUsable(user, now);

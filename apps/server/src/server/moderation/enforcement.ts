@@ -239,20 +239,3 @@ export async function voidStrike(input: {
     });
   }
 }
-
-/** What the user sees about their own standing (no admin names or internal notes). */
-export async function myStanding(userId: string, now = new Date()) {
-  const decayDays = await getConfig('strikes.decayDays');
-  const strikes = await activeStrikes(userId, now);
-  return {
-    strikes: strikes.map((s) => ({
-      id: s.id,
-      action: s.action,
-      reason: s.reason,
-      createdAt: s.createdAt.toISOString(),
-      // Your own suspension end; named apart from the internal user field.
-      until: s.expiresAt?.toISOString() ?? null,
-      countsUntil: new Date(s.createdAt.getTime() + decayDays * DAY_MS).toISOString(),
-    })),
-  };
-}

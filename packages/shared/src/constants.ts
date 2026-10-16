@@ -83,6 +83,12 @@ export const CONFIG_DEFAULTS = {
   /** The strike number that becomes a permanent ban. */
   'strikes.banAtStrike': 4,
 
+  // P5.7 / D59 appeals
+  /** Warnings and suspensions can be appealed within this many days. */
+  'appeals.windowDays': 30,
+  /** After a rejected ban appeal, the person can ask again after this many days. */
+  'appeals.banRetryDays': 90,
+
   // §5.1 / D17 guests
   'guest.inactivityDays': 30,
   'guest.expiryWarningDays': 5,
@@ -124,6 +130,7 @@ export const CONFIG_DEFAULTS = {
   // D28: reports are limited for everyone (guests can't report, D54).
   'rateLimit.report.perMinute': 3,
   'rateLimit.report.perDay': 20,
+  'rateLimit.appeal.perDay': 3,
   'rateLimit.verifyEmailResend.perHour': 3,
   /** Wrong email codes per IP, across all accounts (D31). */
   'rateLimit.codeAttempt.per15MinPerIp': 20,

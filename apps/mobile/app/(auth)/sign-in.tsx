@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { loginRequestSchema } from '@jax/shared';
+import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
+import { restrictedCredentials } from '@/standing/restricted-credentials';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { Button, Field, FormError, PasswordField, styles } from '@/ui';
 
@@ -14,6 +16,8 @@ export default function SignIn() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
   const [guestBusy, setGuestBusy] = useState(false);
+  /** P5.7: banned or suspended; offer the appeal screen. */
+  const [restricted, setRestricted] = useState(false);
 
   async function guest() {
     setErrors({});
@@ -31,11 +35,19 @@ export default function SignIn() {
     const v = validate(loginRequestSchema, { identifier, password });
     if (!v.ok) return setErrors(v.errors);
     setErrors({});
+    setRestricted(false);
     setBusy(true);
     try {
       await signIn(v.data.identifier, v.data.password);
     } catch (e) {
       setErrors(serverErrors(e));
+      if (
+        e instanceof ApiRequestError &&
+        (e.code === 'ACCOUNT_BANNED' || e.code === 'ACCOUNT_SUSPENDED')
+      ) {
+        restrictedCredentials.set(v.data.identifier, v.data.password);
+        setRestricted(true);
+      }
     } finally {
       setBusy(false);
     }
@@ -59,6 +71,13 @@ export default function SignIn() {
           </Text>
         ) : null}
         <FormError>{errors.form}</FormError>
+        {restricted ? (
+          <Button
+            variant="secondary"
+            title="See why and appeal"
+            onPress={() => router.push('/appeal')}
+          />
+        ) : null}
         <Field
           label="Username or email"
           value={identifier}
