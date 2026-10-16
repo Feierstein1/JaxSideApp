@@ -21,6 +21,7 @@
     "jobs:maintenance": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/jobs/run-maintenance.ts",
     "admin:promote": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/admin/promote.ts",
     "e2e:live": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/e2e/live-check.ts",
+    "docs:api": "tsx scripts/docs/api-reference.ts",
     "import:places": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/directory/import-osm.ts"
   },
   "dependencies": {

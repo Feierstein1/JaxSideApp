@@ -115,6 +115,14 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] **Account standing** says "good standing" with the How it works text.
 - [ ] Delete account (password + type DELETE) signs you out; that account can't sign in again.
 
+## 9b. Accessibility (P7.6)
+
+- [ ] Phone settings → largest font size: screens still readable, nothing cut off or overlapping.
+- [ ] Turn on **TalkBack** (Android) or **VoiceOver** (iPhone): buttons read sensible names
+      ("Write a new post", "Upvote", "Report post", "Hide my username"), and you can post and
+      comment without looking.
+- [ ] Dark backgrounds use white or gold text only; no gold text on white anywhere.
+
 ## 10. Admin portal (on your computer)
 
 - [ ] Make yourself admin: `npm run admin:promote -w @jax/server -- <your username>`.

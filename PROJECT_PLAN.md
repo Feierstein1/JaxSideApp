@@ -21,8 +21,8 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 ## Current status
 
-**Phase:** 6 complete (2026-10-16). Phase 7 next. Phase 3 gate pending only the on-device vote/comment check
-**Next action:** Phase 7 — verification & release readiness (needs the user's go-ahead). On-phone checklist: `docs/MANUAL_TESTS.md`.
+**Phase:** 7 — Verification & Release Readiness: work done 2026-10-16, waiting for sign-off. Phase 3 gate pending only the on-device vote/comment check
+**Next action:** Your sign-off on Phase 7: phone checklist (`docs/MANUAL_TESTS.md`), hosting approval (Q15, `docs/LAUNCH_SERVICES.md`), store accounts (`docs/STORE_PREP.md`).
 **Last updated:** 2026-10-16
 
 ---
@@ -171,6 +171,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D64 | **Accepted** 2026-10-16 | Achievements (P6.7–P6.9): definitions and thresholds live in the `Achievement` table (seeded; `active` switches one off everywhere). Awarding is server-side SQL with ON CONFLICT DO NOTHING on the (user, achievement) key, only for ACTIVE users. **First Contribution** = a post or comment still visible after 24 h (daily job); **Well Received** = at least 5 *different* posts each at +3 or more (checked on each upvote and daily), so volume or one viral post doesn't count; **Approved Contributor** = on place approval. Medal keys ride along with every post/comment author (small old-gold icons, D33) and full medals appear on profiles | §13: small, configurable, server-side, no rewards for spam or volume |
 | D65 | **Accepted** 2026-10-16 | Photos (P6.1–P6.6): the app uploads the image bytes **to the API** (not a presigned URL to a quarantine bucket), so the server checks everything before anything is stored: confirmed, registered users only; 10 MB and 40-megapixel limits; daily upload limit; real type from the first bytes (JPEG, PNG, WebP, HEIC; anything else refused); re-encoded with sharp to an upright JPEG of at most 1600 px with **all metadata dropped**; stored under a random key in the private bucket; the original is never stored. Posts attach up to 4 of the uploader's own unused photos (checked in the post's transaction); unused uploads are deleted after a day. Delivery = **HMAC-signed links to `/api/v1/photos/:id` valid ~1 h**, served only while the post is visible / the account active (removed → 404, forged/expired → 403); the bucket is never exposed (the phone can't reach it on the LAN anyway). Photos and profile photos are reportable and removable in the moderation queue (object kept as evidence). Image classification: interface only, none configured ("hold" treated as "block" until a review flow exists). Location isn't checked at upload (binary body); it's checked when the post is created | Simpler and safer for the MVP than presign + quarantine + processing worker: nothing unchecked is ever stored. Deviation from P6.1's wording |
 | D66 | **Accepted** 2026-10-16 | Rate limiter: for windows of a minute or less, each request also counts in a second set of windows shifted by half a window (D55 follow-up). Two requests less than half a window apart now always share a window, so the 10 s burst limits can't be slipped at a window edge | The live check caught a second post 3 s after the first passing because it straddled a boundary |
+| D67 | **Accepted** 2026-10-16 | P7.5 mobile UI automation (Maestro/Detox) **deferred**: it needs an emulator and a development build. The same critical flows (register with email code, post, comment, vote, report, plus moderation, appeals, photos) are exercised end to end over HTTP by `npm run e2e:live` (97 checks) against the running server, and the screens by `docs/MANUAL_TESTS.md`. Add Maestro flows when EAS development builds exist | Avoids a heavy toolchain before store accounts exist; no flow is untested |
 | D43 | **Accepted** 2026-10-15 | The signed-in username shows in the top bar on every screen, with an eye button that hides it **on that device's screen only** (stored on the device). Posts still show the username to others | User request. Screen-privacy toggle, not anonymous posting. **Confirmed by the user 2026-10-15** |
 
 ---
@@ -320,13 +321,13 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [x] **P7.2** Bypass test pass: spoofed coordinates, swapped user IDs, client-sent role/score/status fields, replayed stale readings 🔒 *(`bypass.test.ts`, 24 tests: privileged fields on 10 endpoints, other people's posts/comments/strikes/account, malformed IDs, outside-Duval/mocked/inaccurate/stale/future readings, impossible travel, server-chosen post points, revoked/expired/made-up sessions; plus the write-route table and admin route walker)*
 - [x] **P7.3** Dependency audit (`pnpm audit`), secret scan of git history 🔒 *(2026-10-16: server production deps **0 vulnerabilities** after Prisma 7.10.1 (fixes R8); Expo patch updates applied; 29 Expo/React Native tooling advisories remain (R11); full git history scanned for AWS keys, private keys, tokens and `*SECRET/KEY/PASSWORD=` values: only placeholders; `.env` never committed)*
 - [x] **P7.4** Migration from scratch plus backup/restore drill documented *(2026-10-16, `docs/OPERATIONS.md`: fresh DB → 10 migrations + seed (90 settings, 7 rules, boundary, PostGIS 3.5.2); `pg_dump` of dev restored into a new DB with matching row counts and working PostGIS queries; drill DBs dropped. Found dev missing 13 newer settings rows → seeded)*
-- [ ] **P7.5** Mobile E2E for critical flows (register, post, comment, vote, report)
-- [ ] **P7.6** Accessibility basics (labels, contrast, dynamic text)
-- [ ] **P7.7** Every §20 criterion below checked with a linked test or manual procedure
-- [ ] **P7.8** All §22 deliverables below complete
-- [ ] **P7.9** Known limitations and next-steps list written
+- [-] **P7.5** Mobile E2E for critical flows (register, post, comment, vote, report) *(D67: covered over HTTP by `e2e:live` and on screen by `MANUAL_TESTS.md`; Maestro later)*
+- [x] **P7.6** Accessibility basics (labels, contrast, dynamic text) *(2026-10-16: every button has a role/label (scanned); images labeled; font scaling never disabled; color pairs contrast-tested (`theme.test.ts`, D33); TalkBack/VoiceOver and large-font checks added to `MANUAL_TESTS.md` §9b)*
+- [x] **P7.7** Every §20 criterion below checked with a linked test or manual procedure *(all L/A/DV/D/MS rows ✓)*
+- [x] **P7.8** All §22 deliverables below complete *(2026-10-16)*
+- [x] **P7.9** Known limitations and next-steps list written *(`docs/KNOWN_LIMITATIONS.md`)*
 - [x] **P7.10** *(`docs/STORE_PREP.md`: ratings, UGC requirements mapped to built features, privacy label / Data safety answers, permission wording, listing checklist, reviewer-location plan; items marked (you) need your accounts)* App Store / Play prep: privacy nutrition labels, location usage strings, EULA zero-tolerance clause, support contact, 18+ rating, in-app account deletion (already covered)
-- [ ] **Phase gate:** You sign off. **No public deployment without your explicit authorization (§1 rule 8).**
+- [~] **Phase gate:** You sign off. **No public deployment without your explicit authorization (§1 rule 8).** *(2026-10-16: all P7 items done or deferred with a decision; waiting for your review, the phone checklist, and Q15 hosting approval)*
 
 ---
 
@@ -339,7 +340,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [x] L2 — Inside Jax but outside the radius → blocked (P2.4 ✓)
 - [x] L3 — Valid user in radius → allowed (P2.4 ✓)
 - [x] L4 — Stale, malformed, or inaccurate readings rejected (P2.4 ✓)
-- [~] L5 — Tampered coordinates or user IDs can't bypass (P3.7 ✓ `write-routes.test.ts`; full bypass pass in P7.2)
+- [x] L5 — Tampered coordinates or user IDs can't bypass (P3.7 ✓ `write-routes.test.ts`; P7.2 ✓ `bypass.test.ts`)
 - [x] L6 — Read-only browsing never enables writes (P3.7 ✓)
 
 **Accounts & guests**
@@ -360,7 +361,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [x] DV6 — Pagination: no duplicates or skips (P3.5 ✓)
 
 **Directory & admin**
-- [ ] D1 — Import is idempotent (P2.11)
+- [x] D1 — Import is idempotent (P2.11 ✓ `osm-import.test.ts`)
 - [x] D2 — Duplicate submissions flagged (P5.9 ✓ `submissions.test.ts`)
 - [x] D3 — Unapproved submissions hidden (P5.10 ✓)
 - [x] D4 — Approved submission appears in the directory (P5.12 ✓)
@@ -376,27 +377,27 @@ Every row needs a linked test or a written manual procedure before it can be che
 - [x] MS4 — Username change or new guest doesn't bypass enforcement (P4.6 ✓, P4.9 ✓ same user ID and release hold)
 - [x] MS5 — EXIF stripped (P6.3 ✓ `photos.test.ts`, live check)
 - [x] MS6 — No unauthorized image or admin data access (P6.4 ✓, P5.11 ✓)
-- [ ] MS7 — Automated tests cover authorization and location failures (P7.1)
+- [x] MS7 — Automated tests cover authorization and location failures (P7.1 ✓ 93% line coverage of auth/location/admin/moderation; `bypass.test.ts`, `write-routes.test.ts`, `admin-auth.test.ts`)
 
 ---
 
 ## Deliverables Tracker (§22)
 
-- [ ] Mobile app source
-- [ ] Backend + admin portal source
-- [ ] Prisma schema + migrations
-- [ ] Seed + directory import scripts (idempotent)
+- [x] Mobile app source (`apps/mobile`)
+- [x] Backend + admin portal source (`apps/server`)
+- [x] Prisma schema + migrations (10 migrations; from-scratch drill in `OPERATIONS.md`)
+- [x] Seed + directory import scripts (idempotent; tested)
 - [x] `.env.example` (placeholders only)
-- [~] `docs/SETUP.md` — local development (services, DB workflow; extend as features land)
-- [~] `docs/TESTING.md` — how to run tests (test DB guard; extend as suites land)
-- [~] `docs/API.md` — endpoint reference (health, auth and `/me` so far)
-- [~] `docs/DATA_SOURCES.md` — attribution and refresh steps (boundary done; OSM pending P2.10)
-- [ ] `docs/ARCHITECTURE.md`
-- [~] `docs/UI_DESIGN.md`: color scheme and UI conventions (D33); extend as screens land
-- [ ] `docs/SECURITY_PRIVACY_CHECKLIST.md`
+- [x] `docs/SETUP.md` — local development, admin portal setup
+- [x] `docs/TESTING.md` — unit/integration, live E2E, coverage; `docs/MANUAL_TESTS.md` for the phone
+- [x] `docs/API.md` — all 80 endpoints, generated from the code (`npm run docs:api`)
+- [x] `docs/DATA_SOURCES.md` — boundary and OpenStreetMap attribution and refresh
+- [x] `docs/ARCHITECTURE.md`
+- [x] `docs/UI_DESIGN.md`: color scheme and UI conventions (D33)
+- [x] `docs/SECURITY_PRIVACY_CHECKLIST.md`
 - [x] `docs/KEY_MANAGEMENT.md`: keys, storage, backup, rotation, retention and legal hold (D35–D37)
-- [ ] `docs/EXTERNAL_SERVICES.md` — services and credentials needed
-- [ ] `docs/KNOWN_LIMITATIONS.md` — incomplete items, risks, next steps
+- [x] `docs/EXTERNAL_SERVICES.md` — services and credentials needed; launch plan in `docs/LAUNCH_SERVICES.md`, store prep in `docs/STORE_PREP.md`, runbook in `docs/OPERATIONS.md`
+- [x] `docs/KNOWN_LIMITATIONS.md` — incomplete items, risks, next steps
 
 ---
 
@@ -474,3 +475,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-16 | P6.1–P6.6, D65, D66, Phase 6 gate | Photos: upload through the API, magic-byte check, sharp re-encode to metadata-free JPEG, private storage with random keys, signed 1 h links, attach up to 4 to posts, profile photos, photo reports/removal in the portal, classifier hook, daily cleanup of unused uploads. App: add photos in compose, photos on posts, change profile photo, long-press to report. Live check found burst limits could be slipped at a window edge → staggered windows (D66). 556 server tests + 28 app tests + Android bundle; **live check 97/97** with real SeaweedFS, dev database clean afterwards |
 | 2026-10-16 | Phase 7 start, P7.3, Q15 | Launch services plan written (`docs/LAUNCH_SERVICES.md`: AWS Lightsail + RDS/PostGIS + S3 + SES + Parameter Store + Route 53 ≈ $30–35/mo). Dependency audit: Prisma 7.10.1 clears the server's production advisories (R8 resolved); Expo patch updates; Expo tooling advisories recorded (R11). Secret scan of full history: clean. 557 server tests + build pass on the upgrade |
 | 2026-10-16 | P7.1, P7.2, P7.10, D62 switch | Admin portal switch `ADMIN_PORTAL_ENABLED` (off by default in production, every admin page/route 404; tested). Bypass suite (24 tests). Coverage report: 93% lines in auth/location/admin/moderation/media. Store prep document. 582 server tests pass |
+| 2026-10-16 | P7.4–P7.9, D67 | Migration-from-scratch + backup/restore drill (`OPERATIONS.md`; dev was missing 13 settings rows → seeded). Accessibility scan. API reference generated from code (80 endpoints). New docs: ARCHITECTURE, SECURITY_PRIVACY_CHECKLIST, KNOWN_LIMITATIONS, STORE_PREP, LAUNCH_SERVICES. All §20 acceptance criteria and §22 deliverables checked. Phase 7 waiting for sign-off |
