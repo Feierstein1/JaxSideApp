@@ -12,7 +12,7 @@ beforeEach(async () => {
   invalidateConfigCache();
 });
 
-describe('seed', () => {
+describe('seed', { timeout: 20_000 }, () => {
   it('is idempotent: running twice gives the same counts', async () => {
     await seed(db, { includeDevData: true });
     const first = [

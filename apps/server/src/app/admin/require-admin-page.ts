@@ -1,7 +1,7 @@
 import 'server-only';
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { ADMIN_COOKIE, adminFromToken } from '@/server/admin/auth';
+import { notFound, redirect } from 'next/navigation';
+import { ADMIN_COOKIE, adminFromToken, adminPortalEnabled } from '@/server/admin/auth';
 import { ApiError } from '@/server/http';
 
 /**
@@ -9,6 +9,7 @@ import { ApiError } from '@/server/http';
  * page without re-running its layout on client navigation (P5.11).
  */
 export async function requireAdminPage() {
+  if (!adminPortalEnabled()) notFound(); // D62
   const token = (await cookies()).get(ADMIN_COOKIE)?.value ?? null;
   try {
     return (await adminFromToken(token, { mutation: false })).admin;

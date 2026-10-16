@@ -233,3 +233,17 @@ describe('admin session guard (P5.11, ✅D8)', () => {
     expect(checked).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe('portal switch (D62)', () => {
+  it('ADMIN_PORTAL_ENABLED=false makes every admin route a 404, even with a valid session', async () => {
+    const { cookie } = await signIn();
+    process.env.ADMIN_PORTAL_ENABLED = 'false';
+    try {
+      expect((await call(adminSummaryGET as H, 'GET', { headers: { cookie } })).status).toBe(404);
+      expect((await step1()).status).toBe(404);
+    } finally {
+      delete process.env.ADMIN_PORTAL_ENABLED;
+    }
+    expect((await call(adminSummaryGET as H, 'GET', { headers: { cookie } })).status).toBe(200);
+  });
+});

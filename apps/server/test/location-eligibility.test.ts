@@ -237,20 +237,17 @@ describe('assertLocationEligible', () => {
       'business.read',
       'business.post',
       'directory.submit',
-    ] as const)(
-      'guests cannot %s',
-      async (action) => {
-        const guest = await realGuest();
-        const target = action.startsWith('business')
-          ? { kind: 'business' as const, point: P.downtown }
-          : action === 'general.vote' || action === 'general.comment'
-            ? { kind: 'general' as const, point: P.downtown }
-            : undefined;
-        expect(
-          await denialCode(assertLocationEligible(guest, reading(P.downtown), action, target, NOW)),
-        ).toBe('ACTION_NOT_ALLOWED');
-      },
-    );
+    ] as const)('guests cannot %s', async (action) => {
+      const guest = await realGuest();
+      const target = action.startsWith('business')
+        ? { kind: 'business' as const, point: P.downtown }
+        : action === 'general.vote' || action === 'general.comment'
+          ? { kind: 'general' as const, point: P.downtown }
+          : undefined;
+      expect(
+        await denialCode(assertLocationEligible(guest, reading(P.downtown), action, target, NOW)),
+      ).toBe('ACTION_NOT_ALLOWED');
+    });
 
     it('guests can read the area feed, and the check is audited to the guest', async () => {
       const guest = await realGuest();

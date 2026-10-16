@@ -316,8 +316,8 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 
 ## Phase 7 — Verification & Release Readiness (§20, §21 P7, §22)
 
-- [ ] **P7.1** Full automated test run; coverage report on auth, location, and admin modules
-- [ ] **P7.2** Bypass test pass: spoofed coordinates, swapped user IDs, client-sent role/score/status fields, replayed stale readings 🔒
+- [x] **P7.1** Full automated test run; coverage report on auth, location, and admin modules *(2026-10-16: 582 server tests pass; `npm run test:coverage -w @jax/server`: auth 95%, location 99%, admin 92%, moderation 97%, media 80% of lines (the real S3 adapter is exercised by the live check instead); overall 93% lines / 84% branches)*
+- [x] **P7.2** Bypass test pass: spoofed coordinates, swapped user IDs, client-sent role/score/status fields, replayed stale readings 🔒 *(`bypass.test.ts`, 24 tests: privileged fields on 10 endpoints, other people's posts/comments/strikes/account, malformed IDs, outside-Duval/mocked/inaccurate/stale/future readings, impossible travel, server-chosen post points, revoked/expired/made-up sessions; plus the write-route table and admin route walker)*
 - [x] **P7.3** Dependency audit (`pnpm audit`), secret scan of git history 🔒 *(2026-10-16: server production deps **0 vulnerabilities** after Prisma 7.10.1 (fixes R8); Expo patch updates applied; 29 Expo/React Native tooling advisories remain (R11); full git history scanned for AWS keys, private keys, tokens and `*SECRET/KEY/PASSWORD=` values: only placeholders; `.env` never committed)*
 - [ ] **P7.4** Migration from scratch plus backup/restore drill documented
 - [ ] **P7.5** Mobile E2E for critical flows (register, post, comment, vote, report)
@@ -325,7 +325,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [ ] **P7.7** Every §20 criterion below checked with a linked test or manual procedure
 - [ ] **P7.8** All §22 deliverables below complete
 - [ ] **P7.9** Known limitations and next-steps list written
-- [ ] **P7.10** App Store / Play prep: privacy nutrition labels, location usage strings, EULA zero-tolerance clause, support contact, 18+ rating, in-app account deletion (already covered)
+- [x] **P7.10** *(`docs/STORE_PREP.md`: ratings, UGC requirements mapped to built features, privacy label / Data safety answers, permission wording, listing checklist, reviewer-location plan; items marked (you) need your accounts)* App Store / Play prep: privacy nutrition labels, location usage strings, EULA zero-tolerance clause, support contact, 18+ rating, in-app account deletion (already covered)
 - [ ] **Phase gate:** You sign off. **No public deployment without your explicit authorization (§1 rule 8).**
 
 ---
@@ -473,3 +473,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-16 | P6.7–P6.9, D64 | Achievements: SQL-based idempotent awarding from DB definitions (First Contribution after 24 h, Well Received across 5 distinct well-liked posts, Approved Contributor on approval), evaluated on upvotes and in the daily job; medals next to names on posts/comments and on profiles. 532 server tests + 28 app tests pass |
 | 2026-10-16 | P6.1–P6.6, D65, D66, Phase 6 gate | Photos: upload through the API, magic-byte check, sharp re-encode to metadata-free JPEG, private storage with random keys, signed 1 h links, attach up to 4 to posts, profile photos, photo reports/removal in the portal, classifier hook, daily cleanup of unused uploads. App: add photos in compose, photos on posts, change profile photo, long-press to report. Live check found burst limits could be slipped at a window edge → staggered windows (D66). 556 server tests + 28 app tests + Android bundle; **live check 97/97** with real SeaweedFS, dev database clean afterwards |
 | 2026-10-16 | Phase 7 start, P7.3, Q15 | Launch services plan written (`docs/LAUNCH_SERVICES.md`: AWS Lightsail + RDS/PostGIS + S3 + SES + Parameter Store + Route 53 ≈ $30–35/mo). Dependency audit: Prisma 7.10.1 clears the server's production advisories (R8 resolved); Expo patch updates; Expo tooling advisories recorded (R11). Secret scan of full history: clean. 557 server tests + build pass on the upgrade |
+| 2026-10-16 | P7.1, P7.2, P7.10, D62 switch | Admin portal switch `ADMIN_PORTAL_ENABLED` (off by default in production, every admin page/route 404; tested). Bypass suite (24 tests). Coverage report: 93% lines in auth/location/admin/moderation/media. Store prep document. 582 server tests pass |

@@ -31,6 +31,22 @@ export const CSRF_HEADER = 'x-csrf-token';
 const CHALLENGE_TTL_MS = 5 * 60_000;
 const MINUTE_MS = 60_000;
 
+/**
+ * D62: the portal is for the owner's own computer for now. On a public server it's off
+ * unless ADMIN_PORTAL_ENABLED=true; every admin page and route then answers 404, as if
+ * it didn't exist. Defaults: on in development and tests, off in production.
+ */
+export function adminPortalEnabled(): boolean {
+  const v = process.env.ADMIN_PORTAL_ENABLED;
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  return getEnv().NODE_ENV !== 'production';
+}
+
+export function assertAdminPortalEnabled() {
+  if (!adminPortalEnabled()) throw new ApiError(404, 'NOT_FOUND', 'Not found');
+}
+
 // ───────────────────────────── Step 1 ─────────────────────────────
 
 function sign(payload: string): string {
@@ -69,6 +85,7 @@ export async function startAdminLogin(
   input: { identifier: string; password: string },
   ctx: RequestContext,
 ) {
+  assertAdminPortalEnabled();
   const now = ctx.now ?? new Date();
   const user = await checkCredentials(input, ctx, { refuseBannedInstallation: false });
   assertAccountUsable(user, now);
@@ -105,6 +122,7 @@ export async function completeAdminLogin(
   input: { challenge: string; code: string },
   ctx: RequestContext,
 ) {
+  assertAdminPortalEnabled();
   const now = ctx.now ?? new Date();
   const userId = readChallenge(input.challenge, now);
   await enforce(
@@ -196,6 +214,7 @@ export async function adminFromToken(
   opts: { csrf?: string | null; mutation: boolean },
   now = new Date(),
 ) {
+  assertAdminPortalEnabled();
   if (!token) throw signedOut();
   const session = await db.session.findUnique({
     where: { tokenHash: hashToken(token) },
