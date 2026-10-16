@@ -19,7 +19,6 @@ import {
 } from '@jax/shared';
 import { requireActor, requireUser, type Actor } from '../auth/require-actor';
 import { db } from '../db';
-import { getConfig } from '../config';
 import { ApiError } from '../http';
 import {
   assertLocationEligible,
@@ -72,6 +71,11 @@ function limitsFor(subject: string, ...rules: [string, ConfigKey, number][]) {
 }
 const READ: [string, ConfigKey, number] = ['feed', 'rateLimit.feed.perMinute', 60];
 const VERIFIED = { requireVerifiedEmail: true } as const;
+const VOTE_RULES: [string, ConfigKey, number][] = [
+  ['vote-burst', 'rateLimit.vote.burstPer10s', 10],
+  ['vote', 'rateLimit.vote.perMinute', 60],
+  ['vote-day', 'rateLimit.vote.perDay', 86_400],
+];
 
 async function activePlacePoint(placeId: string) {
   const p = await db.businessPlace.findFirst({
@@ -149,6 +153,7 @@ export async function placePosts(req: Request, ctx: IdCtx) {
 // ───────────────────────────── Create ─────────────────────────────
 
 const POST_LIMITS: [string, ConfigKey, number][] = [
+  ['post-burst', 'rateLimit.post.burstPer10s', 10],
   ['post-min', 'rateLimit.post.perMinute', 60],
   ['post-day', 'rateLimit.post.perDay', 86_400],
 ];
@@ -227,38 +232,23 @@ export function postDelete(kind: DiscussionKind) {
   };
 }
 
-/** POST /…/:id/comments: comment or reply (P3.3, D20 / D19). */
+/** POST /…/:id/comments: comment or reply (P3.3, D20 / D19). Registered users only (D54). */
 export function commentCreate(kind: DiscussionKind) {
   return async (req: Request, ctx: IdCtx) => {
-    // Guests may comment on general posts only (P4.2), with lower limits (§11.3).
-    const actor: Actor =
-      kind === 'general'
-        ? await requireActor(req, VERIFIED)
-        : { kind: 'user', user: (await requireUser(req, VERIFIED)).user };
-    if (actor.kind === 'guest' && !(await getConfig('guest.commentsEnabled'))) {
-      throw new ApiError(403, 'GUEST_NOT_ALLOWED', 'Create a free account to comment.');
-    }
+    const { user } = await requireUser(req, VERIFIED);
     const postId = await idFrom(ctx);
     const input = await parseBody(req, createCommentSchema);
-    const rules: [string, ConfigKey, number][] =
-      actor.kind === 'user'
-        ? [
-            ['comment-min', 'rateLimit.comment.perMinute', 60],
-            ['comment-day', 'rateLimit.comment.perDay', 86_400],
-          ]
-        : [
-            ['comment-min', 'rateLimit.guestComment.perMinute', 60],
-            ['comment-day', 'rateLimit.guestComment.perDay', 86_400],
-          ];
-    await limitsFor(actorKey(actor), ...rules);
-    await checkPostAccess(locationActor(actor), input.reading, kind, postId, 'comment');
+    await limits(
+      user.id,
+      ['comment-burst', 'rateLimit.comment.burstPer10s', 10],
+      ['comment-min', 'rateLimit.comment.perMinute', 60],
+      ['comment-day', 'rateLimit.comment.perDay', 86_400],
+    );
+    await checkPostAccess({ kind: 'user', user }, input.reading, kind, postId, 'comment');
     const id = await createComment({
       kind,
       postId,
-      author:
-        actor.kind === 'user'
-          ? { kind: 'USER', userId: actor.user.id }
-          : { kind: 'GUEST', guestId: actor.guest.id },
+      author: { kind: 'USER', userId: user.id },
       body: input.body,
       parentCommentId: input.parentCommentId,
     });
@@ -272,7 +262,7 @@ export function postVote(kind: DiscussionKind) {
     const { user } = await requireUser(req, VERIFIED);
     const id = await idFrom(ctx);
     const input = await parseBody(req, voteSchema);
-    await limits(user.id, ['vote', 'rateLimit.vote.perMinute', 60]);
+    await limits(user.id, ...VOTE_RULES);
     await checkPostAccess({ kind: 'user', user }, input.reading, kind, id, 'vote');
     return NextResponse.json(await castVote(user.id, { type: kind, id }, input.value));
   };
@@ -285,7 +275,7 @@ export async function commentVote(req: Request, ctx: IdCtx) {
   const { user } = await requireUser(req, VERIFIED);
   const id = await idFrom(ctx);
   const input = await parseBody(req, voteSchema);
-  await limits(user.id, ['vote', 'rateLimit.vote.perMinute', 60]);
+  await limits(user.id, ...VOTE_RULES);
   const { kind, postId } = await commentPost(id);
   await checkPostAccess({ kind: 'user', user }, input.reading, kind, postId, 'vote');
   return NextResponse.json(await castVote(user.id, { type: 'comment', id }, input.value));

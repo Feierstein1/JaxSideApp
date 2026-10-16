@@ -39,7 +39,8 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<CommentView>();
   const [sending, setSending] = useState(false);
-  const { isGuest, canComment, promptAccount } = useGuest();
+  const { isGuest, promptAccount } = useGuest();
+  const canComment = !isGuest;
   const [reporting, setReporting] = useState<ReportTarget>();
 
   const load = useCallback(async () => {
@@ -128,13 +129,13 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
         <View style={{ paddingHorizontal: 16, flexDirection: 'row', gap: 16 }}>
           {post.isMine ? (
             <Button variant="link" title="Delete my post" onPress={confirmDeletePost} />
-          ) : (
+          ) : !isGuest ? (
             <Button
               variant="link"
               title="Report post"
               onPress={() => setReporting({ type: kind, id: post.id })}
             />
-          )}
+          ) : null}
         </View>
 
         <Text style={[styles.label, { marginHorizontal: 16, marginTop: 8 }]}>
@@ -155,7 +156,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
                 : undefined
             }
             onReport={
-              !c.isMine && c.status === 'visible'
+              !isGuest && !c.isMine && c.status === 'visible'
                 ? () => setReporting({ type: 'comment', id: c.id })
                 : undefined
             }

@@ -133,7 +133,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       },
       {
         heading: 'Guest mode',
-        body: 'Guests can browse without an account. A guest session expires after 30 days without use. If guests are allowed to comment, guest comments are shown for one year from when they were posted, then deleted, except when they are part of an open report. Data about an expired guest session is deleted after 180 days, except for banned guests, which are kept so the ban stays in effect.',
+        body: 'Guests can browse without an account. Guests can only view; they can’t post, comment, vote or report. A guest session expires after 30 days without use. Data about an expired guest session is deleted after 180 days, except for banned guests, which are kept so the ban stays in effect.',
       },
       {
         heading: 'Deleting your account',

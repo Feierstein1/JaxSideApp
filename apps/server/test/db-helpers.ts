@@ -9,3 +9,18 @@ export async function resetDb(): Promise<void> {
   const list = rows.map((r) => `"public"."${r.tablename}"`).join(', ');
   await db.$executeRawUnsafe(`TRUNCATE ${list} RESTART IDENTITY CASCADE`);
 }
+
+/**
+ * Lifts the 10-second burst limits (P5.3) for tests that create content back to back.
+ * The burst rules themselves are covered in `rate-limits.test.ts`.
+ */
+export async function relaxBurstLimits(): Promise<void> {
+  await db.appConfiguration.createMany({
+    data: [
+      { key: 'rateLimit.post.burstPer10s', value: 1000 },
+      { key: 'rateLimit.comment.burstPer10s', value: 1000 },
+      { key: 'rateLimit.vote.burstPer10s', value: 1000 },
+    ],
+    skipDuplicates: true,
+  });
+}

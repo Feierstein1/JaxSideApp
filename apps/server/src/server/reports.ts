@@ -5,8 +5,8 @@ import { ApiError } from './http';
 import { getPublicProfile } from './profiles';
 
 /**
- * P5.1: user reports. Anyone who can see something can report it (guests included,
- * D28), but never their own content. Repeats from the same person on the same item
+ * P5.1: user reports. Registered users can report what they can see (guests are
+ * view-only, D54), but never their own content. Repeats from the same person on the same item
  * while it's still open are folded into the first report (dedupe). The response is the
  * same either way, so it reveals nothing about other reports.
  */

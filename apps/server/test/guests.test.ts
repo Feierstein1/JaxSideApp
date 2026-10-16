@@ -6,6 +6,7 @@ import { POST as feedPOST } from '@/app/api/v1/feed/route';
 import { POST as postsPOST } from '@/app/api/v1/posts/route';
 import { POST as postDetailPOST } from '@/app/api/v1/posts/[id]/route';
 import { POST as commentPOST } from '@/app/api/v1/posts/[id]/comments/route';
+import { POST as reportPOST } from '@/app/api/v1/reports/route';
 import { PUT as votePUT } from '@/app/api/v1/posts/[id]/vote/route';
 import { POST as roomListPOST } from '@/app/api/v1/places/[id]/posts/list/route';
 import { POST as searchPOST } from '@/app/api/v1/places/search/route';
@@ -60,6 +61,24 @@ beforeEach(async () => {
     })
   ).body.post.id;
 });
+
+/** A guest comment as stored before guests became view-only (D54). */
+async function insertGuestComment(guestId: string, body: string, at?: Date) {
+  const c = await db.comment.create({
+    data: {
+      generalPostId: postId,
+      authorKind: 'GUEST',
+      authorGuestId: guestId,
+      body,
+      ...(at ? { createdAt: at } : {}),
+    },
+  });
+  await db.generalPost.update({
+    where: { id: postId },
+    data: { commentCount: { increment: 1 } },
+  });
+  return c.id;
+}
 
 async function installation() {
   return (await call(installPOST as H, 'POST', { body: {} })).body.installationToken as string;
@@ -138,86 +157,32 @@ describe('what guests can do (P4.2)', () => {
     expect(d.status).toBe(200);
   });
 
-  // 🔒 P4.3: comments show GUEST, never the guest's internal ID.
-  it('comments on a nearby general post, shown as GUEST with no internal ID', async () => {
-    const g = await guestToken();
-    const c = await call(commentPOST as H, 'POST', {
-      token: g,
-      id: postId,
-      body: { reading: reading(), body: 'hi from a guest' },
-    });
-    expect(c.status).toBe(201);
-    const asGuest = await call(postDetailPOST as H, 'POST', {
-      token: g,
-      id: postId,
-      body: { reading: reading() },
-    });
-    expect(asGuest.body.comments[0]).toMatchObject({
-      body: 'hi from a guest',
-      author: { guest: true },
-      isMine: true,
-    });
+  // 🔒 P4.3: guest comments made before D54 still show GUEST, never the internal ID.
+  it('existing guest comments show as GUEST with no internal ID', async () => {
+    await guestToken();
+    const guestRow = await db.guestSession.findFirstOrThrow();
+    await insertGuestComment(guestRow.id, 'hi from a guest');
     const asMember = await call(postDetailPOST as H, 'POST', {
       token: member,
       id: postId,
       body: { reading: reading() },
     });
     expect(asMember.body.comments[0]).toMatchObject({ author: { guest: true }, isMine: false });
-    const guestRow = await db.guestSession.findFirstOrThrow();
     expect(asMember.raw).not.toContain(guestRow.id);
     expect(asMember.raw).not.toContain(guestRow.installationId);
   });
 
-  // 🔒 D51: admins can make guests read-only; the server refuses, not just the app.
-  it('when guest.commentsEnabled is false, guests can read but not comment', async () => {
-    await db.appConfiguration.create({ data: { key: 'guest.commentsEnabled', value: false } });
-    invalidateConfigCache();
-    const g = await guestToken();
-    const c = await call(commentPOST as H, 'POST', {
-      token: g,
-      id: postId,
-      body: { reading: reading(), body: 'hi from a guest' },
-    });
-    expect(c.status).toBe(403);
-    expect(c.body.error.code).toBe('GUEST_NOT_ALLOWED');
-    const s = await call(sessionGET as H, 'GET', { token: g });
-    expect(s.body.guest.canComment).toBe(false);
-    const read = await call(postDetailPOST as H, 'POST', {
-      token: g,
-      id: postId,
-      body: { reading: reading() },
-    });
-    expect(read.status).toBe(200);
-    expect(await db.comment.count()).toBe(0);
-  });
-
-  it('guest comments have their own, lower limit (4th in a minute is 429)', async () => {
-    const g = await guestToken();
-    for (let i = 0; i < 3; i++) {
-      expect(
-        (
-          await call(commentPOST as H, 'POST', {
-            token: g,
-            id: postId,
-            body: { reading: reading(), body: `c${i}` },
-          })
-        ).status,
-      ).toBe(201);
-    }
-    expect(
-      (
-        await call(commentPOST as H, 'POST', {
-          token: g,
-          id: postId,
-          body: { reading: reading(), body: 'c4' },
-        })
-      ).status,
-    ).toBe(429);
-  });
-
-  // 🔒 ✅A3: no top-level posts, votes, business rooms, directory or account settings.
+  // 🔒 ✅A3 / D54: guests are view-only. No posts, comments, votes, reports, rooms or settings.
   it.each([
     ['create a post', postsPOST, 'POST', () => ({ reading: reading(), body: 'x' }), false],
+    ['comment', commentPOST, 'POST', () => ({ reading: reading(), body: 'x' }), true],
+    [
+      'report',
+      reportPOST,
+      'POST',
+      () => ({ reading: reading(), target: { type: 'general', id: postId }, reason: 'SPAM' }),
+      false,
+    ],
     ['vote', votePUT, 'PUT', () => ({ reading: reading(), value: 1 }), true],
     ['read a business room', roomListPOST, 'POST', () => ({ reading: reading() }), 'place'],
     ['search places', searchPOST, 'POST', () => ({ reading: reading() }), false],
@@ -232,6 +197,8 @@ describe('what guests can do (P4.2)', () => {
     });
     expect(r.status).toBe(403);
     expect(r.body.error.code).toBe('GUEST_NOT_ALLOWED');
+    expect(await db.comment.count()).toBe(0);
+    expect(await db.report.count()).toBe(0);
   });
 
   it('cannot open account endpoints meant for registered users', async () => {
@@ -272,17 +239,11 @@ describe('guest expiry (P4.4, ✅A4)', () => {
 });
 
 describe('guest data retention (P4.5, D14, D17, ✅A5)', () => {
+  // Guests can't comment any more (D54); these cover comments left before that.
   async function guestComment(body: string, at?: Date) {
-    const g = await guestToken();
-    const id = (
-      await call(commentPOST as H, 'POST', {
-        token: g,
-        id: postId,
-        body: { reading: reading(), body },
-      })
-    ).body.id;
-    if (at) await db.comment.update({ where: { id }, data: { createdAt: at } });
-    return id as string;
+    await guestToken();
+    const g = await db.guestSession.findFirstOrThrow({ orderBy: { createdAt: 'desc' } });
+    return insertGuestComment(g.id, body, at);
   }
 
   it('expired guest data is deleted after 180 days, but the GUEST label stays on comments', async () => {

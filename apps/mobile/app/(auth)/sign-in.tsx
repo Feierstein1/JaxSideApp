@@ -88,8 +88,8 @@ export default function SignIn() {
         <View style={{ marginTop: 24 }}>
           <Button variant="secondary" title="Continue as guest" onPress={guest} busy={guestBusy} />
           <Text style={[styles.muted, { marginTop: 6, textAlign: 'center' }]}>
-            Browse posts in your area right away. Posting, voting and business discussions need a
-            free account.
+            Browse posts in your area right away. Posting, commenting, voting and business
+            discussions need a free account.
           </Text>
         </View>
       </ScrollView>

@@ -15,7 +15,7 @@ import { INSTALLATION_HEADER } from '@/server/installations';
 import { readBoundaryFile } from '@/server/location/boundary-file';
 import { importServiceArea } from '@/server/location/service-area';
 import { findForbiddenKeys } from '@/server/serializers';
-import { resetDb } from './db-helpers';
+import { relaxBurstLimits, resetDb } from './db-helpers';
 import { callRoute as call, type AnyHandler as H } from './route-call';
 import { createTestUser } from './user-factory';
 
@@ -53,6 +53,7 @@ const report = (token: string, target: unknown, extra: Record<string, unknown> =
 
 beforeEach(async () => {
   await resetDb();
+  await relaxBurstLimits();
   invalidateConfigCache();
   await importServiceArea(db, readBoundaryFile());
   await importOsmPlaces(db, [
@@ -180,27 +181,19 @@ describe('reporting (P5.1, ✅MS1)', () => {
   });
 });
 
-describe('guest reports (D28)', () => {
-  it('guests report general posts, comments and profiles, with lower limits', async () => {
+describe('guests (D54: view-only)', () => {
+  it('guests cannot report or list reports', async () => {
     const g = await guestToken();
-    expect((await report(g, { type: 'general', id: postId })).status).toBe(202);
-    expect((await report(g, { type: 'comment', id: commentId })).status).toBe(202);
-    expect((await report(g, { type: 'user', username: 'alice_r' })).status).toBe(429);
-    const rows = await db.report.findMany();
-    expect(rows).toHaveLength(2);
-    expect(rows.every((r) => r.reporterGuestId && !r.reporterUserId)).toBe(true);
-  });
-
-  it('guests cannot report business-room posts (they never see them)', async () => {
-    const g = await guestToken();
-    const r = await report(g, { type: 'business', id: roomPostId });
-    expect(r.status).toBe(403);
-    expect(r.body.error.code).toBe('GUEST_NOT_ALLOWED');
-  });
-
-  it('guests cannot list reports', async () => {
-    const g = await guestToken();
+    for (const t of [
+      { type: 'general', id: postId },
+      { type: 'user', username: 'alice_r' },
+    ]) {
+      const r = await report(g, t);
+      expect(r.status).toBe(403);
+      expect(r.body.error.code).toBe('GUEST_NOT_ALLOWED');
+    }
     expect((await call(myReportsGET as H, 'GET', { token: g })).status).toBe(403);
+    expect(await db.report.count()).toBe(0);
   });
 });
 

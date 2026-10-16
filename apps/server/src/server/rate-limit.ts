@@ -45,10 +45,22 @@ export async function peek(key: string, windowSeconds: number, now = new Date())
   return row?.count ?? 0;
 }
 
+/** "a few seconds", "3 minutes", "2 hours": for the 429 message. */
+export function waitText(seconds: number): string {
+  if (seconds < 15) return 'a few seconds';
+  if (seconds < 90) return `${seconds} seconds`;
+  if (seconds < 5400) return `${Math.ceil(seconds / 60)} minutes`;
+  return `${Math.ceil(seconds / 3600)} hours`;
+}
+
 function tooMany(now: Date, windowSeconds: number): ApiError {
-  return new ApiError(429, 'RATE_LIMITED', 'Too many attempts. Please wait and try again.', {
-    retryAfterSeconds: retryAfter(now, windowSeconds),
-  });
+  const wait = retryAfter(now, windowSeconds);
+  return new ApiError(
+    429,
+    'RATE_LIMITED',
+    `You’re doing that too often. Try again in ${waitText(wait)}.`,
+    { retryAfterSeconds: wait },
+  );
 }
 
 /** Counts this request against every rule; throws 429 if any limit is exceeded. */

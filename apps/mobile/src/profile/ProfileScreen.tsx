@@ -138,7 +138,7 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
             <Button variant="link" title="Block" onPress={confirmBlock} />
           )
         ) : null}
-        {!profile.isMe ? (
+        {!profile.isMe && !isGuest ? (
           <Button variant="link" title="Report profile" onPress={() => setReporting(true)} />
         ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}

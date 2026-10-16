@@ -70,8 +70,6 @@ export const CONFIG_DEFAULTS = {
   'guest.inactivityDays': 30,
   'guest.expiryWarningDays': 5,
   'guest.commentVisibleDays': 365,
-  /** D51: guests may comment on area posts. Set false to make guests read-only. */
-  'guest.commentsEnabled': true,
 
   // §4.3 usernames
   'username.changeCooldownDays': 30,
@@ -97,17 +95,18 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.passwordReset.perHourPerAccount': 3,
   'rateLimit.post.perMinute': 2,
   'rateLimit.post.perDay': 20,
+  // §11.3 burst limits (10-second window) on top of per-minute and daily ones (P5.3).
+  'rateLimit.post.burstPer10s': 1,
+  'rateLimit.comment.burstPer10s': 3,
+  'rateLimit.vote.burstPer10s': 15,
   'rateLimit.comment.perMinute': 6,
   'rateLimit.comment.perDay': 100,
-  'rateLimit.guestComment.perMinute': 3,
-  'rateLimit.guestComment.perDay': 20,
   'rateLimit.vote.perMinute': 60,
+  'rateLimit.vote.perDay': 1000,
   'rateLimit.upload.perDay': 30,
-  // D28: reports are limited for everyone; guests lower.
+  // D28: reports are limited for everyone (guests can't report, D54).
   'rateLimit.report.perMinute': 3,
   'rateLimit.report.perDay': 20,
-  'rateLimit.guestReport.perMinute': 2,
-  'rateLimit.guestReport.perDay': 5,
   'rateLimit.verifyEmailResend.perHour': 3,
   /** Wrong email codes per IP, across all accounts (D31). */
   'rateLimit.codeAttempt.per15MinPerIp': 20,

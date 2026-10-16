@@ -22,7 +22,7 @@ import { db } from '@/server/db';
 import { importOsmPlaces } from '@/server/directory/osm';
 import { readBoundaryFile } from '@/server/location/boundary-file';
 import { importServiceArea } from '@/server/location/service-area';
-import { resetDb } from './db-helpers';
+import { relaxBurstLimits, resetDb } from './db-helpers';
 import { callRoute as call, type AnyHandler as H } from './route-call';
 import { createTestUser } from './user-factory';
 
@@ -44,6 +44,7 @@ let cafeId: string; // ~70 m from Five Points
 
 beforeEach(async () => {
   await resetDb();
+  await relaxBurstLimits();
   invalidateConfigCache();
   await importServiceArea(db, readBoundaryFile());
   await importOsmPlaces(db, [

@@ -2,13 +2,12 @@ import { Alert } from 'react-native';
 import { useAuth } from './AuthContext';
 
 /**
- * Guests (P4.2) can read the area feed and comment. The server refuses everything else;
- * this only explains why a button doesn't work and offers a way to sign up.
+ * Guests are view-only (D54): they browse area posts and comments. The server refuses
+ * everything else; this only explains why a button doesn't work and offers sign-up.
  */
 export function useGuest() {
   const { state, signOut } = useAuth();
   const isGuest = state.status === 'guest';
-  const canComment = state.status !== 'guest' || state.guest.canComment;
   function promptAccount(what: string) {
     Alert.alert(
       'Create a free account',
@@ -20,5 +19,5 @@ export function useGuest() {
       ],
     );
   }
-  return { isGuest, canComment, promptAccount };
+  return { isGuest, promptAccount };
 }

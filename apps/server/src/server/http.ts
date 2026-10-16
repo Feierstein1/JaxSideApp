@@ -33,7 +33,14 @@ export function route<C = unknown>(handler: Handler<C>): Handler<C> {
       return await handler(req, ctx);
     } catch (err) {
       if (err instanceof ApiError) {
-        return jsonError(err.status, err.code, err.message, err.details);
+        const res = jsonError(err.status, err.code, err.message, err.details);
+        // P5.3: standard header so clients (and proxies) know when to retry.
+        const wait = (err.details as { retryAfterSeconds?: unknown } | undefined)
+          ?.retryAfterSeconds;
+        if (err.status === 429 && typeof wait === 'number') {
+          res.headers.set('Retry-After', String(wait));
+        }
+        return res;
       }
       const requestId = randomUUID();
       logger.error({ err, requestId, path: new URL(req.url).pathname }, 'unhandled route error');
