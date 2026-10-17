@@ -26,6 +26,7 @@ const P = {
   offshore: { latitude: 30.33, longitude: -81.0 },
   fivePointsCoffee: { latitude: 30.3149, longitude: -81.6853 },
   memorialPark: { latitude: 30.3088, longitude: -81.6823 }, // 735 m from Five Points Coffee
+  nearCoffee: { latitude: 30.31715, longitude: -81.6853 }, // ~250 m from Five Points Coffee
 };
 
 const NOW = new Date('2026-10-15T15:00:00Z');
@@ -137,16 +138,16 @@ describe('assertLocationEligible', () => {
     ).resolves.toBeDefined();
   });
 
-  it('general comment: within 1 mi of the post is allowed, beyond is denied (D20)', async () => {
+  it('general comment: within 0.3 mi of the post is allowed, beyond is denied (D71)', async () => {
     const post = { kind: 'general' as const, point: P.fivePointsCoffee };
-    // 735 m away: allowed for a general post.
+    // ~250 m away: allowed.
     await expect(
-      assertLocationEligible(userActor, reading(P.memorialPark), 'general.comment', post, NOW),
+      assertLocationEligible(userActor, reading(P.nearCoffee), 'general.comment', post, NOW),
     ).resolves.toBeDefined();
-    // Downtown is ~2.7 km from Five Points: denied.
+    // 735 m is past 0.3 mi (483 m): denied.
     expect(
       await denialCode(
-        assertLocationEligible(userActor, reading(P.downtown), 'general.comment', post, NOW),
+        assertLocationEligible(userActor, reading(P.memorialPark), 'general.comment', post, NOW),
       ),
     ).toBe('LOCATION_TOO_FAR');
   });

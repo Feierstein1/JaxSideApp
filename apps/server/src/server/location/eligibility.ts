@@ -1,4 +1,4 @@
-import { milesToMeters, type LocationDenialCode, type LocationReading } from '@jax/shared';
+import { milesToMeters, type LocationDenialCode, type LocationReading, yardsLabel } from '@jax/shared';
 import type { GuestSession, User } from '@/generated/prisma/client';
 import { assertAccountUsable } from '../auth/standing';
 import { getConfig } from '../config';
@@ -188,8 +188,8 @@ async function check(
       throw deny(
         'LOCATION_TOO_FAR',
         target.kind === 'business'
-          ? `Get within ${miles} mi of this place to join its discussion.`
-          : `Get within ${miles} mi of this post to take part.`,
+          ? `Get within ${yardsLabel(miles)} of this place to join its discussion.`
+          : `Get within ${yardsLabel(miles)} of this post to take part.`,
         { maxMiles: miles },
       );
     }

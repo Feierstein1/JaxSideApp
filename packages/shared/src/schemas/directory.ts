@@ -69,15 +69,10 @@ export const placeSearchSchema = z.strictObject({
 });
 export type PlaceSearchRequest = z.infer<typeof placeSearchSchema>;
 
-/** P2.15: the user's preferred radii in miles. Values outside the server's range are clamped. */
-export const radiusPreferencesSchema = z
-  .strictObject({
-    generalRadiusMiles: z.number().positive().max(100).optional(),
-    businessRadiusMiles: z.number().positive().max(100).optional(),
-  })
-  .refine((v) => v.generalRadiusMiles !== undefined || v.businessRadiusMiles !== undefined, {
-    message: 'Provide at least one radius',
-  });
+/** P2.15 / D71: one radius for the feed, Places, and everything location-based: 0.1, 0.2 or 0.3 mi. */
+export const radiusPreferencesSchema = z.strictObject({
+  radiusMiles: z.union([z.literal(0.1), z.literal(0.2), z.literal(0.3)]),
+});
 
 /** A place as the app sees it (public business data; never user data). */
 export interface PlaceSummary {

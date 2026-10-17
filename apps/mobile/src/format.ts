@@ -1,10 +1,17 @@
 const FEET_PER_METER = 3.28084;
 const METERS_PER_MILE = 1609.344;
 
-/** "250 ft", "0.4 mi", "12 mi". Close places in feet, the rest in miles. */
+const YARDS_PER_METER = 1.09361;
+
+/**
+ * D71: "60 ft", "320 yd", "1.4 mi". Very close in feet, up to a mile in yards (the units
+ * the radius setting uses), farther in miles.
+ */
 export function formatDistance(meters: number): string {
   const miles = meters / METERS_PER_MILE;
-  if (miles < 0.1) return `${Math.max(10, Math.round((meters * FEET_PER_METER) / 10) * 10)} ft`;
+  const yards = meters * YARDS_PER_METER;
+  if (yards < 100) return `${Math.max(10, Math.round((meters * FEET_PER_METER) / 10) * 10)} ft`;
+  if (miles < 1) return `${Math.round(yards / 10) * 10} yd`;
   if (miles < 10) return `${miles.toFixed(1)} mi`;
   return `${Math.round(miles)} mi`;
 }

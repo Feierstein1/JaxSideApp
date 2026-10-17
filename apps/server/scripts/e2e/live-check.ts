@@ -43,8 +43,21 @@ type Res = { status: number; body: any; headers: Headers };
 async function http(
   method: string,
   path: string,
-  opts: { token?: string; body?: unknown; headers?: Record<string, string> } = {},
+  opts: {
+    token?: string;
+    body?: unknown;
+    headers?: Record<string, string>;
+    /** Checks that aren't about rate limits: wait out a burst limit once and retry. */
+    retry429?: boolean;
+  } = {},
 ): Promise<Res> {
+  if (opts.retry429) {
+    const first = await http(method, path, { ...opts, retry429: false });
+    if (first.status !== 429) return first;
+    const wait = Number(first.body?.error?.details?.retryAfterSeconds ?? 10);
+    await new Promise((r) => setTimeout(r, (wait + 1) * 1000));
+    return http(method, path, { ...opts, retry429: false });
+  }
   const headers: Record<string, string> = { ...opts.headers };
   if (opts.token) headers.authorization = `Bearer ${opts.token}`;
   if (opts.body !== undefined) headers['content-type'] = 'application/json';
@@ -331,6 +344,7 @@ async function run() {
   check('a script pretending to be a JPEG is refused', fake.status === 422, fake.status);
   await new Promise((r) => setTimeout(r, 10_500)); // Cat's 10 s post burst window
   const photoPost = await http('POST', '/api/v1/posts', {
+    retry429: true,
     token: cat.token,
     body: { reading: reading(), body: `Photo from the Riverwalk ${RUN}`, photoIds: [upBody.id] },
   });
@@ -353,9 +367,12 @@ async function run() {
       !imgBytes.toString('latin1').includes('ZztPhone'),
     { s: img.status, exif: !!imgMeta?.exif },
   );
-  const forged = await fetch(`${BASE}${photoUrl.replace(/sig=./, 'sig=Z')}`);
+  const forged = await fetch(
+    `${BASE}${photoUrl.replace(/sig=(.)/, (_m, c: string) => `sig=${c === 'A' ? 'B' : 'A'}`)}`,
+  );
   check('a forged photo link is refused', forged.status === 403, forged.status);
   const stealPhoto = await http('POST', '/api/v1/posts', {
+    retry429: true,
     token: bob.token,
     body: { reading: reading(), body: `stealing ${RUN}`, photoIds: [upBody.id] },
   });
@@ -382,6 +399,7 @@ async function run() {
   const before = await db.businessPlace.findUnique({ where: { id: placeId } });
   await new Promise((r) => setTimeout(r, 10_500)); // Cat's 10 s post burst window
   const roomPost = await http('POST', `/api/v1/places/${placeId}/posts`, {
+    retry429: true,
     token: cat.token,
     body: { reading: reading(atPlace), body: `Great coffee here ${RUN}` },
   });
@@ -400,6 +418,7 @@ async function run() {
   );
   await new Promise((r) => setTimeout(r, 10_500)); // Bob's 10 s post burst window
   const farRoom = await http('POST', `/api/v1/places/${placeId}/posts`, {
+    retry429: true,
     token: bob.token,
     body: {
       reading: reading({ latitude: atPlace.latitude + 0.02, longitude: atPlace.longitude }),
@@ -539,6 +558,7 @@ async function run() {
   await new Promise((r) => setTimeout(r, 10_500)); // let the 10 s burst window pass for Ann
   const dupText = `Live check ${RUN}: Riverwalk tonight at 7?`;
   const dup = await http('POST', '/api/v1/posts', {
+    retry429: true,
     token: ann.token,
     body: { reading: reading(), body: dupText },
   });
@@ -548,6 +568,7 @@ async function run() {
     dup.body,
   );
   const linky = await http('POST', '/api/v1/posts', {
+    retry429: true,
     token: bob.token,
     body: { reading: reading(), body: `deals ${RUN} a.example.com b.example.com c.example.com` },
   });

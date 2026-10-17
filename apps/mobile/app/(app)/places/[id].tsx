@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { COLORS, CONFIG_DEFAULTS, type PlaceSummary } from '@jax/shared';
+import { COLORS, CONFIG_DEFAULTS, yardsLabel, type PlaceSummary } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
@@ -147,8 +147,8 @@ export default function PlaceScreen() {
           {info}
           <View style={[styles.banner, { marginHorizontal: 12 }]}>
             <Text style={styles.body}>
-              Get within {CONFIG_DEFAULTS['radius.business.maxMiles']} mi of this place to see and
-              join its discussion.
+              Get within {yardsLabel(CONFIG_DEFAULTS['radius.business.maxMiles'])} of this place to
+              see and join its discussion.
             </Text>
           </View>
           <OsmAttribution dark />

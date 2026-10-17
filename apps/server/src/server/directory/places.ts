@@ -51,6 +51,8 @@ export async function searchPlaces(opts: {
   sort?: PlaceSort;
   limit?: number;
   offset: number;
+  /** D71: the person's radius; the list never reaches past it (or the server maximum). */
+  radiusMiles?: number | null;
 }): Promise<{ places: PlaceSummary[]; nextOffset: number | null }> {
   const [defaultPageSize, favFactor, maxMiles, maxName] = await Promise.all([
     getConfig('directory.pageSize'),
@@ -88,7 +90,7 @@ export async function searchPlaces(opts: {
     LEFT JOIN "FavoritePlace" f ON f."placeId" = p.id AND f."userId" = ${opts.userId}::uuid
     WHERE p.status = 'ACTIVE' ${nameFilter} ${categoryFilter}
       -- D69: only places within a mile, and only names that fit on one line.
-      AND ST_DWithin(p.location, ${me}, ${maxMiles * 1609.344})
+      AND ST_DWithin(p.location, ${me}, ${Math.min(maxMiles, opts.radiusMiles ?? maxMiles) * 1609.344})
       AND char_length(p.name) <= ${maxName}
     ${order}
     LIMIT ${pageSize + 1} OFFSET ${opts.offset}`;

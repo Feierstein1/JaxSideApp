@@ -384,7 +384,7 @@ const ROWS: Row[] = [
     auth: true,
     id: null,
     location: false,
-    body: () => ({ generalRadiusMiles: 0.5 }),
+    body: () => ({ radiusMiles: 0.2 }),
   },
   {
     route: 'places/[id]/favorite',

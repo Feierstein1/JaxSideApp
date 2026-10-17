@@ -33,6 +33,7 @@ export const POST = route(async (req) => {
     sort: input.sort,
     limit: input.limit,
     offset: input.offset,
+    radiusMiles: user.generalRadiusMiles,
   });
   // ODbL: data shown in the app must carry the attribution (P2.12).
   return NextResponse.json({ ...result, attribution: OSM_ATTRIBUTION });

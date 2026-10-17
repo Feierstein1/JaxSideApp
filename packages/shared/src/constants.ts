@@ -16,9 +16,10 @@ export const APP_TIME_ZONE = 'America/New_York';
 
 export const CONFIG_DEFAULTS = {
   // §7 radius table (miles)
-  'radius.general.defaultMiles': 1,
-  'radius.general.minMiles': 0.25,
-  'radius.general.maxMiles': 1,
+  // D71: one radius for everything location-based, at most 0.3 mi (528 yd).
+  'radius.general.defaultMiles': 0.3,
+  'radius.general.minMiles': 0.1,
+  'radius.general.maxMiles': 0.3,
   'radius.business.defaultMiles': 0.3,
   'radius.business.minMiles': 0.1,
   'radius.business.maxMiles': 0.3,
@@ -54,7 +55,7 @@ export const CONFIG_DEFAULTS = {
   // P2.13 / P2.14 directory
   'directory.pageSize': 20,
   /** D69: the Places list only shows places within this distance. */
-  'directory.maxListMiles': 1,
+  'directory.maxListMiles': 0.3,
   /** D69: places with longer names are hidden from the list (and new ones can't be longer). */
   'directory.maxNameLength': 30,
   /** Favorites rank as if this many times closer than they are (D39). */
@@ -177,3 +178,12 @@ export type Role = (typeof ROLES)[number];
 
 export const ACCOUNT_STATUSES = ['ACTIVE', 'SUSPENDED', 'BANNED', 'DELETED'] as const;
 export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
+
+/** D71: the radius choices people can pick (miles); shown in yards. */
+export const RADIUS_OPTIONS_MILES = [0.1, 0.2, 0.3] as const;
+export type RadiusMiles = (typeof RADIUS_OPTIONS_MILES)[number];
+
+/** "176 yd", "528 yd": distances up to a mile are shown in yards (D71). */
+export function yardsLabel(miles: number): string {
+  return `${Math.round(miles * 1760)} yd`;
+}

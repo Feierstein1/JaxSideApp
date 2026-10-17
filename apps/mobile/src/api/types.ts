@@ -10,8 +10,8 @@ export interface MeUser {
   color: string;
   email: string;
   emailVerified: boolean;
-  generalRadiusMiles: number | null;
-  businessRadiusMiles: number | null;
+  /** D71: your radius in miles (0.1 / 0.2 / 0.3); null = default 0.3. */
+  radiusMiles: number | null;
 }
 
 export interface LoginResponse {

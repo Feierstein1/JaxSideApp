@@ -32,7 +32,7 @@ const SORTS: { key: PlaceSort; label: string }[] = [
 ];
 
 /**
- * P2.16 / D40 / D69 / D70: places within a mile, as cards on a dark background. The black
+ * P2.16 / D40 / D69 / D70 / D71: places within your radius (≤ 0.3 mi), as cards on a dark background. The black
  * bar under the header has the filter button and the search box; "Add new place" is the
  * round button bottom-right, like the new-post button. The server decides eligibility,
  * distance and ordering from a fresh reading.
@@ -120,7 +120,7 @@ export default function PlacesScreen() {
         </Pressable>
         <TextInput
           accessibilityLabel="Search places"
-          placeholder="Search places within a mile…"
+          placeholder="Search places nearby…"
           placeholderTextColor={COLORS.placeholder}
           value={q}
           onChangeText={setQ}
@@ -151,7 +151,7 @@ export default function PlacesScreen() {
         ListEmptyComponent={
           !loading && !error ? (
             <Text style={{ padding: 16, color: COLORS.onSurfaceDarkMuted }}>
-              No places within a mile.
+              No places within your radius. You can change it in Account → Settings.
             </Text>
           ) : null
         }

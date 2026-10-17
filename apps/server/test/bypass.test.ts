@@ -125,7 +125,7 @@ describe('client-sent privileged fields are refused (strict schemas)', () => {
       prefsPATCH,
       'PATCH',
       undefined,
-      { generalRadiusMiles: 1, status: 'ACTIVE' },
+      { radiusMiles: 0.3, status: 'ACTIVE' },
     ],
   ] as const)('%s → 400, nothing changes', async (_l, handler, method, id, body) => {
     const before = await db.generalPost.findUniqueOrThrow({ where: { id: postId } });

@@ -83,7 +83,7 @@ export function Compose({
       <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
         <Text style={[styles.body, styles.muted]}>
           {target.kind === 'general'
-            ? 'Posting to your area. People within about a mile will see it. Your exact location is never shown.'
+            ? 'Posting to your area. People nearby (within about 500 yards) will see it. Your exact location is never shown.'
             : `Posting in ${placeName ?? 'this place'}’s discussion.`}
         </Text>
         <TextInput

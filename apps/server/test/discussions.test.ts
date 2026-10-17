@@ -27,6 +27,7 @@ import { callRoute as call, type AnyHandler as H } from './route-call';
 import { createTestUser } from './user-factory';
 
 const FIVE_POINTS = { latitude: 30.3149, longitude: -81.6853 };
+const NEAR = { latitude: 30.31715, longitude: -81.6853 }; // ~250 m from Five Points
 const MEMORIAL = { latitude: 30.3088, longitude: -81.6823 }; // ~740 m from Five Points
 const DOWNTOWN = { latitude: 30.3322, longitude: -81.6557 }; // ~3.4 km away
 const ORANGE_PARK = { latitude: 30.1661, longitude: -81.7065 }; // outside Duval
@@ -114,12 +115,15 @@ describe('general posts and feed (P3.1, P3.1a)', () => {
     expect(await db.generalPost.count()).toBe(0);
   });
 
-  it('shows nearby posts and hides ones beyond the reader’s radius', async () => {
+  it('shows nearby posts and hides ones beyond the reader’s radius (≤ 0.3 mi, D71)', async () => {
     await post(alice, 'Five Points post');
-    expect(bodies(await feed(bob, MEMORIAL))).toEqual(['Five Points post']); // 740 m
-    expect(bodies(await feed(bob, DOWNTOWN))).toEqual([]); // 3.4 km > 1 mi
-    // A reader who narrowed their radius to 0.25 mi (402 m) no longer sees it.
-    await db.user.updateMany({ where: { username: 'bob_p' }, data: { generalRadiusMiles: 0.25 } });
+    expect(bodies(await feed(bob, NEAR))).toEqual(['Five Points post']); // 250 m
+    expect(bodies(await feed(bob, MEMORIAL))).toEqual([]); // 740 m > 0.3 mi (483 m)
+    // A reader who narrowed their radius to 0.1 mi (161 m) no longer sees it from 250 m.
+    await db.user.updateMany({ where: { username: 'bob_p' }, data: { generalRadiusMiles: 0.1 } });
+    expect(bodies(await feed(bob, NEAR))).toEqual([]);
+    // A stored radius larger than the maximum is still capped at 0.3 mi.
+    await db.user.updateMany({ where: { username: 'bob_p' }, data: { generalRadiusMiles: 5 } });
     expect(bodies(await feed(bob, MEMORIAL))).toEqual([]);
   });
 
@@ -217,12 +221,12 @@ describe('comments (P3.3, D20)', () => {
     expect(d.body.post.commentCount).toBe(4);
   });
 
-  it('commenting needs to be within 1 mi of the post', async () => {
+  it('commenting needs to be within 0.3 mi (528 yd) of the post (D71)', async () => {
     const p = (await post(alice, 'Q')).body.post.id;
-    expect((await comment(bob, p, 'from Memorial Park', undefined, MEMORIAL)).status).toBe(201);
-    expect((await comment(bob, p, 'from downtown', undefined, DOWNTOWN)).body.error.code).toBe(
-      'LOCATION_TOO_FAR',
-    );
+    expect((await comment(bob, p, 'from up the street', undefined, NEAR)).status).toBe(201);
+    const far = await comment(bob, p, 'from Memorial Park', undefined, MEMORIAL);
+    expect(far.body.error.code).toBe('LOCATION_TOO_FAR');
+    expect(far.body.error.message).toBe('Get within 528 yd of this post to take part.');
   });
 
   it('caps nesting at 3 levels and rejects a parent from another post', async () => {

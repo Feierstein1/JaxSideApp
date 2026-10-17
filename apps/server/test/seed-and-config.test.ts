@@ -61,7 +61,7 @@ describe('seed', { timeout: 20_000 }, () => {
 
   it('seeds the §7 radius table and age offset 19', async () => {
     await seed(db, { includeDevData: false });
-    expect(await getConfig('radius.general.maxMiles')).toBe(1);
+    expect(await getConfig('radius.general.maxMiles')).toBe(0.3); // D71
     expect(await getConfig('radius.business.maxMiles')).toBe(0.3);
     expect(await getConfig('age.birthYearOffset')).toBe(19);
   });

@@ -6,6 +6,8 @@ import {
   BIO_MAX,
   COLORS,
   CONFIG_DEFAULTS,
+  RADIUS_OPTIONS_MILES,
+  yardsLabel,
   PROFILE_COLORS,
   profileColor,
   textOn,
@@ -21,9 +23,6 @@ import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { pickPhoto, uploadPhoto } from '@/discussion/photos';
 import { categoryLabel } from '@/format';
 import { Button, Segmented, styles } from '@/ui';
-
-const GENERAL_OPTIONS = [0.25, 0.5, 0.75, 1];
-const BUSINESS_OPTIONS = [0.1, 0.2, 0.3];
 
 interface Favorite {
   id: string;
@@ -363,12 +362,14 @@ function SettingsTab() {
 
   if (state.status !== 'signedIn') return null;
   const { user } = state;
-  const general = user.generalRadiusMiles ?? CONFIG_DEFAULTS['radius.general.defaultMiles'];
-  const business = user.businessRadiusMiles ?? CONFIG_DEFAULTS['radius.business.defaultMiles'];
+  const radius = Math.min(
+    user.radiusMiles ?? CONFIG_DEFAULTS['radius.general.defaultMiles'],
+    CONFIG_DEFAULTS['radius.general.maxMiles'],
+  );
 
-  async function setRadius(field: 'generalRadiusMiles' | 'businessRadiusMiles', miles: number) {
+  async function setRadius(miles: number) {
     try {
-      await api.patch('/api/v1/me/preferences', { [field]: miles });
+      await api.patch('/api/v1/me/preferences', { radiusMiles: miles });
       await refresh();
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t save.');
@@ -391,18 +392,12 @@ function SettingsTab() {
         <Row icon="ban-outline" label="Blocked users" href="/account/blocked" />
       </Section>
 
-      <Text style={[styles.label, { marginTop: 20 }]}>Feed radius</Text>
-      <Options
-        values={GENERAL_OPTIONS}
-        selected={general}
-        onPick={(v) => setRadius('generalRadiusMiles', v)}
-      />
-      <Text style={[styles.label, { marginTop: 12 }]}>Business discussions radius</Text>
-      <Options
-        values={BUSINESS_OPTIONS}
-        selected={business}
-        onPick={(v) => setRadius('businessRadiusMiles', v)}
-      />
+      <Text style={[styles.label, { marginTop: 20 }]}>Radius</Text>
+      <Text style={[styles.muted, { marginBottom: 4 }]}>
+        How far around you the feed and Places reach. To comment, vote or join a business discussion
+        you need to be within {yardsLabel(CONFIG_DEFAULTS['radius.general.maxMiles'])} of it.
+      </Text>
+      <Options values={[...RADIUS_OPTIONS_MILES]} selected={radius} onPick={(v) => setRadius(v)} />
 
       <Text style={[styles.label, { marginTop: 20 }]}>Favorite places</Text>
       {favorites.length === 0 ? (
@@ -568,7 +563,7 @@ function Options({
             }}
           >
             <Text style={{ color: active ? COLORS.onAccent : COLORS.text, fontWeight: '600' }}>
-              {v} mi
+              {yardsLabel(v)}
             </Text>
           </Pressable>
         );

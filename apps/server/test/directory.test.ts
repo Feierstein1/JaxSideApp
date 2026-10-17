@@ -290,33 +290,45 @@ describe('favorites (P2.14)', () => {
   });
 });
 
-describe('radius preferences (P2.15)', () => {
-  // 🔒 §7: users can narrow but never widen past the server maximum.
-  it.each([
-    [{ generalRadiusMiles: 5 }, { generalRadiusMiles: 1, businessRadiusMiles: 0.3 }],
-    [{ generalRadiusMiles: 0.1 }, { generalRadiusMiles: 0.25, businessRadiusMiles: 0.3 }],
-    [{ businessRadiusMiles: 0.05 }, { generalRadiusMiles: 1, businessRadiusMiles: 0.1 }],
-    [
-      { generalRadiusMiles: 0.5, businessRadiusMiles: 0.2 },
-      { generalRadiusMiles: 0.5, businessRadiusMiles: 0.2 },
-    ],
-  ])('%j is stored as %j', async (body, expected) => {
-    const r = await call(prefsPATCH as Handler, 'PATCH', { token: tokenA, body });
-    expect(r.status).toBe(200);
-    expect(r.body).toEqual(expected);
-    const me = await call(meGET as Handler, 'GET', { token: tokenA });
-    if ('generalRadiusMiles' in body)
-      expect(me.body.user.generalRadiusMiles).toBe(expected.generalRadiusMiles);
-  });
-
-  it.each([[{}], [{ generalRadiusMiles: -1 }], [{ generalRadiusMiles: 0.5, role: 'ADMIN' }]])(
-    'rejects %j',
-    async (body) => {
-      expect((await call(prefsPATCH as Handler, 'PATCH', { token: tokenA, body })).status).toBe(
-        400,
-      );
+describe('radius preference (P2.15, D71)', () => {
+  it.each([0.1, 0.2, 0.3] as const)(
+    '%s mi is stored and shown as the one radius',
+    async (miles) => {
+      const r = await call(prefsPATCH as Handler, 'PATCH', {
+        token: tokenA,
+        body: { radiusMiles: miles },
+      });
+      expect(r.status).toBe(200);
+      expect(r.body).toEqual({ radiusMiles: miles });
+      const me = await call(meGET as Handler, 'GET', { token: tokenA });
+      expect(me.body.user.radiusMiles).toBe(miles);
     },
   );
+
+  // 🔒 §7 / D71: never more than 0.3 mi, and only the three choices.
+  it.each([
+    [{}],
+    [{ radiusMiles: 0.5 }],
+    [{ radiusMiles: 1 }],
+    [{ radiusMiles: 0.25 }],
+    [{ generalRadiusMiles: 0.2 }],
+    [{ radiusMiles: 0.2, role: 'ADMIN' }],
+  ])('rejects %j', async (body) => {
+    expect((await call(prefsPATCH as Handler, 'PATCH', { token: tokenA, body })).status).toBe(400);
+  });
+
+  it('the Places list follows the radius', async () => {
+    await db.appConfiguration.update({
+      where: { key: 'directory.maxListMiles' },
+      data: { value: 0.3 },
+    });
+    invalidateConfigCache();
+    await call(prefsPATCH as Handler, 'PATCH', { token: tokenA, body: { radiusMiles: 0.1 } });
+    const r = await search({ limit: 50 });
+    expect(r.body.places.every((p: { distanceMeters: number }) => p.distanceMeters <= 170)).toBe(
+      true,
+    );
+  });
 });
 
 describe('Places list limits (D69)', () => {

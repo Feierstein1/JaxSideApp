@@ -45,8 +45,8 @@ export function toPublicUser(u: UserLike): PublicUser {
 export interface MeUser extends PublicUser {
   email: string;
   emailVerified: boolean;
-  generalRadiusMiles: number | null;
-  businessRadiusMiles: number | null;
+  /** D71: your radius in miles (null = the default, 0.3). */
+  radiusMiles: number | null;
 }
 
 export function toMe(u: UserLike & { email: string; emailVerifiedAt: Date | null }): MeUser {
@@ -54,8 +54,7 @@ export function toMe(u: UserLike & { email: string; emailVerifiedAt: Date | null
     ...toPublicUser(u),
     email: u.email,
     emailVerified: u.emailVerifiedAt !== null,
-    generalRadiusMiles: u.generalRadiusMiles ?? null,
-    businessRadiusMiles: u.businessRadiusMiles ?? null,
+    radiusMiles: u.generalRadiusMiles ?? null,
   };
 }
 

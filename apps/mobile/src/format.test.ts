@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { categoryLabel, formatDistance, plural, postTime, timeAgo } from './format';
 
-describe('formatDistance', () => {
+describe('formatDistance (D71)', () => {
   it.each([
     [0, '10 ft'],
     [70, '230 ft'],
-    [160, '520 ft'], // 0.099 mi: still feet
-    [170, '0.1 mi'], // just over 0.1 mi: miles
-    [735, '0.5 mi'],
+    [90, '300 ft'], // 98 yd: still feet
+    [250, '270 yd'],
+    [483, '530 yd'], // 0.3 mi
+    [1_500, '1640 yd'],
     [3_400, '2.1 mi'],
     [29_000, '18 mi'],
   ])('%d m → %s', (m, out) => {

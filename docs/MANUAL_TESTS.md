@@ -131,7 +131,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Change username: works once; a second change soon after is refused with the date.
 - [ ] Change email: code goes to the new address (Mailpit); the old address gets a notice.
 - [ ] Change password: other signed-in devices are signed out; this one stays signed in.
-- [ ] Feed radius and business radius options save.
+- [ ] **Radius** (Settings) offers 176 yd, 352 yd and 528 yd; picking a smaller one shrinks the feed and the Places list. Distances on posts and places show in yards (feet when very close).
 - [ ] Policies (Terms, Privacy, Guidelines, Data Retention) open and read well.
 - [ ] Location → **Open phone settings** opens the app's settings.
 - [ ] **Account standing** says "good standing" with the How it works text.
