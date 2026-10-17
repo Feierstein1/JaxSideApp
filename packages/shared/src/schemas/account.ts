@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PROFILE_COLOR_KEYS } from '../profile-colors';
 import {
   emailCodeSchema,
   emailSchema,
@@ -43,6 +44,8 @@ export interface PublicProfile {
   medals: Medal[];
   /** P6.5: short-lived signed link, or null. */
   avatarUrl: string | null;
+  /** D69: account color key. */
+  color: string;
 }
 
 /** P6.9: an earned achievement as shown on a profile. */
@@ -72,3 +75,6 @@ export const restrictedAppealSchema = z.strictObject({ ...restrictedCredentials,
 
 /** P6.5: set your profile photo (uploaded first with `POST /photos`). */
 export const avatarSchema = z.strictObject({ photoId: z.uuid() });
+
+/** D69: pick your account color. */
+export const profileColorSchema = z.strictObject({ color: z.enum(PROFILE_COLOR_KEYS) });

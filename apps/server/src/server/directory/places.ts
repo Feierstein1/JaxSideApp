@@ -52,9 +52,11 @@ export async function searchPlaces(opts: {
   limit?: number;
   offset: number;
 }): Promise<{ places: PlaceSummary[]; nextOffset: number | null }> {
-  const [defaultPageSize, favFactor] = await Promise.all([
+  const [defaultPageSize, favFactor, maxMiles, maxName] = await Promise.all([
     getConfig('directory.pageSize'),
     getConfig('directory.favoriteDistanceFactor'),
+    getConfig('directory.maxListMiles'),
+    getConfig('directory.maxNameLength'),
   ]);
   const pageSize = opts.limit ?? defaultPageSize;
   const me = Prisma.sql`ST_SetSRID(ST_MakePoint(${opts.longitude}, ${opts.latitude}), 4326)::geography`;
@@ -85,6 +87,9 @@ export async function searchPlaces(opts: {
     FROM "BusinessPlace" p
     LEFT JOIN "FavoritePlace" f ON f."placeId" = p.id AND f."userId" = ${opts.userId}::uuid
     WHERE p.status = 'ACTIVE' ${nameFilter} ${categoryFilter}
+      -- D69: only places within a mile, and only names that fit on one line.
+      AND ST_DWithin(p.location, ${me}, ${maxMiles * 1609.344})
+      AND char_length(p.name) <= ${maxName}
     ${order}
     LIMIT ${pageSize + 1} OFFSET ${opts.offset}`;
 

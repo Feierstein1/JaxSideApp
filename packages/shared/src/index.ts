@@ -10,4 +10,5 @@ export * from './schemas/discussion';
 export * from './schemas/report';
 export * from './schemas/submission';
 export * from './policies';
+export * from './profile-colors';
 export * from './theme';

@@ -67,6 +67,8 @@ beforeEach(async () => {
   invalidateConfigCache();
   await importServiceArea(db, readBoundaryFile());
   await importOsmPlaces(db, PLACES);
+  // These fixtures span a few miles to test sorting; the 1-mile list cap (D69) has its own test.
+  await db.appConfiguration.create({ data: { key: 'directory.maxListMiles', value: 50 } });
   tokenA = (await createSession((await createTestUser('alice_d')).id, 'MOBILE')).token;
   tokenB = (await createSession((await createTestUser('bob_d')).id, 'MOBILE')).token;
 });
@@ -315,4 +317,32 @@ describe('radius preferences (P2.15)', () => {
       );
     },
   );
+});
+
+describe('Places list limits (D69)', () => {
+  it('only shows places within a mile, and only names of 30 characters or less', async () => {
+    await db.appConfiguration.update({
+      where: { key: 'directory.maxListMiles' },
+      data: { value: 1 },
+    });
+    await importOsmPlaces(db, [
+      {
+        type: 'node',
+        id: 900,
+        lat: 30.3152,
+        lon: -81.6851,
+        tags: { amenity: 'restaurant', name: 'The Extraordinarily Long Named Restaurant & Grill' },
+      },
+    ]);
+    invalidateConfigCache();
+    const r = await search({ limit: 50 });
+    const names = r.body.places.map((p: { name: string }) => p.name);
+    expect(r.body.places.every((p: { distanceMeters: number }) => p.distanceMeters <= 1609)).toBe(
+      true,
+    );
+    expect(names).not.toContain('The Extraordinarily Long Named Restaurant & Grill');
+    expect(names.every((n: string) => n.length <= 30)).toBe(true);
+    const all = await db.businessPlace.count();
+    expect(names.length).toBeLessThan(all);
+  });
 });

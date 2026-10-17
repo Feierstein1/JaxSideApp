@@ -1,4 +1,5 @@
 import {
+  randomProfileColor,
   TOS_VERSION,
   currentYearInAppTimeZone,
   isBirthYearEligible,
@@ -276,6 +277,7 @@ export async function register(input: RegisterRequest, ctx: RequestContext) {
         tosAcceptedAt: now,
         tosVersion: TOS_VERSION,
         adultConfirmedAt: now,
+        profileColor: randomProfileColor(), // D69
         profile: { create: {} },
       },
       select: { id: true },

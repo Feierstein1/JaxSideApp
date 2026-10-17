@@ -53,6 +53,10 @@ export const CONFIG_DEFAULTS = {
 
   // P2.13 / P2.14 directory
   'directory.pageSize': 20,
+  /** D69: the Places list only shows places within this distance. */
+  'directory.maxListMiles': 1,
+  /** D69: places with longer names are hidden from the list (and new ones can't be longer). */
+  'directory.maxNameLength': 30,
   /** Favorites rank as if this many times closer than they are (D39). */
   'directory.favoriteDistanceFactor': 0.25,
   'favorites.maxPerUser': 200,

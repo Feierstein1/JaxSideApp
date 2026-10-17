@@ -160,6 +160,8 @@ model User {
   /// P5.11: the last 30-second step whose code was accepted, so a code can't be reused.
   totpLastStep        Int?
   /// User-chosen radii in miles; null = config default. Clamped server-side (P2.15).
+  /// D69: account color key (palette in @jax/shared). Random at sign-up; changeable.
+  profileColor        String        @default("teal") @db.VarChar(20)
   generalRadiusMiles  Float?
   businessRadiusMiles Float?
   createdAt           DateTime      @default(now()) @db.Timestamptz(3)

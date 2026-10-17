@@ -135,7 +135,7 @@ describe('medals shown (P6.9)', () => {
       token: fan.token,
       body: { reading: reading() },
     });
-    expect(feed.body.posts[0].author).toEqual({
+    expect(feed.body.posts[0].author).toMatchObject({
       username: 'author_m',
       medals: ['approved_contributor'],
     });

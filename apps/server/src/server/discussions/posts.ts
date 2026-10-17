@@ -36,6 +36,8 @@ interface PostRow {
   username: string;
   author_status: string;
   medals: string[];
+  author_color: string;
+  avatar_photo_id: string | null;
   photos: { id: string; width: number; height: number }[] | null;
   my_vote: number | null;
   distance: number | null;
@@ -53,7 +55,12 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
     author:
       r.author_status === 'DELETED'
         ? { deleted: true }
-        : { username: r.username, medals: r.medals },
+        : {
+            username: r.username,
+            medals: r.medals,
+            color: r.author_color,
+            avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
+          },
     score: r.score,
     upCount: r.upCount,
     downCount: r.downCount,
@@ -92,6 +99,7 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
   return Prisma.sql`
     SELECT p.id, p.body, p."createdAt", p."editedAt", p.score, p."upCount", p."downCount",
            p."commentCount", p."authorId", u.username, u.status::text AS author_status,
+           u."profileColor" AS author_color, pr."avatarPhotoId" AS avatar_photo_id,
            ${medalKeysSql(Prisma.sql`p."authorId"`)} AS medals,
            (SELECT json_agg(json_build_object('id', ph.id, 'width', ph.width, 'height', ph.height)
                             ORDER BY ph."createdAt")
@@ -100,6 +108,7 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
            v.value AS my_vote, ${distance} AS distance, ${place}
     FROM ${TABLE[kind]} p
     JOIN "User" u ON u.id = p."authorId"
+    LEFT JOIN "Profile" pr ON pr."userId" = u.id
     ${join}
     LEFT JOIN "Vote" v ON v.${VOTE_COLUMN[kind]} = p.id AND v."voterId" = ${viewerId}::uuid`;
 }

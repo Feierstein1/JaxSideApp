@@ -79,7 +79,9 @@ export interface PostView {
   createdAt: string;
   editedAt: string | null;
   /** `medals`: achievement keys earned (P6.9), shown as small icons by the name. */
-  author: { username: string; medals: string[] } | { deleted: true };
+  author:
+    | { username: string; medals: string[]; color: string; avatarUrl: string | null }
+    | { deleted: true };
   score: number;
   upCount: number;
   downCount: number;

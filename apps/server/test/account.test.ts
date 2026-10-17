@@ -75,7 +75,7 @@ describe('username change (P4.9, ✅A1)', () => {
     expect(r.body.user).toMatchObject({ id: before.id, username: 'AnnRiver' });
     expect((await call(meGET as H, 'GET', { token: ann })).body.user.username).toBe('AnnRiver');
     const feed = await call(feedPOST as H, 'POST', { token: ben, body: { reading: reading() } });
-    expect(feed.body.posts[0].author).toEqual({ username: 'AnnRiver', medals: [] });
+    expect(feed.body.posts[0].author).toMatchObject({ username: 'AnnRiver', medals: [] });
     const history = await db.usernameHistory.findMany({ where: { userId: before.id } });
     expect(history.map((h) => h.username)).toEqual(['ann_a']);
   });

@@ -38,6 +38,7 @@ import * as userProfile from '@/app/api/v1/users/[username]/route';
 import * as reports from '@/app/api/v1/reports/route';
 import * as photos from '@/app/api/v1/photos/route';
 import * as meAvatar from '@/app/api/v1/me/avatar/route';
+import * as meColor from '@/app/api/v1/me/color/route';
 import * as submissions from '@/app/api/v1/submissions/route';
 import * as submissionCheck from '@/app/api/v1/submissions/check/route';
 import * as meAppeals from '@/app/api/v1/me/appeals/route';
@@ -318,6 +319,15 @@ const ROWS: Row[] = [
     auth: true,
     id: null,
     location: false,
+  },
+  {
+    route: 'me/color',
+    method: 'PATCH',
+    handler: h(meColor, 'PATCH'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ color: 'navy' }),
   },
   {
     route: 'me/avatar',

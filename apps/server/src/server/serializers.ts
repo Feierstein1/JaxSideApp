@@ -15,6 +15,7 @@ interface UserLike {
   generalRadiusMiles?: number | null;
   businessRadiusMiles?: number | null;
   profile?: { bio: string | null; avatarPhotoId: string | null } | null;
+  profileColor?: string;
 }
 
 /** Anything other users can see. */
@@ -25,6 +26,8 @@ export interface PublicUser {
   joinedAt: string;
   /** P6.5: short-lived signed link to the profile photo, or null. */
   avatarUrl: string | null;
+  /** D69: account color key. */
+  color: string;
 }
 
 export function toPublicUser(u: UserLike): PublicUser {
@@ -34,6 +37,7 @@ export function toPublicUser(u: UserLike): PublicUser {
     bio: u.profile?.bio ?? null,
     joinedAt: u.createdAt.toISOString(),
     avatarUrl: u.profile?.avatarPhotoId ? signedPhotoUrl(u.profile.avatarPhotoId) : null,
+    color: u.profileColor ?? 'teal',
   };
 }
 

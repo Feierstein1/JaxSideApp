@@ -42,6 +42,7 @@ export async function getPublicProfile(username: string, viewerUserId: string | 
     blockedByMe,
     medals: await medalsFor(user.id),
     avatarUrl: user.profile?.avatarPhotoId ? signedPhotoUrl(user.profile.avatarPhotoId) : null,
+    color: user.profileColor,
   };
   return { id: user.id, profile };
 }

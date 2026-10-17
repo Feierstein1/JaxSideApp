@@ -8,7 +8,13 @@ export const SUBMIT_CATEGORIES = [
   'other',
 ] as const;
 
-const placeName = z.string().trim().min(2, 'Enter the place’s name').max(120);
+/** D69: at most 30 characters, so names fit on one line in the list. */
+export const PLACE_NAME_MAX = 30;
+const placeName = z
+  .string()
+  .trim()
+  .min(2, 'Enter the place’s name')
+  .max(PLACE_NAME_MAX, `Keep the name to ${PLACE_NAME_MAX} characters`);
 
 /** P5.9: before submitting, see whether the place is already listed. */
 export const submissionCheckSchema = z.strictObject({
