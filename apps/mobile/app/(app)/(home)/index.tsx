@@ -5,6 +5,7 @@ import { COLORS, type FeedSort } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { fetchFeed } from '@/discussion/api';
+import { AreaLabel } from '@/location/AreaLabel';
 import { PostList } from '@/discussion/PostList';
 import { FloatingButton, Segmented, styles } from '@/ui';
 
@@ -12,7 +13,15 @@ import { FloatingButton, Segmented, styles } from '@/ui';
 export default function HomeFeed() {
   const { state } = useAuth();
   const [sort, setSort] = useState<FeedSort>('new');
-  const load = useCallback((cursor?: string) => fetchFeed(sort, cursor), [sort]);
+  const [area, setArea] = useState<string | null>(null);
+  const load = useCallback(
+    async (cursor?: string) => {
+      const page = await fetchFeed(sort, cursor);
+      if (!cursor) setArea(page.area ?? null); // D72: refreshed with the first page
+      return page;
+    },
+    [sort],
+  );
   const verified = state.status === 'signedIn' && state.user.emailVerified;
   const { isGuest, promptAccount } = useGuest();
   const guest = state.status === 'guest' ? state.guest : undefined;
@@ -45,6 +54,7 @@ export default function HomeFeed() {
           gap: 8,
         }}
       >
+        <AreaLabel name={area} />
         {guest?.expiringSoon ? (
           <View style={[styles.banner, { marginBottom: 0 }]}>
             <Text style={styles.body}>

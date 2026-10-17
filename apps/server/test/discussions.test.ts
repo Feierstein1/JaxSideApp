@@ -133,7 +133,16 @@ describe('general posts and feed (P3.1, P3.1a)', () => {
   });
 
   it('an empty area returns an empty page', async () => {
-    expect((await feed(bob)).body).toEqual({ posts: [], nextCursor: null });
+    expect((await feed(bob)).body).toEqual({ posts: [], nextCursor: null, area: 'Riverside' });
+  });
+
+  // D72: "Near …" is about the reader's own spot; posts never carry a neighborhood.
+  it('names the reader’s neighborhood, not the author’s', async () => {
+    await post(alice, 'hi from Five Points');
+    const r = await feed(bob, NEAR);
+    expect(r.body.area).toEqual(expect.any(String));
+    expect(JSON.stringify(r.body.posts)).not.toMatch(/area|neighborhood/i);
+    expect((await feed(bob, MEMORIAL)).body.area).not.toBeUndefined();
   });
 
   // ✅ DV6: cursor paging has no duplicates or skips, even when new posts arrive mid-scroll.

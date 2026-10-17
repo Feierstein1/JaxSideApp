@@ -16,6 +16,7 @@ import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { categoryLabel, formatDistance, plural } from '@/format';
 import { getFreshReading } from '@/location/device';
+import { AreaLabel } from '@/location/AreaLabel';
 import { OsmAttribution } from '@/places/Attribution';
 import { PlaceStats, PlaceTop, placeFrame } from '@/places/PlaceHeader';
 import { Button, Chip, FloatingButton, styles } from '@/ui';
@@ -23,6 +24,8 @@ import { Button, Chip, FloatingButton, styles } from '@/ui';
 interface SearchResponse {
   places: PlaceSummary[];
   nextOffset: number | null;
+  /** D72: closest named neighborhood. */
+  area?: string | null;
 }
 
 const SORTS: { key: PlaceSort; label: string }[] = [
@@ -46,6 +49,7 @@ export default function PlacesScreen() {
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const [area, setArea] = useState<string | null>(null);
   const requestId = useRef(0);
   const filtered = group !== null || (sort !== null && sort !== 'distance');
 
@@ -67,6 +71,7 @@ export default function PlacesScreen() {
         if (id !== requestId.current) return; // a newer request started
         setPlaces((prev) => (offset === 0 ? res.places : [...prev, ...res.places]));
         setNextOffset(res.nextOffset);
+        if (offset === 0) setArea(res.area ?? null);
       } catch (e) {
         if (id !== requestId.current) return;
         setError(e instanceof ApiRequestError ? e.message : 'Couldn’t get your location.');
@@ -85,52 +90,53 @@ export default function PlacesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
-      {/* Black bar under the black header: filter button, then the search box. */}
+      {/* Black bar under the black header: where you are (D72), then filter + search. */}
       <View
         style={{
           backgroundColor: COLORS.surfaceInverse,
           paddingHorizontal: 12,
           paddingTop: 4,
           paddingBottom: 12,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 10,
+          gap: 8,
         }}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={filtered ? 'Filters (on)' : 'Filters'}
-          onPress={() => setFiltersOpen(true)}
-          hitSlop={8}
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 8,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 2,
-            borderColor: filtered ? BRAND.gold : COLORS.onSurfaceInverse,
-          }}
-        >
-          <Ionicons
-            name={filtered ? 'options' : 'options-outline'}
-            size={22}
-            color={filtered ? BRAND.gold : COLORS.onSurfaceInverse}
+        <AreaLabel name={area} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={filtered ? 'Filters (on)' : 'Filters'}
+            onPress={() => setFiltersOpen(true)}
+            hitSlop={8}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 8,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 2,
+              borderColor: filtered ? BRAND.gold : COLORS.onSurfaceInverse,
+            }}
+          >
+            <Ionicons
+              name={filtered ? 'options' : 'options-outline'}
+              size={22}
+              color={filtered ? BRAND.gold : COLORS.onSurfaceInverse}
+            />
+          </Pressable>
+          <TextInput
+            accessibilityLabel="Search places"
+            placeholder="Search places nearby…"
+            placeholderTextColor={COLORS.placeholder}
+            value={q}
+            onChangeText={setQ}
+            autoCorrect={false}
+            returnKeyType="search"
+            style={[
+              styles.input,
+              { flex: 1, backgroundColor: COLORS.background, borderColor: COLORS.background },
+            ]}
           />
-        </Pressable>
-        <TextInput
-          accessibilityLabel="Search places"
-          placeholder="Search places nearby…"
-          placeholderTextColor={COLORS.placeholder}
-          value={q}
-          onChangeText={setQ}
-          autoCorrect={false}
-          returnKeyType="search"
-          style={[
-            styles.input,
-            { flex: 1, backgroundColor: COLORS.background, borderColor: COLORS.background },
-          ]}
-        />
+        </View>
       </View>
 
       {error ? (

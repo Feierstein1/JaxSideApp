@@ -2,7 +2,7 @@
 
 The server behavior behind every item here is already covered by automated tests and by
 `npm run e2e:live -w @jax/server`, which plays temporary people through the whole app over
-real HTTP and then deletes them (97 checks; see `docs/TESTING.md`). This list is what a
+real HTTP and then deletes them (98 checks; see `docs/TESTING.md`). This list is what a
 person needs to check on a real phone: screens, wording, GPS, permissions, and how it feels.
 
 **Before you start:** dev server and Expo running (`npm run dev`, `npm run dev:mobile`), Docker
@@ -17,6 +17,9 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Denying location shows the explanation screen with **Open Settings**; Account and sign out
       still work.
 - [ ] Allowing location goes straight to the Home feed.
+- [ ] **Near [neighborhood] (D72):** the top of Home and of Places shows a gold pin and "Near …" with a
+      sensible name for where you are (it's approximate near borders). Note any wrong or missing
+      names; we can pin them.
 
 ## 2. Sign up, confirm, sign in
 

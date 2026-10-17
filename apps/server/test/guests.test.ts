@@ -143,6 +143,7 @@ describe('what guests can do (P4.2)', () => {
     const feed = await call(feedPOST as H, 'POST', { token: g, body: { reading: reading() } });
     expect(feed.body.posts.map((p: { body: string }) => p.body)).toEqual(['hello all']);
     expect(feed.body.posts[0].myVote).toBe(0);
+    expect(feed.body.area).toBe('Riverside'); // D72: guests see where they are too
     // A different guest: the same one jumping 20 km in seconds would be impossible travel.
     const g2 = await guestToken();
     const out = await call(feedPOST as H, 'POST', {

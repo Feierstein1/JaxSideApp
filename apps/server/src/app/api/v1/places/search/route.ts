@@ -5,6 +5,7 @@ import { searchPlaces } from '@/server/directory/places';
 import { OSM_ATTRIBUTION } from '@/server/directory/osm';
 import { route } from '@/server/http';
 import { assertLocationEligible } from '@/server/location/eligibility';
+import { nearestNeighborhood } from '@/server/location/neighborhood';
 import { enforce } from '@/server/rate-limit';
 import { parseBody } from '@/server/validate';
 
@@ -36,5 +37,7 @@ export const POST = route(async (req) => {
     radiusMiles: user.generalRadiusMiles,
   });
   // ODbL: data shown in the app must carry the attribution (P2.12).
-  return NextResponse.json({ ...result, attribution: OSM_ATTRIBUTION });
+  // D72: "Near Avondale" above the list, for the searcher's own location only.
+  const area = nearestNeighborhood({ latitude, longitude });
+  return NextResponse.json({ ...result, area, attribution: OSM_ATTRIBUTION });
 });

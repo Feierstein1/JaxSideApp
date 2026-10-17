@@ -99,6 +99,7 @@ describe('place search (P2.13)', () => {
   it('lists nearby places nearest first, with rounded distance and room eligibility', async () => {
     const r = await search({});
     expect(r.status).toBe(200);
+    expect(r.body.area).toBe('Riverside'); // D72: closest named neighborhood
     expect(names(r)).toEqual([
       'Bold Bean Coffee',
       'Corner Store',

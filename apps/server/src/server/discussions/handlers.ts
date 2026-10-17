@@ -48,6 +48,7 @@ import {
   listPlacePosts,
   postAnchor,
 } from './posts';
+import { nearestNeighborhood } from '../location/neighborhood';
 import { holdFor, holdReport, screenText, type Hold } from '../moderation/screening';
 import { checkEdit, checkNewContent } from '../moderation/spam';
 import { castVote } from './votes';
@@ -135,7 +136,9 @@ export async function feed(req: Request) {
     actor.kind === 'user'
       ? { id: actor.user.id, generalRadiusMiles: actor.user.generalRadiusMiles }
       : { id: NO_USER, generalRadiusMiles: null };
-  return NextResponse.json(await listFeed({ viewer, at, sort: input.sort, cursor: input.cursor }));
+  const page = await listFeed({ viewer, at, sort: input.sort, cursor: input.cursor });
+  // D72: "Near Avondale" for the reader's own location only.
+  return NextResponse.json({ ...page, area: nearestNeighborhood(at) });
 }
 
 /** POST /places/:id/posts/list: a room is readable only within 0.3 mi (D19). */

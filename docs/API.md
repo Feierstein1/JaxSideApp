@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-79 endpoints.
+81 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -53,25 +53,26 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 
 ## me
 
-| Method | Path                       | Who                    | Location | What it does                                                                                |
-| ------ | -------------------------- | ---------------------- | -------- | ------------------------------------------------------------------------------------------- |
-| GET    | `/api/v1/me`               | user                   |          | The caller's own account. Private view (includes their email), still via a serializer.      |
-| POST   | `/api/v1/me/appeals`       | user                   |          | P5.7: appeal a warning (or other strike) while signed in.                                   |
-| PUT    | `/api/v1/me/avatar`        | user (confirmed email) |          | P6.5: set your profile photo to one you uploaded (same pipeline as post photos).            |
-| DELETE | `/api/v1/me/avatar`        | user (confirmed email) |          | Remove your profile photo.                                                                  |
-| GET    | `/api/v1/me/blocks`        | user                   |          | P4.11: the people you've blocked (settings).                                                |
-| PATCH  | `/api/v1/me/color`         | user                   |          | D69: change your account color (one of the palette in @jax/shared).                         |
-| POST   | `/api/v1/me/delete`        | user                   |          | P4.12: delete your account (password, plus typing DELETE).                                  |
-| POST   | `/api/v1/me/email`         | user                   |          | P4.10: start an email change (a code is sent to the new address).                           |
-| POST   | `/api/v1/me/email/confirm` | user                   |          | P4.10: finish an email change with the code.                                                |
-| GET    | `/api/v1/me/favorites`     | user                   |          | P2.14: the caller's saved places. Part of account settings, so no location needed (D16).    |
-| GET    | `/api/v1/me/medals`        | user                   |          | P6.9: your own medals (Account → Profile).                                                  |
-| POST   | `/api/v1/me/password`      | user                   |          | P4.10: change password; other devices are signed out. Wrong guesses are rate-limited.       |
-| PATCH  | `/api/v1/me/profile`       | user                   |          | P4.8 (early): edit your own public bio. Plain text (P3.10); empty clears it.                |
-| GET    | `/api/v1/me/reports`       | user                   |          | P4.11 / P5.1: the reports you've sent and their status.                                     |
-| GET    | `/api/v1/me/standing`      | user                   |          | P5.6: your warnings and suspensions that still count, the reason given, and appeals (P5.7). |
-| GET    | `/api/v1/me/submissions`   | user                   |          | P5.8: your suggested places and how they went.                                              |
-| PATCH  | `/api/v1/me/username`      | user                   |          | P4.9: change your username. Cooldown applies; your account ID and history stay the same.    |
+| Method | Path                       | Who                    | Location | What it does                                                                                                                                                 |
+| ------ | -------------------------- | ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | `/api/v1/me`               | user                   |          | The caller's own account. Private view (includes their email), still via a serializer.                                                                       |
+| POST   | `/api/v1/me/appeals`       | user                   |          | P5.7: appeal a warning (or other strike) while signed in.                                                                                                    |
+| PUT    | `/api/v1/me/avatar`        | user (confirmed email) |          | P6.5: set your profile photo to one you uploaded (same pipeline as post photos).                                                                             |
+| DELETE | `/api/v1/me/avatar`        | user (confirmed email) |          | Remove your profile photo.                                                                                                                                   |
+| GET    | `/api/v1/me/blocks`        | user                   |          | P4.11: the people you've blocked (settings).                                                                                                                 |
+| PATCH  | `/api/v1/me/color`         | user                   |          | D69: change your account color (one of the palette in @jax/shared).                                                                                          |
+| POST   | `/api/v1/me/delete`        | user                   |          | P4.12: delete your account (password, plus typing DELETE).                                                                                                   |
+| POST   | `/api/v1/me/email`         | user                   |          | P4.10: start an email change (a code is sent to the new address).                                                                                            |
+| POST   | `/api/v1/me/email/confirm` | user                   |          | P4.10: finish an email change with the code.                                                                                                                 |
+| GET    | `/api/v1/me/favorites`     | user                   |          | P2.14: the caller's saved places. Part of account settings, so no location needed (D16).                                                                     |
+| GET    | `/api/v1/me/medals`        | user                   |          | P6.9: your own medals (Account → Profile).                                                                                                                   |
+| POST   | `/api/v1/me/password`      | user                   |          | P4.10: change password; other devices are signed out. Wrong guesses are rate-limited.                                                                        |
+| PATCH  | `/api/v1/me/preferences`   | user                   |          | P2.15 / D71: your radius (0.1, 0.2 or 0.3 mi). One setting for the feed, the Places list and business discussions; the server never allows more than 0.3 mi. |
+| PATCH  | `/api/v1/me/profile`       | user                   |          | P4.8 (early): edit your own public bio. Plain text (P3.10); empty clears it.                                                                                 |
+| GET    | `/api/v1/me/reports`       | user                   |          | P4.11 / P5.1: the reports you've sent and their status.                                                                                                      |
+| GET    | `/api/v1/me/standing`      | user                   |          | P5.6: your warnings and suspensions that still count, the reason given, and appeals (P5.7).                                                                  |
+| GET    | `/api/v1/me/submissions`   | user                   |          | P5.8: your suggested places and how they went.                                                                                                               |
+| PATCH  | `/api/v1/me/username`      | user                   |          | P4.9: change your username. Cooldown applies; your account ID and history stay the same.                                                                     |
 
 ## users
 
@@ -124,13 +125,14 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 
 ## places
 
-| Method | Path                            | Who                    | Location | What it does                                                                    |
-| ------ | ------------------------------- | ---------------------- | -------- | ------------------------------------------------------------------------------- |
-| POST   | `/api/v1/places/:id`            | user                   | yes      | P2.13: one place's info and distance. Body carries the reading, so it's a POST. |
-| PUT    | `/api/v1/places/:id/favorite`   | user                   |          |                                                                                 |
-| DELETE | `/api/v1/places/:id/favorite`   | user                   |          |                                                                                 |
-| POST   | `/api/v1/places/:id/posts`      | user (confirmed email) | yes      | P3.2: post in a place's room (within 0.3 mi, D19).                              |
-| POST   | `/api/v1/places/:id/posts/list` | user                   | yes      | P3.2: a place's room, newest first (within 0.3 mi, D19).                        |
+| Method | Path                            | Who                    | Location | What it does                                                                        |
+| ------ | ------------------------------- | ---------------------- | -------- | ----------------------------------------------------------------------------------- |
+| POST   | `/api/v1/places/:id`            | user                   | yes      | P2.13: one place's info and distance. Body carries the reading, so it's a POST.     |
+| PUT    | `/api/v1/places/:id/favorite`   | user                   |          |                                                                                     |
+| DELETE | `/api/v1/places/:id/favorite`   | user                   |          |                                                                                     |
+| POST   | `/api/v1/places/:id/posts`      | user (confirmed email) | yes      | P3.2: post in a place's room (within 0.3 mi, D19).                                  |
+| POST   | `/api/v1/places/:id/posts/list` | user                   | yes      | P3.2: a place's room, newest first (within 0.3 mi, D19).                            |
+| POST   | `/api/v1/places/search`         | user                   | yes      | P2.13: search the directory. Needs a fresh in-Duval reading (D16); no radius (D19). |
 
 ## submissions
 

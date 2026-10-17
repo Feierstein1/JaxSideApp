@@ -11,6 +11,8 @@ import type { HeldResponse } from './screening';
 export interface PostPage {
   posts: PostView[];
   nextCursor: string | null;
+  /** D72: closest named neighborhood (area feed only). */
+  area?: string | null;
 }
 
 const base = (kind: DiscussionKind) =>

@@ -34,6 +34,28 @@ External data used by the app: where it comes from, its license, and how to refr
 **Swapping the service area** (e.g. adding a neighboring county later): add another feature with
 a new `key`. The location check accepts a point inside **any** active `ServiceArea` row.
 
+## Neighborhood names (D72)
+
+|               |                                                                                                                                                                                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **What**      | About 240 named points (one per neighborhood) used for the "Near Avondale" label. Points only; no outlines                                                                                                                                                                     |
+| **Sources**   | 1. Our own pins, `apps/server/data/neighborhoods/additions.json` (these win). 2. OpenStreetMap via Overpass: `place` = neighbourhood, suburb, quarter, hamlet, village, town. 3. City of Jacksonville GIS, "Neighborhood Names" (`maps.coj.net/.../PromisesKept/MapServer/21`) |
+| **License**   | OSM: **ODbL 1.0**, "© OpenStreetMap contributors" (shown in the app with place lists). City layer: no license stated; reuse to be confirmed (Q16)                                                                                                                              |
+| **Stored at** | `apps/server/data/neighborhoods/duval-neighborhoods.json` (committed; bundled with the server, so no outside call at run time)                                                                                                                                                 |
+| **Code**      | `apps/server/scripts/neighborhoods/fetch-neighborhoods.ts` (build); `apps/server/src/server/location/neighborhood.ts` (lookup)                                                                                                                                                 |
+
+**How the file is built:** points outside the committed Duval boundary are dropped. This matters
+because the OSM area "Duval County" also matches Duval County, Texas. Cemeteries are dropped. The
+same name within 2 km counts once, in priority order: our pins, OSM neighborhoods, OSM hamlets,
+then the city's points.
+
+**How it's used:** the closest point to the person's verified location, if within 5 km. Near a
+border it can name the neighbor; a neighborhood missing from every source shows as the closest
+listed one until we pin it.
+
+**Adding a missing neighborhood:** add `{ "name", "lat", "lon" }` (its rough center) to
+`additions.json`, then run `npm run fetch:neighborhoods -w @jax/server` and commit both files.
+
 ## Business directory: OpenStreetMap (P2.10–P2.12)
 
 |               |                                                                                                                                                                                                                                                                                                                      |

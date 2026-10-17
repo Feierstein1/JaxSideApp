@@ -1,4 +1,9 @@
-import { milesToMeters, type LocationDenialCode, type LocationReading, yardsLabel } from '@jax/shared';
+import {
+  milesToMeters,
+  type LocationDenialCode,
+  type LocationReading,
+  yardsLabel,
+} from '@jax/shared';
 import type { GuestSession, User } from '@/generated/prisma/client';
 import { assertAccountUsable } from '../auth/standing';
 import { getConfig } from '../config';

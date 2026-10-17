@@ -23,7 +23,7 @@ import { objectStore } from '../../src/server/media/store';
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 const MAIL = process.env.E2E_MAILPIT_URL ?? 'http://localhost:8025';
 const PW = 'zzt correct horse battery';
-const HERE = { latitude: 30.3149, longitude: -81.6853 }; // downtown Jacksonville
+const HERE = { latitude: 30.3149, longitude: -81.6853 }; // Riverside, by Five Points
 const OUTSIDE = { latitude: 30.1661, longitude: -81.7065 }; // Orange Park (Clay County)
 const RUN = Date.now().toString(36).slice(-5);
 const startedAt = new Date();
@@ -443,6 +443,11 @@ async function run() {
   const gt = g.body?.token as string;
   const gfeed = await http('POST', '/api/v1/feed', { token: gt, body: { reading: reading() } });
   check('guest reads the area feed', gfeed.status === 200, gfeed.body);
+  check(
+    'feed says which neighborhood you’re near (D72)',
+    gfeed.body?.area === 'Riverside',
+    gfeed.body?.area,
+  );
   for (const [label, r] of [
     [
       'comment',

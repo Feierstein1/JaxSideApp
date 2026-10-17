@@ -22,7 +22,8 @@
     "admin:promote": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/admin/promote.ts",
     "e2e:live": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/e2e/live-check.ts",
     "docs:api": "tsx scripts/docs/api-reference.ts",
-    "import:places": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/directory/import-osm.ts"
+    "import:places": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/directory/import-osm.ts",
+    "fetch:neighborhoods": "tsx scripts/neighborhoods/fetch-neighborhoods.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1152.0",

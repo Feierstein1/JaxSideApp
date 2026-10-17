@@ -1,0 +1,6 @@
+{
+  "about": "Our own pins for neighborhoods the free sources miss (D72). These win over same-named points. Each pin is the neighborhood's rough center. After editing, run: npm run fetch:neighborhoods -w @jax/server",
+  "neighborhoods": [
+    { "name": "Five Points", "lat": 30.31495, "lon": -81.68085 }
+  ]
+}
