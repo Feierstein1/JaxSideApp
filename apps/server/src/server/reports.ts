@@ -1,5 +1,7 @@
+import { Prisma } from '@/generated/prisma/client';
 import type { MyReport, ReportReason, ReportTarget } from '@jax/shared';
 import type { Actor } from './auth/require-actor';
+import { getConfig } from './config';
 import { db } from './db';
 import { ApiError } from './http';
 import { getPublicProfile } from './profiles';
@@ -108,6 +110,7 @@ export async function createReport(
     actor.kind === 'user' ? { reporterUserId: actor.user.id } : { reporterGuestId: actor.guest.id };
   const reporterKey = actor.kind === 'user' ? `user:${actor.user.id}` : `guest:${actor.guest.id}`;
 
+  const autoHideAt = await getConfig('moderation.autoHideReports');
   return db.$transaction(async (tx) => {
     // Serializes the same reporter + item so a double tap can't create two reports.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'report:' + reporterKey + ':' + t.key}))`;
@@ -121,8 +124,42 @@ export async function createReport(
         details: input.details || null,
       },
     });
+    await autoHide(tx, t, autoHideAt);
     return { created: true };
   });
+}
+
+/**
+ * D73: once enough different people have open reports on a post, it's held for review
+ * (hidden from everyone) right away; a moderator publishes or removes it from the portal,
+ * where every reporter and the author are listed. The per-item lock makes simultaneous
+ * reports count each other.
+ */
+async function autoHide(tx: Prisma.TransactionClient, t: ResolvedTarget, threshold: number) {
+  const id = t.data.generalPostId ?? t.data.businessPostId;
+  if (!id) return; // posts only
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'autohide:' + t.key}))`;
+  const [row] = await tx.$queryRaw<{ n: number }[]>`
+    SELECT count(DISTINCT "reporterUserId")::int AS n FROM "Report"
+    WHERE status = 'OPEN' AND "reporterUserId" IS NOT NULL
+      AND ${t.data.generalPostId ? Prisma.sql`"generalPostId"` : Prisma.sql`"businessPostId"`} = ${id}::uuid`;
+  if ((row?.n ?? 0) < threshold) return;
+  if (t.data.generalPostId) {
+    await tx.generalPost.updateMany({
+      where: { id, status: 'VISIBLE' },
+      data: { status: 'HELD_FOR_REVIEW' },
+    });
+    return;
+  }
+  const rows = await tx.$queryRaw<{ placeId: string }[]>`
+    UPDATE "BusinessPost" SET status = 'HELD_FOR_REVIEW', "updatedAt" = now()
+    WHERE id = ${id}::uuid AND status = 'VISIBLE' RETURNING "placeId"`;
+  if (rows[0]) {
+    await tx.businessPlace.update({
+      where: { id: rows[0].placeId },
+      data: { postCount: { decrement: 1 } },
+    });
+  }
 }
 
 /** Matches the report's target column (a user report has only `reportedUserId`). */

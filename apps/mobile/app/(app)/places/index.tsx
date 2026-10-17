@@ -15,11 +15,11 @@ import { BRAND, CATEGORY_GROUPS, COLORS, type PlaceSort, type PlaceSummary } fro
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { categoryLabel, formatDistance, plural } from '@/format';
-import { getFreshReading } from '@/location/device';
+import { getFreshReading, useReloadWhenMoved } from '@/location/device';
 import { AreaLabel } from '@/location/AreaLabel';
 import { OsmAttribution } from '@/places/Attribution';
 import { PlaceStats, PlaceTop, placeFrame } from '@/places/PlaceHeader';
-import { Button, Chip, FloatingButton, styles } from '@/ui';
+import { Button, Chip, FloatingButton, RefreshButton, styles } from '@/ui';
 
 interface SearchResponse {
   places: PlaceSummary[];
@@ -54,12 +54,12 @@ export default function PlacesScreen() {
   const filtered = group !== null || (sort !== null && sort !== 'distance');
 
   const load = useCallback(
-    async (offset = 0) => {
+    async (offset = 0, fresh = false) => {
       const id = ++requestId.current;
       setLoading(true);
       setError(undefined);
       try {
-        const reading = await getFreshReading();
+        const reading = await getFreshReading({ fresh });
         const categories = CATEGORY_GROUPS.find((g) => g.key === group)?.categories;
         const res = await api.post<SearchResponse>('/api/v1/places/search', {
           reading,
@@ -81,6 +81,9 @@ export default function PlacesScreen() {
     },
     [q, group, sort],
   );
+
+  // D73: reload with a new fix when the app is reopened somewhere new.
+  useReloadWhenMoved(() => void load(0));
 
   // Reload when anything changes; wait a moment while the user is typing.
   useEffect(() => {
@@ -136,6 +139,7 @@ export default function PlacesScreen() {
               { flex: 1, backgroundColor: COLORS.background, borderColor: COLORS.background },
             ]}
           />
+          <RefreshButton onPress={() => void load(0, true)} busy={loading && places.length > 0} />
         </View>
       </View>
 

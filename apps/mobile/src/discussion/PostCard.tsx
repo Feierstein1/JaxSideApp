@@ -2,6 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { COLORS, profileColor, type PostView } from '@jax/shared';
+import { useNameHidden } from '@/auth/UserBadge';
 import { formatDistance, postTime } from '@/format';
 import { MedalIcons } from '@/profile/Medals';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
@@ -47,6 +48,7 @@ export function PostCard({
   full?: boolean;
 }) {
   const author = post.author;
+  const nameHidden = useNameHidden(); // D73: no ★ on your posts while your name is hidden
   const name = authorName(author);
   const color = profileColor('color' in author ? author.color : 'slate');
   const extras = [
@@ -101,7 +103,7 @@ export function PostCard({
           >
             {name}
           </Text>
-          {post.isMine ? (
+          {post.isMine && !nameHidden ? (
             <Ionicons name="star" size={15} color={color.text} accessibilityLabel="Your post" />
           ) : null}
           {'medals' in author ? (

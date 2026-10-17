@@ -225,3 +225,48 @@ describe('my reports (P4.11)', () => {
     expect(r.body.reports[0].preview).toBe('[no longer visible]');
   });
 });
+
+// D73: a post reported by 3 different people is hidden until a moderator decides.
+describe('auto-hide after reports (D73)', () => {
+  const reporters = (n: number, tag = 'a') =>
+    Promise.all(Array.from({ length: n }, (_, i) => userToken(`rep_${tag}${i}_r`)));
+  const status = async () =>
+    (await db.generalPost.findUniqueOrThrow({ where: { id: postId } })).status;
+
+  it('stays visible at 2 reporters and is held at the 3rd', async () => {
+    const [r1, r2, r3] = await reporters(3);
+    await report(r1!, { type: 'general', id: postId });
+    await report(r1!, { type: 'general', id: postId }); // a repeat doesn't count twice
+    await report(r2!, { type: 'general', id: postId });
+    expect(await status()).toBe('VISIBLE');
+    expect((await report(r3!, { type: 'general', id: postId })).status).toBe(202);
+    expect(await status()).toBe('HELD_FOR_REVIEW');
+    // Hidden from everyone: nobody can report it again (404, like a removed post).
+    expect((await report(bob, { type: 'general', id: postId })).status).toBe(404);
+  });
+
+  it('three simultaneous reports still hide it', async () => {
+    const rs = await reporters(3);
+    await Promise.all(rs.map((r) => report(r, { type: 'general', id: postId })));
+    expect(await status()).toBe('HELD_FOR_REVIEW');
+  });
+
+  it('a room post is held and leaves the place’s post count', async () => {
+    const before = (await db.businessPlace.findFirstOrThrow()).postCount;
+    for (const r of await reporters(3)) await report(r, { type: 'business', id: roomPostId });
+    const p = await db.businessPost.findUniqueOrThrow({ where: { id: roomPostId } });
+    expect(p.status).toBe('HELD_FOR_REVIEW');
+    expect((await db.businessPlace.findFirstOrThrow()).postCount).toBe(before - 1);
+  });
+
+  it('comments are not auto-hidden; the threshold is a setting', async () => {
+    for (const r of await reporters(3)) await report(r, { type: 'comment', id: commentId });
+    expect((await db.comment.findUniqueOrThrow({ where: { id: commentId } })).status).toBe(
+      'VISIBLE',
+    );
+    await db.appConfiguration.create({ data: { key: 'moderation.autoHideReports', value: 5 } });
+    invalidateConfigCache();
+    for (const r of await reporters(4, 'b')) await report(r, { type: 'general', id: postId });
+    expect(await status()).toBe('VISIBLE');
+  });
+});

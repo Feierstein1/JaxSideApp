@@ -84,7 +84,7 @@ function ProfileTab() {
     setPhotoBusy(true);
     setError(undefined);
     try {
-      const up = await uploadPhoto(asset.uri);
+      const up = await uploadPhoto(asset);
       await api.put('/api/v1/me/avatar', { photoId: up.id });
       await refresh();
     } catch (e) {

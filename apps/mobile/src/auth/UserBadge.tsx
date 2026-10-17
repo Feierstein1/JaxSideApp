@@ -33,6 +33,18 @@ function toggle() {
   void SecureStore.setItemAsync(KEY, hidden ? '1' : '0').catch(() => undefined);
 }
 
+/**
+ * Whether "hide my name on screen" is on. D73: also hides the ★ that marks your own posts,
+ * so someone looking at the screen can't tell which posts are yours.
+ */
+export function useNameHidden() {
+  const isHidden = useSyncExternalStore(subscribe, () => hidden);
+  useEffect(() => {
+    void load();
+  }, []);
+  return isHidden;
+}
+
 /** Signed-in username in the top bar, with an eye button to hide it. Gold on black (D33). */
 export function UserBadge() {
   const { state } = useAuth();

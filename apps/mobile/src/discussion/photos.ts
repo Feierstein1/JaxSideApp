@@ -1,12 +1,15 @@
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import type { PhotoView } from '@jax/shared';
 import { API_BASE_URL } from '@/api';
 import { ApiRequestError, INSTALLATION_HEADER } from '@/api/client';
 import { installationStore, secureTokenStore } from '@/auth/secure-token-store';
+import { shrinkTo } from './photo-size';
 
 /**
  * P6.1 photo uploads from the app. The photo is picked from the library, converted to
- * JPEG and shrunk on the phone first (faster upload), then sent as raw bytes. The
+ * JPEG and shrunk on the phone first (D73: longest side 2048 px, so a full-size camera photo
+ * isn't over the size limit or slow on cellular), then sent as raw bytes. The
  * server checks it again, strips every bit of metadata (GPS, camera) and re-encodes it.
  */
 
@@ -29,7 +32,26 @@ export async function pickPhoto(opts: { square?: boolean } = {}) {
   return r.canceled ? null : (r.assets[0] ?? null);
 }
 
-export async function uploadPhoto(uri: string): Promise<Uploaded> {
+async function shrink(asset: { uri: string; width: number; height: number }) {
+  const ctx = ImageManipulator.manipulate(asset.uri);
+  const size = shrinkTo(asset.width, asset.height);
+  if (size) ctx.resize(size);
+  const img = await ctx.renderAsync();
+  const out = await img.saveAsync({ compress: 0.8, format: SaveFormat.JPEG });
+  return out.uri;
+}
+
+export async function uploadPhoto(asset: {
+  uri: string;
+  width: number;
+  height: number;
+}): Promise<Uploaded> {
+  let uri = asset.uri;
+  try {
+    uri = await shrink(asset);
+  } catch {
+    // Couldn't shrink it here; send the original and let the server check the size.
+  }
   const file = await (await fetch(uri)).blob();
   const headers: Record<string, string> = { 'Content-Type': 'image/jpeg' };
   const token = await secureTokenStore.get();

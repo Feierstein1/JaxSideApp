@@ -43,7 +43,7 @@ export function Compose({
     if (!asset) return;
     setUploading(true);
     try {
-      const up = await uploadPhoto(asset.uri);
+      const up = await uploadPhoto(asset);
       setPhotos((p) => [...p, { ...up, localUri: asset.uri }]);
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t add the photo.');

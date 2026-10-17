@@ -43,12 +43,17 @@ checks. Tick each box when it looks right; note anything odd next to it.
 ## 4. Home feed and posting
 
 - [ ] New / Top this week switch works; scrolling loads more; pull down refreshes.
+- [ ] **Refresh (D73):** the round-arrow button top-right on Home (and right of the Places search box)
+      reloads with a new location.
+- [ ] **Reopen (D73):** switch to another app, walk a block (60+ yd), come back: Home and Places
+      reload on their own. Come back without moving: nothing reloads.
 - [ ] With no posts nearby, the "No posts in this area yet" message and button show.
 - [ ] **+** opens New post; posting returns to the feed with your post at the top.
 - [ ] Posting again within 10 seconds shows "You're doing that too often. Try again in…".
 - [ ] Posting the exact same text again is refused ("You already posted this").
 - [ ] Open your post: **Delete my post** works (after confirming).
 - [ ] The top-bar username shows; the eye button hides it and it stays hidden after restarting.
+      While hidden, the ★ on your own posts is hidden too (D73).
 - [ ] **Post look (D69):** each post has a header in the author's color (rounded top) with their
       photo, a larger username, a ★ on your own posts, and the time on the right ("5 min ago" up to
       3 days, then the date). Below: white post with black text, a colored 3 px border, and the
@@ -61,6 +66,8 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Add up to 4 photos (thumbnails with an ✕ to remove); post: the first shows large in the feed,
       the rest as small squares.
 - [ ] An iPhone HEIC photo uploads fine (it's converted to JPEG).
+- [ ] **Away from Wi-Fi (D73):** with `npm run dev:remote`, on cellular, a full-size camera photo
+      uploads in a few seconds (it's shrunk on the phone first).
 - [ ] Account → Profile → tap the circle (or **Add a photo**): pick and crop a square photo; it
       shows on your profile and to others who open your profile.
 - [ ] On someone else's post, long-press a photo → the report sheet opens (type: photo).
@@ -74,6 +81,9 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] B reports A's post (**Report post**) and a comment (**Report**): the sheet shows reasons,
       details, and the "call 911" note for Child safety; then "Thanks for reporting".
 - [ ] B's Account → Settings → **My reports** lists them as "Waiting for review".
+- [ ] **Auto-hide (D73):** three different accounts report the same post: it disappears from the
+      feed right away. In the portal it shows **Held** with all three reporters and the author;
+      **Approve (publish)** brings it back.
 
 ## 6. Screening and spam
 

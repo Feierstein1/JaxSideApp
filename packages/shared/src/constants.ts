@@ -81,6 +81,9 @@ export const CONFIG_DEFAULTS = {
   /** Any link from an account younger than this → held for review. */
   'spam.newAccountLinkHoldHours': 24,
 
+  // D73: a post reported by this many different people is hidden until a moderator decides.
+  'moderation.autoHideReports': 3,
+
   // P5.6 / D9 strike ladder
   'strikes.decayDays': 180,
   'strikes.firstSuspensionHours': 24,

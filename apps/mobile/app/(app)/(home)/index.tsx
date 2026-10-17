@@ -6,14 +6,31 @@ import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { fetchFeed } from '@/discussion/api';
 import { AreaLabel } from '@/location/AreaLabel';
+import { getFreshReading, useReloadWhenMoved } from '@/location/device';
 import { PostList } from '@/discussion/PostList';
-import { FloatingButton, Segmented, styles } from '@/ui';
+import { FloatingButton, RefreshButton, Segmented, styles } from '@/ui';
 
 /** P3.11: the default landing screen, the feed for the area around you. */
 export default function HomeFeed() {
   const { state } = useAuth();
   const [sort, setSort] = useState<FeedSort>('new');
   const [area, setArea] = useState<string | null>(null);
+  // D73: reload on the refresh button, or when the app is reopened somewhere new.
+  const [reloads, setReloads] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const reload = () => setReloads((n) => n + 1);
+  useReloadWhenMoved(reload);
+  async function refresh() {
+    setRefreshing(true);
+    try {
+      await getFreshReading({ fresh: true }); // a new fix, not the cached one
+    } catch {
+      // the list shows the location error
+    } finally {
+      setRefreshing(false);
+      reload();
+    }
+  }
   const load = useCallback(
     async (cursor?: string) => {
       const page = await fetchFeed(sort, cursor);
@@ -54,7 +71,12 @@ export default function HomeFeed() {
           gap: 8,
         }}
       >
-        <AreaLabel name={area} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 }}>
+          <View style={{ flex: 1 }}>
+            <AreaLabel name={area} />
+          </View>
+          <RefreshButton onPress={() => void refresh()} busy={refreshing} />
+        </View>
         {guest?.expiringSoon ? (
           <View style={[styles.banner, { marginBottom: 0 }]}>
             <Text style={styles.body}>
@@ -85,7 +107,7 @@ export default function HomeFeed() {
       </View>
       <PostList
         load={load}
-        reloadKey={sort}
+        reloadKey={`${sort}:${reloads}`}
         onOpen={(p) => router.push(`/post/${p.id}`)}
         emptyTitle="No posts in this area yet. Start the conversation!"
         emptyAction={{ label: 'Start a new post', onPress: compose }}

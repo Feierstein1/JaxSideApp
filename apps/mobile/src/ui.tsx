@@ -287,6 +287,38 @@ export function Segmented({
  * The round floating action button, bottom-right (D70): gold with a black icon (D33).
  * Same size and place everywhere: new post (Home, place discussions) and Add new place.
  */
+/**
+ * D73: refresh button for the black bars on Home and Places (white outline, like the filter
+ * button). Shows a spinner while busy.
+ */
+export function RefreshButton({ onPress, busy }: { onPress: () => void; busy?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Refresh"
+      accessibilityState={{ busy: !!busy }}
+      disabled={busy}
+      onPress={onPress}
+      hitSlop={8}
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: COLORS.onSurfaceInverse,
+      }}
+    >
+      {busy ? (
+        <ActivityIndicator color={COLORS.onSurfaceInverse} />
+      ) : (
+        <Ionicons name="refresh" size={22} color={COLORS.onSurfaceInverse} />
+      )}
+    </Pressable>
+  );
+}
+
 export function FloatingButton({
   label,
   onPress,
