@@ -111,19 +111,22 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
 
   if (!post) {
     return error ? (
-      <View style={styles.screen}>
-        <Text style={styles.error}>{error}</Text>
-        <Button variant="link" title="Try again" onPress={() => void load()} />
+      <View style={[styles.screen, { flex: 1, backgroundColor: COLORS.surfaceDark }]}>
+        <Text style={[styles.error, { color: COLORS.errorOnDark }]}>{error}</Text>
+        <Button variant="linkOnDark" title="Try again" onPress={() => void load()} />
       </View>
     ) : (
-      <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.primary} />
+      <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
+        <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.accent} />
+      </View>
     );
   }
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: COLORS.surfaceMuted }}
+      // D70: same dark grey as the feeds behind the white post and comment cards.
+      style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}
       keyboardVerticalOffset={90}
     >
       <ScrollView
@@ -140,17 +143,22 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
         />
         <View style={{ paddingHorizontal: 16, flexDirection: 'row', gap: 16 }}>
           {post.isMine ? (
-            <Button variant="link" title="Delete my post" onPress={confirmDeletePost} />
+            <Button variant="linkOnDark" title="Delete my post" onPress={confirmDeletePost} />
           ) : !isGuest ? (
             <Button
-              variant="link"
+              variant="linkOnDark"
               title="Report post"
               onPress={() => setReporting({ type: kind, id: post.id })}
             />
           ) : null}
         </View>
 
-        <Text style={[styles.label, { marginHorizontal: 16, marginTop: 8 }]}>
+        <Text
+          style={[
+            styles.label,
+            { marginHorizontal: 16, marginTop: 8, color: COLORS.onSurfaceDark },
+          ]}
+        >
           {comments.length === 0 ? 'No comments yet. Start the conversation.' : 'Comments'}
         </Text>
         {comments.map((c) => (
@@ -175,7 +183,11 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
             onError={setError}
           />
         ))}
-        {error ? <Text style={[styles.error, { marginHorizontal: 16 }]}>{error}</Text> : null}
+        {error ? (
+          <Text style={[styles.error, { marginHorizontal: 16, color: COLORS.errorOnDark }]}>
+            {error}
+          </Text>
+        ) : null}
       </ScrollView>
 
       {!canComment ? (

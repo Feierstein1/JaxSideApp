@@ -126,6 +126,8 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] **About** and **Medals** have black title bars with white text, joined to white boxes with
       black text; **Edit bio** sits under the bio box on the left; add/edit a bio (300 max).
 - [ ] Home: a black bar under the header holds New / Top this week; posts sit on dark grey.
+- [ ] Opening a post (area or place) shows the post and its comments on the same dark grey; the
+      "Comments" heading is white and Delete/Report links are gold.
 - [ ] Change username: works once; a second change soon after is refused with the date.
 - [ ] Change email: code goes to the new address (Mailpit); the old address gets a notice.
 - [ ] Change password: other signed-in devices are signed out; this one stays signed in.

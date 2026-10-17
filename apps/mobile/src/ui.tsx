@@ -87,10 +87,11 @@ export function Button({
   title: string;
   onPress: () => void;
   busy?: boolean;
-  variant?: 'primary' | 'secondary' | 'danger' | 'link';
+  /** `linkOnDark`: gold link text for the dark-grey backgrounds (D70). */
+  variant?: 'primary' | 'secondary' | 'danger' | 'link' | 'linkOnDark';
 }) {
   const box =
-    variant === 'link'
+    variant === 'link' || variant === 'linkOnDark'
       ? styles.link
       : variant === 'secondary'
         ? [styles.button, styles.buttonSecondary]
@@ -100,9 +101,11 @@ export function Button({
   const label =
     variant === 'link'
       ? styles.linkText
-      : variant === 'secondary'
-        ? [styles.buttonText, { color: COLORS.primary }]
-        : styles.buttonText;
+      : variant === 'linkOnDark'
+        ? [styles.linkText, { color: COLORS.accent }]
+        : variant === 'secondary'
+          ? [styles.buttonText, { color: COLORS.primary }]
+          : styles.buttonText;
   return (
     <Pressable
       accessibilityRole="button"
