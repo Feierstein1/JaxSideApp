@@ -67,7 +67,14 @@ npm run dev:remote    # terminal 2: tunnels + Expo; scan the QR code it prints
 port 8082 with the app pointed at that address. Your phone can then use the app on mobile data
 anywhere. Notes:
 
-- Your computer must stay **on and awake** with both commands running.
+- Your computer must stay **on and awake** with both commands running. On Windows,
+  `dev:remote` keeps it from sleeping while it runs (the screen can still turn off). If it still
+  sleeps, set Settings → System → Power → "When plugged in, put my device to sleep" to Never while
+  testing.
+- Run it **instead of** `npm run dev:mobile` (that one only works on your Wi-Fi), and **scan its
+  QR code before you leave**. Expo Go then lists the project under "Recently opened", so you can
+  reopen it away from home as long as `dev:remote` keeps running. If you restart `dev:remote`, the
+  addresses change and you need to scan the new QR code.
 - While it runs, the API is reachable by anyone who has the random address. Stop it with Ctrl+C
   when you're done.
 - The **admin portal never answers through the tunnel** (D68): use it on this computer only.

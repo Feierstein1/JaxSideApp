@@ -37,6 +37,21 @@ if (!(await localServerUp())) {
   process.exit(1);
 }
 
+// Windows: keep the computer from sleeping while this runs (the screen may still turn off).
+// Ends automatically when this script stops; no power settings are changed.
+let awake = null;
+if (process.platform === 'win32') {
+  const ps = `
+$sig = '[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);';
+$k = Add-Type -MemberDefinition $sig -Name Power -Namespace Jax -PassThru;
+while ($true) { [void]$k::SetThreadExecutionState(0x80000001); Start-Sleep -Seconds 30 }`;
+  awake = spawn('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], {
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+  console.log('Keeping this computer awake while the tunnel runs (screen can still turn off).');
+}
+
 console.log('Opening a tunnel to the API…');
 const tunnel = spawn(bin, ['tunnel', '--no-autoupdate', '--url', LOCAL], {
   stdio: ['ignore', 'pipe', 'pipe'],
@@ -90,6 +105,7 @@ const expo = spawn('npx', ['expo', 'start', '--tunnel', '--clear', '--port', '80
 const stop = () => {
   tunnel.kill();
   expo.kill();
+  awake?.kill();
   process.exit(0);
 };
 process.on('SIGINT', stop);
@@ -98,5 +114,6 @@ expo.on('exit', stop);
 tunnel.on('exit', () => {
   console.error('\nThe API tunnel closed. Run `npm run dev:remote` again for a new address.');
   expo.kill();
+  awake?.kill();
   process.exit(1);
 });
