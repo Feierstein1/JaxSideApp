@@ -28,6 +28,28 @@ export const CATEGORY_GROUPS = [
   { key: 'lodging', label: 'Hotels', categories: ['lodging'] },
 ] as const;
 
+/**
+ * D70: a color per category group so place types are easy to tell apart: dark, clearly
+ * different hues (warm and cool), all with white text at ≥ 4.5:1 (tested).
+ */
+export const CATEGORY_COLORS: Record<(typeof CATEGORY_GROUPS)[number]['key'] | 'other', string> = {
+  food: '#B71C1C', // red
+  coffee: '#5D4037', // brown
+  bars: '#6A1B9A', // purple
+  outdoors: '#1B5E20', // green
+  shopping: '#AD1457', // magenta
+  fun: '#BF360C', // burnt orange
+  services: '#0D47A1', // blue
+  lodging: '#00695C', // teal-green
+  other: '#37474F', // slate
+};
+
+/** The color for a place's category (via its group; anything ungrouped is "other"). */
+export function categoryColor(category: string): string {
+  const group = CATEGORY_GROUPS.find((g) => (g.categories as readonly string[]).includes(category));
+  return CATEGORY_COLORS[group?.key ?? 'other'];
+}
+
 export const PLACE_SORTS = ['relevance', 'distance', 'name', 'favorites'] as const;
 export type PlaceSort = (typeof PLACE_SORTS)[number];
 

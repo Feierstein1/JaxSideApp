@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type ComponentProps, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -8,6 +8,7 @@ import {
   View,
   type TextInputProps,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { BRAND, COLORS } from '@jax/shared';
 import { UserBadge } from './auth/UserBadge';
 
@@ -276,5 +277,46 @@ export function Segmented({
         );
       })}
     </View>
+  );
+}
+
+/**
+ * The round floating action button, bottom-right (D70): gold with a black icon (D33).
+ * Same size and place everywhere: new post (Home, place discussions) and Add new place.
+ */
+export function FloatingButton({
+  label,
+  onPress,
+  icon = 'add',
+}: {
+  /** Read by screen readers ("Write a new post", "Add new place"). */
+  label: string;
+  onPress: () => void;
+  icon?: ComponentProps<typeof Ionicons>['name'];
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={{
+        position: 'absolute',
+        right: 20,
+        bottom: 24,
+        width: 58,
+        height: 58,
+        borderRadius: 29,
+        backgroundColor: COLORS.accent,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: COLORS.shadow,
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 6,
+      }}
+    >
+      <Ionicons name={icon} size={32} color={COLORS.onAccent} />
+    </Pressable>
   );
 }

@@ -70,8 +70,9 @@ export function PostList({
 
   return (
     <FlatList
-      style={{ backgroundColor: COLORS.surfaceMuted }}
-      contentContainerStyle={{ paddingVertical: 6, flexGrow: 1 }}
+      // D70: dark grey behind the white post cards, a step lighter than the black header.
+      style={{ backgroundColor: COLORS.surfaceDark }}
+      contentContainerStyle={{ paddingTop: 6, paddingBottom: 96, flexGrow: 1 }}
       data={posts}
       keyExtractor={(p) => p.id}
       renderItem={({ item }) => (
@@ -82,7 +83,7 @@ export function PostList({
           {header}
           {error ? (
             <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-              <Text style={styles.error}>{error}</Text>
+              <Text style={[styles.error, { color: COLORS.errorOnDark }]}>{error}</Text>
               <Button variant="link" title="Try again" onPress={() => void fetchPage('loading')} />
             </View>
           ) : null}
@@ -91,19 +92,24 @@ export function PostList({
       ListEmptyComponent={
         state === 'idle' && !error ? (
           <View style={{ alignItems: 'center', padding: 32, gap: 8 }}>
-            <Text style={[styles.title, { fontSize: 20, textAlign: 'center' }]}>{emptyTitle}</Text>
+            <Text
+              style={[
+                styles.title,
+                { fontSize: 20, textAlign: 'center', color: COLORS.onSurfaceDark },
+              ]}
+            >
+              {emptyTitle}
+            </Text>
             {emptyAction ? (
               <Button title={emptyAction.label} onPress={emptyAction.onPress} />
             ) : null}
           </View>
         ) : state === 'loading' ? (
-          <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.primary} />
+          <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.accent} />
         ) : null
       }
       ListFooterComponent={
-        state === 'more' ? (
-          <ActivityIndicator style={{ margin: 16 }} color={COLORS.primary} />
-        ) : null
+        state === 'more' ? <ActivityIndicator style={{ margin: 16 }} color={COLORS.accent} /> : null
       }
       onEndReachedThreshold={0.5}
       onEndReached={() => {
@@ -113,7 +119,7 @@ export function PostList({
         <RefreshControl
           refreshing={state === 'refreshing'}
           onRefresh={() => void fetchPage('refreshing')}
-          tintColor={COLORS.primary}
+          tintColor={COLORS.accent}
           colors={[COLORS.primary]}
         />
       }

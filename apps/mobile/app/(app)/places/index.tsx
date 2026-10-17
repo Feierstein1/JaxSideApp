@@ -9,16 +9,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BRAND, CATEGORY_GROUPS, COLORS, type PlaceSort, type PlaceSummary } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
-import { UserBadge } from '@/auth/UserBadge';
 import { categoryLabel, formatDistance, plural } from '@/format';
 import { getFreshReading } from '@/location/device';
 import { OsmAttribution } from '@/places/Attribution';
-import { Button, Chip, styles } from '@/ui';
+import { PlaceStats, PlaceTop, placeFrame } from '@/places/PlaceHeader';
+import { Button, Chip, FloatingButton, styles } from '@/ui';
 
 interface SearchResponse {
   places: PlaceSummary[];
@@ -32,9 +32,10 @@ const SORTS: { key: PlaceSort; label: string }[] = [
 ];
 
 /**
- * P2.16 / D40 / D69: places within a mile, as a list of cards. Search sits in the black
- * bar at the top; sort and category filters open from the filter button next to your
- * name. The server decides eligibility, distance and ordering from a fresh reading.
+ * P2.16 / D40 / D69 / D70: places within a mile, as cards on a dark background. The black
+ * bar under the header has the filter button and the search box; "Add new place" is the
+ * round button bottom-right, like the new-post button. The server decides eligibility,
+ * distance and ordering from a fresh reading.
  */
 export default function PlacesScreen() {
   const [q, setQ] = useState('');
@@ -83,38 +84,40 @@ export default function PlacesScreen() {
   }, [load, q]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.surfaceMuted }}>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={filtered ? 'Filters (on)' : 'Filters'}
-                onPress={() => setFiltersOpen(true)}
-                hitSlop={10}
-              >
-                <Ionicons
-                  name={filtered ? 'options' : 'options-outline'}
-                  size={22}
-                  color={BRAND.gold}
-                />
-              </Pressable>
-              <UserBadge />
-            </View>
-          ),
-        }}
-      />
-
-      {/* Black search bar under the black header (D69). */}
+    <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
+      {/* Black bar under the black header: filter button, then the search box. */}
       <View
         style={{
           backgroundColor: COLORS.surfaceInverse,
           paddingHorizontal: 12,
-          paddingBottom: 12,
           paddingTop: 4,
+          paddingBottom: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
         }}
       >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={filtered ? 'Filters (on)' : 'Filters'}
+          onPress={() => setFiltersOpen(true)}
+          hitSlop={8}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 2,
+            borderColor: filtered ? BRAND.gold : COLORS.onSurfaceInverse,
+          }}
+        >
+          <Ionicons
+            name={filtered ? 'options' : 'options-outline'}
+            size={22}
+            color={filtered ? BRAND.gold : COLORS.onSurfaceInverse}
+          />
+        </Pressable>
         <TextInput
           accessibilityLabel="Search places"
           placeholder="Search places within a mile…"
@@ -125,14 +128,14 @@ export default function PlacesScreen() {
           returnKeyType="search"
           style={[
             styles.input,
-            { backgroundColor: COLORS.background, borderColor: COLORS.background },
+            { flex: 1, backgroundColor: COLORS.background, borderColor: COLORS.background },
           ]}
         />
       </View>
 
       {error ? (
         <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-          <Text style={styles.error}>{error}</Text>
+          <Text style={[styles.error, { color: COLORS.errorOnDark }]}>{error}</Text>
           <Button variant="link" title="Try again" onPress={() => void load(0)} />
         </View>
       ) : null}
@@ -140,49 +143,28 @@ export default function PlacesScreen() {
       <FlatList
         data={places}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ paddingVertical: 12 }}
-        ListHeaderComponent={
-          // P5.8: suggest a missing place. Kept apart from the list to avoid mis-taps.
-          <View style={{ paddingHorizontal: 12, marginBottom: 22 }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Add new place"
-              onPress={() => router.push('/places/suggest')}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                paddingVertical: 12,
-                borderRadius: 10,
-                borderWidth: 2,
-                borderColor: COLORS.primary,
-                backgroundColor: COLORS.background,
-              }}
-            >
-              <Ionicons name="add-circle" size={22} color={COLORS.primary} />
-              <Text style={{ color: COLORS.primary, fontWeight: '700', fontSize: 16 }}>
-                Add new place
-              </Text>
-            </Pressable>
-          </View>
-        }
+        contentContainerStyle={{ paddingTop: 10, paddingBottom: 96 }}
         renderItem={({ item }) => <PlaceCard place={item} />}
         onEndReached={() => {
           if (!loading && nextOffset !== null) void load(nextOffset);
         }}
         ListEmptyComponent={
           !loading && !error ? (
-            <Text style={[styles.muted, { padding: 16 }]}>No places within a mile.</Text>
+            <Text style={{ padding: 16, color: COLORS.onSurfaceDarkMuted }}>
+              No places within a mile.
+            </Text>
           ) : null
         }
         ListFooterComponent={
           <>
-            {loading ? <ActivityIndicator style={{ margin: 16 }} color={COLORS.primary} /> : null}
-            <OsmAttribution />
+            {loading ? <ActivityIndicator style={{ margin: 16 }} color={COLORS.accent} /> : null}
+            <OsmAttribution dark />
           </>
         }
       />
+
+      {/* P5.8: suggest a missing place; same round button and spot as "new post". */}
+      <FloatingButton label="Add new place" onPress={() => router.push('/places/suggest')} />
 
       <FilterSheet
         open={filtersOpen}
@@ -196,84 +178,17 @@ export default function PlacesScreen() {
   );
 }
 
-/** One place (D69): black header with a white category pill and the name; then distance and posts. */
+/** One place (D69, D70): category-colored header + distance and posts, in a 2 px black frame. */
 function PlaceCard({ place }: { place: PlaceSummary }) {
-  const long = place.name.length > 20;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${place.name}, ${categoryLabel(place.category)}, ${formatDistance(place.distanceMeters)} away, ${plural(place.postCount, 'post')}`}
       onPress={() => router.push(`/places/${place.id}`)}
-      style={({ pressed }) => ({
-        marginHorizontal: 12,
-        marginVertical: 4,
-        borderRadius: 10,
-        overflow: 'hidden',
-        backgroundColor: COLORS.background,
-        borderWidth: 1,
-        borderColor: COLORS.cardBorder,
-        opacity: pressed ? 0.9 : 1,
-      })}
+      style={({ pressed }) => [placeFrame, { opacity: pressed ? 0.9 : 1 }]}
     >
-      <View
-        style={{
-          backgroundColor: COLORS.surfaceInverse,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 10,
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-        }}
-      >
-        <View
-          style={{
-            backgroundColor: COLORS.background,
-            borderRadius: 999,
-            paddingHorizontal: 10,
-            paddingVertical: 3,
-          }}
-        >
-          <Text style={{ color: COLORS.text, fontSize: 12, fontWeight: '700' }}>
-            {categoryLabel(place.category)}
-          </Text>
-        </View>
-        <Text
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.7}
-          style={{
-            flex: 1,
-            color: COLORS.onSurfaceInverse,
-            fontWeight: '700',
-            fontSize: long ? 15 : 17,
-          }}
-        >
-          {place.name}
-        </Text>
-        {place.isFavorite ? (
-          <Ionicons name="star" size={16} color={BRAND.gold} accessibilityLabel="Favorite" />
-        ) : null}
-      </View>
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          paddingHorizontal: 12,
-          paddingVertical: 9,
-        }}
-      >
-        <Text style={{ color: COLORS.text, fontWeight: '600' }}>
-          {formatDistance(place.distanceMeters)}
-        </Text>
-        <Text
-          style={{
-            color: place.postCount > 0 ? COLORS.primary : COLORS.textMuted,
-            fontWeight: '600',
-          }}
-        >
-          {place.postCount > 0 ? plural(place.postCount, 'post') : 'No posts yet'}
-        </Text>
-      </View>
+      <PlaceTop place={place} />
+      <PlaceStats place={place} />
     </Pressable>
   );
 }
@@ -321,7 +236,7 @@ function FilterSheet({
           ))}
         </View>
         <Text style={[styles.label, { marginTop: 8 }]}>Category</Text>
-        <ScrollView horizontal={false} style={{ maxHeight: 220 }}>
+        <ScrollView style={{ maxHeight: 220 }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             <Chip label="All" active={group === null} onPress={() => setGroup(null)} />
             {CATEGORY_GROUPS.map((g) => (

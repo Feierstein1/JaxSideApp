@@ -40,6 +40,14 @@ export const COLORS = {
   cardBorder: '#E3E3E3', // decorative card edge (not a control, so no contrast minimum)
   shadow: BRAND.black,
   surfaceMuted: '#F4F5F6', // page background behind cards
+  /**
+   * D70: dark grey behind post and place cards, a step lighter than the black header so
+   * the bar and the content are visibly different.
+   */
+  surfaceDark: '#1E1F22',
+  onSurfaceDark: '#FFFFFF', // 16.6:1
+  onSurfaceDarkMuted: '#B8BCC2', // secondary text on surfaceDark (9.3:1)
+  errorOnDark: '#FF8A80', // error text on surfaceDark (8.0:1)
   // Functional colors outside the brand palette, kept for clarity and accessibility.
   error: '#B00020', // 7.3:1 on white
 } as const;

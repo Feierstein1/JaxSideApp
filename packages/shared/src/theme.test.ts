@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CATEGORY_COLORS, categoryColor } from './schemas/directory';
 import { BRAND, COLORS } from './theme';
 
 /** WCAG 2 contrast ratio between two #RRGGBB colors. */
@@ -37,6 +38,10 @@ describe('brand palette (D33)', () => {
     ['error on accentSoft', COLORS.error, COLORS.accentSoft],
     ['onSurfaceInverse on surfaceInverse', COLORS.onSurfaceInverse, COLORS.surfaceInverse],
     ['gold on black', BRAND.gold, BRAND.black],
+    ['white on surfaceDark', COLORS.onSurfaceDark, COLORS.surfaceDark],
+    ['muted on surfaceDark', COLORS.onSurfaceDarkMuted, COLORS.surfaceDark],
+    ['error on surfaceDark', COLORS.errorOnDark, COLORS.surfaceDark],
+    ['gold on surfaceDark', BRAND.gold, COLORS.surfaceDark],
   ])('%s passes 4.5:1', (_label, fg, bg) => {
     expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
@@ -48,5 +53,21 @@ describe('brand palette (D33)', () => {
     ['gold text on teal', BRAND.gold, BRAND.teal],
   ])('%s fails 4.5:1 (banned for text)', (_label, fg, bg) => {
     expect(contrast(fg, bg)).toBeLessThan(4.5);
+  });
+});
+
+describe('category colors (D70)', () => {
+  it.each(Object.entries(CATEGORY_COLORS))('%s takes white text at ≥ 4.5:1', (_k, hex) => {
+    expect(contrast('#FFFFFF', hex)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('9 distinct colors, every category maps to one', () => {
+    expect(new Set(Object.values(CATEGORY_COLORS)).size).toBe(9);
+    expect(categoryColor('cafe')).toBe(CATEGORY_COLORS.coffee);
+    expect(categoryColor('somethingnew')).toBe(CATEGORY_COLORS.other);
+  });
+
+  it('the dark background is visibly lighter than the black header', () => {
+    expect(contrast(COLORS.surfaceDark, COLORS.surfaceInverse)).toBeGreaterThan(1.15);
   });
 });

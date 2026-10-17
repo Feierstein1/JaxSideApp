@@ -82,11 +82,19 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ## 7. Places and business rooms
 
-- [ ] The Places list only shows places **within a mile**, each as its own card: black header
-      with a white category pill on the left and the name on the right (long names shrink), then
-      distance on the left and post count on the right. No "You're here" text, no map toggle.
-- [ ] The filter button (top bar, next to your name) opens sort and category options; the search
-      bar sits in the black area under the header; search finds a place by name.
+- [ ] The Places list only shows places **within a mile**, on a dark grey background, each as
+      its own card with a 2 px black border: a header in the **category's color** with a white
+      category pill and the name (long names shrink), then distance (left) and post count (right).
+      No "You're here" text, no map.
+- [ ] The **filter** button sits left of the search box in the black bar; it opens sort and
+      category options. Search finds a place by name.
+- [ ] Each type has its own color (food red, coffee brown, bars purple, outdoors green, shopping
+      magenta, things to do orange, services blue, hotels teal, other slate).
+- [ ] Opening a place shows the same card (category color, pill, name, distance, posts) on a dark
+      background. The **star** next to the name is white when not a favorite and gold when it
+      is; tapping it shows "Added to favorites" / "Removed from favorites" briefly.
+- [ ] Within 0.3 mi, the round gold **+** bottom-right writes a post there (no "Write a post here"
+      link). Home uses the same round + button.
 - [ ] Star a place; it appears under Account → Settings → Favorite places.
 - [ ] Each place row shows its post count.
 - [ ] Within about 0.3 mi of a place, its discussion opens and you can post; farther away you see
@@ -95,8 +103,8 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ## 7b. Suggest a place
 
-- [ ] Places → **Add new place** (+ button above the list, with space below it) opens the form,
-      which says your current location is used as the pin. Names over 30 characters are refused.
+- [ ] Places → the round gold **+** bottom-right (Add new place) opens the form, which says your
+      current location is used as the pin. Names over 30 characters are refused.
 - [ ] Typing the name of a place that's already listed nearby shows **Already listed nearby?**;
       tapping one opens that place.
 - [ ] Pick a category, send: "Thanks for the suggestion". It's **not** in the Places list yet.
@@ -115,8 +123,9 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 - [ ] Profile tab: the header is in your color; the **paint-brush** button opens 24 colors, and
       picking one changes the header (and your posts) right away.
-- [ ] **About** and **Medals** sit in tinted sections; your bio is in a bordered box with
-      **Edit bio** under its bottom-left; add/edit a bio (300 characters max).
+- [ ] **About** and **Medals** have black title bars with white text, joined to white boxes with
+      black text; **Edit bio** sits under the bio box on the left; add/edit a bio (300 max).
+- [ ] Home: a black bar under the header holds New / Top this week; posts sit on dark grey.
 - [ ] Change username: works once; a second change soon after is refused with the date.
 - [ ] Change email: code goes to the new address (Mailpit); the old address gets a notice.
 - [ ] Change password: other signed-in devices are signed out; this one stays signed in.

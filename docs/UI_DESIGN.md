@@ -53,6 +53,28 @@ that test tells you whether the result is still readable.
 Shared building blocks live in `apps/mobile/src/ui.tsx` (`Field`, `PasswordField`, `Button`,
 `FormError`, `headerOptions`, `switchColors`, `styles`). Reuse them instead of styling screens one by one.
 
+## Screen look (D69, D70)
+
+- **Bars and backgrounds:** the header and the bar under it (search, feed controls) are black
+  (`surfaceInverse`). Content behind cards is dark grey (`surfaceDark` #1E1F22), a visible step
+  lighter than the bar. Text directly on it uses `onSurfaceDark` / `onSurfaceDarkMuted`, errors
+  `errorOnDark`.
+- **Posts:** white cards with black text, framed and headed in the author's **account color**
+  (24-color palette in `@jax/shared/profile-colors.ts`; header text black or white, whichever
+  reads ≥ 4.5:1).
+- **Places:** cards with a 2 px black frame; the header uses the **category color** (below) with a
+  white category pill and white name; distance and post count on a white row.
+- **Round gold + button** bottom-right for every "create" action (new post, Add new place):
+  `FloatingButton` in `src/ui.tsx`.
+
+### Category colors (D70)
+
+Dark, clearly different hues, all with white text ≥ 4.5:1 (tested): Food `#B71C1C` red · Coffee
+`#5D4037` brown · Bars `#6A1B9A` purple · Parks & outdoors `#1B5E20` green · Shopping `#AD1457`
+magenta · Things to do `#BF360C` burnt orange · Services & auto `#0D47A1` blue · Hotels
+`#00695C` teal-green · Other `#37474F` slate. Defined once as `CATEGORY_COLORS` in
+`@jax/shared`.
+
 ## Planned (not built yet)
 
 - **Admin portal (Phase 5):** same tokens from `@jax/shared`.

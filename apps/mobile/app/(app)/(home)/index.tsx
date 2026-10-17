@@ -1,13 +1,12 @@
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { COLORS, type FeedSort } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { fetchFeed } from '@/discussion/api';
 import { PostList } from '@/discussion/PostList';
-import { Segmented, styles } from '@/ui';
+import { FloatingButton, Segmented, styles } from '@/ui';
 
 /** P3.11: the default landing screen, the feed for the area around you. */
 export default function HomeFeed() {
@@ -35,69 +34,53 @@ export default function HomeFeed() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
+      {/* D70: a black bar under the black header, like Places, with the feed controls. */}
+      <View
+        style={{
+          backgroundColor: COLORS.surfaceInverse,
+          paddingHorizontal: 12,
+          paddingTop: 4,
+          paddingBottom: 12,
+          gap: 8,
+        }}
+      >
+        {guest?.expiringSoon ? (
+          <View style={[styles.banner, { marginBottom: 0 }]}>
+            <Text style={styles.body}>
+              Your guest session ends in {guest.daysLeft} {guest.daysLeft === 1 ? 'day' : 'days'}{' '}
+              unless you use Jax before then.
+            </Text>
+          </View>
+        ) : null}
+        {!verified && !isGuest ? (
+          <Pressable onPress={() => router.push('/account')} accessibilityRole="button">
+            <View style={[styles.banner, { marginBottom: 0 }]}>
+              <Text style={styles.body}>
+                Confirm your email to post, comment and vote. Tap to enter your code.
+              </Text>
+            </View>
+          </Pressable>
+        ) : null}
+        <View style={{ alignSelf: 'flex-start' }}>
+          <Segmented
+            options={[
+              { key: 'new', label: 'New' },
+              { key: 'top', label: 'Top this week' },
+            ]}
+            value={sort}
+            onChange={(v) => setSort(v as FeedSort)}
+          />
+        </View>
+      </View>
       <PostList
         load={load}
         reloadKey={sort}
         onOpen={(p) => router.push(`/post/${p.id}`)}
-        header={
-          <View style={{ paddingHorizontal: 12, paddingTop: 6, gap: 8 }}>
-            {guest?.expiringSoon ? (
-              <View style={styles.banner}>
-                <Text style={styles.body}>
-                  Your guest session ends in {guest.daysLeft}{' '}
-                  {guest.daysLeft === 1 ? 'day' : 'days'} unless you use Jax before then.
-                </Text>
-              </View>
-            ) : null}
-            {!verified && !isGuest ? (
-              <Pressable onPress={() => router.push('/account')} accessibilityRole="button">
-                <View style={styles.banner}>
-                  <Text style={styles.body}>
-                    Confirm your email to post, comment and vote. Tap to enter your code.
-                  </Text>
-                </View>
-              </Pressable>
-            ) : null}
-            <View style={{ alignSelf: 'flex-start' }}>
-              <Segmented
-                options={[
-                  { key: 'new', label: 'New' },
-                  { key: 'top', label: 'Top this week' },
-                ]}
-                value={sort}
-                onChange={(v) => setSort(v as FeedSort)}
-              />
-            </View>
-          </View>
-        }
         emptyTitle="No posts in this area yet. Start the conversation!"
         emptyAction={{ label: 'Start a new post', onPress: compose }}
       />
-      {/* Floating "new post" button: gold with a black plus (D33). */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Write a new post"
-        onPress={compose}
-        style={{
-          position: 'absolute',
-          right: 20,
-          bottom: 24,
-          width: 58,
-          height: 58,
-          borderRadius: 29,
-          backgroundColor: COLORS.accent,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: COLORS.shadow,
-          shadowOpacity: 0.25,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 5,
-        }}
-      >
-        <Ionicons name="add" size={32} color={COLORS.onAccent} />
-      </Pressable>
+      <FloatingButton label="Write a new post" onPress={compose} />
     </View>
   );
 }

@@ -184,7 +184,13 @@ function ProfileTab() {
               placeholderTextColor={COLORS.placeholder}
               style={[
                 styles.input,
-                { minHeight: 90, textAlignVertical: 'top', backgroundColor: COLORS.background },
+                {
+                  minHeight: 90,
+                  textAlignVertical: 'top',
+                  backgroundColor: COLORS.background,
+                  borderTopLeftRadius: 0,
+                  borderTopRightRadius: 0,
+                },
               ]}
             />
             <Text style={styles.muted}>
@@ -245,16 +251,30 @@ function ProfileTab() {
 const boxStyle = {
   backgroundColor: COLORS.background,
   borderWidth: 1,
+  borderTopWidth: 0,
   borderColor: COLORS.border,
-  borderRadius: 10,
+  borderBottomLeftRadius: 10,
+  borderBottomRightRadius: 10,
   padding: 14,
 } as const;
 
-/** A tinted section with a title (D69): About, Medals. */
+/** A section (D70): black title bar with white text, joined to the white box below. */
 function ProfileSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <View style={{ backgroundColor: COLORS.accentSoft, borderRadius: 12, padding: 14 }}>
-      <Text style={[styles.label, { fontSize: 16, marginBottom: 8 }]}>{title}</Text>
+    <View>
+      <View
+        style={{
+          backgroundColor: COLORS.surfaceInverse,
+          borderTopLeftRadius: 10,
+          borderTopRightRadius: 10,
+          paddingHorizontal: 14,
+          paddingVertical: 9,
+        }}
+      >
+        <Text style={{ color: COLORS.onSurfaceInverse, fontWeight: '800', fontSize: 16 }}>
+          {title}
+        </Text>
+      </View>
       {children}
     </View>
   );

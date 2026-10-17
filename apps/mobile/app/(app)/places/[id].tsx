@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { BRAND, COLORS, CONFIG_DEFAULTS, type PlaceSummary } from '@jax/shared';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { COLORS, CONFIG_DEFAULTS, type PlaceSummary } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
 import { fetchRoom } from '@/discussion/api';
 import { PostList } from '@/discussion/PostList';
-import { categoryLabel, formatDistance, plural } from '@/format';
 import { getFreshReading } from '@/location/device';
 import { OsmAttribution } from '@/places/Attribution';
-import { Button, styles } from '@/ui';
+import { PlaceStats, PlaceTop, placeFrame } from '@/places/PlaceHeader';
+import { Button, FloatingButton, styles } from '@/ui';
 
 /**
  * A place: info card, favorite toggle, and its discussion room (P3.2). The room opens
@@ -23,6 +24,14 @@ export default function PlaceScreen() {
   const [place, setPlace] = useState<PlaceSummary>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<string>();
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  function showToast(text: string) {
+    setToast(text);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(undefined), 1600);
+  }
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
   const loadRoom = useCallback((cursor?: string) => fetchRoom(id, cursor), [id]);
   const verified = state.status === 'signedIn' && state.user.emailVerified;
 
@@ -50,6 +59,7 @@ export default function PlaceScreen() {
       if (place.isFavorite) await api.delete(path);
       else await api.put(path, {});
       setPlace({ ...place, isFavorite: !place.isFavorite });
+      showToast(place.isFavorite ? 'Removed from favorites' : 'Added to favorites');
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Something went wrong.');
     } finally {
@@ -77,59 +87,61 @@ export default function PlaceScreen() {
   }
 
   if (!place) {
-    return error ? (
-      <View style={styles.screen}>
-        <Text style={styles.error}>{error}</Text>
-        <Button variant="link" title="Try again" onPress={() => void load()} />
+    return (
+      <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
+        {error ? (
+          <View style={styles.screen}>
+            <Text style={[styles.error, { color: COLORS.errorOnDark }]}>{error}</Text>
+            <Button variant="link" title="Try again" onPress={() => void load()} />
+          </View>
+        ) : (
+          <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.accent} />
+        )}
       </View>
-    ) : (
-      <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.primary} />
     );
   }
 
   const info = (
-    <View
-      style={{
-        backgroundColor: COLORS.background,
-        margin: 12,
-        marginBottom: 6,
-        padding: 16,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: COLORS.cardBorder,
-        borderTopWidth: 4,
-        borderTopColor: BRAND.gold,
-      }}
-    >
-      <Text style={styles.title}>{place.name}</Text>
-      <Text style={styles.muted}>
-        {categoryLabel(place.category)} · {formatDistance(place.distanceMeters)} away ·{' '}
-        {plural(place.postCount, 'post')}
-      </Text>
-      {place.address ? <Text style={[styles.body, { marginTop: 6 }]}>{place.address}</Text> : null}
-      <Button
-        title={place.isFavorite ? '★ Saved to favorites' : '☆ Save to favorites'}
-        onPress={() => void toggleFavorite()}
-        busy={busy}
-      />
-      {place.withinRoomRadius ? (
-        <Button variant="link" title="Write a post here" onPress={compose} />
+    <View style={[placeFrame, { marginTop: 12, marginBottom: 8 }]}>
+      <PlaceTop place={place} large favorite={{ onPress: () => void toggleFavorite(), busy }} />
+      <PlaceStats place={place} />
+      {place.address ? (
+        <Text
+          style={[
+            styles.body,
+            {
+              paddingHorizontal: 12,
+              paddingBottom: 10,
+              backgroundColor: COLORS.background,
+            },
+          ]}
+        >
+          {place.address}
+        </Text>
       ) : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.surfaceMuted }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
       <Stack.Screen options={{ title: place.name }} />
+      {error ? (
+        <Text style={[styles.error, { color: COLORS.errorOnDark, marginHorizontal: 16 }]}>
+          {error}
+        </Text>
+      ) : null}
       {place.withinRoomRadius ? (
-        <PostList
-          load={loadRoom}
-          onOpen={(p) => router.push(`/places/post/${p.id}`)}
-          header={info}
-          emptyTitle={`No posts for ${place.name} yet. Be the first!`}
-          emptyAction={{ label: 'Start a new post', onPress: compose }}
-        />
+        <>
+          <PostList
+            load={loadRoom}
+            onOpen={(p) => router.push(`/places/post/${p.id}`)}
+            header={info}
+            emptyTitle={`No posts for ${place.name} yet. Be the first!`}
+            emptyAction={{ label: 'Start a new post', onPress: compose }}
+          />
+          {/* Same round + button as the area feed (D70). */}
+          <FloatingButton label={`Write a post about ${place.name}`} onPress={compose} />
+        </>
       ) : (
         <View>
           {info}
@@ -139,9 +151,39 @@ export default function PlaceScreen() {
               join its discussion.
             </Text>
           </View>
-          <OsmAttribution />
+          <OsmAttribution dark />
         </View>
       )}
+      {toast ? <Toast text={toast} /> : null}
+    </View>
+  );
+}
+
+/** A short pop-up near the top (D70), e.g. "Added to favorites". */
+function Toast({ text }: { text: string }) {
+  return (
+    <View
+      pointerEvents="none"
+      accessibilityLiveRegion="polite"
+      style={{
+        position: 'absolute',
+        top: 16,
+        alignSelf: 'center',
+        backgroundColor: COLORS.background,
+        borderRadius: 999,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        shadowColor: COLORS.shadow,
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+      }}
+    >
+      <Ionicons name="star" size={16} color={COLORS.accentDark} />
+      <Text style={{ color: COLORS.text, fontWeight: '700' }}>{text}</Text>
     </View>
   );
 }
