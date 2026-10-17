@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-80 endpoints.
+81 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -60,6 +60,7 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | PUT    | `/api/v1/me/avatar`        | user (confirmed email) |          | P6.5: set your profile photo to one you uploaded (same pipeline as post photos).                                                                      |
 | DELETE | `/api/v1/me/avatar`        | user (confirmed email) |          | Remove your profile photo.                                                                                                                            |
 | GET    | `/api/v1/me/blocks`        | user                   |          | P4.11: the people you've blocked (settings).                                                                                                          |
+| PATCH  | `/api/v1/me/color`         | user                   |          | D69: change your account color (one of the palette in @jax/shared).                                                                                   |
 | POST   | `/api/v1/me/delete`        | user                   |          | P4.12: delete your account (password, plus typing DELETE).                                                                                            |
 | POST   | `/api/v1/me/email`         | user                   |          | P4.10: start an email change (a code is sent to the new address).                                                                                     |
 | POST   | `/api/v1/me/email/confirm` | user                   |          | P4.10: finish an email change with the code.                                                                                                          |

@@ -6,6 +6,8 @@ export interface MeUser {
   bio: string | null;
   joinedAt: string;
   avatarUrl: string | null;
+  /** D69: account color key (palette in @jax/shared). */
+  color: string;
   email: string;
   emailVerified: boolean;
   generalRadiusMiles: number | null;

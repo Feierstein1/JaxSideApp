@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { BRAND, COLORS, type PostView, type PublicProfile } from '@jax/shared';
+import { COLORS, profileColor, type PostView, type PublicProfile } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { useGuest } from '@/auth/guest';
@@ -83,6 +83,8 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
     );
   }
 
+  // D69: the person's own account color.
+  const color = profileColor(profile.color);
   const joined = new Date(profile.joinedAt).toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric',
@@ -94,18 +96,14 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
         style={{
           alignItems: 'center',
           padding: 20,
-          backgroundColor: COLORS.surfaceInverse,
-          borderBottomWidth: 4,
-          borderBottomColor: BRAND.gold,
+          backgroundColor: color.hex,
         }}
       >
-        <ProfileAvatar name={profile.username} url={profile.avatarUrl} />
-        <Text
-          style={{ color: COLORS.onSurfaceInverse, fontSize: 22, fontWeight: '700', marginTop: 10 }}
-        >
+        <ProfileAvatar name={profile.username} url={profile.avatarUrl} ringColor={color.text} />
+        <Text style={{ color: color.text, fontSize: 22, fontWeight: '800', marginTop: 10 }}>
           {profile.username}
         </Text>
-        <Text style={{ color: BRAND.gold, marginTop: 2 }}>
+        <Text style={{ color: color.text, marginTop: 2 }}>
           Joined {joined} · {plural(profile.postCount, 'post')}
         </Text>
       </View>

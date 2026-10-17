@@ -46,6 +46,11 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Posting the exact same text again is refused ("You already posted this").
 - [ ] Open your post: **Delete my post** works (after confirming).
 - [ ] The top-bar username shows; the eye button hides it and it stays hidden after restarting.
+- [ ] **Post look (D69):** each post has a header in the author's color (rounded top) with their
+      photo, a larger username, a ★ on your own posts, and the time on the right ("5 min ago" up to
+      3 days, then the date). Below: white post with black text, a colored 3 px border, and the
+      votes/comments row under a colored line. Header text is white on dark colors, black on light.
+- [ ] Change your color (section 9) and your username: your existing posts show the new ones.
 
 ## 4b. Photos
 
@@ -77,18 +82,21 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ## 7. Places and business rooms
 
-- [ ] The Places list loads with distance; category chips filter it; sort options work; search
-      finds a place by name.
+- [ ] The Places list only shows places **within a mile**, each as its own card: black header
+      with a white category pill on the left and the name on the right (long names shrink), then
+      distance on the left and post count on the right. No "You're here" text, no map toggle.
+- [ ] The filter button (top bar, next to your name) opens sort and category options; the search
+      bar sits in the black area under the header; search finds a place by name.
 - [ ] Star a place; it appears under Account → Settings → Favorite places.
 - [ ] Each place row shows its post count.
 - [ ] Within about 0.3 mi of a place, its discussion opens and you can post; farther away you see
       the "get closer" message.
-- [ ] iPhone only: the Map view shows pins (hidden on Android for now, Q13).
+- [ ] No place names longer than 30 characters appear.
 
 ## 7b. Suggest a place
 
-- [ ] Places → **Missing a place? Suggest it** (bottom of the list) opens the form, which says your
-      current location is used as the pin.
+- [ ] Places → **Add new place** (+ button above the list, with space below it) opens the form,
+      which says your current location is used as the pin. Names over 30 characters are refused.
 - [ ] Typing the name of a place that's already listed nearby shows **Already listed nearby?**;
       tapping one opens that place.
 - [ ] Pick a category, send: "Thanks for the suggestion". It's **not** in the Places list yet.
@@ -105,7 +113,10 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ## 9. Account settings
 
-- [ ] Profile tab: add/edit a bio (300 characters max).
+- [ ] Profile tab: the header is in your color; the **paint-brush** button opens 24 colors, and
+      picking one changes the header (and your posts) right away.
+- [ ] **About** and **Medals** sit in tinted sections; your bio is in a bordered box with
+      **Edit bio** under its bottom-left; add/edit a bio (300 characters max).
 - [ ] Change username: works once; a second change soon after is refused with the date.
 - [ ] Change email: code goes to the new address (Mailpit); the old address gets a notice.
 - [ ] Change password: other signed-in devices are signed out; this one stays signed in.

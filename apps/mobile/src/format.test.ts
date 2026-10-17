@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryLabel, formatDistance, plural, timeAgo } from './format';
+import { categoryLabel, formatDistance, plural, postTime, timeAgo } from './format';
 
 describe('formatDistance', () => {
   it.each([
@@ -43,5 +43,23 @@ describe('plural', () => {
     expect(plural(1, 'post')).toBe('1 post');
     expect(plural(0, 'post')).toBe('0 posts');
     expect(plural(12, 'comment')).toBe('12 comments');
+  });
+});
+
+describe('postTime (D69)', () => {
+  const now = Date.parse('2026-10-16T18:00:00Z');
+  const ago = (s: number) => new Date(now - s * 1000).toISOString();
+  it.each([
+    [10, 'just now'],
+    [5 * 60, '5 min ago'],
+    [3 * 3600, '3 hr ago'],
+    [26 * 3600, '1 day ago'],
+    [2.5 * 86_400, '2 days ago'],
+  ])('%i s ago → %s', (s, out) => {
+    expect(postTime(ago(s), now)).toBe(out);
+  });
+  it('after 3 days shows the date', () => {
+    expect(postTime('2026-10-01T15:00:00Z', now)).toBe('Oct 1');
+    expect(postTime('2025-12-24T15:00:00Z', now)).toBe('Dec 24, 2025');
   });
 });

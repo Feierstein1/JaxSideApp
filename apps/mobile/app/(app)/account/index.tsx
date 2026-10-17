@@ -1,8 +1,16 @@
 import { useCallback, useState, type ComponentProps, type ReactNode } from 'react';
-import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect, type Href } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { BIO_MAX, BRAND, COLORS, CONFIG_DEFAULTS, type Medal } from '@jax/shared';
+import {
+  BIO_MAX,
+  COLORS,
+  CONFIG_DEFAULTS,
+  PROFILE_COLORS,
+  profileColor,
+  textOn,
+  type Medal,
+} from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
@@ -69,6 +77,7 @@ function ProfileTab() {
     }, []),
   );
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
   /** P6.5: pick, upload (cleaned on the server), then set as the profile photo. */
   async function changePhoto() {
     const asset = await pickPhoto({ square: true });
@@ -109,85 +118,208 @@ function ProfileTab() {
     }
   }
 
+  const color = profileColor(user.color);
+
   return (
-    <View>
+    <View style={{ gap: 16 }}>
+      {/* Header in your account color (D69). */}
       <View
         style={{
           alignItems: 'center',
           padding: 20,
           borderRadius: 12,
-          backgroundColor: COLORS.surfaceInverse,
-          borderBottomWidth: 4,
-          borderBottomColor: BRAND.gold,
+          backgroundColor: color.hex,
         }}
       >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Change your color"
+          onPress={() => setPicking(true)}
+          hitSlop={8}
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            width: 38,
+            height: 38,
+            borderRadius: 19,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 2,
+            borderColor: color.text,
+          }}
+        >
+          <Ionicons name="brush" size={18} color={color.text} />
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Change profile photo"
           onPress={() => void changePhoto()}
           disabled={photoBusy}
         >
-          <ProfileAvatar name={user.username} url={user.avatarUrl} />
+          <ProfileAvatar name={user.username} url={user.avatarUrl} ringColor={color.text} />
         </Pressable>
         <Text
-          style={{ color: BRAND.gold, marginTop: 6, fontSize: 13 }}
+          style={{ color: color.text, marginTop: 6, fontSize: 13, fontWeight: '600' }}
           onPress={() => void changePhoto()}
         >
           {photoBusy ? 'Uploading…' : user.avatarUrl ? 'Change photo' : 'Add a photo'}
         </Text>
-        <Text
-          style={{ color: COLORS.onSurfaceInverse, fontSize: 22, fontWeight: '700', marginTop: 10 }}
-        >
+        <Text style={{ color: color.text, fontSize: 22, fontWeight: '800', marginTop: 10 }}>
           {user.username}
         </Text>
-        <Text style={{ color: BRAND.gold, marginTop: 2 }}>Joined {joined}</Text>
+        <Text style={{ color: color.text, marginTop: 2 }}>Joined {joined}</Text>
       </View>
 
-      <Text style={[styles.label, { marginTop: 16 }]}>About</Text>
-      {editing ? (
-        <>
-          <TextInput
-            accessibilityLabel="Your bio"
-            value={bio}
-            onChangeText={setBio}
-            maxLength={BIO_MAX}
-            multiline
-            placeholder="A line or two about you (optional)"
-            placeholderTextColor={COLORS.placeholder}
-            style={[styles.input, { minHeight: 90, textAlignVertical: 'top' }]}
-          />
-          <Text style={styles.muted}>
-            {bio.length}/{BIO_MAX}
-          </Text>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <Button title="Save" onPress={() => void save()} busy={busy} />
-          <Button
-            variant="link"
-            title="Cancel"
-            onPress={() => {
-              setBio(user.bio ?? '');
-              setEditing(false);
-            }}
-          />
-        </>
-      ) : (
-        <>
-          <Text style={[styles.body, !user.bio && styles.muted]}>{user.bio || 'No bio yet.'}</Text>
-          <Button
-            variant="link"
-            title={user.bio ? 'Edit bio' : 'Add a bio'}
-            onPress={() => setEditing(true)}
-          />
-        </>
-      )}
-      <Text style={[styles.label, { marginTop: 16 }]}>Medals</Text>
-      {medals ? <MedalList medals={medals} /> : null}
-      <Text style={[styles.muted, { marginTop: 12, fontSize: 13 }]}>
-        This is what other people see. Your email is never shown. Medals are earned for good
-        contributions: a post that stays up, a place you suggested being approved, and posts your
-        neighbors find helpful.
-      </Text>
+      <ProfileSection title="About">
+        {editing ? (
+          <>
+            <TextInput
+              accessibilityLabel="Your bio"
+              value={bio}
+              onChangeText={setBio}
+              maxLength={BIO_MAX}
+              multiline
+              placeholder="A line or two about you (optional)"
+              placeholderTextColor={COLORS.placeholder}
+              style={[
+                styles.input,
+                { minHeight: 90, textAlignVertical: 'top', backgroundColor: COLORS.background },
+              ]}
+            />
+            <Text style={styles.muted}>
+              {bio.length}/{BIO_MAX}
+            </Text>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            <Button title="Save" onPress={() => void save()} busy={busy} />
+            <Button
+              variant="link"
+              title="Cancel"
+              onPress={() => {
+                setBio(user.bio ?? '');
+                setEditing(false);
+              }}
+            />
+          </>
+        ) : (
+          <>
+            <View style={boxStyle}>
+              <Text style={[styles.body, !user.bio && styles.muted]}>
+                {user.bio || 'No bio yet.'}
+              </Text>
+            </View>
+            <Text
+              accessibilityRole="button"
+              style={[styles.linkText, { marginTop: 8 }]}
+              onPress={() => setEditing(true)}
+            >
+              {user.bio ? 'Edit bio' : 'Add a bio'}
+            </Text>
+          </>
+        )}
+      </ProfileSection>
+
+      <ProfileSection title="Medals">
+        <View style={boxStyle}>{medals ? <MedalList medals={medals} /> : null}</View>
+      </ProfileSection>
+      {error && !editing ? <Text style={styles.error}>{error}</Text> : null}
+
+      <ColorPicker
+        open={picking}
+        current={user.color}
+        onClose={() => setPicking(false)}
+        onPick={async (key) => {
+          setPicking(false);
+          try {
+            await api.patch('/api/v1/me/color', { color: key });
+            await refresh();
+          } catch (e) {
+            setError(e instanceof ApiRequestError ? e.message : 'Couldn’t change the color.');
+          }
+        }}
+      />
     </View>
+  );
+}
+
+const boxStyle = {
+  backgroundColor: COLORS.background,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  borderRadius: 10,
+  padding: 14,
+} as const;
+
+/** A tinted section with a title (D69): About, Medals. */
+function ProfileSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <View style={{ backgroundColor: COLORS.accentSoft, borderRadius: 12, padding: 14 }}>
+      <Text style={[styles.label, { fontSize: 16, marginBottom: 8 }]}>{title}</Text>
+      {children}
+    </View>
+  );
+}
+
+/** D69: pick an account color from the palette (24 colors). */
+function ColorPicker({
+  open,
+  current,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  current: string;
+  onClose: () => void;
+  onPick: (key: string) => void;
+}) {
+  return (
+    <Modal visible={open} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable
+        style={{ flex: 1, backgroundColor: COLORS.scrim }}
+        onPress={onClose}
+        accessibilityLabel="Close"
+      />
+      <View
+        style={{
+          backgroundColor: COLORS.background,
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          padding: 20,
+        }}
+      >
+        <Text style={[styles.title, { fontSize: 20 }]}>Your color</Text>
+        <Text style={[styles.muted, { marginBottom: 12 }]}>
+          Used for your profile and the header and border of your posts.
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+          {PROFILE_COLORS.map((c) => {
+            const selected = c.key === current;
+            return (
+              <Pressable
+                key={c.key}
+                accessibilityRole="radio"
+                accessibilityLabel={c.name}
+                accessibilityState={{ selected }}
+                onPress={() => onPick(c.key)}
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 23,
+                  backgroundColor: c.hex,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: selected ? 3 : 1,
+                  borderColor: selected ? COLORS.text : COLORS.cardBorder,
+                }}
+              >
+                {selected ? <Ionicons name="checkmark" size={24} color={textOn(c.hex)} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+        <Button variant="link" title="Cancel" onPress={onClose} />
+      </View>
+    </Modal>
   );
 }
 

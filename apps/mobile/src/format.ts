@@ -25,6 +25,28 @@ export function timeAgo(iso: string, now: number = Date.now()): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+/**
+ * Post header time (D69): "just now", "5 min ago", "3 hr ago", "2 days ago" for up to
+ * 3 days, then the date ("Oct 12", with the year if it isn't this year).
+ */
+export function postTime(iso: string, now: number = Date.now()): string {
+  const s = Math.max(0, (now - Date.parse(iso)) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86_400) return `${Math.floor(s / 3600)} hr ago`;
+  if (s < 3 * 86_400) {
+    const d = Math.floor(s / 86_400);
+    return `${d} day${d === 1 ? '' : 's'} ago`;
+  }
+  const date = new Date(iso);
+  const sameYear = date.getFullYear() === new Date(now).getFullYear();
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+}
+
 /** "1 post", "12 posts". */
 export function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`;

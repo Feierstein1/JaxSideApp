@@ -7,10 +7,12 @@ export function ProfileAvatar({
   name,
   url,
   size = 72,
+  ringColor = BRAND.gold,
 }: {
   name: string;
   url: string | null;
   size?: number;
+  ringColor?: string;
 }) {
   return (
     <View
@@ -21,8 +23,8 @@ export function ProfileAvatar({
         backgroundColor: COLORS.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 3,
-        borderColor: BRAND.gold,
+        borderWidth: size < 48 ? 2 : 3,
+        borderColor: ringColor,
         overflow: 'hidden',
       }}
     >

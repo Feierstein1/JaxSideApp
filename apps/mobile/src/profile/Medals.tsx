@@ -18,14 +18,23 @@ const LABEL: Record<string, string> = {
 const iconFor = (key: string) => ICON[key] ?? 'ribbon';
 
 /** Small icons after a username on posts and comments. */
-export function MedalIcons({ keys, size = 13 }: { keys: string[]; size?: number }) {
+export function MedalIcons({
+  keys,
+  size = 13,
+  color = COLORS.accentDark,
+}: {
+  keys: string[];
+  size?: number;
+  /** On a colored post header, the header's text color (D69). */
+  color?: string;
+}) {
   if (!keys.length) return null;
   return (
     <Text accessibilityLabel={`Medals: ${keys.map((k) => LABEL[k] ?? k).join(', ')}`}>
       {keys.map((k) => (
         <Text key={k}>
           {' '}
-          <Ionicons name={iconFor(k)} size={size} color={COLORS.accentDark} />
+          <Ionicons name={iconFor(k)} size={size} color={color} />
         </Text>
       ))}
     </Text>
