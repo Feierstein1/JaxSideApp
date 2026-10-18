@@ -45,6 +45,10 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] New / Top this week switch works; scrolling loads more; pull down refreshes.
 - [ ] **Refresh (D73):** the round-arrow button top-right on Home (and right of the Places search box)
       reloads with a new location.
+- [ ] **Walking (D77):** with the app open on Home, walk a block (60+ yd): within about 30 s the
+      feed reloads on its own and the "Near …" label updates.
+- [ ] **No connection (D77):** turn on airplane mode and tap refresh: the old posts disappear and
+      "Could not reach the server" shows with **Try again**.
 - [ ] **Reopen (D73):** switch to another app, walk a block (60+ yd), come back: Home and Places
       reload on their own. Come back without moving: nothing reloads.
 - [ ] **Search (D74):** type in the search box on Home: post text or `@username` finds nearby

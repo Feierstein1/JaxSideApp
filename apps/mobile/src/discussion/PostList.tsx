@@ -49,6 +49,12 @@ export function PostList({
         setCursor(page.nextCursor);
       } catch (e) {
         if (id !== req.current) return;
+        // D77: a failed reload clears the old list, so posts from somewhere else never
+        // look current. Loading more keeps what's already there.
+        if (!after) {
+          setPosts([]);
+          setCursor(null);
+        }
         setError(e instanceof ApiRequestError ? e.message : 'Couldn’t get your location.');
       } finally {
         if (id === req.current) setState('idle');

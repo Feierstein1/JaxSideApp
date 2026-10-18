@@ -6,7 +6,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { fetchFeed } from '@/discussion/api';
 import { AreaLabel } from '@/location/AreaLabel';
-import { getFreshReading, useReloadWhenMoved } from '@/location/device';
+import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/device';
 import { PostList } from '@/discussion/PostList';
 import { PostTypeTabs } from '@/discussion/PostTypeTabs';
 import { refreshLimiter } from '@/refresh-limit';
@@ -49,7 +49,10 @@ export default function HomeFeed() {
   const load = useCallback(
     async (cursor?: string) => {
       const page = await fetchFeed(sort, cursor, q || undefined, type);
-      if (!cursor) setArea(page.area ?? null); // D72: refreshed with the first page
+      if (!cursor) {
+        setArea(page.area ?? null); // D72: refreshed with the first page
+        noteListLoad(); // D77: where this list is from
+      }
       return page;
     },
     [sort, q, type],

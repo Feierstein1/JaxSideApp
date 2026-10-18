@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "npm run dev -w @jax/server",
-    "dev:mobile": "npm run start -w @jax/mobile",
+    "dev:mobile": "node scripts/dev-mobile-note.mjs && npm run start -w @jax/mobile",
     "services:up": "docker compose up -d --wait",
     "services:down": "docker compose down",
     "test": "npm run test --workspaces --if-present",

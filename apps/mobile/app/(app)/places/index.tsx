@@ -16,7 +16,7 @@ import { BRAND, CATEGORY_GROUPS, COLORS, type PlaceSort, type PlaceSummary } fro
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { categoryLabel, formatDistance, plural } from '@/format';
-import { getFreshReading, useReloadWhenMoved } from '@/location/device';
+import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/device';
 import { AreaLabel } from '@/location/AreaLabel';
 import { OsmAttribution } from '@/places/Attribution';
 import { PlaceStats, PlaceTop, placeFrame } from '@/places/PlaceHeader';
@@ -74,9 +74,17 @@ export default function PlacesScreen() {
         if (id !== requestId.current) return; // a newer request started
         setPlaces((prev) => (offset === 0 ? res.places : [...prev, ...res.places]));
         setNextOffset(res.nextOffset);
-        if (offset === 0) setArea(res.area ?? null);
+        if (offset === 0) {
+          setArea(res.area ?? null);
+          noteListLoad(); // D77
+        }
       } catch (e) {
         if (id !== requestId.current) return;
+        if (offset === 0) {
+          setPlaces([]); // D77: never leave another spot's places looking current
+          setNextOffset(null);
+          setArea(null);
+        }
         setError(e instanceof ApiRequestError ? e.message : 'Couldn’t get your location.');
       } finally {
         if (id === requestId.current) setLoading(false);
