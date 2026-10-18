@@ -3,9 +3,10 @@ import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-n
 import { useFocusEffect } from 'expo-router';
 import { COLORS, type PostView } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
-import { Button, styles } from '@/ui';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { EmptyState, ErrorState, type IconName } from '@/ui';
 import { takeFeedsDirty, type PostPage } from './api';
-import { PostCard } from './PostCard';
+import { PostCard, PostSkeleton } from './PostCard';
 
 /**
  * A paginated list of posts (P3.5, P3.11): loads one page, then the next as you scroll
@@ -16,6 +17,8 @@ export function PostList({
   onOpen,
   header,
   emptyTitle,
+  emptyBody,
+  emptyIcon = 'chatbubbles-outline',
   emptyAction,
   reloadKey,
 }: {
@@ -23,6 +26,8 @@ export function PostList({
   onOpen: (post: PostView) => void;
   header?: ReactElement | null;
   emptyTitle: string;
+  emptyBody?: string;
+  emptyIcon?: IconName;
   emptyAction?: { label: string; onPress: () => void };
   /** Change to force a reload (e.g. sort changed). */
   reloadKey?: string;
@@ -78,7 +83,7 @@ export function PostList({
     <FlatList
       // D70: dark grey behind the white post cards, a step lighter than the black header.
       style={{ backgroundColor: COLORS.surfaceDark }}
-      contentContainerStyle={{ paddingTop: 6, paddingBottom: 96, flexGrow: 1 }}
+      contentContainerStyle={{ paddingTop: 6, paddingBottom: 104, flexGrow: 1 }}
       data={posts}
       keyExtractor={(p) => p.id}
       renderItem={({ item }) => (
@@ -88,34 +93,47 @@ export function PostList({
         <>
           {header}
           {error ? (
-            <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-              <Text style={[styles.error, { color: COLORS.errorOnDark }]}>{error}</Text>
-              <Button variant="link" title="Try again" onPress={() => void fetchPage('loading')} />
-            </View>
+            <ErrorState dark message={error} onRetry={() => void fetchPage('loading')} />
           ) : null}
         </>
       }
       ListEmptyComponent={
         state === 'idle' && !error ? (
-          <View style={{ alignItems: 'center', padding: 32, gap: 8 }}>
-            <Text
-              style={[
-                styles.title,
-                { fontSize: 20, textAlign: 'center', color: COLORS.onSurfaceDark },
-              ]}
-            >
-              {emptyTitle}
-            </Text>
-            {emptyAction ? (
-              <Button title={emptyAction.label} onPress={emptyAction.onPress} />
-            ) : null}
-          </View>
+          <EmptyState
+            dark
+            icon={emptyIcon}
+            title={emptyTitle}
+            body={emptyBody}
+            action={
+              emptyAction
+                ? { label: emptyAction.label, onPress: emptyAction.onPress, icon: 'add' }
+                : undefined
+            }
+          />
         ) : state === 'loading' ? (
-          <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.accent} />
+          // D78: placeholders shaped like posts instead of a spinner.
+          <View>
+            <PostSkeleton />
+            <PostSkeleton />
+            <PostSkeleton />
+          </View>
         ) : null
       }
       ListFooterComponent={
-        state === 'more' ? <ActivityIndicator style={{ margin: 16 }} color={COLORS.accent} /> : null
+        state === 'more' ? (
+          <ActivityIndicator style={{ margin: 16 }} color={COLORS.accent} />
+        ) : posts.length > 2 && !cursor && state === 'idle' ? (
+          // D78: the end of the list says so, instead of just stopping.
+          <View
+            style={{ alignItems: 'center', paddingVertical: 20, gap: 4 }}
+            accessibilityRole="text"
+          >
+            <Ionicons name="checkmark-circle-outline" size={22} color={COLORS.onSurfaceDarkMuted} />
+            <Text style={{ color: COLORS.onSurfaceDarkMuted, fontWeight: '600' }}>
+              You’re all caught up
+            </Text>
+          </View>
+        ) : null
       }
       onEndReachedThreshold={0.5}
       onEndReached={() => {

@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { Alert, View } from 'react-native';
+import { router, Stack } from 'expo-router';
 import { COLORS, type FeedSort, type PostTypeFilter } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { fetchFeed } from '@/discussion/api';
-import { AreaLabel } from '@/location/AreaLabel';
+import { AreaTitle } from '@/location/AreaLabel';
 import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/device';
 import { PostList } from '@/discussion/PostList';
 import { PostTypeTabs } from '@/discussion/PostTypeTabs';
 import { refreshLimiter } from '@/refresh-limit';
-import { FloatingButton, RefreshButton, Segmented, styles } from '@/ui';
+import { Banner, FloatingButton, RefreshButton, SearchField, Segmented } from '@/ui';
 
 /** P3.11: the default landing screen, the feed for the area around you. */
 export default function HomeFeed() {
@@ -77,63 +77,57 @@ export default function HomeFeed() {
     router.push('/compose');
   }
 
+  // D78: sort and notices sit at the top of the list and scroll away with it, so the
+  // feed gets the screen; search and the type tabs stay put.
+  const listHeader = (
+    <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 2, gap: 10 }}>
+      {guest?.expiringSoon ? (
+        <Banner icon="time-outline" style={{ marginBottom: 0 }}>
+          {`Your guest session ends in ${guest.daysLeft} ${guest.daysLeft === 1 ? 'day' : 'days'} unless you use Jax before then.`}
+        </Banner>
+      ) : null}
+      {!verified && !isGuest ? (
+        <Banner
+          icon="mail-unread-outline"
+          onPress={() => router.push('/account')}
+          style={{ marginBottom: 0 }}
+        >
+          Confirm your email to post, comment and vote. Tap to enter your code.
+        </Banner>
+      ) : null}
+      <Segmented
+        dark
+        options={[
+          { key: 'new', label: 'New' },
+          { key: 'top', label: 'Top this week' },
+        ]}
+        value={sort}
+        onChange={(v) => setSort(v as FeedSort)}
+      />
+    </View>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
-      {/* D70: a black bar under the black header, like Places, with the feed controls. */}
+      <Stack.Screen options={{ headerTitle: () => <AreaTitle title="Jax" area={area} brand /> }} />
+      {/* D70 / D78: a black bar under the black header with search, refresh and type tabs. */}
       <View
         style={{
           backgroundColor: COLORS.surfaceInverse,
           paddingHorizontal: 12,
-          paddingTop: 4,
-          paddingBottom: 12,
-          gap: 8,
+          paddingTop: 2,
+          gap: 4,
         }}
       >
-        <AreaLabel name={area} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <TextInput
-            accessibilityLabel="Search posts"
-            placeholder="Search posts or @username…"
-            placeholderTextColor={COLORS.placeholder}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <SearchField
+            label="Search posts"
+            placeholder="Search posts or @username"
             value={typed}
             onChangeText={setTyped}
-            autoCorrect={false}
-            autoCapitalize="none"
-            returnKeyType="search"
             maxLength={50}
-            style={[
-              styles.input,
-              { flex: 1, backgroundColor: COLORS.background, borderColor: COLORS.background },
-            ]}
           />
           <RefreshButton onPress={() => void refresh()} busy={refreshing} />
-        </View>
-        {guest?.expiringSoon ? (
-          <View style={[styles.banner, { marginBottom: 0 }]}>
-            <Text style={styles.body}>
-              Your guest session ends in {guest.daysLeft} {guest.daysLeft === 1 ? 'day' : 'days'}{' '}
-              unless you use Jax before then.
-            </Text>
-          </View>
-        ) : null}
-        {!verified && !isGuest ? (
-          <Pressable onPress={() => router.push('/account')} accessibilityRole="button">
-            <View style={[styles.banner, { marginBottom: 0 }]}>
-              <Text style={styles.body}>
-                Confirm your email to post, comment and vote. Tap to enter your code.
-              </Text>
-            </View>
-          </Pressable>
-        ) : null}
-        <View style={{ alignSelf: 'flex-start' }}>
-          <Segmented
-            options={[
-              { key: 'new', label: 'New' },
-              { key: 'top', label: 'Top this week' },
-            ]}
-            value={sort}
-            onChange={(v) => setSort(v as FeedSort)}
-          />
         </View>
         <PostTypeTabs value={type} onChange={setType} />
       </View>
@@ -141,14 +135,21 @@ export default function HomeFeed() {
         load={load}
         reloadKey={`${sort}:${reloads}:${q}:${type}`}
         onOpen={(p) => router.push(`/post/${p.id}`)}
+        header={listHeader}
+        emptyIcon={q ? 'search-outline' : type === 'voice' ? 'mic-outline' : 'chatbubbles-outline'}
         emptyTitle={
           q
-            ? `No posts nearby match “${q}”.`
+            ? `No posts nearby match “${q}”`
             : type !== 'all'
-              ? `No ${type} posts nearby yet.`
-              : 'No posts in this area yet. Start the conversation!'
+              ? `No ${type} posts nearby yet`
+              : 'It’s quiet around here'
         }
-        emptyAction={q ? undefined : { label: 'Start a new post', onPress: compose }}
+        emptyBody={
+          q
+            ? 'Try different words, or a @username.'
+            : 'Be the first to share what’s happening nearby. People within your radius will see it.'
+        }
+        emptyAction={q ? undefined : { label: 'Start a post', onPress: compose }}
       />
       <FloatingButton label="Write a new post" onPress={compose} />
     </View>

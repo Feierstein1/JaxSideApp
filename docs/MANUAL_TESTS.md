@@ -175,9 +175,47 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 - [ ] Phone settings → largest font size: screens still readable, nothing cut off or overlapping.
 - [ ] Turn on **TalkBack** (Android) or **VoiceOver** (iPhone): buttons read sensible names
-      ("Write a new post", "Upvote", "Report post", "Hide my username"), and you can post and
+      ("Write a new post", "Upvote", "More options", "Hide my username"), and you can post and
       comment without looking.
+- [ ] Phone setting **Remove animations** (Android) / **Reduce Motion** (iPhone) on: buttons,
+      votes, sheets and toasts no longer move or bounce; loading placeholders hold still (D78).
 - [ ] Dark backgrounds use white or gold text only; no gold text on white anywhere.
+
+## 9c. Look and feel (D78, experimental redesign)
+
+- [ ] **Sign in** opens on a black welcome ("Jax", gold pin) with the form on a white sheet.
+      Order: Sign in → Create an account → Continue as guest. "Forgot password?" sits under the
+      password field; the eye icon inside the field shows/hides the password.
+- [ ] Without location permission: a pin icon, three reasons with icons, a privacy note, one
+      **Allow location** button.
+- [ ] **Home** header reads **Jax** with "Near [neighborhood]" under it. Under it: a dark round
+      search box (× clears it), a round refresh button, and the All / Text / Media / Voice tabs
+      (active one gold with a short gold bar). **New / Top this week** and any banners scroll
+      away with the posts.
+- [ ] While the feed loads you see grey post-shaped placeholders, not a spinner. At the end of a
+      long feed: "You're all caught up".
+- [ ] **Posts:** author's color on top with photo, name (★ on yours), and "5 min ago · 120 yd"
+      under the name. Votes are a grey pill (teal tint when upvoted, gold tint when downvoted,
+      the arrow pops and the phone ticks). Comments are a pill next to it. Long posts end with
+      "Read more". Two photos sit side by side.
+- [ ] **Post page:** "•••" in the post header opens Report (others' posts) or Delete (yours).
+      Comments sit in one white panel with avatars; replies hang off a thin line. Each comment
+      has Reply and "•••" (Report or Delete, Delete asks to confirm). The reply box is a round
+      field with a round send arrow; "Replying to …" is a teal chip you tap to cancel.
+- [ ] **New post:** Cancel top-left, gold **Post** top-right (grey until you type or record).
+      Your photo and a "People near you" (or place name) chip at the top; a photo button and
+      the character count in a bar above the keyboard.
+- [ ] **Places:** the header says Places with "Near …" under it. Filter button (gold dot when
+      filters are on), search pill, refresh. Cards: category pill with an icon, name below,
+      then walking distance, ★ count and posts with icons. Applied filters show as gold chips
+      above the list; tap one to clear it. The filter sheet has Reset and Show places.
+- [ ] **Place page:** star button on a black circle (tap: phone ticks, "Added to favorites"
+      slides up near the bottom). Too far away: a lock card says how far you are.
+- [ ] **Account:** light grey page with white grouped cards. Profile: color header, camera badge
+      on the photo, a **Color** button top-right. Settings: email with a Confirmed / Not
+      confirmed badge, radius as a three-way switch, favorites with category icons, Sign out
+      and Delete account at the bottom.
+- [ ] **Tab bar:** active tab icon is filled gold on a dark pill; tapping tabs ticks the phone.
 
 ## 10. Admin portal (on your computer)
 

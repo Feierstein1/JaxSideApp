@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
+  BRAND,
   COLORS,
   CONFIG_DEFAULTS,
   yardsLabel,
@@ -15,10 +16,13 @@ import { useAuth } from '@/auth/AuthContext';
 import { fetchRoom } from '@/discussion/api';
 import { PostList } from '@/discussion/PostList';
 import { PostTypeTabs } from '@/discussion/PostTypeTabs';
+import { formatDistance } from '@/format';
 import { getFreshReading } from '@/location/device';
+import { haptic } from '@/motion';
 import { OsmAttribution } from '@/places/Attribution';
-import { PlaceStats, PlaceTop, placeFrame } from '@/places/PlaceHeader';
-import { Button, FloatingButton, styles } from '@/ui';
+import { PlaceSkeleton, PlaceStats, PlaceTop, placeFrame } from '@/places/PlaceHeader';
+import { elevation, SPACE, TYPE } from '@/tokens';
+import { ErrorState, FloatingButton, SectionTitle, useToast } from '@/ui';
 
 /**
  * A place: info card, favorite toggle, and its discussion room (P3.2). The room opens
@@ -31,14 +35,7 @@ export default function PlaceScreen() {
   const [place, setPlace] = useState<PlaceSummary>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<string>();
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  function showToast(text: string) {
-    setToast(text);
-    clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(undefined), 1600);
-  }
-  useEffect(() => () => clearTimeout(toastTimer.current), []);
+  const toast = useToast(); // D70 / D78: "Added to favorites"
   const [type, setType] = useState<PostTypeFilter>('all'); // D75
   const loadRoom = useCallback((cursor?: string) => fetchRoom(id, cursor, type), [id, type]);
   const verified = state.status === 'signedIn' && state.user.emailVerified;
@@ -71,7 +68,11 @@ export default function PlaceScreen() {
         isFavorite: !place.isFavorite,
         favoriteCount: Math.max(0, place.favoriteCount + (place.isFavorite ? -1 : 1)),
       });
-      showToast(place.isFavorite ? 'Removed from favorites' : 'Added to favorites');
+      if (!place.isFavorite) haptic.success();
+      toast.show(
+        place.isFavorite ? 'Removed from favorites' : 'Added to favorites',
+        place.isFavorite ? 'star-outline' : 'star',
+      );
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Something went wrong.');
     } finally {
@@ -100,36 +101,34 @@ export default function PlaceScreen() {
 
   if (!place) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark, paddingTop: SPACE.sm }}>
         {error ? (
-          <View style={styles.screen}>
-            <Text style={[styles.error, { color: COLORS.errorOnDark }]}>{error}</Text>
-            <Button variant="link" title="Try again" onPress={() => void load()} />
-          </View>
+          <ErrorState dark message={error} onRetry={() => void load()} />
         ) : (
-          <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.accent} />
+          <PlaceSkeleton />
         )}
       </View>
     );
   }
 
   const info = (
-    <View style={[placeFrame, { marginTop: 12, marginBottom: 8 }]}>
+    <View style={[placeFrame, elevation(1), { marginTop: SPACE.md, marginBottom: SPACE.xs }]}>
       <PlaceTop place={place} large favorite={{ onPress: () => void toggleFavorite(), busy }} />
       <PlaceStats place={place} />
       {place.address ? (
-        <Text
-          style={[
-            styles.body,
-            {
-              paddingHorizontal: 12,
-              paddingBottom: 10,
-              backgroundColor: COLORS.background,
-            },
-          ]}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            gap: 8,
+            paddingHorizontal: 14,
+            paddingBottom: 12,
+            backgroundColor: COLORS.background,
+          }}
         >
-          {place.address}
-        </Text>
+          <Ionicons name="location-outline" size={17} color={COLORS.textMuted} />
+          <Text style={[TYPE.callout, { flex: 1, color: COLORS.text }]}>{place.address}</Text>
+        </View>
       ) : null}
     </View>
   );
@@ -137,11 +136,7 @@ export default function PlaceScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
       <Stack.Screen options={{ title: place.name }} />
-      {error ? (
-        <Text style={[styles.error, { color: COLORS.errorOnDark, marginHorizontal: 16 }]}>
-          {error}
-        </Text>
-      ) : null}
+      {error ? <ErrorState dark message={error} onRetry={() => void load()} /> : null}
       {place.withinRoomRadius ? (
         <>
           {/* D75: the same post-type bar as Home, fixed above the room's posts. */}
@@ -152,9 +147,16 @@ export default function PlaceScreen() {
             load={loadRoom}
             reloadKey={type}
             onOpen={(p) => router.push(`/places/post/${p.id}`)}
-            header={info}
-            emptyTitle={`No posts for ${place.name} yet. Be the first!`}
-            emptyAction={{ label: 'Start a new post', onPress: compose }}
+            header={
+              <>
+                {info}
+                <SectionTitle dark>Discussion</SectionTitle>
+              </>
+            }
+            emptyIcon="chatbubbles-outline"
+            emptyTitle="No posts here yet"
+            emptyBody={`Been to ${place.name}? Start the conversation for people nearby.`}
+            emptyAction={{ label: 'Start a post', onPress: compose }}
           />
           {/* Same round + button as the area feed (D70). */}
           <FloatingButton label={`Write a post about ${place.name}`} onPress={compose} />
@@ -162,45 +164,44 @@ export default function PlaceScreen() {
       ) : (
         <View>
           {info}
-          <View style={[styles.banner, { marginHorizontal: 12 }]}>
-            <Text style={styles.body}>
-              Get within {yardsLabel(CONFIG_DEFAULTS['radius.business.maxMiles'])} of this place to
-              see and join its discussion.
+          {/* D78: a clear "locked" state that says how far you are. */}
+          <View
+            style={{
+              margin: SPACE.md,
+              padding: SPACE.xl - 4,
+              borderRadius: 16,
+              backgroundColor: COLORS.surfaceDarkRaised,
+              alignItems: 'center',
+              gap: SPACE.sm,
+            }}
+          >
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: COLORS.surfaceInverse,
+              }}
+            >
+              <Ionicons name="lock-closed" size={26} color={BRAND.gold} />
+            </View>
+            <Text
+              accessibilityRole="header"
+              style={[TYPE.headline, { color: COLORS.onSurfaceDark, textAlign: 'center' }]}
+            >
+              Get closer to join the conversation
+            </Text>
+            <Text style={[TYPE.callout, { color: COLORS.onSurfaceDarkMuted, textAlign: 'center' }]}>
+              The discussion opens within {yardsLabel(CONFIG_DEFAULTS['radius.business.maxMiles'])}{' '}
+              of {place.name}. You’re about {formatDistance(place.distanceMeters)} away.
             </Text>
           </View>
           <OsmAttribution dark />
         </View>
       )}
-      {toast ? <Toast text={toast} /> : null}
-    </View>
-  );
-}
-
-/** A short pop-up near the top (D70), e.g. "Added to favorites". */
-function Toast({ text }: { text: string }) {
-  return (
-    <View
-      pointerEvents="none"
-      accessibilityLiveRegion="polite"
-      style={{
-        position: 'absolute',
-        top: 16,
-        alignSelf: 'center',
-        backgroundColor: COLORS.background,
-        borderRadius: 999,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        shadowColor: COLORS.shadow,
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
-      }}
-    >
-      <Ionicons name="star" size={16} color={COLORS.accentDark} />
-      <Text style={{ color: COLORS.text, fontWeight: '700' }}>{text}</Text>
+      {toast.node}
     </View>
   );
 }

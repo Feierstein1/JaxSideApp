@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { Pressable, Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BRAND, COLORS } from '@jax/shared';
@@ -54,7 +54,18 @@ export function UserBadge() {
   }, []);
   if (state.status === 'guest') {
     return (
-      <Text style={{ color: BRAND.gold, fontWeight: '700', paddingHorizontal: 4 }}>GUEST</Text>
+      <View
+        style={{
+          backgroundColor: BRAND.gold,
+          borderRadius: 999,
+          paddingHorizontal: 10,
+          paddingVertical: 4,
+          marginRight: 4,
+        }}
+      >
+        {/* Black on gold (D33). */}
+        <Text style={{ color: COLORS.onAccent, fontWeight: '800', fontSize: 12 }}>GUEST</Text>
+      </View>
     );
   }
   if (state.status !== 'signedIn') return null;
@@ -65,15 +76,25 @@ export function UserBadge() {
       accessibilityLabel={isHidden ? 'Show my username' : 'Hide my username'}
       onPress={toggle}
       hitSlop={8}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4 }}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        minHeight: 32,
+        paddingHorizontal: 10,
+        borderRadius: 999,
+        marginRight: 4,
+        backgroundColor: COLORS.surfaceDarkRaised,
+        opacity: pressed ? 0.7 : 1,
+      })}
     >
       <Text
-        style={{ color: COLORS.onSurfaceInverse, fontWeight: '600', maxWidth: 120 }}
+        style={{ color: COLORS.onSurfaceInverse, fontWeight: '700', fontSize: 13, maxWidth: 110 }}
         numberOfLines={1}
       >
         {isHidden ? '••••••' : `@${state.user.username}`}
       </Text>
-      <Ionicons name={isHidden ? 'eye-off-outline' : 'eye-outline'} size={18} color={BRAND.gold} />
+      <Ionicons name={isHidden ? 'eye-off-outline' : 'eye-outline'} size={16} color={BRAND.gold} />
     </Pressable>
   );
 }

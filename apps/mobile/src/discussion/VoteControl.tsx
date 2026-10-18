@@ -1,15 +1,16 @@
-import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Animated, Pressable, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BRAND, COLORS, type DiscussionKind } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import { useGuest } from '@/auth/guest';
+import { haptic, useReducedMotion } from '@/motion';
 import { vote } from './api';
 
 /**
  * Up/down voting (P3.4). Tapping your current vote again clears it. The count shown is
  * always the server's answer (§8); the button state flips immediately for feel.
- * Upvote = teal, downvote = old gold (D33).
+ * Upvote = teal, downvote = old gold (D33). D78: a pill that tints when you've voted.
  */
 export function VoteControl({
   target,
@@ -50,47 +51,106 @@ export function VoteControl({
     }
   }
 
-  const size = compact ? 18 : 22;
+  const size = compact ? 19 : 21;
+  const bg = compact
+    ? 'transparent'
+    : mine === 1
+      ? COLORS.primarySoft
+      : mine === -1
+        ? COLORS.accentSoft
+        : COLORS.surfaceMuted;
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: compact ? 2 : 4 }}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Upvote"
-        accessibilityState={{ selected: mine === 1 }}
-        hitSlop={8}
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        height: compact ? 32 : 36,
+        borderRadius: 999,
+        backgroundColor: bg,
+        paddingHorizontal: compact ? 0 : 2,
+      }}
+    >
+      <VoteArrow
+        dir={1}
+        on={mine === 1}
+        size={size}
         onPress={() => void press(1)}
-      >
-        <Ionicons
-          name={mine === 1 ? 'arrow-up-circle' : 'arrow-up-circle-outline'}
-          size={size}
-          color={mine === 1 ? COLORS.primary : COLORS.textMuted}
-        />
-      </Pressable>
+        color={mine === 1 ? COLORS.primary : COLORS.textMuted}
+      />
       <Text
         accessibilityLabel={`Score ${score}`}
         style={{
-          minWidth: 22,
+          minWidth: 18,
           textAlign: 'center',
-          fontWeight: '700',
-          fontSize: compact ? 13 : 15,
-          color: mine === 1 ? COLORS.primary : mine === -1 ? BRAND.oldGold : COLORS.text,
+          fontWeight: '800',
+          fontSize: compact ? 13 : 14,
+          fontVariant: ['tabular-nums'],
+          // Old gold isn't readable as small text (D33), so a downvoted score stays black.
+          color: mine === 1 ? COLORS.primary : COLORS.text,
         }}
       >
         {score}
       </Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Downvote"
-        accessibilityState={{ selected: mine === -1 }}
-        hitSlop={8}
+      <VoteArrow
+        dir={-1}
+        on={mine === -1}
+        size={size}
         onPress={() => void press(-1)}
-      >
-        <Ionicons
-          name={mine === -1 ? 'arrow-down-circle' : 'arrow-down-circle-outline'}
-          size={size}
-          color={mine === -1 ? BRAND.oldGold : COLORS.textMuted}
-        />
-      </Pressable>
+        color={mine === -1 ? BRAND.oldGold : COLORS.textMuted}
+      />
     </View>
+  );
+}
+
+/** D78: one vote arrow; it pops a little and taps the phone when chosen. */
+function VoteArrow({
+  dir,
+  on,
+  size,
+  color,
+  onPress,
+}: {
+  dir: 1 | -1;
+  on: boolean;
+  size: number;
+  color: string;
+  onPress: () => void;
+}) {
+  const reduced = useReducedMotion();
+  const scale = useRef(new Animated.Value(1)).current;
+  function tap() {
+    haptic.tap();
+    if (!reduced && !on) {
+      scale.setValue(0.7);
+      Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 20,
+        bounciness: 14,
+      }).start();
+    }
+    onPress();
+  }
+  const name =
+    dir === 1
+      ? on
+        ? 'arrow-up-circle'
+        : 'arrow-up-circle-outline'
+      : on
+        ? 'arrow-down-circle'
+        : 'arrow-down-circle-outline';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={dir === 1 ? 'Upvote' : 'Downvote'}
+      accessibilityState={{ selected: on }}
+      hitSlop={6}
+      onPress={tap}
+      style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
+    >
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Ionicons name={name} size={size} color={color} />
+      </Animated.View>
+    </Pressable>
   );
 }

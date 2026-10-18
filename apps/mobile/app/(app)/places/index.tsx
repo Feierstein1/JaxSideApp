@@ -1,27 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { router } from 'expo-router';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { BRAND, CATEGORY_GROUPS, COLORS, type PlaceSort, type PlaceSummary } from '@jax/shared';
+import { ActivityIndicator, Alert, FlatList, ScrollView, Text, View } from 'react-native';
+import { router, Stack } from 'expo-router';
+import { CATEGORY_GROUPS, COLORS, type PlaceSort, type PlaceSummary } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { categoryLabel, formatDistance, plural } from '@/format';
 import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/device';
-import { AreaLabel } from '@/location/AreaLabel';
+import { AreaTitle } from '@/location/AreaLabel';
 import { OsmAttribution } from '@/places/Attribution';
-import { PlaceStats, PlaceTop, placeFrame } from '@/places/PlaceHeader';
+import {
+  categoryIcon,
+  PlaceSkeleton,
+  PlaceStats,
+  PlaceTop,
+  placeFrame,
+} from '@/places/PlaceHeader';
 import { refreshLimiter } from '@/refresh-limit';
-import { Button, Chip, FloatingButton, RefreshButton, styles } from '@/ui';
+import { elevation, TYPE } from '@/tokens';
+import {
+  Button,
+  Chip,
+  EmptyState,
+  ErrorState,
+  FloatingButton,
+  IconButton,
+  PressableScale,
+  RefreshButton,
+  SearchField,
+  Sheet,
+} from '@/ui';
 
 interface SearchResponse {
   places: PlaceSummary[];
@@ -102,90 +109,123 @@ export default function PlacesScreen() {
     return () => clearTimeout(t);
   }, [load, q]);
 
+  const groupLabel = CATEGORY_GROUPS.find((g) => g.key === group)?.label;
+  const sortLabel = sort && sort !== 'distance' ? SORTS.find((x) => x.key === sort)?.label : null;
+
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
-      {/* Black bar under the black header: where you are (D72), then filter + search. */}
+      <Stack.Screen options={{ headerTitle: () => <AreaTitle title="Places" area={area} /> }} />
+      {/* Black bar under the black header: filters, search, refresh (D70, D78). */}
       <View
         style={{
           backgroundColor: COLORS.surfaceInverse,
           paddingHorizontal: 12,
-          paddingTop: 4,
+          paddingTop: 2,
           paddingBottom: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
           gap: 8,
         }}
       >
-        <AreaLabel name={area} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={filtered ? 'Filters (on)' : 'Filters'}
-            onPress={() => setFiltersOpen(true)}
-            hitSlop={8}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 8,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 2,
-              borderColor: filtered ? BRAND.gold : COLORS.onSurfaceInverse,
-            }}
-          >
-            <Ionicons
-              name={filtered ? 'options' : 'options-outline'}
-              size={22}
-              color={filtered ? BRAND.gold : COLORS.onSurfaceInverse}
-            />
-          </Pressable>
-          <TextInput
-            accessibilityLabel="Search places"
-            placeholder="Search places nearby…"
-            placeholderTextColor={COLORS.placeholder}
-            value={q}
-            onChangeText={setQ}
-            autoCorrect={false}
-            returnKeyType="search"
-            style={[
-              styles.input,
-              { flex: 1, backgroundColor: COLORS.background, borderColor: COLORS.background },
-            ]}
-          />
-          <RefreshButton
-            onPress={() => {
-              const wait = refreshLimiter.tap(); // D74: 30 a minute
-              if (wait) Alert.alert('Slow down a little', `You can refresh again in ${wait} s.`);
-              else void load(0, true);
-            }}
-            busy={loading && places.length > 0}
-          />
-        </View>
+        <IconButton
+          icon="options-outline"
+          label={filtered ? 'Filters (on)' : 'Filters'}
+          active={filtered}
+          onPress={() => setFiltersOpen(true)}
+        />
+        <SearchField
+          label="Search places"
+          placeholder="Search places nearby"
+          value={q}
+          onChangeText={setQ}
+          autoCapitalize="words"
+        />
+        <RefreshButton
+          onPress={() => {
+            const wait = refreshLimiter.tap(); // D74: 30 a minute
+            if (wait) Alert.alert('Slow down a little', `You can refresh again in ${wait} s.`);
+            else void load(0, true);
+          }}
+          busy={loading && places.length > 0}
+        />
       </View>
-
-      {error ? (
-        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-          <Text style={[styles.error, { color: COLORS.errorOnDark }]}>{error}</Text>
-          <Button variant="link" title="Try again" onPress={() => void load(0)} />
-        </View>
-      ) : null}
 
       <FlatList
         data={places}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ paddingTop: 10, paddingBottom: 96 }}
+        contentContainerStyle={{ paddingTop: 6, paddingBottom: 104, flexGrow: 1 }}
         renderItem={({ item }) => <PlaceCard place={item} />}
         onEndReached={() => {
           if (!loading && nextOffset !== null) void load(nextOffset);
         }}
+        ListHeaderComponent={
+          <>
+            {/* D78: what's applied, each removable with one tap. */}
+            {groupLabel || sortLabel ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                  paddingHorizontal: 12,
+                  paddingTop: 6,
+                  paddingBottom: 4,
+                }}
+              >
+                {groupLabel ? (
+                  <Chip
+                    dark
+                    active
+                    label={groupLabel}
+                    onPress={() => setGroup(null)}
+                    onRemove={() => setGroup(null)}
+                  />
+                ) : null}
+                {sortLabel ? (
+                  <Chip
+                    dark
+                    active
+                    label={sortLabel}
+                    onPress={() => setSort(null)}
+                    onRemove={() => setSort(null)}
+                  />
+                ) : null}
+              </View>
+            ) : null}
+            {error ? <ErrorState dark message={error} onRetry={() => void load(0)} /> : null}
+          </>
+        }
         ListEmptyComponent={
-          !loading && !error ? (
-            <Text style={{ padding: 16, color: COLORS.onSurfaceDarkMuted }}>
-              No places within your radius. You can change it in Account → Settings.
-            </Text>
+          loading && places.length === 0 ? (
+            <View>
+              <PlaceSkeleton />
+              <PlaceSkeleton />
+              <PlaceSkeleton />
+              <PlaceSkeleton />
+            </View>
+          ) : !error ? (
+            <EmptyState
+              dark
+              icon={q || filtered ? 'search-outline' : 'storefront-outline'}
+              title={q || filtered ? 'No matching places nearby' : 'No places within your radius'}
+              body={
+                q || filtered
+                  ? 'Try another name or clear the filters.'
+                  : 'You can widen your radius in Account → Settings, or add a place that’s missing.'
+              }
+              action={{
+                label: 'Suggest a place',
+                icon: 'add',
+                onPress: () => router.push('/places/suggest'),
+              }}
+            />
           ) : null
         }
         ListFooterComponent={
           <>
-            {loading ? <ActivityIndicator style={{ margin: 16 }} color={COLORS.accent} /> : null}
+            {loading && places.length > 0 ? (
+              <ActivityIndicator style={{ margin: 16 }} color={COLORS.accent} />
+            ) : null}
             <OsmAttribution dark />
           </>
         }
@@ -206,18 +246,19 @@ export default function PlacesScreen() {
   );
 }
 
-/** One place (D69, D70): category-colored header + distance and posts, in a 2 px black frame. */
+/** One place (D69, D70, D78): category-colored header + distance, favorites and posts. */
 function PlaceCard({ place }: { place: PlaceSummary }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${place.name}, ${categoryLabel(place.category)}, ${formatDistance(place.distanceMeters)} away, ${plural(place.postCount, 'post')}, ${plural(place.favoriteCount, 'favorite')}`}
       onPress={() => router.push(`/places/${place.id}`)}
-      style={({ pressed }) => [placeFrame, { opacity: pressed ? 0.9 : 1 }]}
+      scaleTo={0.98}
+      style={[placeFrame, elevation(1)]}
     >
       <PlaceTop place={place} />
-      <PlaceStats place={place} />
-    </Pressable>
+      <PlaceStats place={place} chevron />
+    </PressableScale>
   );
 }
 
@@ -234,25 +275,12 @@ function FilterSheet({
   group: string | null;
   setGroup: (g: string | null) => void;
   sort: PlaceSort | null;
-  setSort: (s: PlaceSort) => void;
+  setSort: (s: PlaceSort | null) => void;
 }) {
   return (
-    <Modal visible={open} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable
-        style={{ flex: 1, backgroundColor: COLORS.scrim }}
-        onPress={onClose}
-        accessibilityLabel="Close filters"
-      />
-      <View
-        style={{
-          backgroundColor: COLORS.background,
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          padding: 20,
-          gap: 10,
-        }}
-      >
-        <Text style={styles.label}>Sort</Text>
+    <Sheet open={open} onClose={onClose} title="Sort & filter">
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 4, gap: 10 }}>
+        <Text style={[TYPE.overline, { color: COLORS.textMuted }]}>Sort by</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {SORTS.map((s) => (
             <Chip
@@ -263,22 +291,32 @@ function FilterSheet({
             />
           ))}
         </View>
-        <Text style={[styles.label, { marginTop: 8 }]}>Category</Text>
-        <ScrollView style={{ maxHeight: 220 }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <Chip label="All" active={group === null} onPress={() => setGroup(null)} />
-            {CATEGORY_GROUPS.map((g) => (
-              <Chip
-                key={g.key}
-                label={g.label}
-                active={group === g.key}
-                onPress={() => setGroup(group === g.key ? null : g.key)}
-              />
-            ))}
-          </View>
-        </ScrollView>
-        <Button title="Done" onPress={onClose} />
-      </View>
-    </Modal>
+        <Text style={[TYPE.overline, { color: COLORS.textMuted, marginTop: 10 }]}>Category</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <Chip label="All" active={group === null} onPress={() => setGroup(null)} />
+          {CATEGORY_GROUPS.map((g) => (
+            <Chip
+              key={g.key}
+              label={g.label}
+              icon={categoryIcon(g.categories[0])}
+              active={group === g.key}
+              onPress={() => setGroup(group === g.key ? null : g.key)}
+            />
+          ))}
+        </View>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+          <Button
+            variant="secondary"
+            title="Reset"
+            onPress={() => {
+              setGroup(null);
+              setSort(null);
+            }}
+            style={{ flex: 1 }}
+          />
+          <Button title="Show places" onPress={onClose} style={{ flex: 2 }} />
+        </View>
+      </ScrollView>
+    </Sheet>
   );
 }

@@ -3,24 +3,47 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { BRAND, COLORS } from '@jax/shared';
 
 /**
- * D72: "Near Avondale" at the top of the black bar on Home and Places. The server picks the
- * closest named neighborhood to your verified location; nothing shows when none is close.
+ * D72 / D78: the header title on Home and Places, with "Near Avondale" under it. The server
+ * picks the closest named neighborhood to your verified location; the second line is left
+ * out when none is close. `brand` shows the app name with a gold pin (Home).
  */
-export function AreaLabel({ name }: { name: string | null | undefined }) {
-  if (!name) return null;
+export function AreaTitle({
+  title,
+  area,
+  brand = false,
+}: {
+  title: string;
+  area: string | null | undefined;
+  brand?: boolean;
+}) {
   return (
     <View
-      accessibilityRole="text"
-      accessibilityLabel={`You're near ${name}`}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+      accessible
+      accessibilityRole="header"
+      accessibilityLabel={area ? `${title}. You're near ${area}` : title}
+      style={{ alignItems: 'center', maxWidth: 220 }}
     >
-      <Ionicons name="location" size={16} color={BRAND.gold} />
-      <Text
-        numberOfLines={1}
-        style={{ color: COLORS.onSurfaceInverse, fontSize: 15, fontWeight: '700', flexShrink: 1 }}
-      >
-        Near {name}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+        {brand ? <Ionicons name="location-sharp" size={19} color={BRAND.gold} /> : null}
+        <Text
+          style={{
+            color: COLORS.onSurfaceInverse,
+            fontSize: brand ? 22 : 17,
+            fontWeight: brand ? '900' : '800',
+            letterSpacing: brand ? -0.5 : 0,
+          }}
+        >
+          {title}
+        </Text>
+      </View>
+      {area ? (
+        <Text
+          numberOfLines={1}
+          style={{ color: COLORS.onSurfaceDarkMuted, fontSize: 12, fontWeight: '600' }}
+        >
+          Near {area}
+        </Text>
+      ) : null}
     </View>
   );
 }

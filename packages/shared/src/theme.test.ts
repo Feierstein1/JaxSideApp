@@ -42,6 +42,15 @@ describe('brand palette (D33)', () => {
     ['muted on surfaceDark', COLORS.onSurfaceDarkMuted, COLORS.surfaceDark],
     ['error on surfaceDark', COLORS.errorOnDark, COLORS.surfaceDark],
     ['gold on surfaceDark', BRAND.gold, COLORS.surfaceDark],
+    ['white on surfaceDarkRaised', COLORS.onSurfaceDark, COLORS.surfaceDarkRaised],
+    ['muted on surfaceDarkRaised', COLORS.onSurfaceDarkMuted, COLORS.surfaceDarkRaised],
+    ['gold on surfaceDarkRaised', BRAND.gold, COLORS.surfaceDarkRaised],
+    ['muted text on surfaceMuted', COLORS.textMuted, COLORS.surfaceMuted],
+    ['primary on surfaceMuted', COLORS.primary, COLORS.surfaceMuted],
+    ['primary on primarySoft', COLORS.primary, COLORS.primarySoft],
+    ['error on errorSoft', COLORS.error, COLORS.errorSoft],
+    ['text on errorSoft', COLORS.text, COLORS.errorSoft],
+    ['white on black (toast)', COLORS.onSurfaceInverse, COLORS.surfaceInverse],
   ])('%s passes 4.5:1', (_label, fg, bg) => {
     expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
   });

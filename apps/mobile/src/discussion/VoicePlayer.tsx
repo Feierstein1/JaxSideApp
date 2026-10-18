@@ -48,9 +48,10 @@ export function VoicePlayer({ voice }: { voice: Pick<VoiceView, 'url' | 'duratio
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
-        paddingVertical: 8,
-        paddingHorizontal: 10,
-        borderRadius: 24,
+        paddingVertical: 6,
+        paddingLeft: 6,
+        paddingRight: 14,
+        borderRadius: 26,
         backgroundColor: COLORS.surfaceInverse,
       }}
     >
@@ -59,16 +60,26 @@ export function VoicePlayer({ voice }: { voice: Pick<VoiceView, 'url' | 'duratio
         accessibilityLabel={status.playing ? 'Pause voice post' : 'Play voice post'}
         onPress={() => void toggle()}
         hitSlop={8}
-        style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: COLORS.accent,
+        }}
       >
+        {/* D78: black icon on a gold circle (D33). */}
         <Ionicons
           name={status.playing ? 'pause' : 'play'}
-          size={24}
-          color={COLORS.onSurfaceInverse}
+          size={20}
+          color={COLORS.onAccent}
+          style={status.playing ? undefined : { marginLeft: 2 }}
         />
       </Pressable>
+      <Ionicons name="mic" size={16} color={COLORS.onSurfaceDarkMuted} />
       <View
-        style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: COLORS.onSurfaceDarkMuted }}
+        style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: COLORS.surfaceDarkRaised }}
       >
         <View
           style={{
@@ -79,7 +90,9 @@ export function VoicePlayer({ voice }: { voice: Pick<VoiceView, 'url' | 'duratio
           }}
         />
       </View>
-      <Text style={{ color: COLORS.onSurfaceInverse, fontVariant: ['tabular-nums'] }}>
+      <Text
+        style={{ color: COLORS.onSurfaceInverse, fontWeight: '700', fontVariant: ['tabular-nums'] }}
+      >
         {status.playing || status.currentTime > 0 ? clock(status.currentTime) : clock(total)}
       </Text>
     </View>

@@ -1,9 +1,10 @@
-import { useCallback, useState, type ComponentProps, type ReactNode } from 'react';
-import { Linking, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { router, useFocusEffect, type Href } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   BIO_MAX,
+  categoryColor,
   COLORS,
   CONFIG_DEFAULTS,
   RADIUS_OPTIONS_MILES,
@@ -22,7 +23,10 @@ import { MedalList } from '@/profile/Medals';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { pickPhoto, uploadPhoto } from '@/discussion/photos';
 import { categoryLabel } from '@/format';
-import { Button, Segmented, styles } from '@/ui';
+import { haptic } from '@/motion';
+import { categoryIcon } from '@/places/PlaceHeader';
+import { elevation, RADIUS, SPACE, TYPE } from '@/tokens';
+import { Button, FormError, ListGroup, ListRow, Segmented, Sheet, styles } from '@/ui';
 
 interface Favorite {
   id: string;
@@ -35,6 +39,9 @@ interface Favorite {
  * - Profile: what other people see (username, bio, join date); edit your bio (P4.8, early).
  * - Settings (P4.11): account changes, radius, favorites, blocked users, policies,
  *   location help, sign-out (only here) and account deletion.
+ *
+ * D78: a light grey page with white grouped cards (the standard settings look), so it
+ * reads as a calm, different place from the dark feeds.
  */
 export default function AccountScreen() {
   const { state } = useAuth();
@@ -43,17 +50,20 @@ export default function AccountScreen() {
   if (state.status !== 'signedIn') return null;
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-      <View style={{ alignSelf: 'center', marginBottom: 12 }}>
-        <Segmented
-          options={[
-            { key: 'profile', label: 'Profile' },
-            { key: 'settings', label: 'Settings' },
-          ]}
-          value={tab}
-          onChange={(v) => setTab(v as 'profile' | 'settings')}
-        />
-      </View>
+    <ScrollView
+      style={{ backgroundColor: COLORS.surfaceMuted }}
+      contentContainerStyle={{ padding: SPACE.lg, paddingBottom: 48 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Segmented
+        stretch
+        options={[
+          { key: 'profile', label: 'Profile' },
+          { key: 'settings', label: 'Settings' },
+        ]}
+        value={tab}
+        onChange={(v) => setTab(v as 'profile' | 'settings')}
+      />
       {tab === 'profile' ? <ProfileTab /> : <SettingsTab />}
     </ScrollView>
   );
@@ -87,6 +97,7 @@ function ProfileTab() {
       const up = await uploadPhoto(asset);
       await api.put('/api/v1/me/avatar', { photoId: up.id });
       await refresh();
+      haptic.success();
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t change the photo.');
     } finally {
@@ -120,114 +131,147 @@ function ProfileTab() {
   const color = profileColor(user.color);
 
   return (
-    <View style={{ gap: 16 }}>
+    <View>
       {/* Header in your account color (D69). */}
       <View
         style={{
           alignItems: 'center',
-          padding: 20,
-          borderRadius: 12,
+          paddingTop: SPACE.xl,
+          paddingBottom: SPACE.xl - 4,
+          paddingHorizontal: SPACE.lg,
+          marginTop: SPACE.lg,
+          borderRadius: RADIUS.lg + 4,
           backgroundColor: color.hex,
+          ...elevation(1),
         }}
       >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Change your color"
           onPress={() => setPicking(true)}
-          hitSlop={8}
           style={{
             position: 'absolute',
             top: 10,
             right: 10,
-            width: 38,
-            height: 38,
-            borderRadius: 19,
+            height: 36,
+            paddingHorizontal: 12,
+            borderRadius: 18,
+            flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 2,
+            gap: 6,
+            borderWidth: 1.5,
             borderColor: color.text,
           }}
         >
-          <Ionicons name="brush" size={18} color={color.text} />
+          <Ionicons name="color-palette-outline" size={16} color={color.text} />
+          <Text style={{ color: color.text, fontWeight: '700', fontSize: 13 }}>Color</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Change profile photo"
+          accessibilityLabel={user.avatarUrl ? 'Change profile photo' : 'Add a profile photo'}
+          accessibilityState={{ busy: photoBusy }}
           onPress={() => void changePhoto()}
           disabled={photoBusy}
         >
-          <ProfileAvatar name={user.username} url={user.avatarUrl} ringColor={color.text} />
+          <ProfileAvatar
+            name={user.username}
+            url={user.avatarUrl}
+            size={92}
+            ringColor={color.text}
+          />
+          {/* D78: camera badge on the photo, the usual "tap to change" cue. */}
+          <View
+            style={{
+              position: 'absolute',
+              right: -2,
+              bottom: -2,
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: COLORS.accent,
+              borderWidth: 2,
+              borderColor: COLORS.background,
+            }}
+          >
+            <Ionicons
+              name={photoBusy ? 'hourglass-outline' : 'camera'}
+              size={16}
+              color={COLORS.onAccent}
+            />
+          </View>
         </Pressable>
-        <Text
-          style={{ color: color.text, marginTop: 6, fontSize: 13, fontWeight: '600' }}
-          onPress={() => void changePhoto()}
-        >
-          {photoBusy ? 'Uploading…' : user.avatarUrl ? 'Change photo' : 'Add a photo'}
-        </Text>
-        <Text style={{ color: color.text, fontSize: 22, fontWeight: '800', marginTop: 10 }}>
+        <Text style={{ color: color.text, fontSize: 24, fontWeight: '900', marginTop: 12 }}>
           {user.username}
         </Text>
-        <Text style={{ color: color.text, marginTop: 2 }}>Joined {joined}</Text>
+        <Text style={{ color: color.text, marginTop: 2, fontWeight: '600' }}>Joined {joined}</Text>
       </View>
 
-      <ProfileSection title="About">
-        {editing ? (
-          <>
-            <TextInput
-              accessibilityLabel="Your bio"
-              value={bio}
-              onChangeText={setBio}
-              maxLength={BIO_MAX}
-              multiline
-              placeholder="A line or two about you (optional)"
-              placeholderTextColor={COLORS.placeholder}
-              style={[
-                styles.input,
-                {
-                  minHeight: 90,
-                  textAlignVertical: 'top',
-                  backgroundColor: COLORS.background,
-                  borderTopLeftRadius: 0,
-                  borderTopRightRadius: 0,
-                },
-              ]}
-            />
-            <Text style={styles.muted}>
-              {bio.length}/{BIO_MAX}
-            </Text>
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            <Button title="Save" onPress={() => void save()} busy={busy} />
-            <Button
-              variant="link"
-              title="Cancel"
-              onPress={() => {
-                setBio(user.bio ?? '');
-                setEditing(false);
-              }}
-            />
-          </>
-        ) : (
-          <>
-            <View style={boxStyle}>
-              <Text style={[styles.body, !user.bio && styles.muted]}>
-                {user.bio || 'No bio yet.'}
+      <ListGroup title="About">
+        <View style={{ padding: SPACE.lg }}>
+          {editing ? (
+            <>
+              <TextInput
+                accessibilityLabel="Your bio"
+                value={bio}
+                onChangeText={setBio}
+                maxLength={BIO_MAX}
+                multiline
+                autoFocus
+                placeholder="A line or two about you (optional)"
+                placeholderTextColor={COLORS.placeholder}
+                style={[styles.input, { minHeight: 96, textAlignVertical: 'top' }]}
+              />
+              <Text style={[styles.hint, { textAlign: 'right' }]}>
+                {bio.length}/{BIO_MAX}
               </Text>
-            </View>
-            <Text
-              accessibilityRole="button"
-              style={[styles.linkText, { marginTop: 8 }]}
-              onPress={() => setEditing(true)}
-            >
-              {user.bio ? 'Edit bio' : 'Add a bio'}
-            </Text>
-          </>
-        )}
-      </ProfileSection>
+              {error ? <FormError>{error}</FormError> : null}
+              <View style={{ flexDirection: 'row', gap: SPACE.sm }}>
+                <Button
+                  variant="secondary"
+                  title="Cancel"
+                  style={{ flex: 1 }}
+                  onPress={() => {
+                    setBio(user.bio ?? '');
+                    setEditing(false);
+                  }}
+                />
+                <Button title="Save" style={{ flex: 1 }} onPress={() => void save()} busy={busy} />
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.body, !user.bio && styles.muted]}>
+                {user.bio || 'No bio yet. Say a little about yourself.'}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setEditing(true)}
+                style={{
+                  alignSelf: 'flex-start',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  minHeight: 44,
+                }}
+              >
+                <Ionicons name="create-outline" size={17} color={COLORS.primary} />
+                <Text style={styles.linkText}>{user.bio ? 'Edit bio' : 'Add a bio'}</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+      </ListGroup>
 
-      <ProfileSection title="Medals">
-        <View style={boxStyle}>{medals ? <MedalList medals={medals} /> : null}</View>
-      </ProfileSection>
-      {error && !editing ? <Text style={styles.error}>{error}</Text> : null}
+      <ListGroup title="Medals">
+        <View style={{ padding: SPACE.lg }}>{medals ? <MedalList medals={medals} /> : null}</View>
+      </ListGroup>
+      {error && !editing ? (
+        <View style={{ marginTop: SPACE.md }}>
+          <FormError>{error}</FormError>
+        </View>
+      ) : null}
 
       <ColorPicker
         open={picking}
@@ -238,43 +282,12 @@ function ProfileTab() {
           try {
             await api.patch('/api/v1/me/color', { color: key });
             await refresh();
+            haptic.success();
           } catch (e) {
             setError(e instanceof ApiRequestError ? e.message : 'Couldn’t change the color.');
           }
         }}
       />
-    </View>
-  );
-}
-
-const boxStyle = {
-  backgroundColor: COLORS.background,
-  borderWidth: 1,
-  borderTopWidth: 0,
-  borderColor: COLORS.border,
-  borderBottomLeftRadius: 10,
-  borderBottomRightRadius: 10,
-  padding: 14,
-} as const;
-
-/** A section (D70): black title bar with white text, joined to the white box below. */
-function ProfileSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <View>
-      <View
-        style={{
-          backgroundColor: COLORS.surfaceInverse,
-          borderTopLeftRadius: 10,
-          borderTopRightRadius: 10,
-          paddingHorizontal: 14,
-          paddingVertical: 9,
-        }}
-      >
-        <Text style={{ color: COLORS.onSurfaceInverse, fontWeight: '800', fontSize: 16 }}>
-          {title}
-        </Text>
-      </View>
-      {children}
     </View>
   );
 }
@@ -292,23 +305,10 @@ function ColorPicker({
   onPick: (key: string) => void;
 }) {
   return (
-    <Modal visible={open} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable
-        style={{ flex: 1, backgroundColor: COLORS.scrim }}
-        onPress={onClose}
-        accessibilityLabel="Close"
-      />
-      <View
-        style={{
-          backgroundColor: COLORS.background,
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          padding: 20,
-        }}
-      >
-        <Text style={[styles.title, { fontSize: 20 }]}>Your color</Text>
-        <Text style={[styles.muted, { marginBottom: 12 }]}>
-          Used for your profile and the header and border of your posts.
+    <Sheet open={open} onClose={onClose} title="Your color">
+      <View style={{ paddingHorizontal: 20, paddingBottom: SPACE.sm }}>
+        <Text style={[TYPE.callout, { color: COLORS.textMuted, marginBottom: SPACE.lg }]}>
+          Used for your profile and the header of your posts.
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
           {PROFILE_COLORS.map((c) => {
@@ -319,8 +319,11 @@ function ColorPicker({
                 accessibilityRole="radio"
                 accessibilityLabel={c.name}
                 accessibilityState={{ selected }}
-                onPress={() => onPick(c.key)}
-                style={{
+                onPress={() => {
+                  haptic.select();
+                  onPick(c.key);
+                }}
+                style={({ pressed }) => ({
                   width: 46,
                   height: 46,
                   borderRadius: 23,
@@ -329,16 +332,16 @@ function ColorPicker({
                   justifyContent: 'center',
                   borderWidth: selected ? 3 : 1,
                   borderColor: selected ? COLORS.text : COLORS.cardBorder,
-                }}
+                  transform: [{ scale: pressed ? 0.9 : 1 }],
+                })}
               >
                 {selected ? <Ionicons name="checkmark" size={24} color={textOn(c.hex)} /> : null}
               </Pressable>
             );
           })}
         </View>
-        <Button variant="link" title="Cancel" onPress={onClose} />
       </View>
-    </Modal>
+    </Sheet>
   );
 }
 
@@ -378,62 +381,106 @@ function SettingsTab() {
 
   return (
     <View>
-      <Text style={styles.label}>Email (private)</Text>
-      <Text style={styles.body}>
-        {user.email} {user.emailVerified ? '· confirmed' : ''}
-      </Text>
+      {error ? (
+        <View style={{ marginTop: SPACE.lg }}>
+          <FormError>{error}</FormError>
+        </View>
+      ) : null}
+
+      <ListGroup title="Email" footer="Private. Never shown to anyone.">
+        <ListRow
+          icon="mail-outline"
+          label={user.email}
+          right={
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: RADIUS.pill,
+                backgroundColor: user.emailVerified ? COLORS.primarySoft : COLORS.accentSoft,
+              }}
+            >
+              <Ionicons
+                name={user.emailVerified ? 'checkmark-circle' : 'alert-circle'}
+                size={14}
+                color={user.emailVerified ? COLORS.primary : COLORS.text}
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: '800',
+                  color: user.emailVerified ? COLORS.primary : COLORS.text,
+                }}
+              >
+                {user.emailVerified ? 'Confirmed' : 'Not confirmed'}
+              </Text>
+            </View>
+          }
+        />
+      </ListGroup>
       {!user.emailVerified ? <EmailCodeCard email={user.email} /> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Section title="Your account">
-        <Row icon="at" label="Change username" href="/account/username" />
-        <Row icon="mail-outline" label="Change email" href="/account/email" />
-        <Row icon="key-outline" label="Change password" href="/account/password" />
-        <Row icon="ban-outline" label="Blocked users" href="/account/blocked" />
-      </Section>
+      <ListGroup title="Your account">
+        <ListRow icon="at" label="Change username" href="/account/username" />
+        <ListRow icon="mail-outline" label="Change email" href="/account/email" />
+        <ListRow icon="key-outline" label="Change password" href="/account/password" />
+        <ListRow icon="ban-outline" label="Blocked users" href="/account/blocked" />
+      </ListGroup>
 
-      <Text style={[styles.label, { marginTop: 20 }]}>Radius</Text>
-      <Text style={[styles.muted, { marginBottom: 4 }]}>
-        How far around you the feed and Places reach. To comment, vote or join a business discussion
-        you need to be within {yardsLabel(CONFIG_DEFAULTS['radius.general.maxMiles'])} of it.
-      </Text>
-      <Options values={[...RADIUS_OPTIONS_MILES]} selected={radius} onPick={(v) => setRadius(v)} />
+      <ListGroup
+        title="Radius"
+        footer={`How far around you the feed and Places reach. To comment, vote or join a business discussion you need to be within ${yardsLabel(CONFIG_DEFAULTS['radius.general.maxMiles'])} of it.`}
+      >
+        <View style={{ padding: SPACE.md }}>
+          <Segmented
+            stretch
+            options={RADIUS_OPTIONS_MILES.map((v) => ({ key: String(v), label: yardsLabel(v) }))}
+            value={String(RADIUS_OPTIONS_MILES.find((v) => Math.abs(v - radius) < 1e-9) ?? radius)}
+            onChange={(k) => void setRadius(Number(k))}
+          />
+        </View>
+      </ListGroup>
 
-      <Text style={[styles.label, { marginTop: 20 }]}>Favorite places</Text>
-      {favorites.length === 0 ? (
-        <Text style={styles.muted}>Save places from the Places tab.</Text>
-      ) : (
-        favorites.map((f) => (
-          <Pressable
-            key={f.id}
-            accessibilityRole="button"
-            onPress={() => router.push(`/places/${f.id}`)}
-            style={{ paddingVertical: 8 }}
-          >
-            <Text style={styles.linkText}>
-              ★ {f.name} <Text style={styles.muted}>· {categoryLabel(f.category)}</Text>
-            </Text>
-          </Pressable>
-        ))
-      )}
+      <ListGroup
+        title="Favorite places"
+        footer={favorites.length === 0 ? 'Tap the ☆ on a place to save it here.' : undefined}
+      >
+        {favorites.length === 0 ? (
+          <ListRow icon="star-outline" label="No favorites yet" />
+        ) : (
+          favorites.map((f) => (
+            <ListRow
+              key={f.id}
+              icon={categoryIcon(f.category)}
+              iconColor={categoryColor(f.category)}
+              label={f.name}
+              detail={categoryLabel(f.category)}
+              href={`/places/${f.id}`}
+            />
+          ))
+        )}
+      </ListGroup>
 
-      <Section title="Safety">
-        <Row icon="flag-outline" label="My reports" href="/account/reports" />
-        <Row icon="add-circle-outline" label="My suggestions" href="/account/suggestions" />
-        <Row icon="shield-checkmark-outline" label="Account standing" href="/account/standing" />
-      </Section>
+      <ListGroup title="Safety">
+        <ListRow icon="flag-outline" label="My reports" href="/account/reports" />
+        <ListRow icon="add-circle-outline" label="My suggestions" href="/account/suggestions" />
+        <ListRow
+          icon="shield-checkmark-outline"
+          label="Account standing"
+          href="/account/standing"
+        />
+      </ListGroup>
 
       <LocationHelp />
       <Policies />
 
-      <View style={{ marginTop: 24 }}>
-        <Button title="Sign out" onPress={signOut} />
-        <Button
-          variant="link"
-          title="Delete account"
-          onPress={() => router.push('/account/delete')}
-        />
-      </View>
+      <ListGroup>
+        <ListRow icon="log-out-outline" label="Sign out" tone="primary" onPress={signOut} />
+        <ListRow icon="trash-outline" label="Delete account" tone="danger" href="/account/delete" />
+      </ListGroup>
     </View>
   );
 }
@@ -444,130 +491,95 @@ function GuestAccount() {
   if (state.status !== 'guest') return null;
   const { guest } = state;
   return (
-    <ScrollView contentContainerStyle={styles.screen}>
-      <Text style={styles.title}>You’re browsing as a guest</Text>
-      <View style={guest.expiringSoon ? styles.banner : undefined}>
-        <Text style={styles.body}>
-          Your guest session ends after {CONFIG_DEFAULTS['guest.inactivityDays']} days without use
-          {guest.expiringSoon
-            ? `, in ${guest.daysLeft} ${guest.daysLeft === 1 ? 'day' : 'days'}`
-            : ''}
-          . Using Jax resets the clock.
+    <ScrollView
+      style={{ backgroundColor: COLORS.surfaceMuted }}
+      contentContainerStyle={{ padding: SPACE.lg, paddingBottom: 48 }}
+    >
+      <View
+        style={{
+          alignItems: 'center',
+          padding: SPACE.xl,
+          gap: SPACE.sm,
+          borderRadius: RADIUS.lg + 4,
+          backgroundColor: COLORS.surfaceInverse,
+        }}
+      >
+        <View
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: 36,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: COLORS.surfaceDarkRaised,
+          }}
+        >
+          <Ionicons name="person-outline" size={34} color={COLORS.accent} />
+        </View>
+        <Text
+          accessibilityRole="header"
+          style={[TYPE.title, { color: COLORS.onSurfaceInverse, textAlign: 'center' }]}
+        >
+          You’re browsing as a guest
         </Text>
+        <Text style={[TYPE.callout, { color: COLORS.onSurfaceDarkMuted, textAlign: 'center' }]}>
+          Guests can browse posts and comments nearby. Create a free account to post, comment, vote,
+          report, join place discussions and keep a profile.
+        </Text>
+        <Button
+          variant="accent"
+          title="Sign up or sign in"
+          icon="person-add-outline"
+          onPress={() => void signOut()}
+          style={{ alignSelf: 'stretch', marginTop: SPACE.md }}
+        />
       </View>
-      <Text style={[styles.body, { marginTop: 8 }]}>
-        Guests can browse posts and comments in their area. To post, comment, vote, report, use
-        business discussions and keep a profile, create a free account.
-      </Text>
-      <Button title="Sign up or sign in" onPress={() => void signOut()} />
+      <ListGroup
+        title="Guest session"
+        footer={`Your guest session ends after ${CONFIG_DEFAULTS['guest.inactivityDays']} days without use. Using Jax resets the clock.`}
+      >
+        <ListRow
+          icon="time-outline"
+          label={
+            guest.expiringSoon
+              ? `Ends in ${guest.daysLeft} ${guest.daysLeft === 1 ? 'day' : 'days'}`
+              : 'Active'
+          }
+        />
+      </ListGroup>
       <LocationHelp />
       <Policies />
     </ScrollView>
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <View style={{ marginTop: 20 }}>
-      <Text style={styles.label}>{title}</Text>
-      {children}
-    </View>
-  );
-}
-
-function Row({
-  icon,
-  label,
-  href,
-  onPress,
-}: {
-  icon: ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  href?: Href;
-  onPress?: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress ?? (() => href && router.push(href))}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.cardBorder,
-      }}
-    >
-      <Ionicons name={icon} size={20} color={COLORS.primary} />
-      <Text style={[styles.body, { flex: 1 }]}>{label}</Text>
-      <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-    </Pressable>
-  );
-}
-
 /** P4.11: location-permission guidance (D16: foreground only, asked once). */
 function LocationHelp() {
   return (
-    <Section title="Location">
-      <Text style={styles.body}>
-        Jax uses your location only while the app is open, to show and verify conversations near
-        you. It never tracks you in the background. To change this, open your phone’s settings.
-      </Text>
-      <Row
+    <ListGroup
+      title="Location"
+      footer="Jax uses your location only while the app is open, to show and verify conversations near you. It never tracks you in the background."
+    >
+      <ListRow
         icon="settings-outline"
         label="Open phone settings"
         onPress={() => void Linking.openSettings()}
       />
-    </Section>
+    </ListGroup>
   );
 }
 
 function Policies() {
   return (
-    <Section title="Policies">
-      <Row icon="document-text-outline" label="Terms of Service" href="/account/legal/terms" />
-      <Row icon="lock-closed-outline" label="Privacy Policy" href="/account/legal/privacy" />
-      <Row icon="people-outline" label="Community Guidelines" href="/account/legal/guidelines" />
-      <Row icon="time-outline" label="Data Retention" href="/account/legal/retention" />
-    </Section>
-  );
-}
-
-function Options({
-  values,
-  selected,
-  onPick,
-}: {
-  values: number[];
-  selected: number;
-  onPick: (v: number) => void;
-}) {
-  return (
-    <View style={[styles.row, { flexWrap: 'wrap' }]}>
-      {values.map((v) => {
-        const active = Math.abs(v - selected) < 1e-9;
-        return (
-          <Pressable
-            key={v}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: active }}
-            onPress={() => onPick(v)}
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: active ? COLORS.accent : COLORS.border,
-              backgroundColor: active ? COLORS.accent : COLORS.background,
-            }}
-          >
-            <Text style={{ color: active ? COLORS.onAccent : COLORS.text, fontWeight: '600' }}>
-              {yardsLabel(v)}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    <ListGroup title="Policies">
+      <ListRow icon="document-text-outline" label="Terms of Service" href="/account/legal/terms" />
+      <ListRow icon="lock-closed-outline" label="Privacy Policy" href="/account/legal/privacy" />
+      <ListRow
+        icon="people-outline"
+        label="Community Guidelines"
+        href="/account/legal/guidelines"
+      />
+      <ListRow icon="time-outline" label="Data Retention" href="/account/legal/retention" />
+    </ListGroup>
   );
 }

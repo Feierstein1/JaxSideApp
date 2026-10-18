@@ -50,8 +50,8 @@ that test tells you whether the result is still readable.
   branding.
 - **Background:** white.
 
-Shared building blocks live in `apps/mobile/src/ui.tsx` (`Field`, `PasswordField`, `Button`,
-`FormError`, `headerOptions`, `switchColors`, `styles`). Reuse them instead of styling screens one by one.
+Shared building blocks live in `apps/mobile/src/ui.tsx` (see "Design system" below). Reuse
+them instead of styling screens one by one.
 
 ## Screen look (D69, D70)
 
@@ -74,6 +74,47 @@ Dark, clearly different hues, all with white text ≥ 4.5:1 (tested): Food `#B71
 magenta · Things to do `#BF360C` burnt orange · Services & auto `#0D47A1` blue · Hotels
 `#00695C` teal-green · Other `#37474F` slate. Defined once as `CATEGORY_COLORS` in
 `@jax/shared`.
+
+## Design system (D78, experimental redesign)
+
+The 2026-10-18 redesign is **one commit** so it can be reverted as a whole. Colors are
+unchanged (D33); what changed is structure, spacing, motion and components.
+
+**Tokens** (`apps/mobile/src/tokens.ts`):
+
+- Spacing `SPACE`: 2 · 4 · 8 · 12 · 16 · 24 · 32. Corners `RADIUS`: 8 · 12 · 16 · 24 · pill.
+- Type `TYPE`: display 40 · title 24 · headline 18 · body 16 · callout 15 · label 14 ·
+  caption 13 · overline 12 (caps). Use these instead of ad-hoc font sizes.
+- `elevation(1|2|3)`: resting card, floating button, toast or sheet.
+- New colors in `@jax/shared` (tested): `surfaceDarkRaised` (search pills, chips and icon
+  buttons on black), `skeletonOnDark` / `skeletonOnLight` (loading shapes), `hairline`
+  (dividers inside white cards), `errorSoft` (behind form errors).
+
+**Components** (`apps/mobile/src/ui.tsx`): `PressableScale` (shrinks a little when pressed),
+`Button` (primary, accent = gold, secondary, danger, link, linkOnDark, ghostOnDark; optional
+icon), `Field` (teal 2 px outline while typing, `hint` line, error with an icon),
+`PasswordField` (eye icon inside), `Banner`, `Chip` (`dark`, removable), `Segmented` (pill
+track; `dark` = gold thumb), `IconButton`, `SearchField`, `FloatingButton`, `EmptyState`,
+`ErrorState`, `Pulse` + `Bone` (skeletons), `useToast`, `Sheet` (bottom sheet with handle),
+`ListGroup` + `ListRow` (grouped settings), `SectionTitle`, `openMenu` ("•••" menus).
+
+**Patterns:**
+
+- **Content first:** only search and the type tabs stay fixed above the feed; sort and
+  notices scroll away. The neighborhood moves into the header as a subtitle.
+- **Loading** shows skeletons shaped like the content; **empty** states have an icon, a
+  title, one helpful line and (where it makes sense) one action; **errors** show the message
+  with Try again.
+- **Secondary actions** (report, delete, block) live in "•••" menus, not as loose links.
+  Anything destructive asks first.
+- **Feedback:** light haptics (`src/motion.ts`, `expo-haptics`, free and in Expo Go) on votes,
+  favorites, tab switches and successful posts. Every animation checks the phone's reduce
+  motion setting (`useReducedMotion`).
+- **Two moods:** dark feeds (Home, Places, posts, profiles) and a light grey Account area with
+  white grouped cards.
+- **Post cards** keep the author's color header (D69) but drop the 3 px colored frame; the
+  name and "time · distance" are stacked; votes and comments are pills. **Place cards** keep
+  the category color (D70), add a category icon, and drop the 2 px black frame.
 
 ## Planned (not built yet)
 

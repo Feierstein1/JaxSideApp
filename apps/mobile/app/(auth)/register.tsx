@@ -1,10 +1,19 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Switch, Text, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
-import { PASSWORD_MIN, registerRequestSchema } from '@jax/shared';
+import { COLORS, PASSWORD_MIN, registerRequestSchema } from '@jax/shared';
 import { api } from '@/api';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
-import { Button, Field, FormError, PasswordField, styles, switchColors } from '@/ui';
+import { SPACE, TYPE } from '@/tokens';
+import { Banner, Button, Field, FormError, PasswordField, styles, switchColors } from '@/ui';
 
 export default function Register() {
   const [username, setUsername] = useState('');
@@ -52,14 +61,22 @@ export default function Register() {
       style={{ flex: 1 }}
     >
       <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-        <Text style={[styles.body, styles.banner]}>
-          Jax is for adults 18 and older. We use your birth year only to check that, then discard
-          it. We don&apos;t store it. Your email is stored encrypted and never shown to anyone. This
-          is a simple age check, not identity verification.
+        <Text style={[TYPE.title, { color: COLORS.text }]}>Join your neighbors</Text>
+        <Text style={[TYPE.callout, { color: COLORS.textMuted, marginBottom: SPACE.lg }]}>
+          A pseudonymous community for people in Jacksonville. Pick a username; nobody sees your
+          real name or email.
         </Text>
+        <Banner icon="shield-checkmark-outline">
+          <Text style={[TYPE.callout, { color: COLORS.text }]}>
+            Jax is for adults 18 and older. We use your birth year only to check that, then discard
+            it. We don&apos;t store it. Your email is stored encrypted and never shown to anyone.
+            This is a simple age check, not identity verification.
+          </Text>
+        </Banner>
         <FormError>{errors.form}</FormError>
         <Field
           label="Username"
+          hint="This is the name people see. You can change it later."
           value={username}
           onChangeText={setUsername}
           autoCapitalize="none"
@@ -95,6 +112,7 @@ export default function Register() {
         />
         <Field
           label="Birth year"
+          hint="Only used to check you're 18+. Not stored."
           value={birthYear}
           onChangeText={setBirthYear}
           keyboardType="number-pad"
@@ -102,27 +120,17 @@ export default function Register() {
           placeholder="e.g. 1990"
           error={errors.birthYear}
         />
-        <View style={styles.row}>
-          <Switch
-            {...switchColors}
-            value={confirmAdult}
-            onValueChange={setConfirmAdult}
-            accessibilityLabel="I am 18 or older"
-          />
-          <Text style={styles.body}>I am 18 or older</Text>
-        </View>
-        <FormError>{errors.confirmAdult}</FormError>
-        <View style={styles.row}>
-          <Switch
-            {...switchColors}
+        <View style={{ marginTop: SPACE.sm }}>
+          <SwitchRow label="I am 18 or older" value={confirmAdult} onChange={setConfirmAdult} />
+          <FormError>{errors.confirmAdult}</FormError>
+          <SwitchRow
+            label="I accept the Terms of Service"
             value={acceptTerms}
-            onValueChange={setAcceptTerms}
-            accessibilityLabel="I accept the Terms of Service"
+            onChange={setAcceptTerms}
           />
-          <Text style={styles.body}>I accept the Terms of Service</Text>
+          <FormError>{errors.acceptTerms}</FormError>
         </View>
-        <FormError>{errors.acceptTerms}</FormError>
-        <Text style={styles.muted}>
+        <Text style={[TYPE.caption, styles.muted, { marginTop: SPACE.xs }]}>
           Read the{' '}
           <Text style={styles.linkText} onPress={() => router.push('/legal/terms')}>
             Terms
@@ -137,8 +145,53 @@ export default function Register() {
           </Text>
           .
         </Text>
-        <Button title="Create account" onPress={submit} busy={busy} />
+        <Button
+          title="Create account"
+          onPress={submit}
+          busy={busy}
+          style={{ marginTop: SPACE.lg }}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+/** D78: the whole row toggles the switch (a bigger target than the switch alone). */
+function SwitchRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value }}
+      onPress={() => onChange(!value)}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACE.md,
+        minHeight: 52,
+        paddingHorizontal: SPACE.md,
+        marginBottom: SPACE.sm,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: value ? COLORS.primary : COLORS.cardBorder,
+        backgroundColor: pressed || value ? COLORS.primarySoft : COLORS.background,
+      })}
+    >
+      <Text style={[TYPE.body, { flex: 1, color: COLORS.text }]}>{label}</Text>
+      <Switch
+        {...switchColors}
+        value={value}
+        onValueChange={onChange}
+        importantForAccessibility="no-hide-descendants"
+      />
+    </Pressable>
   );
 }

@@ -48,6 +48,17 @@ export const COLORS = {
   onSurfaceDark: '#FFFFFF', // 16.6:1
   onSurfaceDarkMuted: '#B8BCC2', // secondary text on surfaceDark (9.3:1)
   errorOnDark: '#FF8A80', // error text on surfaceDark (8.0:1)
+  /**
+   * D78: a raised dark surface for search fields, chips and icon buttons on the black bar
+   * and the dark-grey background. White, muted and gold text all pass 4.5:1 on it (tested).
+   */
+  surfaceDarkRaised: '#2B2D31',
+  /** D78: loading placeholders (decorative, no contrast minimum). */
+  skeletonOnDark: '#33363B',
+  skeletonOnLight: '#E7E8EB',
+  /** D78: hairline dividers inside white cards (decorative). */
+  hairline: '#EDEEF0',
   // Functional colors outside the brand palette, kept for clarity and accessibility.
   error: '#B00020', // 7.3:1 on white
+  errorSoft: '#FDECEE', // D78: light red tint behind form errors; error and black text pass
 } as const;

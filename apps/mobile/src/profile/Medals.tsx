@@ -43,23 +43,32 @@ export function MedalIcons({
 
 /** The medals section of a profile. */
 export function MedalList({ medals }: { medals: Medal[] }) {
-  if (!medals.length) return <Text style={styles.muted}>No medals yet.</Text>;
+  if (!medals.length) {
+    return (
+      <Text style={styles.muted}>
+        No medals yet. They come with your first post, approved place suggestions and well-received
+        posts.
+      </Text>
+    );
+  }
   return (
-    <View style={{ gap: 10 }}>
+    <View style={{ gap: 14 }}>
       {medals.map((m) => (
-        <View key={m.key} style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+        <View key={m.key} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
           <View
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
+              width: 44,
+              height: 44,
+              borderRadius: 22,
               borderWidth: 2,
-              borderColor: COLORS.accentDark,
+              borderColor: COLORS.accent,
+              backgroundColor: COLORS.accentSoft,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Ionicons name={iconFor(m.key)} size={18} color={COLORS.accentDark} />
+            {/* Old gold icon on the light gold tint (icons need 3:1, D33). */}
+            <Ionicons name={iconFor(m.key)} size={21} color={COLORS.accentDark} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.label}>{m.name}</Text>

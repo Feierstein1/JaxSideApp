@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   COLORS,
   COMMENT_MAX,
@@ -22,10 +23,13 @@ import {
 } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import { timeAgo } from '@/format';
-import { Button, styles } from '@/ui';
+import { haptic } from '@/motion';
+import { ProfileAvatar } from '@/profile/ProfileAvatar';
+import { RADIUS, SPACE, TYPE } from '@/tokens';
+import { Button, ErrorState, openMenu, SectionTitle } from '@/ui';
 import { createComment, deleteComment, deletePost, fetchPost, markFeedsDirty } from './api';
 import { sendScreened } from './screening';
-import { authorName, openAuthor, PostCard } from './PostCard';
+import { authorName, openAuthor, PostCard, PostSkeleton } from './PostCard';
 import { useGuest } from '@/auth/guest';
 import { MedalIcons } from '@/profile/Medals';
 import { ReportSheet } from '@/report/ReportSheet';
@@ -33,7 +37,11 @@ import { VoteControl } from './VoteControl';
 
 const MAX_DEPTH = CONFIG_DEFAULTS['comments.maxDepth'];
 
-/** P3.3 / P3.11: one post with its comment thread and a reply box. */
+/**
+ * P3.3 / P3.11: one post with its comment thread and a reply box. D78: the post's actions
+ * (report, delete) are in its "•••" menu; comments sit in one white panel as a thread with
+ * avatars; the reply box is a rounded field with a round send button.
+ */
 export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
   const [post, setPost] = useState<PostView>();
   const [comments, setComments] = useState<CommentView[]>([]);
@@ -69,6 +77,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
         createComment(kind, id, text.trim(), replyTo?.id, ok),
       );
       if (!sent) return; // chose to edit after a warning
+      haptic.success();
       setText('');
       setReplyTo(undefined);
       markFeedsDirty(); // comment count changed
@@ -110,17 +119,28 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
   }
 
   if (!post) {
-    return error ? (
-      <View style={[styles.screen, { flex: 1, backgroundColor: COLORS.surfaceDark }]}>
-        <Text style={[styles.error, { color: COLORS.errorOnDark }]}>{error}</Text>
-        <Button variant="linkOnDark" title="Try again" onPress={() => void load()} />
-      </View>
-    ) : (
-      <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
-        <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.accent} />
+    return (
+      <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark, paddingTop: 6 }}>
+        {error ? <ErrorState dark message={error} onRetry={() => void load()} /> : <PostSkeleton />}
       </View>
     );
   }
+
+  const postMenu = post.isMine
+    ? () =>
+        openMenu('Your post', [
+          { label: 'Delete post', destructive: true, onPress: confirmDeletePost },
+        ])
+    : !isGuest
+      ? () =>
+          openMenu('Post', [
+            {
+              label: 'Report post',
+              destructive: true,
+              onPress: () => setReporting({ type: kind, id: post.id }),
+            },
+          ])
+      : undefined;
 
   return (
     <KeyboardAvoidingView
@@ -130,114 +150,166 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
       keyboardVerticalOffset={90}
     >
       <ScrollView
-        contentContainerStyle={{ paddingVertical: 6 }}
+        contentContainerStyle={{ paddingTop: 6, paddingBottom: SPACE.xl }}
         keyboardShouldPersistTaps="handled"
       >
         <PostCard
           post={post}
           full
           onError={setError}
+          onMore={postMenu}
           onReportPhoto={
             !isGuest && !post.isMine ? (id) => setReporting({ type: 'photo', id }) : undefined
           }
         />
-        <View style={{ paddingHorizontal: 16, flexDirection: 'row', gap: 16 }}>
-          {post.isMine ? (
-            <Button variant="linkOnDark" title="Delete my post" onPress={confirmDeletePost} />
-          ) : !isGuest ? (
-            <Button
-              variant="linkOnDark"
-              title="Report post"
-              onPress={() => setReporting({ type: kind, id: post.id })}
-            />
-          ) : null}
-        </View>
 
-        <Text
-          style={[
-            styles.label,
-            { marginHorizontal: 16, marginTop: 8, color: COLORS.onSurfaceDark },
-          ]}
+        <SectionTitle dark>
+          {comments.length === 0 ? 'Comments' : `Comments · ${comments.length}`}
+        </SectionTitle>
+        <View
+          style={{
+            marginHorizontal: SPACE.md,
+            borderRadius: RADIUS.lg,
+            backgroundColor: COLORS.background,
+            overflow: 'hidden',
+          }}
         >
-          {comments.length === 0 ? 'No comments yet. Start the conversation.' : 'Comments'}
-        </Text>
-        {comments.map((c) => (
-          <CommentRow
-            key={c.id}
-            c={c}
-            onReply={
-              canComment && c.depth < MAX_DEPTH && c.status === 'visible'
-                ? () => setReplyTo(c)
-                : undefined
-            }
-            onDelete={
-              c.isMine && !isGuest && c.status === 'visible'
-                ? () => void removeComment(c)
-                : undefined
-            }
-            onReport={
-              !isGuest && !c.isMine && c.status === 'visible'
-                ? () => setReporting({ type: 'comment', id: c.id })
-                : undefined
-            }
-            onError={setError}
-          />
-        ))}
-        {error ? (
-          <Text style={[styles.error, { marginHorizontal: 16, color: COLORS.errorOnDark }]}>
-            {error}
-          </Text>
-        ) : null}
+          {comments.length === 0 ? (
+            <View style={{ alignItems: 'center', padding: SPACE.xl, gap: 6 }}>
+              <Ionicons name="chatbubble-ellipses-outline" size={30} color={COLORS.primary} />
+              <Text style={[TYPE.headline, { color: COLORS.text }]}>No comments yet</Text>
+              <Text style={[TYPE.callout, { color: COLORS.textMuted, textAlign: 'center' }]}>
+                {canComment ? 'Start the conversation.' : 'Nobody has replied yet.'}
+              </Text>
+            </View>
+          ) : (
+            comments.map((c, i) => (
+              <CommentRow
+                key={c.id}
+                c={c}
+                first={i === 0}
+                onReply={
+                  canComment && c.depth < MAX_DEPTH && c.status === 'visible'
+                    ? () => setReplyTo(c)
+                    : undefined
+                }
+                onDelete={
+                  c.isMine && !isGuest && c.status === 'visible'
+                    ? () => void removeComment(c)
+                    : undefined
+                }
+                onReport={
+                  !isGuest && !c.isMine && c.status === 'visible'
+                    ? () => setReporting({ type: 'comment', id: c.id })
+                    : undefined
+                }
+                onError={setError}
+              />
+            ))
+          )}
+        </View>
+        {error ? <ErrorState dark message={error} /> : null}
       </ScrollView>
 
       {!canComment ? (
-        <View style={{ padding: 10, backgroundColor: COLORS.background }}>
-          <Button title="Sign up to comment" onPress={() => promptAccount('comment')} />
+        <View
+          style={{
+            padding: SPACE.md,
+            backgroundColor: COLORS.background,
+            borderTopWidth: 1,
+            borderTopColor: COLORS.hairline,
+          }}
+        >
+          <Button
+            title="Sign up to comment"
+            icon="person-add-outline"
+            onPress={() => promptAccount('comment')}
+            style={{ marginTop: 0 }}
+          />
         </View>
       ) : null}
       <View
         style={{
           display: canComment ? 'flex' : 'none',
           borderTopWidth: 1,
-          borderTopColor: COLORS.cardBorder,
+          borderTopColor: COLORS.hairline,
           backgroundColor: COLORS.background,
-          padding: 10,
+          paddingHorizontal: SPACE.md,
+          paddingVertical: 10,
+          gap: SPACE.sm,
         }}
       >
         {replyTo ? (
-          <Pressable onPress={() => setReplyTo(undefined)} accessibilityRole="button">
-            <Text style={[styles.muted, { marginBottom: 6 }]}>
-              Replying to {authorName(replyTo.author)} · tap to cancel
+          <Pressable
+            onPress={() => setReplyTo(undefined)}
+            accessibilityRole="button"
+            accessibilityLabel={`Replying to ${authorName(replyTo.author)}. Tap to cancel.`}
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              minHeight: 32,
+              borderRadius: RADIUS.pill,
+              backgroundColor: COLORS.primarySoft,
+            }}
+          >
+            <Ionicons name="return-down-forward" size={15} color={COLORS.primary} />
+            <Text style={{ color: COLORS.primary, fontWeight: '700' }}>
+              Replying to {authorName(replyTo.author)}
             </Text>
+            <Ionicons name="close" size={16} color={COLORS.primary} />
           </Pressable>
         ) : null}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: SPACE.sm }}>
           <TextInput
             accessibilityLabel="Write a comment"
-            placeholder={replyTo ? 'Write a reply…' : 'Write a comment…'}
+            placeholder={replyTo ? 'Write a reply…' : 'Add a comment…'}
             placeholderTextColor={COLORS.placeholder}
             value={text}
             onChangeText={setText}
             maxLength={COMMENT_MAX}
             multiline
-            style={[styles.input, { flex: 1, maxHeight: 120 }]}
+            style={{
+              flex: 1,
+              minHeight: 44,
+              maxHeight: 120,
+              borderRadius: 22,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              paddingHorizontal: 16,
+              paddingTop: 11,
+              paddingBottom: 11,
+              fontSize: 16,
+              color: COLORS.text,
+              backgroundColor: COLORS.background,
+            }}
           />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Send comment"
+            accessibilityState={{ disabled: !text.trim() || sending, busy: sending }}
             disabled={!text.trim() || sending}
             onPress={() => void send()}
-            style={{
-              backgroundColor: text.trim() ? COLORS.primary : COLORS.border,
-              borderRadius: 8,
-              paddingHorizontal: 14,
-              paddingVertical: 11,
-            }}
+            style={({ pressed }) => ({
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: text.trim() ? COLORS.primary : COLORS.skeletonOnLight,
+              opacity: pressed ? 0.8 : 1,
+            })}
           >
             {sending ? (
               <ActivityIndicator color={COLORS.onPrimary} />
             ) : (
-              <Text style={{ color: COLORS.onPrimary, fontWeight: '700' }}>Send</Text>
+              <Ionicons
+                name="arrow-up"
+                size={22}
+                color={text.trim() ? COLORS.onPrimary : COLORS.textMuted}
+              />
             )}
           </Pressable>
         </View>
@@ -249,72 +321,143 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
 
 function CommentRow({
   c,
+  first,
   onReply,
   onDelete,
   onReport,
   onError,
 }: {
   c: CommentView;
+  first: boolean;
   onReply?: () => void;
   onDelete?: () => void;
   onReport?: () => void;
   onError: (m: string) => void;
 }) {
   const visible = c.status === 'visible';
+  const name = visible ? authorName(c.author) : '';
+  const menu = onDelete
+    ? () =>
+        openMenu('Your comment', [
+          {
+            label: 'Delete comment',
+            destructive: true,
+            onPress: () =>
+              Alert.alert('Delete comment?', 'This can’t be undone.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: onDelete },
+              ]),
+          },
+        ])
+    : onReport
+      ? () =>
+          openMenu('Comment', [{ label: 'Report comment', destructive: true, onPress: onReport }])
+      : undefined;
+
   return (
     <View
       style={{
-        marginLeft: 12 + c.depth * 16,
-        marginRight: 12,
-        marginTop: 6,
-        paddingLeft: c.depth > 0 ? 10 : 0,
-        borderLeftWidth: c.depth > 0 ? 2 : 0,
-        borderLeftColor: COLORS.cardBorder,
+        borderTopWidth: first || c.depth > 0 ? 0 : 1,
+        borderTopColor: COLORS.hairline,
+        paddingLeft: SPACE.md + c.depth * 20,
+        paddingRight: SPACE.xs,
       }}
     >
       <View
         style={{
-          backgroundColor: COLORS.background,
-          borderRadius: 10,
-          padding: 10,
-          borderWidth: 1,
-          borderColor: COLORS.cardBorder,
+          flexDirection: 'row',
+          gap: 10,
+          paddingTop: SPACE.md,
+          paddingBottom: visible ? 2 : SPACE.md,
+          // D78: replies hang off a thin thread line.
+          borderLeftWidth: c.depth > 0 ? 2 : 0,
+          borderLeftColor: COLORS.cardBorder,
+          paddingLeft: c.depth > 0 ? 10 : 0,
         }}
       >
-        <Text style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 4 }}>
-          <Text
-            style={{ fontWeight: '700', color: COLORS.text }}
-            onPress={visible && 'username' in c.author ? () => openAuthor(c.author) : undefined}
-          >
-            {visible ? authorName(c.author) : ' '}
-            {visible && 'medals' in c.author ? (
-              <MedalIcons keys={c.author.medals} size={12} />
-            ) : null}
-          </Text>
-          {visible ? ` · ${timeAgo(c.createdAt)}${c.editedAt ? ' · edited' : ''}` : ''}
-        </Text>
-        <Text
-          style={{
-            color: visible ? COLORS.text : COLORS.textMuted,
-            fontStyle: visible ? 'normal' : 'italic',
-          }}
-        >
-          {visible ? c.body : c.status === 'deleted' ? '[deleted]' : '[removed]'}
-        </Text>
         {visible ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 6 }}>
-            <VoteControl
-              target={{ type: 'comment', id: c.id }}
-              score={c.score}
-              myVote={c.myVote}
-              compact
-              onError={onError}
-            />
-            {onReply ? <Button variant="link" title="Reply" onPress={onReply} /> : null}
-            {onDelete ? <Button variant="link" title="Delete" onPress={onDelete} /> : null}
-            {onReport ? <Button variant="link" title="Report" onPress={onReport} /> : null}
-          </View>
-        ) : null}
+          <Pressable
+            onPress={'username' in c.author ? () => openAuthor(c.author) : undefined}
+            disabled={!('username' in c.author)}
+            accessibilityRole={'username' in c.author ? 'link' : undefined}
+            accessibilityLabel={'username' in c.author ? `${name}'s profile` : undefined}
+          >
+            <ProfileAvatar name={name} url={null} size={32} ringColor={COLORS.background} />
+          </Pressable>
+        ) : (
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: COLORS.skeletonOnLight,
+            }}
+          />
+        )}
+        <View style={{ flex: 1 }}>
+          {visible ? (
+            <Text style={[TYPE.caption, { color: COLORS.textMuted }]}>
+              <Text
+                style={{ fontWeight: '800', color: COLORS.text, fontSize: 14 }}
+                onPress={'username' in c.author ? () => openAuthor(c.author) : undefined}
+              >
+                {name}
+              </Text>
+              {'medals' in c.author ? <MedalIcons keys={c.author.medals} size={12} /> : null}
+              {`  ${timeAgo(c.createdAt)}${c.editedAt ? ' · edited' : ''}`}
+            </Text>
+          ) : null}
+          <Text
+            style={[
+              TYPE.callout,
+              {
+                marginTop: visible ? 2 : 6,
+                color: visible ? COLORS.text : COLORS.textMuted,
+                fontStyle: visible ? 'normal' : 'italic',
+              },
+            ]}
+          >
+            {visible
+              ? c.body
+              : c.status === 'deleted'
+                ? 'This comment was deleted.'
+                : 'This comment was removed.'}
+          </Text>
+          {visible ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: -8 }}>
+              <VoteControl
+                target={{ type: 'comment', id: c.id }}
+                score={c.score}
+                myVote={c.myVote}
+                compact
+                onError={onError}
+              />
+              {onReply ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Reply to ${name}`}
+                  onPress={onReply}
+                  style={{ minHeight: 44, paddingHorizontal: 10, justifyContent: 'center' }}
+                >
+                  <Text style={{ color: COLORS.textMuted, fontWeight: '800', fontSize: 13 }}>
+                    Reply
+                  </Text>
+                </Pressable>
+              ) : null}
+              <View style={{ flex: 1 }} />
+              {menu ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="More options for this comment"
+                  onPress={menu}
+                  style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textMuted} />
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
       </View>
     </View>
   );

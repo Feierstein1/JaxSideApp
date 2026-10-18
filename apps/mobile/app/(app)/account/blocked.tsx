@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { COLORS } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
-import { Button, styles } from '@/ui';
+import { SPACE } from '@/tokens';
+import { Button, EmptyState, ErrorState, FormError, ListGroup, ListRow } from '@/ui';
 
 interface Block {
   username: string;
@@ -40,35 +41,42 @@ export default function BlockedUsers() {
 
   if (!blocks) {
     return error ? (
-      <Text style={[styles.screen, styles.error]}>{error}</Text>
+      <ErrorState message={error} onRetry={() => void load()} />
     ) : (
       <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.primary} />
     );
   }
   return (
-    <ScrollView contentContainerStyle={styles.screen}>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+    <ScrollView
+      style={{ backgroundColor: COLORS.surfaceMuted }}
+      contentContainerStyle={{ padding: SPACE.lg, flexGrow: 1 }}
+    >
+      {error ? <FormError>{error}</FormError> : null}
       {blocks.length === 0 ? (
-        <Text style={styles.muted}>
-          You haven’t blocked anyone. To block someone, tap their name and choose Block.
-        </Text>
+        <EmptyState
+          icon="ban-outline"
+          title="You haven’t blocked anyone"
+          body="To block someone, open their profile and choose Block from the ••• menu."
+        />
       ) : (
-        blocks.map((b) => (
-          <View
-            key={b.username}
-            style={[
-              styles.row,
-              {
-                justifyContent: 'space-between',
-                borderBottomWidth: 1,
-                borderBottomColor: COLORS.cardBorder,
-              },
-            ]}
-          >
-            <Text style={styles.body}>{b.username}</Text>
-            <Button variant="link" title="Unblock" onPress={() => void unblock(b.username)} />
-          </View>
-        ))
+        <ListGroup footer="Blocked people can’t see your profile, and you won’t see their posts or comments. They aren’t told.">
+          {blocks.map((b) => (
+            <ListRow
+              key={b.username}
+              icon="person-outline"
+              label={b.username}
+              right={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  title="Unblock"
+                  onPress={() => void unblock(b.username)}
+                  style={{ marginTop: 0 }}
+                />
+              }
+            />
+          ))}
+        </ListGroup>
       )}
     </ScrollView>
   );

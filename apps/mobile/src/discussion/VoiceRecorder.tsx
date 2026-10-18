@@ -122,11 +122,12 @@ export function VoiceRecorder({
           flexDirection: 'row',
           alignItems: 'center',
           gap: 10,
-          minHeight: 48,
+          minHeight: 52,
           paddingHorizontal: 14,
-          borderRadius: 24,
-          borderWidth: 1,
-          borderColor: recording ? COLORS.error : COLORS.border,
+          borderRadius: 26,
+          borderWidth: 1.5,
+          borderColor: recording ? COLORS.error : COLORS.primarySoft,
+          backgroundColor: recording ? COLORS.errorSoft : COLORS.primarySoft,
           opacity: disabled ? 0.5 : 1,
         }}
       >

@@ -2,6 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
 import { BRAND, COLORS, type PostTypeFilter } from '@jax/shared';
+import { haptic } from '@/motion';
 
 /** D75: shown types. Video joins when video posts are built (P8.9). */
 const TABS: {
@@ -17,7 +18,8 @@ const TABS: {
 
 /**
  * D75: the permanent post-type bar on Home and place pages, on the black bar: white
- * labels, the active one gold-underlined (gold on black only, D33).
+ * labels, the active one gold with a filled icon and a short gold bar under it (gold on
+ * black only, D33).
  */
 export function PostTypeTabs({
   value,
@@ -37,20 +39,39 @@ export function PostTypeTabs({
             accessibilityRole="tab"
             accessibilityLabel={`${t.label} posts`}
             accessibilityState={{ selected: active }}
-            onPress={() => onChange(t.key)}
-            style={{
+            onPress={() => {
+              if (!active) haptic.select();
+              onChange(t.key);
+            }}
+            style={({ pressed }) => ({
               flex: 1,
               minHeight: 44,
               alignItems: 'center',
               justifyContent: 'center',
-              flexDirection: 'row',
-              gap: 5,
-              borderBottomWidth: 3,
-              borderBottomColor: active ? BRAND.gold : 'transparent',
-            }}
+              opacity: pressed ? 0.7 : 1,
+            })}
           >
-            <Ionicons name={t.icon} size={16} color={color} />
-            <Text style={{ color, fontWeight: active ? '800' : '600' }}>{t.label}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Ionicons
+                name={active ? (t.icon.replace('-outline', '') as typeof t.icon) : t.icon}
+                size={16}
+                color={color}
+              />
+              <Text style={{ color, fontWeight: active ? '800' : '600', fontSize: 14 }}>
+                {t.label}
+              </Text>
+            </View>
+            {/* D78: a short rounded gold bar under the active tab. */}
+            <View
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                width: 36,
+                height: 3,
+                borderRadius: 2,
+                backgroundColor: active ? BRAND.gold : 'transparent',
+              }}
+            />
           </Pressable>
         );
       })}
