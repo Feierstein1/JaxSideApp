@@ -90,3 +90,21 @@ Using a color palette is fine, but the app must not use Jaguars or NFL **names, 
 mascot imagery**, or suggest any affiliation. That would be trademark infringement, and app stores
 reject apps that impersonate brands. If the app ever wants an official tie-in, that needs a
 licensing agreement.
+
+## Planned: animations and an app mascot (user idea, 2026-10-18)
+
+Not built yet; recorded so the UX/UI work picks it up.
+
+- **An original app mascot** that reacts to what people do. It must be our own character, not
+  the Jaguars' mascot or anything resembling it (see the trademark note above).
+- **Celebrate:** a short mascot animation after a post goes up, when a medal (achievement) is
+  unlocked, and for other good behavior (e.g. a first comment, a well-received post).
+- **Disapprove:** the mascot looks upset when a post is blocked or held by screening for language
+  that isn't allowed, alongside the plain explanation of what happened (the text message stays;
+  the animation never replaces it).
+- **Guidelines when built:**
+  - Keep it short (about 1–2 seconds) and tappable to dismiss.
+  - Don't block the next action.
+  - Respect the phone's "reduce motion" setting by showing a still image instead.
+  - Never shame or mock, even when disapproving.
+  - Keep files small; likely Lottie or Rive animations, both free to use in Expo.

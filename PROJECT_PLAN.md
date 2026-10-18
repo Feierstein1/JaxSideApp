@@ -460,6 +460,7 @@ Every row needs a linked test or a written manual procedure before it can be che
 Ideas the user wants remembered. Not requirements; `docs/SPEC.md` stays as written.
 
 - **2026-10-16 — Fresher feeds:** a refresh option for the general feed and business rooms that brings in more recent posts (e.g. a "New posts" button or automatic refresh). *Today:* pull down to refresh already reloads both lists. Revisit with caching (P3 note) when there are more users.
+- **2026-10-18 — Animations and a mascot:** an original app mascot that celebrates posts, medal unlocks and good behavior, and looks upset when a post is blocked for language. Details in `docs/UI_DESIGN.md` ("Planned: animations and an app mascot"). A good task for the UX/UI agent.
 - **2026-10-16 — Admin portal hosting:** keep it local (D62); revisit hosting and the P5.17/P5.18 screens when there are more users or more moderators.
 
 ## Out of Scope (do not build — §15, §19)
