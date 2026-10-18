@@ -1,3 +1,5 @@
+import { social } from '@/social/api';
+import { refreshUnread } from '@/social/unread';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
@@ -61,6 +63,32 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
     }
   }
 
+  /** D76: friend requests from a profile. */
+  async function friendAction(action: () => Promise<unknown>) {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await action();
+      await load();
+      void refreshUnread();
+    } catch (e) {
+      setError(e instanceof ApiRequestError ? e.message : 'Couldn’t save.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function confirmUnfriend() {
+    Alert.alert(`Remove ${username} as a friend?`, 'You can send a new request later.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => void friendAction(() => social.unfriend(username)),
+      },
+    ]);
+  }
+
   function confirmBlock() {
     Alert.alert(
       `Block ${username}?`,
@@ -111,6 +139,17 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
         <Text style={[styles.body, !profile.bio && styles.muted]}>
           {profile.bio || 'No bio yet.'}
         </Text>
+        {!profile.isMe && !isGuest && !profile.blockedByMe ? (
+          <FriendButton
+            profile={profile}
+            busy={busy}
+            onAdd={() => void friendAction(() => social.send(profile.username))}
+            onCancel={() => void friendAction(() => social.cancel(profile.friendRequestId!))}
+            onAccept={() => void friendAction(() => social.accept(profile.friendRequestId!))}
+            onDecline={() => void friendAction(() => social.decline(profile.friendRequestId!))}
+            onRemove={confirmUnfriend}
+          />
+        ) : null}
         {!profile.isMe && !isGuest ? (
           profile.blockedByMe ? (
             <Button
@@ -141,4 +180,52 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
       />
     </ScrollView>
   );
+}
+
+/** D76: the friend button's four states. */
+function FriendButton({
+  profile,
+  busy,
+  onAdd,
+  onCancel,
+  onAccept,
+  onDecline,
+  onRemove,
+}: {
+  profile: PublicProfile;
+  busy: boolean;
+  onAdd: () => void;
+  onCancel: () => void;
+  onAccept: () => void;
+  onDecline: () => void;
+  onRemove: () => void;
+}) {
+  switch (profile.friendship) {
+    case 'friends':
+      return (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 }}>
+          <Text style={[styles.body, { fontWeight: '700' }]}>✓ Friends</Text>
+          <Button variant="link" title="Remove friend" onPress={onRemove} />
+        </View>
+      );
+    case 'requested':
+      return (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 }}>
+          <Text style={styles.muted}>Friend request sent</Text>
+          <Button variant="link" title="Cancel" onPress={onCancel} />
+        </View>
+      );
+    case 'incoming':
+      return (
+        <View style={{ marginTop: 12 }}>
+          <Text style={styles.body}>{profile.username} wants to be friends.</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Button title="Accept" busy={busy} onPress={onAccept} />
+            <Button variant="link" title="Decline" onPress={onDecline} />
+          </View>
+        </View>
+      );
+    default:
+      return <Button title="Add friend" busy={busy} onPress={onAdd} />;
+  }
 }

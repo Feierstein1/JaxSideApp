@@ -55,6 +55,18 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="friends"
+        options={{
+          headerShown: false,
+          title: 'Friends',
+          // D76: friends are for registered users.
+          href: isGuest ? null : undefined,
+          tabBarIcon: ({ color, size }) => <Ionicons name="people" color={color} size={size} />,
+        }}
+      />
+      {/* D76: opened from the bell, not a tab. */}
+      <Tabs.Screen name="notifications" options={{ href: null, title: 'Notifications' }} />
+      <Tabs.Screen
         name="account"
         options={{
           headerShown: false,

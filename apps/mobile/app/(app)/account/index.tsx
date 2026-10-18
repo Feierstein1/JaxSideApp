@@ -1,5 +1,6 @@
+import { social } from '@/social/api';
 import { useCallback, useState, type ComponentProps, type ReactNode } from 'react';
-import { Linking, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect, type Href } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
@@ -22,7 +23,7 @@ import { MedalList } from '@/profile/Medals';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { pickPhoto, uploadPhoto } from '@/discussion/photos';
 import { categoryLabel } from '@/format';
-import { Button, Segmented, styles } from '@/ui';
+import { Button, Segmented, styles, switchColors } from '@/ui';
 
 interface Favorite {
   id: string;
@@ -367,6 +368,15 @@ function SettingsTab() {
     CONFIG_DEFAULTS['radius.general.maxMiles'],
   );
 
+  async function setHidePosts(hidePostsFromFriends: boolean) {
+    try {
+      await social.setHidePosts(hidePostsFromFriends);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof ApiRequestError ? e.message : 'Couldn’t save.');
+    }
+  }
+
   async function setRadius(miles: number) {
     try {
       await api.patch('/api/v1/me/preferences', { radiusMiles: miles });
@@ -398,6 +408,22 @@ function SettingsTab() {
         you need to be within {yardsLabel(CONFIG_DEFAULTS['radius.general.maxMiles'])} of it.
       </Text>
       <Options values={[...RADIUS_OPTIONS_MILES]} selected={radius} onPick={(v) => setRadius(v)} />
+
+      {/* D76: friends see where you post unless you turn this on. */}
+      <Text style={[styles.label, { marginTop: 20 }]}>Friends</Text>
+      <View style={[styles.row, { justifyContent: 'space-between', gap: 12 }]}>
+        <Text style={[styles.body, { flex: 1 }]}>Hide my recent posts from friends</Text>
+        <Switch
+          accessibilityLabel="Hide my recent posts from friends"
+          value={user.hidePostsFromFriends}
+          onValueChange={(v) => void setHidePosts(v)}
+          {...switchColors}
+        />
+      </View>
+      <Text style={styles.muted}>
+        When off, friends see “posted near [area]” or “posted at [place]” for your posts from the
+        last two weeks. They never see the post itself unless they’re nearby.
+      </Text>
 
       <Text style={[styles.label, { marginTop: 20 }]}>Favorite places</Text>
       {favorites.length === 0 ? (

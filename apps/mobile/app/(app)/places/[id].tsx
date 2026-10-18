@@ -18,6 +18,7 @@ import { PostTypeTabs } from '@/discussion/PostTypeTabs';
 import { getFreshReading } from '@/location/device';
 import { OsmAttribution } from '@/places/Attribution';
 import { PlaceStats, PlaceTop, placeFrame } from '@/places/PlaceHeader';
+import { social } from '@/social/api';
 import { Button, FloatingButton, styles } from '@/ui';
 
 /**
@@ -42,6 +43,14 @@ export default function PlaceScreen() {
   const [type, setType] = useState<PostTypeFilter>('all'); // D75
   const loadRoom = useCallback((cursor?: string) => fetchRoom(id, cursor, type), [id, type]);
   const verified = state.status === 'signedIn' && state.user.emailVerified;
+  // D76: which of your friends favorited this place (others see only the count).
+  const [friendFans, setFriendFans] = useState<string[]>([]);
+  useEffect(() => {
+    social
+      .friendsFavorited(id)
+      .then((r) => setFriendFans(r.friends.map((f) => f.username)))
+      .catch(() => setFriendFans([]));
+  }, [id, place?.isFavorite]);
 
   const load = useCallback(async () => {
     setError(undefined);
@@ -129,6 +138,17 @@ export default function PlaceScreen() {
           ]}
         >
           {place.address}
+        </Text>
+      ) : null}
+      {friendFans.length ? (
+        <Text
+          style={[
+            styles.body,
+            { paddingHorizontal: 12, paddingBottom: 10, backgroundColor: COLORS.background },
+          ]}
+        >
+          ★ Favorited by your friend{friendFans.length === 1 ? '' : 's'}{' '}
+          <Text style={{ fontWeight: '700' }}>{friendFans.join(', ')}</Text>
         </Text>
       ) : null}
     </View>

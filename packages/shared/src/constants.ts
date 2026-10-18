@@ -61,6 +61,11 @@ export const CONFIG_DEFAULTS = {
   /** Favorites rank as if this many times closer than they are (D39). */
   'directory.favoriteDistanceFactor': 0.25,
   'favorites.maxPerUser': 200,
+  /** D76: friends per person, and requests waiting on others at once. */
+  'friends.max': 1000,
+  'friends.maxPendingOut': 100,
+  /** D76: the friends feed covers posts from this many days. */
+  'friends.activityDays': 14,
 
   // Phase 3 discussions (D41)
   'feed.pageSize': 15,
@@ -173,6 +178,11 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.edit.perMinute': 10,
   'rateLimit.profile.perMinute': 10,
   'rateLimit.block.perMinute': 20,
+  // D76 friends and notifications
+  'rateLimit.friendRequest.perHour': 30,
+  'rateLimit.friends.perMinute': 60,
+  /** The bell is checked about every 30 s while the app is open. */
+  'rateLimit.notifications.perMinute': 120,
   /** Wrong current-password attempts (password/email change, deletion) per account. */
   'rateLimit.passwordCheck.per15Min': 5,
   /** Wrong admin authenticator codes per account (P5.11). */

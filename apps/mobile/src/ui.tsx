@@ -11,6 +11,7 @@ import {
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BRAND, COLORS } from '@jax/shared';
 import { UserBadge } from './auth/UserBadge';
+import { Bell } from './social/Bell';
 
 export function Field({
   label,
@@ -134,10 +135,15 @@ export function FormError({ children }: { children?: ReactNode }) {
 
 /**
  * Navigation header (D33): black bar, white title, gold back arrow (9.2:1 on black), and
- * the signed-in username on the right (hideable, D43).
+ * the notification bell (D76) and the signed-in username on the right (hideable, D43).
  */
 export const headerOptions = {
-  headerRight: () => <UserBadge />,
+  headerRight: () => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <Bell />
+      <UserBadge />
+    </View>
+  ),
   headerTitleAlign: 'center' as const,
   headerStyle: { backgroundColor: COLORS.surfaceInverse },
   headerTintColor: BRAND.gold,

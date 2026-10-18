@@ -38,6 +38,13 @@ import * as userProfile from '@/app/api/v1/users/[username]/route';
 import * as reports from '@/app/api/v1/reports/route';
 import * as photos from '@/app/api/v1/photos/route';
 import * as voice from '@/app/api/v1/voice/route';
+import * as friendRequests from '@/app/api/v1/friends/requests/route';
+import * as friendRequest from '@/app/api/v1/friends/requests/[id]/route';
+import * as friendAccept from '@/app/api/v1/friends/requests/[id]/accept/route';
+import * as friendDecline from '@/app/api/v1/friends/requests/[id]/decline/route';
+import * as friend from '@/app/api/v1/friends/[username]/route';
+import * as notificationsRead from '@/app/api/v1/notifications/read/route';
+import * as friendPrivacy from '@/app/api/v1/me/friend-privacy/route';
 import * as meAvatar from '@/app/api/v1/me/avatar/route';
 import * as meColor from '@/app/api/v1/me/color/route';
 import * as submissions from '@/app/api/v1/submissions/route';
@@ -68,7 +75,7 @@ const IN = { latitude: 30.315, longitude: -81.686, accuracyMeters: 10 };
 const OUT = { latitude: 30.1661, longitude: -81.7065, accuracyMeters: 10 }; // Orange Park
 const r = (p: typeof IN) => ({ ...p, timestamp: Date.now() - 2_000 });
 
-type Id = 'place' | 'post' | 'bizPost' | 'comment' | 'username' | null;
+type Id = 'place' | 'post' | 'bizPost' | 'comment' | 'username' | 'friendRequest' | null;
 interface Row {
   route: string;
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -320,6 +327,68 @@ const ROWS: Row[] = [
     auth: true,
     id: null,
     location: false,
+  },
+  // D76: friends and the bell (friends.test.ts has the behavior).
+  {
+    route: 'friends/requests',
+    method: 'POST',
+    handler: h(friendRequests, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ username: 'other_w' }),
+  },
+  {
+    route: 'friends/requests/[id]',
+    method: 'DELETE',
+    handler: h(friendRequest, 'DELETE'),
+    auth: true,
+    id: 'friendRequest',
+    location: false,
+  },
+  {
+    route: 'friends/requests/[id]/accept',
+    method: 'POST',
+    handler: h(friendAccept, 'POST'),
+    auth: true,
+    id: 'friendRequest',
+    location: false,
+    body: () => ({}),
+  },
+  {
+    route: 'friends/requests/[id]/decline',
+    method: 'POST',
+    handler: h(friendDecline, 'POST'),
+    auth: true,
+    id: 'friendRequest',
+    location: false,
+    body: () => ({}),
+  },
+  {
+    route: 'friends/[username]',
+    method: 'DELETE',
+    handler: h(friend, 'DELETE'),
+    auth: true,
+    id: 'username',
+    location: false,
+  },
+  {
+    route: 'notifications/read',
+    method: 'POST',
+    handler: h(notificationsRead, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({}),
+  },
+  {
+    route: 'me/friend-privacy',
+    method: 'PATCH',
+    handler: h(friendPrivacy, 'PATCH'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ hidePostsFromFriends: true }),
   },
   // D75: likewise the body is the recording itself (voice.test.ts).
   {
@@ -604,6 +673,7 @@ const ids: Record<Exclude<Id, null>, string> = {
   bizPost: '',
   comment: '',
   username: 'owner_w',
+  friendRequest: '',
 };
 
 beforeAll(async () => {
@@ -645,6 +715,16 @@ beforeAll(async () => {
       body: { reading: r(IN), body: 'c' },
     })
   ).body.id;
+  // D76: a request from owner to a third person (only owner may withdraw it).
+  const third = await createTestUser('third_w', { emailVerifiedAt: new Date() });
+  await db.friendship.create({
+    data: {
+      userLowId: o.id < third.id ? o.id : third.id,
+      userHighId: o.id < third.id ? third.id : o.id,
+      requesterId: o.id,
+    },
+  });
+  ids.friendRequest = (await db.friendship.findFirstOrThrow()).id;
   // Lift limits so the table can hit each route several times; limits have their own tests.
   await db.appConfiguration.createMany({
     data: [
