@@ -59,15 +59,20 @@ export async function uploadPhoto(asset: {
       // Couldn't shrink it here; send the original and let the server check the size.
     }
   }
+  return postRawFile<Uploaded>('/api/v1/photos', uri, gif ? 'image/gif' : 'image/jpeg');
+}
+
+/** Sends a local file's bytes as the request body (photos, D75 voice clips). */
+export async function postRawFile<T>(path: string, uri: string, contentType: string): Promise<T> {
   const file = await (await fetch(uri)).blob();
-  const headers: Record<string, string> = { 'Content-Type': gif ? 'image/gif' : 'image/jpeg' };
+  const headers: Record<string, string> = { 'Content-Type': contentType };
   const token = await secureTokenStore.get();
   if (token) headers.Authorization = `Bearer ${token}`;
   const installation = await installationStore.get();
   if (installation) headers[INSTALLATION_HEADER] = installation;
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}/api/v1/photos`, { method: 'POST', headers, body: file });
+    res = await fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers, body: file });
   } catch {
     throw new ApiRequestError(0, 'NETWORK', 'Could not reach the server. Check your connection.');
   }
@@ -76,10 +81,10 @@ export async function uploadPhoto(asset: {
     throw new ApiRequestError(
       res.status,
       json.error?.code ?? 'HTTP_ERROR',
-      json.error?.message ?? 'Couldn’t upload the photo.',
+      json.error?.message ?? `Upload failed (error ${res.status}).`,
     );
   }
-  return json as Uploaded;
+  return json as T;
 }
 
 /** Signed links from the server are relative to the API address. */

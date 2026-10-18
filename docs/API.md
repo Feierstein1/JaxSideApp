@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-81 endpoints.
+82 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -11,6 +11,12 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 - Every request body is a strict JSON schema in `@jax/shared` (unknown fields → 400). Errors look
   like `{ "error": { "code", "message", "details"? } }`; rate limits answer 429 with `Retry-After`.
 - The app also sends `X-Installation-Token` (from `POST /installations`) for ban carry-over.
+
+## voice
+
+| Method | Path            | Who                    | Location | What it does                                                                                                                                                                 |
+| ------ | --------------- | ---------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/v1/voice` | user (confirmed email) |          | D75: upload one voice clip (the .m4a bytes as the body). Confirmed users only; shares the daily upload limit with photos; checked before storing. Attach it to a post by ID. |
 
 ## health
 

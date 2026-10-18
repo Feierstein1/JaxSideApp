@@ -1,4 +1,4 @@
-import type { CommentView, DiscussionKind, FeedSort, PostView } from '@jax/shared';
+import type { CommentView, DiscussionKind, FeedSort, PostTypeFilter, PostView } from '@jax/shared';
 import { api } from '@/api';
 import { getFreshReading } from '@/location/device';
 import type { HeldResponse } from './screening';
@@ -18,21 +18,28 @@ export interface PostPage {
 const base = (kind: DiscussionKind) =>
   kind === 'general' ? '/api/v1/posts' : '/api/v1/business-posts';
 
-export async function fetchFeed(sort: FeedSort, cursor?: string, q?: string) {
+export async function fetchFeed(
+  sort: FeedSort,
+  cursor?: string,
+  q?: string,
+  type: PostTypeFilter = 'all',
+) {
   const reading = await getFreshReading();
   return api.post<PostPage>('/api/v1/feed', {
     reading,
     sort,
     ...(cursor ? { cursor } : {}),
     ...(q ? { q } : {}), // D74 search
+    ...(type !== 'all' ? { type } : {}), // D75
   });
 }
 
-export async function fetchRoom(placeId: string, cursor?: string) {
+export async function fetchRoom(placeId: string, cursor?: string, type: PostTypeFilter = 'all') {
   const reading = await getFreshReading();
   return api.post<PostPage>(`/api/v1/places/${placeId}/posts/list`, {
     reading,
     ...(cursor ? { cursor } : {}),
+    ...(type !== 'all' ? { type } : {}), // D75
   });
 }
 
@@ -46,6 +53,7 @@ export async function createPost(
   body: string,
   confirmWarning?: true,
   photoIds: string[] = [],
+  voiceId?: string,
 ) {
   const reading = await getFreshReading({ fresh: true });
   const path =
@@ -55,6 +63,7 @@ export async function createPost(
     body,
     confirmWarning,
     ...(photoIds.length ? { photoIds } : {}),
+    ...(voiceId ? { voiceId } : {}), // D75
   });
 }
 

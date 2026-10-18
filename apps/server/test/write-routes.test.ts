@@ -37,6 +37,7 @@ import * as userBlock from '@/app/api/v1/users/[username]/block/route';
 import * as userProfile from '@/app/api/v1/users/[username]/route';
 import * as reports from '@/app/api/v1/reports/route';
 import * as photos from '@/app/api/v1/photos/route';
+import * as voice from '@/app/api/v1/voice/route';
 import * as meAvatar from '@/app/api/v1/me/avatar/route';
 import * as meColor from '@/app/api/v1/me/color/route';
 import * as submissions from '@/app/api/v1/submissions/route';
@@ -316,6 +317,15 @@ const ROWS: Row[] = [
     route: 'photos',
     method: 'POST',
     handler: h(photos, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+  },
+  // D75: likewise the body is the recording itself (voice.test.ts).
+  {
+    route: 'voice',
+    method: 'POST',
+    handler: h(voice, 'POST'),
     auth: true,
     id: null,
     location: false,

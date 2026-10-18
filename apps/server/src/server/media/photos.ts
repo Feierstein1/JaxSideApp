@@ -179,6 +179,7 @@ export async function attachPhotos(
     where: {
       id: { in: photoIds },
       uploaderId: userId,
+      kind: 'IMAGE', // D75: a voice clip isn't a photo
       status: 'ACTIVE',
       generalPostId: null,
       businessPostId: null,
@@ -192,6 +193,30 @@ export async function attachPhotos(
       'INVALID_PHOTO',
       'One of the photos can’t be used. Try adding it again.',
     );
+  }
+}
+
+/** D75: attaches the uploader's own unattached voice clip to a new post. */
+export async function attachVoice(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  voiceId: string | undefined,
+  target: { generalPostId: string } | { businessPostId: string },
+) {
+  if (!voiceId) return;
+  const res = await tx.photo.updateMany({
+    where: {
+      id: voiceId,
+      uploaderId: userId,
+      kind: 'AUDIO',
+      status: 'ACTIVE',
+      generalPostId: null,
+      businessPostId: null,
+    },
+    data: target,
+  });
+  if (res.count !== 1) {
+    throw new ApiError(400, 'INVALID_VOICE', 'That recording can’t be used. Try recording again.');
   }
 }
 

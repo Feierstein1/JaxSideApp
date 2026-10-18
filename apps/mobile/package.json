@@ -6,6 +6,7 @@
     "@expo/vector-icons": "^15.0.2",
     "@jax/shared": "*",
     "expo": "~57.0.30",
+    "expo-audio": "~57.0.5",
     "expo-constants": "~57.0.22",
     "expo-image-manipulator": "~57.0.21",
     "expo-image-picker": "~57.0.20",

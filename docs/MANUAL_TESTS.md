@@ -77,6 +77,18 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] On someone else's post, long-press a photo → the report sheet opens (type: photo).
 - [ ] In the portal, the photo report shows the image; **Remove** makes it disappear in the app.
 
+## 4c. Voice posts and type tabs (D75)
+
+- [ ] New post → **Record a voice post**: the app asks for the microphone once; the timer counts
+      up; tap to stop (or it stops at 1:00). The clip appears with play and a trash can.
+- [ ] Post it with no text: it shows in the feed with a black play bar; play, pause and the time
+      work, and starting one clip pauses any other.
+- [ ] While a clip is attached the photo box is hidden, and with a photo the recorder is hidden.
+- [ ] On an iPhone (if you have one), clips play too.
+- [ ] Home and place pages show **All / Text / Media / Voice** under the black bar; each tab only
+      shows that kind of post ("No voice posts nearby yet" when empty).
+- [ ] Report a voice post; in the portal its case page has an audio player.
+
 ## 5. Comments, votes, reports (two accounts)
 
 - [ ] Account B comments on A's post; A replies to B; replies are indented (max 3 levels).

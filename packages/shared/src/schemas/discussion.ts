@@ -33,10 +33,19 @@ const cursorSchema = z.string().max(200).optional();
 export const FEED_SORTS = ['new', 'top'] as const;
 export type FeedSort = (typeof FEED_SORTS)[number];
 
+/** D75: what a post carries, decided by the server from its attachments. */
+export const POST_TYPES = ['text', 'media', 'voice', 'video'] as const;
+export type PostType = (typeof POST_TYPES)[number];
+/** Feed and room filter: one type, or all of them. */
+export const POST_TYPE_FILTERS = ['all', ...POST_TYPES] as const;
+export type PostTypeFilter = (typeof POST_TYPE_FILTERS)[number];
+
 export const feedRequestSchema = z.strictObject({
   reading: locationReadingSchema,
   cursor: cursorSchema,
   sort: z.enum(FEED_SORTS).default('new'),
+  /** D75: only posts of one type. */
+  type: z.enum(POST_TYPE_FILTERS).default('all'),
   /** D74: search the area feed by username ("@name" for names only) or post text. */
   q: z.string().trim().min(2).max(50).optional(),
 });
@@ -46,12 +55,25 @@ const confirmWarning = z.literal(true).optional();
 
 /** P6.1: photos uploaded first (`POST /photos`), then attached by ID. Max 4 (config). */
 export const PHOTOS_MAX = 4;
-export const createPostSchema = z.strictObject({
-  reading: locationReadingSchema,
-  body: postBodySchema,
-  confirmWarning,
-  photoIds: z.array(z.uuid()).max(PHOTOS_MAX).optional(),
-});
+/** D75: voice clips are uploaded first (`POST /voice`), then attached by ID. */
+export const VOICE_MAX_SECONDS = 60;
+export const createPostSchema = z
+  .strictObject({
+    reading: locationReadingSchema,
+    // A voice post may have no caption (D75); every other post needs text.
+    body: z.union([postBodySchema, z.literal('')]).default(''),
+    confirmWarning,
+    photoIds: z.array(z.uuid()).max(PHOTOS_MAX).optional(),
+    voiceId: z.uuid().optional(),
+  })
+  .refine((p) => !(p.voiceId && p.photoIds?.length), {
+    message: 'A post can have photos or a voice clip, not both',
+    path: ['voiceId'],
+  })
+  .refine((p) => p.body.length > 0 || !!p.voiceId, {
+    message: 'Write something first',
+    path: ['body'],
+  });
 
 export const editPostSchema = z.strictObject({ body: postBodySchema, confirmWarning });
 export const editCommentSchema = z.strictObject({ body: commentBodySchema, confirmWarning });
@@ -95,6 +117,16 @@ export interface PostView {
   place: { id: string; name: string } | null;
   /** P6.4: short-lived signed links (relative to the API base URL). */
   photos: PhotoView[];
+  /** D75: a voice post's clip (signed link), or null. */
+  voice: VoiceView | null;
+  /** D75: text, media (photos/GIFs), voice or video. */
+  type: PostType;
+}
+
+export interface VoiceView {
+  id: string;
+  url: string;
+  durationMs: number;
 }
 
 export interface PhotoView {

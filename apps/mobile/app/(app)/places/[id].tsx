@@ -2,12 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { COLORS, CONFIG_DEFAULTS, yardsLabel, type PlaceSummary } from '@jax/shared';
+import {
+  COLORS,
+  CONFIG_DEFAULTS,
+  yardsLabel,
+  type PlaceSummary,
+  type PostTypeFilter,
+} from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
 import { fetchRoom } from '@/discussion/api';
 import { PostList } from '@/discussion/PostList';
+import { PostTypeTabs } from '@/discussion/PostTypeTabs';
 import { getFreshReading } from '@/location/device';
 import { OsmAttribution } from '@/places/Attribution';
 import { PlaceStats, PlaceTop, placeFrame } from '@/places/PlaceHeader';
@@ -32,7 +39,8 @@ export default function PlaceScreen() {
     toastTimer.current = setTimeout(() => setToast(undefined), 1600);
   }
   useEffect(() => () => clearTimeout(toastTimer.current), []);
-  const loadRoom = useCallback((cursor?: string) => fetchRoom(id, cursor), [id]);
+  const [type, setType] = useState<PostTypeFilter>('all'); // D75
+  const loadRoom = useCallback((cursor?: string) => fetchRoom(id, cursor, type), [id, type]);
   const verified = state.status === 'signedIn' && state.user.emailVerified;
 
   const load = useCallback(async () => {
@@ -136,8 +144,13 @@ export default function PlaceScreen() {
       ) : null}
       {place.withinRoomRadius ? (
         <>
+          {/* D75: the same post-type bar as Home, fixed above the room's posts. */}
+          <View style={{ backgroundColor: COLORS.surfaceInverse, paddingHorizontal: 12 }}>
+            <PostTypeTabs value={type} onChange={setType} />
+          </View>
           <PostList
             load={loadRoom}
+            reloadKey={type}
             onOpen={(p) => router.push(`/places/post/${p.id}`)}
             header={info}
             emptyTitle={`No posts for ${place.name} yet. Be the first!`}

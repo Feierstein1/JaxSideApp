@@ -145,6 +145,9 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.upload.perDay': 30,
   /** P6.2 photo limits. */
   'photos.maxUploadMB': 10,
+  // D75 voice posts (60 s of AAC is about 1 MB).
+  'voice.maxUploadMB': 3,
+  'voice.maxSeconds': 60,
   'photos.maxPerPost': 4,
   // D28: reports are limited for everyone (guests can't report, D54).
   'rateLimit.report.perMinute': 3,

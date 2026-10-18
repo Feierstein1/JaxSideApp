@@ -1,6 +1,12 @@
 import { medalKeysSql } from '../achievements';
-import { attachPhotos, signedPhotoUrl } from '../media/photos';
-import { milesToMeters, type DiscussionKind, type FeedSort, type PostView } from '@jax/shared';
+import { attachPhotos, attachVoice, signedPhotoUrl } from '../media/photos';
+import {
+  milesToMeters,
+  type DiscussionKind,
+  type FeedSort,
+  type PostTypeFilter,
+  type PostView,
+} from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
 import { getConfig } from '../config';
 import { db } from '../db';
@@ -39,6 +45,7 @@ interface PostRow {
   author_color: string;
   avatar_photo_id: string | null;
   photos: { id: string; width: number; height: number }[] | null;
+  voice: { id: string; durationMs: number } | null;
   my_vote: number | null;
   distance: number | null;
   place_id: string | null;
@@ -71,6 +78,8 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
     distanceMeters: r.distance === null ? null : Math.round(r.distance / 50) * 50,
     place: r.place_id ? { id: r.place_id, name: r.place_name! } : null,
     photos: (r.photos ?? []).map((p) => ({ ...p, url: signedPhotoUrl(p.id) })),
+    voice: r.voice ? { ...r.voice, url: signedPhotoUrl(r.voice.id) } : null,
+    type: r.voice ? ('voice' as const) : r.photos?.length ? ('media' as const) : ('text' as const),
   };
 }
 
@@ -104,7 +113,11 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
            (SELECT json_agg(json_build_object('id', ph.id, 'width', ph.width, 'height', ph.height)
                             ORDER BY ph."createdAt")
             FROM "Photo" ph
-            WHERE ph.${VOTE_COLUMN[kind]} = p.id AND ph.status = 'ACTIVE') AS photos,
+            WHERE ph.${VOTE_COLUMN[kind]} = p.id AND ph.status = 'ACTIVE' AND ph.kind = 'IMAGE') AS photos,
+           (SELECT json_build_object('id', vc.id, 'durationMs', vc."durationMs")
+            FROM "Photo" vc
+            WHERE vc.${VOTE_COLUMN[kind]} = p.id AND vc.status = 'ACTIVE' AND vc.kind = 'AUDIO'
+            LIMIT 1) AS voice,
            v.value AS my_vote, ${distance} AS distance, ${place}
     FROM ${TABLE[kind]} p
     JOIN "User" u ON u.id = p."authorId"
@@ -145,6 +158,7 @@ export async function listFeed(opts: {
   sort: FeedSort;
   cursor?: string;
   q?: string;
+  type?: PostTypeFilter;
 }) {
   const [size, topDays, radius] = await Promise.all([
     getConfig('feed.pageSize'),
@@ -154,7 +168,8 @@ export async function listFeed(opts: {
   const c = decodeCursor(opts.cursor);
   const base = Prisma.sql`${selectPosts('general', opts.viewer.id, opts.at)}
     WHERE p.status = 'VISIBLE' AND ST_DWithin(p.location, ${point(opts.at)}, ${radius})
-      ${notBlocked(opts.viewer.id, Prisma.sql`p."authorId"`)} ${searchFilter(opts.q)}`;
+      ${notBlocked(opts.viewer.id, Prisma.sql`p."authorId"`)} ${searchFilter(opts.q)}
+      ${typeFilter('general', opts.type)}`;
 
   if (opts.sort === 'top') {
     const offset = c && 'o' in c ? c.o : 0;
@@ -175,6 +190,18 @@ export async function listFeed(opts: {
   );
 }
 
+/** D75: only posts of one type (text, media, voice or video), decided by attachments. */
+function typeFilter(kind: DiscussionKind, type: PostTypeFilter = 'all') {
+  if (type === 'all') return Prisma.empty;
+  const has = (k: 'IMAGE' | 'AUDIO' | 'VIDEO') => Prisma.sql`EXISTS (SELECT 1 FROM "Photo" m
+      WHERE m.${VOTE_COLUMN[kind]} = p.id AND m.status = 'ACTIVE' AND m.kind = ${k}::"MediaKind")`;
+  if (type === 'text') {
+    return Prisma.sql`AND NOT EXISTS (SELECT 1 FROM "Photo" m
+      WHERE m.${VOTE_COLUMN[kind]} = p.id AND m.status = 'ACTIVE')`;
+  }
+  return Prisma.sql`AND ${has(type === 'media' ? 'IMAGE' : type === 'voice' ? 'AUDIO' : 'VIDEO')}`;
+}
+
 /**
  * D74: feed search, still only within the reader's radius (searching a name city-wide would
  * show where that person posts). "@name" matches usernames that start with it; plain text
@@ -192,7 +219,12 @@ function searchFilter(q?: string) {
 }
 
 /** P3.2 a place's room, newest first. Access is checked by the caller (D19). */
-export async function listPlacePosts(opts: { viewerId: string; placeId: string; cursor?: string }) {
+export async function listPlacePosts(opts: {
+  viewerId: string;
+  placeId: string;
+  cursor?: string;
+  type?: PostTypeFilter;
+}) {
   const size = await getConfig('feed.pageSize');
   const c = decodeCursor(opts.cursor);
   const after =
@@ -201,7 +233,7 @@ export async function listPlacePosts(opts: { viewerId: string; placeId: string; 
       : Prisma.empty;
   const rows = await db.$queryRaw<PostRow[]>`${selectPosts('business', opts.viewerId)}
     WHERE p.status = 'VISIBLE' AND p."placeId" = ${opts.placeId}::uuid
-      ${notBlocked(opts.viewerId, Prisma.sql`p."authorId"`)} ${after}
+      ${notBlocked(opts.viewerId, Prisma.sql`p."authorId"`)} ${typeFilter('business', opts.type)} ${after}
     ORDER BY p."createdAt" DESC, p.id DESC LIMIT ${size + 1}`;
   return page(rows, size, 'business', opts.viewerId, (l) =>
     encodeCursor({ t: l.createdAt.toISOString(), id: l.id }),
@@ -248,6 +280,7 @@ export async function createGeneralPost(
   body: string,
   held = false,
   photoIds: string[] = [],
+  voiceId?: string,
 ) {
   // P5.4: a held post is stored hidden until a moderator reviews it.
   const status = held ? 'HELD_FOR_REVIEW' : 'VISIBLE';
@@ -258,6 +291,7 @@ export async function createGeneralPost(
             ${status}::"ContentStatus", now())
     RETURNING id`;
     await attachPhotos(tx, authorId, photoIds, { generalPostId: row!.id });
+    await attachVoice(tx, authorId, voiceId, { generalPostId: row!.id });
     return row!.id;
   });
 }
@@ -269,6 +303,7 @@ export async function createBusinessPost(
   body: string,
   held = false,
   photoIds: string[] = [],
+  voiceId?: string,
 ) {
   return db.$transaction(async (tx) => {
     const post = await tx.businessPost.create({
@@ -276,6 +311,7 @@ export async function createBusinessPost(
       select: { id: true },
     });
     await attachPhotos(tx, authorId, photoIds, { businessPostId: post.id });
+    await attachVoice(tx, authorId, voiceId, { businessPostId: post.id });
     if (held) return post.id; // counted once a moderator approves it
     await tx.businessPlace.update({
       where: { id: placeId },

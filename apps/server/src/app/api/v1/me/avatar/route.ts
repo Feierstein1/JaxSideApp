@@ -20,6 +20,7 @@ export const PUT = route(async (req) => {
     where: {
       id: photoId,
       uploaderId: user.id,
+      kind: 'IMAGE', // D75: a voice clip can't be a profile picture
       status: 'ACTIVE',
       generalPostId: null,
       businessPostId: null,

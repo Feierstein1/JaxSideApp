@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
-import { COLORS, type FeedSort } from '@jax/shared';
+import { COLORS, type FeedSort, type PostTypeFilter } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { fetchFeed } from '@/discussion/api';
 import { AreaLabel } from '@/location/AreaLabel';
 import { getFreshReading, useReloadWhenMoved } from '@/location/device';
 import { PostList } from '@/discussion/PostList';
+import { PostTypeTabs } from '@/discussion/PostTypeTabs';
 import { refreshLimiter } from '@/refresh-limit';
 import { FloatingButton, RefreshButton, Segmented, styles } from '@/ui';
 
@@ -15,6 +16,7 @@ import { FloatingButton, RefreshButton, Segmented, styles } from '@/ui';
 export default function HomeFeed() {
   const { state } = useAuth();
   const [sort, setSort] = useState<FeedSort>('new');
+  const [type, setType] = useState<PostTypeFilter>('all'); // D75
   const [area, setArea] = useState<string | null>(null);
   // D73: reload on the refresh button, or when the app is reopened somewhere new.
   const [reloads, setReloads] = useState(0);
@@ -46,11 +48,11 @@ export default function HomeFeed() {
   }, [typed]);
   const load = useCallback(
     async (cursor?: string) => {
-      const page = await fetchFeed(sort, cursor, q || undefined);
+      const page = await fetchFeed(sort, cursor, q || undefined, type);
       if (!cursor) setArea(page.area ?? null); // D72: refreshed with the first page
       return page;
     },
-    [sort, q],
+    [sort, q, type],
   );
   const verified = state.status === 'signedIn' && state.user.emailVerified;
   const { isGuest, promptAccount } = useGuest();
@@ -130,13 +132,18 @@ export default function HomeFeed() {
             onChange={(v) => setSort(v as FeedSort)}
           />
         </View>
+        <PostTypeTabs value={type} onChange={setType} />
       </View>
       <PostList
         load={load}
-        reloadKey={`${sort}:${reloads}:${q}`}
+        reloadKey={`${sort}:${reloads}:${q}:${type}`}
         onOpen={(p) => router.push(`/post/${p.id}`)}
         emptyTitle={
-          q ? `No posts nearby match “${q}”.` : 'No posts in this area yet. Start the conversation!'
+          q
+            ? `No posts nearby match “${q}”.`
+            : type !== 'all'
+              ? `No ${type} posts nearby yet.`
+              : 'No posts in this area yet. Start the conversation!'
         }
         emptyAction={q ? undefined : { label: 'Start a new post', onPress: compose }}
       />

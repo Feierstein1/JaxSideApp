@@ -18,6 +18,7 @@ import { Button, styles } from '@/ui';
 import { createPost, markFeedsDirty } from './api';
 import { pickPhoto, uploadPhoto, type Uploaded } from './photos';
 import { sendScreened } from './screening';
+import { VoiceRecorder, type UploadedVoice } from './VoiceRecorder';
 
 /**
  * Write a post (P3.11). Area posts are placed at the author's (rounded) location by the
@@ -36,6 +37,8 @@ export function Compose({
   /** P6.1: photos are uploaded as soon as they're picked; the post attaches them by ID. */
   const [photos, setPhotos] = useState<(Uploaded & { localUri: string })[]>([]);
   const [uploading, setUploading] = useState(false);
+  /** D75: a voice post (instead of photos); text becomes an optional caption. */
+  const [voice, setVoice] = useState<UploadedVoice | null>(null);
 
   async function addPhoto() {
     setError(undefined);
@@ -53,7 +56,7 @@ export function Compose({
   }
 
   async function submit() {
-    if (!body.trim()) return;
+    if (!body.trim() && !voice) return;
     setBusy(true);
     setError(undefined);
     try {
@@ -63,6 +66,7 @@ export function Compose({
           body.trim(),
           ok,
           photos.map((p) => p.id),
+          voice?.id,
         ),
       );
       if (!sent) return; // chose to edit after a warning
@@ -126,7 +130,7 @@ export function Compose({
               </Pressable>
             </View>
           ))}
-          {photos.length < PHOTOS_MAX ? (
+          {photos.length < PHOTOS_MAX && !voice ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add a photo"
@@ -151,6 +155,8 @@ export function Compose({
             </Pressable>
           ) : null}
         </View>
+        {/* D75: one kind of attachment per post: photos or a voice clip. */}
+        {photos.length === 0 ? <VoiceRecorder value={voice} onChange={setVoice} /> : null}
         <Text style={[styles.muted, { fontSize: 12 }]}>
           Photos are checked and cleaned of location and camera details before anyone sees them.
         </Text>

@@ -230,6 +230,16 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
   }
 
   const authorId = s.author && 'id' in s.author ? s.author.id : null;
+  const voice =
+    ref.type === 'general' || ref.type === 'business'
+      ? await db.photo.findFirst({
+          where: {
+            kind: 'AUDIO',
+            ...(ref.type === 'general' ? { generalPostId: ref.id } : { businessPostId: ref.id }),
+          },
+          select: { id: true },
+        })
+      : null;
   // D74: for an account, every report on anything it posted too (who, why, on what), so an
   // automatic suspension can be checked for report abuse in one place.
   const accountReports =
@@ -284,6 +294,8 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
     body: s.body,
     /** Admin-only image link (cookie-authenticated), for photo cases. */
     photoUrl: ref.type === 'photo' ? `/api/v1/admin/photos/${ref.id}` : null,
+    /** D75: a voice post's clip, playable by the moderator (any status). */
+    voiceUrl: voice ? `/api/v1/admin/photos/${voice.id}` : null,
     contentStatus: s.status,
     author: s.author,
     authorHistory: authorId ? await userHistory(authorId) : null,

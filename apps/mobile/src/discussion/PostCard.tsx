@@ -7,6 +7,7 @@ import { formatDistance, postTime } from '@/format';
 import { MedalIcons } from '@/profile/Medals';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { PhotoGrid } from './PhotoGrid';
+import { VoicePlayer } from './VoicePlayer';
 import { VoteControl } from './VoteControl';
 
 type AnyAuthor = { username: string } | { guest: true } | { deleted: true };
@@ -61,7 +62,7 @@ export function PostCard({
   return (
     <Pressable
       accessibilityRole={onOpen ? 'button' : undefined}
-      accessibilityLabel={`Post by ${name}${post.isMine ? ' (you)' : ''}, ${postTime(post.createdAt)}. ${post.body}`}
+      accessibilityLabel={`Post by ${name}${post.isMine ? ' (you)' : ''}, ${postTime(post.createdAt)}. ${post.voice ? 'Voice post. ' : ''}${post.body}`}
       onPress={onOpen}
       disabled={!onOpen}
       style={({ pressed }) => ({
@@ -128,12 +129,20 @@ export function PostCard({
       >
         <View style={{ padding: 14 }}>
           {/* Plain text only (P3.10): user content is never rendered as markup or auto-linked. */}
-          <Text
-            style={{ fontSize: 16, lineHeight: 22, color: COLORS.text }}
-            numberOfLines={full ? undefined : 8}
-          >
-            {post.body}
-          </Text>
+          {post.body ? (
+            <Text
+              style={{ fontSize: 16, lineHeight: 22, color: COLORS.text }}
+              numberOfLines={full ? undefined : 8}
+            >
+              {post.body}
+            </Text>
+          ) : null}
+          {/* D75: voice posts play right in the card. */}
+          {post.voice ? (
+            <View style={{ marginTop: post.body ? 10 : 0 }}>
+              <VoicePlayer voice={post.voice} />
+            </View>
+          ) : null}
           <PhotoGrid
             photos={post.photos}
             onLongPress={onReportPhoto ? (p) => onReportPhoto(p.id) : undefined}

@@ -551,9 +551,20 @@ model Vote {
 }
 
 /// Image record. Bytes live in object storage only (§12).
+/// D75: what an uploaded media item is. The Photo table holds all post media.
+enum MediaKind {
+  IMAGE
+  AUDIO // voice posts
+  VIDEO // reserved for video posts (P8.9)
+}
+
+/// Uploaded media: photos, GIFs and voice clips (D65, D74, D75).
 model Photo {
   id             String        @id @default(uuid(7)) @db.Uuid
   uploaderId     String        @db.Uuid
+  kind           MediaKind     @default(IMAGE)
+  /// Voice clips: length in milliseconds (checked by the server).
+  durationMs     Int?
   /// Random key in the private media bucket (set after processing).
   storageKey     String?       @unique @db.VarChar(200)
   quarantineKey  String?       @unique @db.VarChar(200)

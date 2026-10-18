@@ -58,3 +58,9 @@ export function postTime(iso: string, now: number = Date.now()): string {
 export function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
 }
+
+/** D75: a clip length or position as m:ss ("0:07", "1:00"). */
+export function clock(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
