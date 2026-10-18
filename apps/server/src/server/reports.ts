@@ -4,6 +4,7 @@ import type { Actor } from './auth/require-actor';
 import { getConfig } from './config';
 import { db } from './db';
 import { ApiError } from './http';
+import { autoSuspendConfig, maybeAutoSuspend } from './moderation/auto-suspend';
 import { getPublicProfile } from './profiles';
 
 /**
@@ -110,7 +111,10 @@ export async function createReport(
     actor.kind === 'user' ? { reporterUserId: actor.user.id } : { reporterGuestId: actor.guest.id };
   const reporterKey = actor.kind === 'user' ? `user:${actor.user.id}` : `guest:${actor.guest.id}`;
 
-  const autoHideAt = await getConfig('moderation.autoHideReports');
+  const [autoHideAt, suspendCfg] = await Promise.all([
+    getConfig('moderation.autoHideReports'),
+    autoSuspendConfig(),
+  ]);
   return db.$transaction(async (tx) => {
     // Serializes the same reporter + item so a double tap can't create two reports.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'report:' + reporterKey + ':' + t.key}))`;
@@ -125,6 +129,8 @@ export async function createReport(
       },
     });
     await autoHide(tx, t, autoHideAt);
+    // D74: many different people reporting one account suspends it pending review.
+    if (t.authorUserId) await maybeAutoSuspend(tx, t.authorUserId, suspendCfg);
     return { created: true };
   });
 }

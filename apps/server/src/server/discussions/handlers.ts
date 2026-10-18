@@ -136,7 +136,7 @@ export async function feed(req: Request) {
     actor.kind === 'user'
       ? { id: actor.user.id, generalRadiusMiles: actor.user.generalRadiusMiles }
       : { id: NO_USER, generalRadiusMiles: null };
-  const page = await listFeed({ viewer, at, sort: input.sort, cursor: input.cursor });
+  const page = await listFeed({ viewer, at, sort: input.sort, cursor: input.cursor, q: input.q });
   // D72: "Near Avondale" for the reader's own location only.
   return NextResponse.json({ ...page, area: nearestNeighborhood(at) });
 }

@@ -181,18 +181,25 @@ async function subject(
 
 // ───────────────────────────── Case detail ─────────────────────────────
 
-export async function getCase(ref: CaseRef) {
+/** D74: a case page lists this many reports unless the moderator asks for all of them. */
+export const CASE_REPORTS_SHOWN = 20;
+
+export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {}) {
   const s = await subject(ref);
   if (!s) throw new ApiError(404, 'NOT_FOUND', 'Not found');
-  const reports = await db.report.findMany({
-    where: reportWhere(ref),
-    orderBy: { createdAt: 'desc' },
-    take: 100,
-    include: {
-      reporterUser: { select: { username: true } },
-      resolvedBy: { select: { username: true } },
-    },
-  });
+  // Every report is stored; the page shows the newest 20 plus a per-reason summary (D74).
+  const [reports, byReason] = await Promise.all([
+    db.report.findMany({
+      where: reportWhere(ref),
+      orderBy: { createdAt: 'desc' },
+      take: opts.allReports ? 5000 : CASE_REPORTS_SHOWN,
+      include: {
+        reporterUser: { select: { username: true } },
+        resolvedBy: { select: { username: true } },
+      },
+    }),
+    db.report.groupBy({ by: ['reason'], where: reportWhere(ref), _count: { _all: true } }),
+  ]);
 
   // Context: the post a comment belongs to, and the comment it replies to.
   let context: { post?: string; parent?: string; place?: string } = {};
@@ -223,7 +230,55 @@ export async function getCase(ref: CaseRef) {
   }
 
   const authorId = s.author && 'id' in s.author ? s.author.id : null;
+  // D74: for an account, every report on anything it posted too (who, why, on what), so an
+  // automatic suspension can be checked for report abuse in one place.
+  const accountReports =
+    ref.type === 'user'
+      ? (
+          await db.report.findMany({
+            where: {
+              OR: [
+                { generalPost: { authorId: ref.id } },
+                { businessPost: { authorId: ref.id } },
+                { comment: { authorUserId: ref.id } },
+                { photo: { uploaderId: ref.id } },
+              ],
+            },
+            orderBy: { createdAt: 'desc' },
+            take: opts.allReports ? 5000 : CASE_REPORTS_SHOWN,
+            include: {
+              reporterUser: { select: { username: true } },
+              generalPost: { select: { body: true } },
+              businessPost: { select: { body: true } },
+              comment: { select: { body: true } },
+            },
+          })
+        ).map((r) => ({
+          id: r.id,
+          reason: r.reason,
+          details: r.details,
+          reporter: r.reporterUser?.username ?? 'automatic screening',
+          status: r.status,
+          createdAt: r.createdAt.toISOString(),
+          on: r.generalPostId
+            ? {
+                type: 'general' as const,
+                id: r.generalPostId,
+                preview: preview(r.generalPost!.body),
+              }
+            : r.businessPostId
+              ? {
+                  type: 'business' as const,
+                  id: r.businessPostId,
+                  preview: preview(r.businessPost!.body),
+                }
+              : r.commentId
+                ? { type: 'comment' as const, id: r.commentId, preview: preview(r.comment!.body) }
+                : { type: 'photo' as const, id: r.photoId!, preview: '[photo]' },
+        }))
+      : null;
   return {
+    accountReports,
     type: ref.type,
     id: ref.id,
     body: s.body,
@@ -233,6 +288,11 @@ export async function getCase(ref: CaseRef) {
     author: s.author,
     authorHistory: authorId ? await userHistory(authorId) : null,
     context,
+    /** D74: totals per reason across every report, newest-first list below is capped. */
+    reportTotal: byReason.reduce((n, g) => n + g._count._all, 0),
+    reportsByReason: byReason
+      .map((g) => ({ reason: g.reason, count: g._count._all }))
+      .sort((a, b) => b.count - a.count),
     reports: reports.map((r) => ({
       id: r.id,
       reason: r.reason,

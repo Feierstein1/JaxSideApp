@@ -47,6 +47,9 @@ checks. Tick each box when it looks right; note anything odd next to it.
       reloads with a new location.
 - [ ] **Reopen (D73):** switch to another app, walk a block (60+ yd), come back: Home and Places
       reload on their own. Come back without moving: nothing reloads.
+- [ ] **Search (D74):** type in the search box on Home: post text or `@username` finds nearby
+      posts only; no match shows "No posts nearby match…".
+- [ ] Tapping refresh more than 30 times in a minute shows "Slow down a little".
 - [ ] With no posts nearby, the "No posts in this area yet" message and button show.
 - [ ] **+** opens New post; posting returns to the feed with your post at the top.
 - [ ] Posting again within 10 seconds shows "You're doing that too often. Try again in…".
@@ -65,6 +68,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] New post → the dashed **photo** box asks for photo access once, then opens your library.
 - [ ] Add up to 4 photos (thumbnails with an ✕ to remove); post: the first shows large in the feed,
       the rest as small squares.
+- [ ] A **GIF** uploads and plays animated in the post (D74).
 - [ ] An iPhone HEIC photo uploads fine (it's converted to JPEG).
 - [ ] **Away from Wi-Fi (D73):** with `npm run dev:remote`, on cellular, a full-size camera photo
       uploads in a few seconds (it's shrunk on the phone first).
@@ -109,7 +113,8 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Within 0.3 mi, the round gold **+** bottom-right writes a post there (no "Write a post here"
       link). Home uses the same round + button.
 - [ ] Star a place; it appears under Account → Settings → Favorite places.
-- [ ] Each place row shows its post count.
+- [ ] Each place row shows its post count, and a ★ with how many people favorited it (D74).
+      Filter → **Most favorited** puts the most-starred places first.
 - [ ] Within about 0.3 mi of a place, its discussion opens and you can post; farther away you see
       the "get closer" message.
 - [ ] No place names longer than 30 characters appear.
@@ -174,4 +179,8 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Give a second strike (suspends 24 h): the phone shows "suspended until …" and signing in
       offers **See why and appeal**; send an appeal.
 - [ ] Appeals: accept it with a note; the person can sign in again and sees the note.
+- [ ] **Automatic suspension (D74):** hard to do by hand (10 accounts at least 3 days old); the
+      automated tests cover it. If one happens: it's at the top of Reports, the account's case
+      lists every report on its posts; **Ban** removes the posts, **Lift** brings them back.
+- [ ] A case with more than 20 reports shows a per-reason summary and **Show all**.
 - [ ] Audit log lists everything you did. **Sign out** ends the session.

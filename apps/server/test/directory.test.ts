@@ -146,6 +146,33 @@ describe('place search (P2.13)', () => {
     expect(names(await search({ sort: 'distance' }))[0]).toBe('Bold Bean Coffee');
   });
 
+  // D74: counts are public; who favorited is not.
+  it('shows how many people favorited each place and sorts by most favorited', async () => {
+    const tokenC = (await createSession((await createTestUser('cara_d')).id, 'MOBILE')).token;
+    const park = await idOf('Memorial Park');
+    const store = await idOf('Corner Store');
+    for (const t of [tokenA, tokenB, tokenC]) {
+      await call(favPUT as Handler, 'PUT', { token: t, id: park });
+    }
+    await call(favPUT as Handler, 'PUT', { token: tokenB, id: store });
+    await call(favPUT as Handler, 'PUT', { token: tokenB, id: store }); // repeat counts once
+    const r = await search({ sort: 'popular' });
+    expect(names(r).slice(0, 2)).toEqual(['Memorial Park', 'Corner Store']);
+    const count = (n: string) =>
+      r.body.places.find((p: { name: string }) => p.name === n).favoriteCount;
+    expect([count('Memorial Park'), count('Corner Store'), count('Bold Bean Coffee')]).toEqual([
+      3, 1, 0,
+    ]);
+    expect(r.raw).not.toMatch(/alice_d|bob_d|cara_d/);
+    // Un-favoriting lowers the count.
+    await call(favDELETE as Handler, 'DELETE', { token: tokenC, id: park });
+    expect(
+      (await search({ sort: 'popular' })).body.places.find(
+        (p: { name: string }) => p.name === 'Memorial Park',
+      ).favoriteCount,
+    ).toBe(2);
+  });
+
   it('honors a larger page for the map view, capped at 50', async () => {
     const r = await search({ limit: 3 });
     expect(r.body.places).toHaveLength(3);

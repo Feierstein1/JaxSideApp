@@ -142,8 +142,47 @@ describe('processing (P6.2, P6.3, ✅MS5)', () => {
   it('sniffing recognizes real image types', async () => {
     expect(sniffImage(gpsJpeg)).toBe('jpeg');
     expect(sniffImage(await sharp(gpsJpeg).webp().toBuffer())).toBe('webp');
-    expect(sniffImage(Buffer.from('GIF89a........'))).toBeNull();
+    expect(sniffImage(Buffer.from('GIF89a........'))).toBe('gif'); // D74
+    expect(sniffImage(Buffer.from('GIF90a........'))).toBeNull();
+    await expect(processImage(Buffer.from('GIF89a not really a gif'))).rejects.toMatchObject({
+      status: 422,
+    });
     await expect(processImage(Buffer.from('hello world, not an image'))).rejects.toMatchObject({
+      status: 422,
+    });
+  });
+
+  // D74: GIFs stay animated, are re-encoded, shrunk to 600 px and limited in length.
+  const animatedGif = async (frames: number, w: number, h: number) => {
+    const frame = (i: number) =>
+      sharp({
+        create: { width: w, height: h, channels: 3, background: { r: i * 20, g: 80, b: 160 } },
+      })
+        .png()
+        .toBuffer();
+    const pngs = await Promise.all(Array.from({ length: frames }, (_, i) => frame(i % 10)));
+    return sharp(pngs, { join: { animated: true } })
+      .gif()
+      .toBuffer();
+  };
+
+  it('keeps a GIF animated, re-encoded and at most 600 px', async () => {
+    const gif = await animatedGif(3, 1200, 600);
+    const out = await processImage(gif);
+    expect(out.mimeType).toBe('image/gif');
+    expect([out.width, out.height]).toEqual([600, 300]);
+    const meta = await sharp(out.data, { animated: true }).metadata();
+    expect(meta.format).toBe('gif');
+    expect(meta.pages).toBe(3);
+    const r = await upload(ann.token, gif);
+    expect(r.status).toBe(201);
+    const photo = await db.photo.findUniqueOrThrow({ where: { id: r.body.id } });
+    expect(photo.mimeType).toBe('image/gif');
+    expect(photo.storageKey).toMatch(/\.gif$/);
+  });
+
+  it('refuses a GIF with too many frames', async () => {
+    await expect(processImage(await animatedGif(301, 40, 40))).rejects.toMatchObject({
       status: 422,
     });
   });

@@ -95,6 +95,14 @@ export function PlaceStats({ place }: { place: PlaceSummary }) {
       <Text style={{ color: COLORS.text, fontWeight: '600' }}>
         {formatDistance(place.distanceMeters)}
       </Text>
+      {/* D74: how many people favorited it (count only; never who). */}
+      <View
+        accessibilityLabel={`Favorited by ${place.favoriteCount === 1 ? '1 person' : `${place.favoriteCount} people`}`}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+      >
+        <Ionicons name="star" size={15} color={COLORS.accentDark} />
+        <Text style={{ color: COLORS.text, fontWeight: '600' }}>{place.favoriteCount}</Text>
+      </View>
       <Text
         style={{
           color: place.postCount > 0 ? COLORS.primary : COLORS.textMuted,

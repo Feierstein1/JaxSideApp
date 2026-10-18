@@ -1,5 +1,6 @@
 import type { ModerationActionType, Prisma } from '@/generated/prisma/client';
 import { revokeAllSessions } from '../auth/sessions';
+import { resolveAutoSuspension } from './auto-suspend';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { ApiError } from '../http';
@@ -159,9 +160,11 @@ export async function suspendUser(input: ActionInput & { hours: number }) {
 /** Direct permanent ban (counts as a strike). */
 export async function banUser(input: ActionInput) {
   await targetUser(input.userId);
-  const action = await db.$transaction((tx) =>
-    applyBan(tx, { ...input, now: input.now ?? new Date() }),
-  );
+  const action = await db.$transaction(async (tx) => {
+    const a = await applyBan(tx, { ...input, now: input.now ?? new Date() });
+    await resolveAutoSuspension(tx, input.userId, 'CONFIRMED'); // D74: hidden posts → removed
+    return a;
+  });
   await revokeAllSessions(input.userId);
   return action;
 }
@@ -181,6 +184,7 @@ export async function liftEnforcement(input: ActionInput) {
       where: { id: input.userId },
       data: { status: 'ACTIVE', suspendedUntil: null },
     });
+    await resolveAutoSuspension(tx, input.userId, 'RESTORED'); // D74: hidden posts come back
     if (user.status === 'BANNED') {
       const installs = await tx.session.findMany({
         where: { userId: input.userId, installationId: { not: null } },

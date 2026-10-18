@@ -127,6 +127,34 @@ describe('general posts and feed (P3.1, P3.1a)', () => {
     expect(bodies(await feed(bob, MEMORIAL))).toEqual([]);
   });
 
+  // D74: search by username or text, only within the reader's radius.
+  it('searches the area feed by text or username, never past the radius', async () => {
+    await liftLimits('rateLimit.post.perMinute', 'rateLimit.post.perDay');
+    await post(alice, 'Pizza night at the park');
+    await post(bob, 'Anyone lost a cat? 100% orange');
+    await post(alice, 'Far away pizza', MEMORIAL); // 740 m: outside a 0.3 mi radius
+    expect(bodies(await feed(bob, FIVE_POINTS, { q: 'PIZZA' }))).toEqual([
+      'Pizza night at the park',
+    ]);
+    expect(bodies(await feed(bob, FIVE_POINTS, { q: '@ali' }))).toEqual([
+      'Pizza night at the park',
+    ]);
+    // Plain text also matches the start of a username; "@" matches names only.
+    expect(bodies(await feed(alice, FIVE_POINTS, { q: 'bob_' }))).toEqual([
+      'Anyone lost a cat? 100% orange',
+    ]);
+    expect(bodies(await feed(alice, FIVE_POINTS, { q: '@cat' }))).toEqual([]);
+    // % and _ are literal, not wildcards.
+    expect(bodies(await feed(alice, FIVE_POINTS, { q: '0% o' }))).toEqual([
+      'Anyone lost a cat? 100% orange',
+    ]);
+    expect(bodies(await feed(alice, FIVE_POINTS, { q: '%%' }))).toEqual([]);
+    expect((await feed(alice, FIVE_POINTS, { q: 'a' })).status).toBe(400);
+    // Deleted accounts never match by name.
+    await db.user.update({ where: { id: aliceId }, data: { status: 'DELETED' } });
+    expect(bodies(await feed(bob, FIVE_POINTS, { q: '@alice' }))).toEqual([]);
+  });
+
   // 🔒 P3.1a / D16: no feed from outside Duval.
   it('refuses the feed outside Duval', async () => {
     expect((await feed(bob, ORANGE_PARK)).body.error.code).toBe('LOCATION_OUTSIDE_AREA');

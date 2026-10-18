@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -19,6 +20,7 @@ import { getFreshReading, useReloadWhenMoved } from '@/location/device';
 import { AreaLabel } from '@/location/AreaLabel';
 import { OsmAttribution } from '@/places/Attribution';
 import { PlaceStats, PlaceTop, placeFrame } from '@/places/PlaceHeader';
+import { refreshLimiter } from '@/refresh-limit';
 import { Button, Chip, FloatingButton, RefreshButton, styles } from '@/ui';
 
 interface SearchResponse {
@@ -32,6 +34,7 @@ const SORTS: { key: PlaceSort; label: string }[] = [
   { key: 'distance', label: 'Nearest' },
   { key: 'name', label: 'A–Z' },
   { key: 'favorites', label: 'Favorites first' },
+  { key: 'popular', label: 'Most favorited' },
 ];
 
 /**
@@ -139,7 +142,14 @@ export default function PlacesScreen() {
               { flex: 1, backgroundColor: COLORS.background, borderColor: COLORS.background },
             ]}
           />
-          <RefreshButton onPress={() => void load(0, true)} busy={loading && places.length > 0} />
+          <RefreshButton
+            onPress={() => {
+              const wait = refreshLimiter.tap(); // D74: 30 a minute
+              if (wait) Alert.alert('Slow down a little', `You can refresh again in ${wait} s.`);
+              else void load(0, true);
+            }}
+            busy={loading && places.length > 0}
+          />
         </View>
       </View>
 
@@ -193,7 +203,7 @@ function PlaceCard({ place }: { place: PlaceSummary }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${place.name}, ${categoryLabel(place.category)}, ${formatDistance(place.distanceMeters)} away, ${plural(place.postCount, 'post')}`}
+      accessibilityLabel={`${place.name}, ${categoryLabel(place.category)}, ${formatDistance(place.distanceMeters)} away, ${plural(place.postCount, 'post')}, ${plural(place.favoriteCount, 'favorite')}`}
       onPress={() => router.push(`/places/${place.id}`)}
       style={({ pressed }) => [placeFrame, { opacity: pressed ? 0.9 : 1 }]}
     >

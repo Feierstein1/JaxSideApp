@@ -21,13 +21,13 @@ export async function pickPhoto(opts: { square?: boolean } = {}) {
   if (!perm.granted) return null;
   const r = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    quality: 0.85,
+    // Untouched here: photos are shrunk to JPEG below, and GIFs must keep their frames (D74).
+    quality: 1,
     allowsEditing: !!opts.square,
     aspect: opts.square ? [1, 1] : undefined,
     exif: false,
-    // iPhone HEIC photos come back as JPEG.
     preferredAssetRepresentationMode:
-      ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+      ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Current,
   });
   return r.canceled ? null : (r.assets[0] ?? null);
 }
@@ -45,15 +45,22 @@ export async function uploadPhoto(asset: {
   uri: string;
   width: number;
   height: number;
+  mimeType?: string | null;
+  fileName?: string | null;
 }): Promise<Uploaded> {
+  // D74: a GIF goes as-is (the server re-encodes it and keeps the animation); shrinking
+  // here would flatten it to one frame. Everything else becomes a smaller JPEG first.
+  const gif = asset.mimeType === 'image/gif' || /\.gif$/i.test(asset.fileName ?? asset.uri);
   let uri = asset.uri;
-  try {
-    uri = await shrink(asset);
-  } catch {
-    // Couldn't shrink it here; send the original and let the server check the size.
+  if (!gif) {
+    try {
+      uri = await shrink(asset);
+    } catch {
+      // Couldn't shrink it here; send the original and let the server check the size.
+    }
   }
   const file = await (await fetch(uri)).blob();
-  const headers: Record<string, string> = { 'Content-Type': 'image/jpeg' };
+  const headers: Record<string, string> = { 'Content-Type': gif ? 'image/gif' : 'image/jpeg' };
   const token = await secureTokenStore.get();
   if (token) headers.Authorization = `Bearer ${token}`;
   const installation = await installationStore.get();

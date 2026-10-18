@@ -15,9 +15,13 @@ const quote = {
 };
 
 /** P5.14: one reported item: the content, its context, the reports, the author's record. */
-export default async function CasePage(ctx: { params: Promise<{ type: string; id: string }> }) {
+export default async function CasePage(ctx: {
+  params: Promise<{ type: string; id: string }>;
+  searchParams: Promise<{ all?: string }>;
+}) {
   await requireAdminPage();
-  const c = await getCase(await caseParam(ctx));
+  const all = (await ctx.searchParams).all === '1';
+  const c = await getCase(await caseParam(ctx), { allReports: all });
   const author = c.author && 'username' in c.author ? c.author : null;
   const ok = c.contentStatus === 'VISIBLE' || c.contentStatus === 'ACCOUNT';
   return (
@@ -54,7 +58,17 @@ export default async function CasePage(ctx: { params: Promise<{ type: string; id
         hasAuthor={!!author}
       />
 
-      <h2 style={{ marginBottom: 0 }}>Reports</h2>
+      <h2 style={{ marginBottom: 0 }}>Reports ({c.reportTotal})</h2>
+      {/* D74: a summary instead of a flood; the list shows the newest 20 unless asked. */}
+      <p style={{ ...ui.muted, margin: 0 }}>
+        {c.reportsByReason.map((g) => `${words(g.reason)} ${g.count}`).join(' · ')}
+        {c.reportTotal > c.reports.length ? (
+          <>
+            {' · '}showing the newest {c.reports.length}.{' '}
+            <a href="?all=1">Show all {c.reportTotal}</a>
+          </>
+        ) : null}
+      </p>
       <Table head={['Reason', 'Details', 'From', 'When', 'Status']}>
         {c.reports.map((r) => (
           <tr key={r.id}>
@@ -69,6 +83,26 @@ export default async function CasePage(ctx: { params: Promise<{ type: string; id
           </tr>
         ))}
       </Table>
+
+      {c.accountReports?.length ? (
+        <>
+          <h2 style={{ marginBottom: 0 }}>Reports on this account’s posts and comments</h2>
+          <Table head={['Reason', 'Details', 'From', 'On', 'When', 'Status']}>
+            {c.accountReports.map((r) => (
+              <tr key={r.id}>
+                <td style={td}>{words(r.reason)}</td>
+                <td style={{ ...td, maxWidth: 280 }}>{r.details ?? ''}</td>
+                <td style={td}>{r.reporter}</td>
+                <td style={{ ...td, maxWidth: 280 }}>
+                  <a href={`/admin/cases/${r.on.type}/${r.on.id}`}>{r.on.preview}</a>
+                </td>
+                <td style={td}>{when(r.createdAt)}</td>
+                <td style={td}>{words(r.status)}</td>
+              </tr>
+            ))}
+          </Table>
+        </>
+      ) : null}
 
       {c.authorHistory ? (
         <>

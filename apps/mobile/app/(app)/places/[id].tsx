@@ -58,7 +58,11 @@ export default function PlaceScreen() {
       const path = `/api/v1/places/${place.id}/favorite`;
       if (place.isFavorite) await api.delete(path);
       else await api.put(path, {});
-      setPlace({ ...place, isFavorite: !place.isFavorite });
+      setPlace({
+        ...place,
+        isFavorite: !place.isFavorite,
+        favoriteCount: Math.max(0, place.favoriteCount + (place.isFavorite ? -1 : 1)),
+      });
       showToast(place.isFavorite ? 'Removed from favorites' : 'Added to favorites');
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Something went wrong.');

@@ -23,7 +23,7 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 **Phase:** 7 — Verification & Release Readiness: work done 2026-10-16, waiting for sign-off. Phase 3 gate pending only the on-device vote/comment check
 **Next action:** Your sign-off on Phase 7: phone checklist (`docs/MANUAL_TESTS.md`), hosting approval (Q15, `docs/LAUNCH_SERVICES.md`), store accounts (`docs/STORE_PREP.md`).
-**Last updated:** 2026-10-17
+**Last updated:** 2026-10-18
 
 ---
 
@@ -181,6 +181,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D71 | **Accepted** 2026-10-17 | **One radius, at most 0.3 mi (528 yd), for everything location-based.** People pick 0.1, 0.2 or 0.3 mi (shown as 176 / 352 / 528 yd; default 0.3) in Account → Settings → Radius; it sets the feed and the Places list. Commenting and voting on area posts need the person within 0.3 mi of the post (was 1 mi, **replaces D20's 1 mi**); business discussions stay at 0.3 mi (D19); the Places list never goes past the person's radius (**replaces D69's 1-mile list**). The separate business-radius setting is gone (it was never used for anything). Distances under a mile show in yards (feet under 100 yd); "too far" messages say yards. A migration moves the saved settings to 0.3 mi (only where they were never customized) and snaps everyone's saved radius to 0.1 / 0.2 / 0.3. **Deviation from the §7 radius table** (general 1 mi default / range up to 1 mi) | User 2026-10-17: a mile is too vast for local talk, and business posts aren't credible from a mile away |
 | D72 | **Accepted** 2026-10-17 | **"Near [neighborhood]" label at the top of Home and Places.** The server names the closest of about 240 neighborhood points to the person's verified location and returns it with the feed and the Places search (`area`, or null if nothing is within 5 km). It's shown only to that person, about their own location, and never stored or attached to posts. Points come from free sources merged by `npm run fetch:neighborhoods -w @jax/server` into the committed file `apps/server/data/neighborhoods/duval-neighborhoods.json`: OpenStreetMap (ODbL), City of Jacksonville GIS "Neighborhood Names" (Q16) and our own pins in `additions.json` (which win). Only points inside the Duval boundary are kept, which drops the Texas Duval County that shares the OSM name. No free neighborhood outlines exist, so near a border it can name the neighbor, and a missing neighborhood shows as the closest listed one until we pin it. **Not in the spec** (new feature). | User 2026-10-17: wants to see what area they're in, for free |
 | D73 | **Accepted** 2026-10-17 | User requests: (1) **Location check on reopen:** each time the app comes back to the screen it takes a new GPS fix; if you've moved more than 50 m (≈ 55 yd) since the lists were loaded, Home and Places reload, otherwise nothing changes. A **refresh button** (new fix + reload) sits top-right on Home and right of the Places search box. (2) **Hiding your name also hides the ★** on your own posts. (3) **Auto-hide:** a post (area or room) with open reports from **3 different people** ("more than 2") is held for review right away (hidden from everyone, room post count drops) until a moderator publishes or removes it in the portal, which lists every reporter and the author (to spot report abuse). Threshold is the setting `moderation.autoHideReports` (3). Comments and profiles aren't auto-hidden. **Adds to §11 moderation** (spec has no auto-hide). (4) **Photos are shrunk on the phone** to at most 2048 px (JPEG 0.8) before upload with `expo-image-manipulator` (free, part of Expo); full-size camera photos could exceed the 10 MB limit or be slow on cellular, the likely cause of the failed upload away from Wi-Fi. (5) A prompt for a separate UX/UI agent: `docs/agents/UX_UI_AGENT_PROMPT.md` | User 2026-10-17 |
+| D74 | **Accepted** 2026-10-18 | **Phase 8 quick wins + scope change.** (1) Places show how many people favorited each (count public; who favorited will be friends-only once friends exist) and a **Most favorited** sort. (2) Refresh button capped at 30 taps/min in the app (the server's 60/min feed and search limits still apply). Color changes stay at the existing 10/min. (3) **Automatic suspension:** 10 different people with open reports on an account (profile or anything it posted) within 7 days suspends it (30-day safety net), hides its posts, and adds an automatic report to the top of the queue. Only reporters with a confirmed email and an account ≥ 3 days old count. Ban confirms it (hidden posts → removed); Lift restores the account and exactly those posts. The account's case page lists every report on its profile and content (reporter, reason, item). Settings: `moderation.autoSuspend*`. (4) **Reports:** all are stored; a case page shows a per-reason summary and the newest 20, with "Show all". The queue already shows one row per item. (5) **Feed search** by text or `@username`, only within the reader's radius; deleted accounts never match. (6) **GIFs** stay animated: re-encoded server-side (no metadata), ≤ 600 px, ≤ 300 frames, ≤ 8 MB. The phone sends GIFs untouched and shrinks other photos itself. (7) **Scope change:** friends (mutual, by request), a notification bell, a friends feed ("@name posted near [neighborhood]" or "at [place]") with a "hide my recent posts from friends" setting, voice posts, video posts, post-type tabs (All / Text / Media / Voice / Video) and, later, private messaging move **into scope** as Phases 8–10, built after the app features. **Deviation from §11 and §15/§19** (spec has no auto-suspend; friends, notifications and messaging were out of scope) | User 2026-10-18 |
 | D43 | **Accepted** 2026-10-15 | The signed-in username shows in the top bar on every screen, with an eye button that hides it **on that device's screen only** (stored on the device). Posts still show the username to others | User request. Screen-privacy toggle, not anonymous posting. **Confirmed by the user 2026-10-15** |
 
 ---
@@ -340,6 +341,31 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 
 ---
 
+## Phase 8 — Post types & media (D74)
+
+- [x] P8.1 Favorite counts on places + "Most favorited" sort
+- [x] P8.2 Refresh limit (30/min in the app)
+- [x] P8.3 Report summary on case pages (newest 20, show all)
+- [x] P8.4 🔒 Automatic suspension at 10 reporters in 7 days (throwaway accounts don't count; Ban/Lift resolve it)
+- [x] P8.5 Feed search by text or @username within the radius
+- [x] P8.6 Animated GIFs
+- [ ] P8.7 Photo upload away from Wi-Fi: confirm on the phone (D73 shrink); waiting on the error text if it still fails
+- [ ] P8.8 Voice posts (record in the app, up to 60 s; reviewed by report, since screening reads text only)
+- [ ] P8.9 Video posts (size and length limits; needs a processing plan and cost check first)
+- [ ] P8.10 Post-type tabs on Home and place pages: All / Text / Media / Voice / Video (type decided by what's attached)
+
+## Phase 9 — Friends & notifications (D74, after Phase 8)
+
+- [ ] P9.1 Friend requests (send, accept, decline, remove); mutual only; blocked users can't send
+- [ ] P9.2 Notification bell with unread count (friend requests first); polling first, live updates later
+- [ ] P9.3 Friends feed: "@name posted near [neighborhood]" (area posts) or "at [place]" (place posts)
+- [ ] P9.4 Setting: "Hide my recent posts from friends"
+- [ ] P9.5 Who favorited a place: friends only (count stays public)
+
+## Phase 10 — Private messaging (D74, later)
+
+- [ ] P10.1 Design first (conversations, reporting and blocking from day one, retention)
+
 ## Acceptance Criteria Tracker (§20)
 
 Every row needs a linked test or a written manual procedure before it can be checked.
@@ -437,7 +463,9 @@ Ideas the user wants remembered. Not requirements; `docs/SPEC.md` stays as writt
 
 ## Out of Scope (do not build — §15, §19)
 
-Private messaging · following · events/meetups/RSVPs · sponsored content / ads / subscriptions · push notifications · advanced analytics · recommendation algorithms · advanced reputation systems · demographic profile fields.
+Friends, notifications and private messaging moved into scope on 2026-10-18 (D74, Phases 9–10).
+
+Events/meetups/RSVPs · sponsored content / ads / subscriptions · phone push notifications (the in-app bell is in scope, D74) · advanced analytics · recommendation algorithms · advanced reputation systems · demographic profile fields.
 
 ---
 
@@ -492,3 +520,4 @@ Private messaging · following · events/meetups/RSVPs · sponsored content / ad
 | 2026-10-17 | D71 | Radius capped at 0.3 mi everywhere: one setting (176/352/528 yd), feed and Places list follow it, area comment/vote radius 1 mi → 0.3 mi; distances and messages in yards; migration updates settings and saved radii. Live check made robust to burst-limit timing (waits out a 429 once on non-limit steps; forged-link check now always alters the signature). Docker had stopped after a restart; restarted. 593 server + 35 app tests, Android bundle, live check 97/97 |
 | 2026-10-17 | D72 | "Near [neighborhood]" label on Home and Places: ~240 free neighborhood points (OpenStreetMap + City of Jacksonville GIS + our own pins; Five Points added), filtered to the Duval boundary (removed Duval County, Texas matches), refresh script `fetch:neighborhoods`; server returns `area` with the feed and Places search. Q16 raised (city data reuse terms). Fairfax isn't in any source; waiting on a location from the user. Also reformatted 10 files Prettier flagged from D71. 600 server + 90 shared + 35 app tests, Android bundle, live check 98/98 |
 | 2026-10-17 | D73 | Reopen-and-moved reload (50 m) + refresh buttons on Home and Places; ★ hidden with your name; auto-hide posts at 3 different reporters (setting, lock-safe for simultaneous reports, room count kept right); photos shrunk to 2048 px on the phone before upload (likely fix for the failed upload away from Wi-Fi; unconfirmed until retried); UX/UI agent prompt. 604 server + 90 shared + 39 app tests, Android bundle |
+| 2026-10-18 | P8.1–P8.6, D74 | Favorite counts + Most favorited sort; refresh limit; report summary (newest 20 + show all); automatic suspension (10 qualifying reporters / 7 days, migration `auto_suspension`, Ban/Lift resolve it, account case lists all reports); feed search (text / @username, radius-limited); animated GIFs. Phases 8–10 added (voice/video posts, type tabs, friends, notifications, messaging). 614 server + 90 shared + 40 app tests, Android bundle, live check 98/98 |

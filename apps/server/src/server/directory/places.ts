@@ -15,6 +15,7 @@ interface Row {
   distance: number;
   is_favorite: boolean;
   post_count: number;
+  favorite_count: number;
 }
 
 async function toSummaries(rows: Row[]): Promise<PlaceSummary[]> {
@@ -31,6 +32,7 @@ async function toSummaries(rows: Row[]): Promise<PlaceSummary[]> {
     isFavorite: r.is_favorite,
     withinRoomRadius: r.distance <= roomMeters,
     postCount: r.post_count,
+    favoriteCount: r.favorite_count,
   }));
 }
 
@@ -38,7 +40,8 @@ async function toSummaries(rows: Row[]): Promise<PlaceSummary[]> {
  * Directory search (P2.13, D40).
  * - Filters: name (typo-tolerant, pg_trgm), category list.
  * - Sorts: "relevance" (best name match, default when searching), "distance" (default
- *   otherwise), "name" (A–Z), "favorites" (favorites first, then distance).
+ *   otherwise), "name" (A–Z), "favorites" (favorites first, then distance), "popular"
+ *   (most favorited by everyone, D74).
  * - In the distance-based sorts, favorites rank as if closer by
  *   directory.favoriteDistanceFactor, so they stand out without overriding distance (D39).
  */
@@ -80,10 +83,13 @@ export async function searchPlaces(opts: {
     distance: Prisma.sql`ORDER BY ${effectiveDistance} ASC, p.id`,
     name: Prisma.sql`ORDER BY p."nameNormalized" ASC, ${distance} ASC, p.id`,
     favorites: Prisma.sql`ORDER BY (f."userId" IS NULL) ASC, ${distance} ASC, p.id`,
+    // D74: most favorited first; ties nearest first.
+    popular: Prisma.sql`ORDER BY favorite_count DESC, ${distance} ASC, p.id`,
   }[sort];
 
   const rows = await db.$queryRaw<Row[]>`
     SELECT p.id, p.name, p.category, p.address, p.latitude, p.longitude, p."postCount" AS post_count,
+           (SELECT count(*)::int FROM "FavoritePlace" fc WHERE fc."placeId" = p.id) AS favorite_count,
            ${distance} AS distance,
            (f."userId" IS NOT NULL) AS is_favorite
     FROM "BusinessPlace" p
@@ -112,6 +118,7 @@ export async function getPlace(opts: {
   const me = Prisma.sql`ST_SetSRID(ST_MakePoint(${opts.longitude}, ${opts.latitude}), 4326)::geography`;
   const rows = await db.$queryRaw<Row[]>`
     SELECT p.id, p.name, p.category, p.address, p.latitude, p.longitude, p."postCount" AS post_count,
+           (SELECT count(*)::int FROM "FavoritePlace" fc WHERE fc."placeId" = p.id) AS favorite_count,
            ST_Distance(p.location, ${me}) AS distance,
            (f."userId" IS NOT NULL) AS is_favorite
     FROM "BusinessPlace" p

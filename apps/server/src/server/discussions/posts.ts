@@ -144,6 +144,7 @@ export async function listFeed(opts: {
   at: GeoPoint;
   sort: FeedSort;
   cursor?: string;
+  q?: string;
 }) {
   const [size, topDays, radius] = await Promise.all([
     getConfig('feed.pageSize'),
@@ -153,7 +154,7 @@ export async function listFeed(opts: {
   const c = decodeCursor(opts.cursor);
   const base = Prisma.sql`${selectPosts('general', opts.viewer.id, opts.at)}
     WHERE p.status = 'VISIBLE' AND ST_DWithin(p.location, ${point(opts.at)}, ${radius})
-      ${notBlocked(opts.viewer.id, Prisma.sql`p."authorId"`)}`;
+      ${notBlocked(opts.viewer.id, Prisma.sql`p."authorId"`)} ${searchFilter(opts.q)}`;
 
   if (opts.sort === 'top') {
     const offset = c && 'o' in c ? c.o : 0;
@@ -172,6 +173,22 @@ export async function listFeed(opts: {
   return page(rows, size, 'general', opts.viewer.id, (l) =>
     encodeCursor({ t: l.createdAt.toISOString(), id: l.id }),
   );
+}
+
+/**
+ * D74: feed search, still only within the reader's radius (searching a name city-wide would
+ * show where that person posts). "@name" matches usernames that start with it; plain text
+ * matches post text anywhere or a username that starts with it. Deleted accounts never
+ * match by name.
+ */
+function searchFilter(q?: string) {
+  if (!q) return Prisma.empty;
+  // Typed % and _ are literal characters, not wildcards.
+  const like = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const name = q.startsWith('@') ? q.slice(1) : q;
+  const byName = Prisma.sql`(u.status <> 'DELETED' AND u."usernameNormalized" LIKE ${like(name.toLowerCase()) + '%'})`;
+  if (q.startsWith('@')) return Prisma.sql`AND ${byName}`;
+  return Prisma.sql`AND (p.body ILIKE ${'%' + like(q) + '%'} OR ${byName})`;
 }
 
 /** P3.2 a place's room, newest first. Access is checked by the caller (D19). */

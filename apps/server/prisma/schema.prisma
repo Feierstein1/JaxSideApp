@@ -195,6 +195,8 @@ model User {
   flagsReviewed   LocationFlag[]       @relation("LocationFlagReviewer")
   configUpdates   AppConfiguration[]
 
+  autoSuspensions AutoSuspension[]
+
   @@index([status])
 }
 
@@ -653,6 +655,28 @@ model UserBlock {
 }
 
 /// Every moderation decision: reason, time, admin, target (§10.3).
+enum AutoSuspensionStatus {
+  OPEN // waiting for a moderator
+  CONFIRMED // a moderator banned the account
+  RESTORED // a moderator lifted it; hidden posts came back
+}
+
+/// D74: an account suspended automatically because many different people reported it in a
+/// short time. Remembers exactly which posts it hid, so a moderator can undo it cleanly.
+model AutoSuspension {
+  id                  String               @id @default(uuid(7)) @db.Uuid
+  userId              String               @db.Uuid
+  reporterCount       Int
+  heldGeneralPostIds  String[]             @db.Uuid
+  heldBusinessPostIds String[]             @db.Uuid
+  status              AutoSuspensionStatus @default(OPEN)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
+  resolvedAt          DateTime?            @db.Timestamptz(3)
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
 model ModerationAction {
   id                   String               @id @default(uuid(7)) @db.Uuid
   adminId              String               @db.Uuid

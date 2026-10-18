@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { COLORS, type FeedSort } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
@@ -8,6 +8,7 @@ import { fetchFeed } from '@/discussion/api';
 import { AreaLabel } from '@/location/AreaLabel';
 import { getFreshReading, useReloadWhenMoved } from '@/location/device';
 import { PostList } from '@/discussion/PostList';
+import { refreshLimiter } from '@/refresh-limit';
 import { FloatingButton, RefreshButton, Segmented, styles } from '@/ui';
 
 /** P3.11: the default landing screen, the feed for the area around you. */
@@ -21,6 +22,11 @@ export default function HomeFeed() {
   const reload = () => setReloads((n) => n + 1);
   useReloadWhenMoved(reload);
   async function refresh() {
+    const wait = refreshLimiter.tap(); // D74: 30 a minute
+    if (wait) {
+      Alert.alert('Slow down a little', `You can refresh again in ${wait} s.`);
+      return;
+    }
     setRefreshing(true);
     try {
       await getFreshReading({ fresh: true }); // a new fix, not the cached one
@@ -31,13 +37,20 @@ export default function HomeFeed() {
       reload();
     }
   }
+  // D74: search by username or text; waits a moment while typing, needs 2+ characters.
+  const [typed, setTyped] = useState('');
+  const [q, setQ] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setQ(typed.trim().length >= 2 ? typed.trim() : ''), 400);
+    return () => clearTimeout(t);
+  }, [typed]);
   const load = useCallback(
     async (cursor?: string) => {
-      const page = await fetchFeed(sort, cursor);
+      const page = await fetchFeed(sort, cursor, q || undefined);
       if (!cursor) setArea(page.area ?? null); // D72: refreshed with the first page
       return page;
     },
-    [sort],
+    [sort, q],
   );
   const verified = state.status === 'signedIn' && state.user.emailVerified;
   const { isGuest, promptAccount } = useGuest();
@@ -71,10 +84,23 @@ export default function HomeFeed() {
           gap: 8,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 }}>
-          <View style={{ flex: 1 }}>
-            <AreaLabel name={area} />
-          </View>
+        <AreaLabel name={area} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TextInput
+            accessibilityLabel="Search posts"
+            placeholder="Search posts or @username…"
+            placeholderTextColor={COLORS.placeholder}
+            value={typed}
+            onChangeText={setTyped}
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
+            maxLength={50}
+            style={[
+              styles.input,
+              { flex: 1, backgroundColor: COLORS.background, borderColor: COLORS.background },
+            ]}
+          />
           <RefreshButton onPress={() => void refresh()} busy={refreshing} />
         </View>
         {guest?.expiringSoon ? (
@@ -107,10 +133,12 @@ export default function HomeFeed() {
       </View>
       <PostList
         load={load}
-        reloadKey={`${sort}:${reloads}`}
+        reloadKey={`${sort}:${reloads}:${q}`}
         onOpen={(p) => router.push(`/post/${p.id}`)}
-        emptyTitle="No posts in this area yet. Start the conversation!"
-        emptyAction={{ label: 'Start a new post', onPress: compose }}
+        emptyTitle={
+          q ? `No posts nearby match “${q}”.` : 'No posts in this area yet. Start the conversation!'
+        }
+        emptyAction={q ? undefined : { label: 'Start a new post', onPress: compose }}
       />
       <FloatingButton label="Write a new post" onPress={compose} />
     </View>

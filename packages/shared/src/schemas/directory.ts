@@ -50,7 +50,8 @@ export function categoryColor(category: string): string {
   return CATEGORY_COLORS[group?.key ?? 'other'];
 }
 
-export const PLACE_SORTS = ['relevance', 'distance', 'name', 'favorites'] as const;
+// D74: 'popular' = most favorited by everyone.
+export const PLACE_SORTS = ['relevance', 'distance', 'name', 'favorites', 'popular'] as const;
 export type PlaceSort = (typeof PLACE_SORTS)[number];
 
 /** P2.13: search the directory by name, or list nearby places when `q` is empty. */
@@ -88,4 +89,6 @@ export interface PlaceSummary {
   withinRoomRadius: boolean;
   /** Visible posts in this place's room (D41). */
   postCount: number;
+  /** D74: how many people have this place as a favorite (who they are is never shown here). */
+  favoriteCount: number;
 }

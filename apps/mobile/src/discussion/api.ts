@@ -18,9 +18,14 @@ export interface PostPage {
 const base = (kind: DiscussionKind) =>
   kind === 'general' ? '/api/v1/posts' : '/api/v1/business-posts';
 
-export async function fetchFeed(sort: FeedSort, cursor?: string) {
+export async function fetchFeed(sort: FeedSort, cursor?: string, q?: string) {
   const reading = await getFreshReading();
-  return api.post<PostPage>('/api/v1/feed', { reading, sort, ...(cursor ? { cursor } : {}) });
+  return api.post<PostPage>('/api/v1/feed', {
+    reading,
+    sort,
+    ...(cursor ? { cursor } : {}),
+    ...(q ? { q } : {}), // D74 search
+  });
 }
 
 export async function fetchRoom(placeId: string, cursor?: string) {

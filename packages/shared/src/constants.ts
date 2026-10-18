@@ -83,6 +83,14 @@ export const CONFIG_DEFAULTS = {
 
   // D73: a post reported by this many different people is hidden until a moderator decides.
   'moderation.autoHideReports': 3,
+  // D74: this many different people reporting one account (profile or content) within the
+  // window suspends it until a moderator decides. Reporters must have a confirmed email and
+  // an account at least reporterMinAccountDays old.
+  'moderation.autoSuspendReporters': 10,
+  'moderation.autoSuspendWindowDays': 7,
+  'moderation.reporterMinAccountDays': 3,
+  /** Safety net: the automatic suspension ends by itself after this many days. */
+  'moderation.autoSuspendDays': 30,
 
   // P5.6 / D9 strike ladder
   'strikes.decayDays': 180,

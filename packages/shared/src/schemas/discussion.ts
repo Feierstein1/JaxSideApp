@@ -37,6 +37,8 @@ export const feedRequestSchema = z.strictObject({
   reading: locationReadingSchema,
   cursor: cursorSchema,
   sort: z.enum(FEED_SORTS).default('new'),
+  /** D74: search the area feed by username ("@name" for names only) or post text. */
+  q: z.string().trim().min(2).max(50).optional(),
 });
 
 /** Sent after the person saw a screening warning and chose "post anyway" (P5.4). */
