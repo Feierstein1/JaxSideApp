@@ -16,20 +16,24 @@ import { useAuth } from '@/auth/AuthContext';
 import { haptic } from '@/motion';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
-import { FormError } from '@/ui';
+import { Banner, FormError, Segmented } from '@/ui';
 import { createPost, markFeedsDirty } from './api';
 import { pickPhoto, uploadPhoto, type Uploaded } from './photos';
 import { sendScreened } from './screening';
 import { VoiceRecorder, type UploadedVoice } from './VoiceRecorder';
 import { Text, TextInput } from '@/text';
 
+type Mode = 'text' | 'voice';
+
 /**
  * Write a post (P3.11). Area posts are placed at the author's (rounded) location by the
  * server; room posts go to the given place. The server checks location and limits.
  *
- * D78: laid out like other social apps' composers: Cancel and a gold Post button in the
- * header, your photo and where it's going at the top, a large borderless text area, and
- * a toolbar for photos with the character count.
+ * D78 / D80: × and a gold Post button in the header; your photo and where it's going; then
+ * a switch between the two kinds of post (D75: one kind of attachment per post):
+ * - Text & photos: the text (required) with an "Add photo" button right under it.
+ * - Voice: the recorder first, with an optional caption.
+ * Switching keeps what you made in the other mode, but only the chosen kind is posted.
  */
 export function Compose({
   target,
@@ -40,15 +44,17 @@ export function Compose({
 }) {
   const { state } = useAuth();
   const user = state.status === 'signedIn' ? state.user : undefined;
+  const [mode, setMode] = useState<Mode>('text');
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   /** P6.1: photos are uploaded as soon as they're picked; the post attaches them by ID. */
   const [photos, setPhotos] = useState<(Uploaded & { localUri: string })[]>([]);
   const [uploading, setUploading] = useState(false);
-  /** D75: a voice post (instead of photos); text becomes an optional caption. */
+  /** D75: a voice post; its text is an optional caption. */
   const [voice, setVoice] = useState<UploadedVoice | null>(null);
-  const canPost = (!!body.trim() || !!voice) && !busy && !uploading;
+  const ready = mode === 'text' ? !!body.trim() : !!voice;
+  const canPost = ready && !busy && !uploading;
   const nearLimit = body.length > POST_MAX * 0.9;
 
   async function addPhoto() {
@@ -67,7 +73,7 @@ export function Compose({
   }
 
   async function submit() {
-    if (!body.trim() && !voice) return;
+    if (!ready) return;
     setBusy(true);
     setError(undefined);
     try {
@@ -76,8 +82,8 @@ export function Compose({
           target,
           body.trim(),
           ok,
-          photos.map((p) => p.id),
-          voice?.id,
+          mode === 'text' ? photos.map((p) => p.id) : [],
+          mode === 'voice' ? voice?.id : undefined,
         ),
       );
       if (!sent) return; // chose to edit after a warning
@@ -90,6 +96,55 @@ export function Compose({
       setBusy(false);
     }
   }
+
+  const textBox = (
+    <View
+      style={{
+        borderRadius: RADIUS.lg,
+        backgroundColor: DARK.card,
+        padding: SPACE.md,
+        paddingBottom: SPACE.sm,
+      }}
+    >
+      <TextInput
+        accessibilityLabel={mode === 'text' ? 'Post text' : 'Caption'}
+        placeholder={
+          mode === 'voice'
+            ? 'Add a caption (optional)'
+            : target.kind === 'general'
+              ? 'What’s happening around here?'
+              : 'Share something about this place…'
+        }
+        value={body}
+        onChangeText={setBody}
+        maxLength={POST_MAX}
+        multiline
+        autoFocus={mode === 'text'}
+        textAlignVertical="top"
+        style={{
+          fontSize: mode === 'text' ? 18 : 16,
+          lineHeight: mode === 'text' ? 26 : 23,
+          minHeight: mode === 'text' ? 130 : 64,
+        }}
+      />
+      <Text
+        accessibilityLabel={`${POST_MAX - body.length} characters left`}
+        style={[
+          TYPE.caption,
+          {
+            alignSelf: 'flex-end',
+            fontVariant: ['tabular-nums'],
+            color: nearLimit ? DARK.error : DARK.textMuted,
+            fontWeight: nearLimit ? '800' : '500',
+          },
+        ]}
+      >
+        {nearLimit ? POST_MAX - body.length : `${body.length}/${POST_MAX}`}
+      </Text>
+    </View>
+  );
+
+  const full = photos.length >= PHOTOS_MAX;
 
   return (
     <KeyboardAvoidingView
@@ -146,9 +201,10 @@ export function Compose({
         }}
       />
       <ScrollView
-        contentContainerStyle={{ padding: SPACE.lg, gap: SPACE.md }}
+        contentContainerStyle={{ padding: SPACE.lg, gap: SPACE.md, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Who's posting, and where it goes. */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.md }}>
           {user ? (
             <ProfileAvatar
@@ -160,8 +216,7 @@ export function Compose({
             />
           ) : null}
           <View style={{ flex: 1, gap: 4 }}>
-            {user ? <Text style={[TYPE.label, { color: DARK.text }]}>{user.username}</Text> : null}
-            {/* Where the post is going. */}
+            {user ? <Text style={TYPE.label}>{user.username}</Text> : null}
             <View
               style={{
                 alignSelf: 'flex-start',
@@ -189,137 +244,142 @@ export function Compose({
           </View>
         </View>
 
-        <TextInput
-          accessibilityLabel="Post text"
-          placeholder={
-            target.kind === 'general'
-              ? 'What’s happening around here?'
-              : 'Share something about this place…'
-          }
-          placeholderTextColor={DARK.placeholder}
-          value={body}
-          onChangeText={setBody}
-          maxLength={POST_MAX}
-          multiline
-          autoFocus
-          textAlignVertical="top"
-          style={{ fontSize: 19, lineHeight: 26, color: DARK.text, minHeight: 140 }}
+        {/* D80: pick the kind of post first. */}
+        <Segmented
+          stretch
+          options={[
+            { key: 'text', label: 'Text & photos', icon: 'create-outline' },
+            { key: 'voice', label: 'Voice', icon: 'mic-outline' },
+          ]}
+          value={mode}
+          onChange={(m) => setMode(m as Mode)}
         />
 
-        {photos.length ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm }}>
-            {photos.map((p) => (
-              <View key={p.id}>
-                <Image
-                  source={{ uri: p.localUri }}
-                  style={{ width: 96, height: 96, borderRadius: RADIUS.md }}
-                  accessibilityLabel="Photo to post"
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Remove photo"
-                  onPress={() => setPhotos((all) => all.filter((x) => x.id !== p.id))}
-                  hitSlop={10}
+        {mode === 'text' ? (
+          <>
+            {textBox}
+
+            {/* D80: the photo button sits right under the text, easy to find. */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm }}>
+              {photos.map((p) => (
+                <View key={p.id}>
+                  <Image
+                    source={{ uri: p.localUri }}
+                    style={{ width: 92, height: 92, borderRadius: RADIUS.md }}
+                    accessibilityLabel="Photo to post"
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove photo"
+                    onPress={() => setPhotos((all) => all.filter((x) => x.id !== p.id))}
+                    hitSlop={10}
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      width: 26,
+                      height: 26,
+                      borderRadius: 13,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: DARK.bar,
+                    }}
+                  >
+                    <Ionicons name="close" size={16} color={DARK.text} />
+                  </Pressable>
+                </View>
+              ))}
+              {uploading ? (
+                <View
                   style={{
-                    position: 'absolute',
-                    top: 4,
-                    right: 4,
-                    width: 26,
-                    height: 26,
-                    borderRadius: 13,
+                    width: 92,
+                    height: 92,
+                    borderRadius: RADIUS.md,
+                    backgroundColor: DARK.raised,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: DARK.bar,
                   }}
                 >
-                  <Ionicons name="close" size={16} color={DARK.text} />
-                </Pressable>
-              </View>
-            ))}
-            {uploading ? (
-              <View
-                style={{
-                  width: 96,
-                  height: 96,
-                  borderRadius: RADIUS.md,
-                  backgroundColor: DARK.page,
+                  <ActivityIndicator color={DARK.accent} />
+                </View>
+              ) : null}
+            </View>
+            {!full ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Add a photo, ${photos.length} of ${PHOTOS_MAX} added`}
+                accessibilityState={{ disabled: uploading }}
+                onPress={() => void addPhoto()}
+                disabled={uploading}
+                style={({ pressed }) => ({
+                  minHeight: 56,
+                  borderRadius: RADIUS.lg,
+                  borderWidth: 1.5,
+                  borderStyle: 'dashed',
+                  borderColor: DARK.accent,
+                  backgroundColor: pressed ? DARK.accentSoft : 'transparent',
+                  flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
-                }}
+                  gap: SPACE.sm,
+                  opacity: uploading ? 0.5 : 1,
+                })}
               >
-                <ActivityIndicator color={DARK.accent} />
-              </View>
+                <Ionicons name="image" size={22} color={DARK.accent} />
+                <Text style={{ color: DARK.accent, fontWeight: '800', fontSize: 15.5 }}>
+                  {photos.length ? 'Add another photo' : 'Add a photo'}
+                </Text>
+                <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
+                  {photos.length}/{PHOTOS_MAX}
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={[TYPE.caption, { color: DARK.textMuted, textAlign: 'center' }]}>
+                {PHOTOS_MAX} photos is the most a post can have.
+              </Text>
+            )}
+            {voice ? (
+              <Banner icon="mic-off-outline">
+                Your voice recording won’t be posted with a text post. Switch to Voice to post it.
+              </Banner>
             ) : null}
-          </View>
-        ) : null}
-
-        {/* D75: one kind of attachment per post: photos or a voice clip. */}
-        {photos.length === 0 && !uploading ? (
-          <VoiceRecorder value={voice} onChange={setVoice} />
-        ) : null}
+          </>
+        ) : (
+          <>
+            <View
+              style={{
+                borderRadius: RADIUS.lg,
+                backgroundColor: DARK.card,
+                padding: SPACE.md,
+                gap: SPACE.sm,
+              }}
+            >
+              <Text style={[TYPE.overline, { color: DARK.textMuted }]}>Recording</Text>
+              <VoiceRecorder value={voice} onChange={setVoice} />
+            </View>
+            {textBox}
+            {photos.length ? (
+              <Banner icon="images-outline">
+                {`Your ${photos.length === 1 ? 'photo' : `${photos.length} photos`} won’t be posted with a voice post. Switch to Text & photos to post ${photos.length === 1 ? 'it' : 'them'}.`}
+              </Banner>
+            ) : null}
+          </>
+        )}
 
         {error ? <FormError>{error}</FormError> : null}
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: SPACE.xs }}>
           <Ionicons name="shield-checkmark-outline" size={14} color={DARK.textMuted} />
           <Text style={[TYPE.caption, { color: DARK.textMuted, flex: 1 }]}>
             {target.kind === 'general'
               ? 'People within about 500 yards will see this. Your exact location is never shown.'
               : `Posting in ${placeName ?? 'this place'}’s discussion.`}{' '}
-            Photos are cleaned of location and camera details.
+            {mode === 'text'
+              ? 'Photos are cleaned of location and camera details.'
+              : 'Recordings are cleaned of location and device details.'}
           </Text>
         </View>
       </ScrollView>
-
-      {/* D78: attachment toolbar, sits on the keyboard. */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: SPACE.sm,
-          paddingHorizontal: SPACE.md,
-          paddingVertical: SPACE.sm,
-          borderTopWidth: 1,
-          borderTopColor: DARK.hairline,
-          backgroundColor: DARK.card,
-        }}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={voice ? 'Add a photo (remove the voice clip first)' : 'Add a photo'}
-          accessibilityState={{ disabled: !!voice || uploading || photos.length >= PHOTOS_MAX }}
-          onPress={() => void addPhoto()}
-          disabled={!!voice || uploading || photos.length >= PHOTOS_MAX}
-          style={({ pressed }) => ({
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: pressed ? DARK.tealSoft : 'transparent',
-            opacity: voice || photos.length >= PHOTOS_MAX ? 0.35 : 1,
-          })}
-        >
-          <Ionicons name="image-outline" size={25} color={DARK.accent} />
-        </Pressable>
-        <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
-          {photos.length > 0 ? `${photos.length}/${PHOTOS_MAX} photos` : ''}
-        </Text>
-        <View style={{ flex: 1 }} />
-        <Text
-          accessibilityLabel={`${POST_MAX - body.length} characters left`}
-          style={[
-            TYPE.caption,
-            {
-              fontVariant: ['tabular-nums'],
-              color: nearLimit ? DARK.error : DARK.textMuted,
-              fontWeight: nearLimit ? '800' : '500',
-            },
-          ]}
-        >
-          {nearLimit ? POST_MAX - body.length : `${body.length}/${POST_MAX}`}
-        </Text>
-      </View>
     </KeyboardAvoidingView>
   );
 }

@@ -142,8 +142,8 @@ export default function HomeFeed() {
             : 'Be the first to share what’s happening nearby. People within your radius will see it.'
         }
         emptyAction={q ? undefined : { label: 'Start a post', onPress: compose }}
+        fab={<FloatingButton label="Write a new post" onPress={compose} />}
       />
-      <FloatingButton label="Write a new post" onPress={compose} />
     </View>
   );
 }

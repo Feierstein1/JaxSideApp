@@ -207,6 +207,13 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] **Post page:** "•••" for Report/Delete; comments in a dark panel with avatars and thread
       lines; reply bar with a round gold send button.
 - [ ] **New post:** × top-left, gold Post top-right; your photo and a "People near you" chip.
+- [ ] **New post (D80):** a **Text & photos / Voice** switch at the top. Text & photos: type, then
+      the dashed gold **Add a photo** button right under the text. Voice: record first, caption
+      optional. Record a clip, switch to Text & photos: a note says the clip won't be posted.
+- [ ] **Empty feed** (Home or a place with no posts): only the "Start a post" button, no round +.
+      After the first post appears, the round + shows bottom-right and the big button is gone.
+- [ ] Open a place, then one of its posts: a "Posted in [place]" strip stays under the header
+      while you scroll the comments; tapping it goes back to the place.
 - [ ] **Account:** one page: profile card (color band, photo with camera badge, Edit bio /
       Color / View), About, Medals, then dark grouped settings. Email shows a Confirmed / Not
       confirmed badge; radius is a three-way switch.

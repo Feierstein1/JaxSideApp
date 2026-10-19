@@ -22,6 +22,7 @@ export function PostList({
   emptyIcon = 'chatbubbles-outline',
   emptyAction,
   reloadKey,
+  fab,
 }: {
   load: (cursor?: string) => Promise<PostPage>;
   onOpen: (post: PostView) => void;
@@ -32,6 +33,11 @@ export function PostList({
   emptyAction?: { label: string; onPress: () => void };
   /** Change to force a reload (e.g. sort changed). */
   reloadKey?: string;
+  /**
+   * D80: the floating + button. Shown only once there are posts; an empty feed offers its
+   * own "Start a post" button instead, so there's one way to post, not two.
+   */
+  fab?: ReactElement;
 }) {
   const [posts, setPosts] = useState<PostView[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -81,69 +87,74 @@ export function PostList({
   );
 
   return (
-    <FlatList
-      // D70: dark grey behind the white post cards, a step lighter than the black header.
-      style={{ backgroundColor: DARK.page }}
-      contentContainerStyle={{ paddingTop: 4, paddingBottom: 110, flexGrow: 1 }}
-      data={posts}
-      keyExtractor={(p) => p.id}
-      renderItem={({ item }) => (
-        <PostCard post={item} onOpen={() => onOpen(item)} onError={setError} />
-      )}
-      ListHeaderComponent={
-        <>
-          {header}
-          {error ? <ErrorState message={error} onRetry={() => void fetchPage('loading')} /> : null}
-        </>
-      }
-      ListEmptyComponent={
-        state === 'idle' && !error ? (
-          <EmptyState
-            icon={emptyIcon}
-            title={emptyTitle}
-            body={emptyBody}
-            action={
-              emptyAction
-                ? { label: emptyAction.label, onPress: emptyAction.onPress, icon: 'add' }
-                : undefined
-            }
+    <>
+      <FlatList
+        // D70: dark grey behind the white post cards, a step lighter than the black header.
+        style={{ backgroundColor: DARK.page }}
+        contentContainerStyle={{ paddingTop: 4, paddingBottom: 110, flexGrow: 1 }}
+        data={posts}
+        keyExtractor={(p) => p.id}
+        renderItem={({ item }) => (
+          <PostCard post={item} onOpen={() => onOpen(item)} onError={setError} />
+        )}
+        ListHeaderComponent={
+          <>
+            {header}
+            {error ? (
+              <ErrorState message={error} onRetry={() => void fetchPage('loading')} />
+            ) : null}
+          </>
+        }
+        ListEmptyComponent={
+          state === 'idle' && !error ? (
+            <EmptyState
+              icon={emptyIcon}
+              title={emptyTitle}
+              body={emptyBody}
+              action={
+                emptyAction
+                  ? { label: emptyAction.label, onPress: emptyAction.onPress, icon: 'add' }
+                  : undefined
+              }
+            />
+          ) : state === 'loading' ? (
+            // D78: placeholders shaped like posts instead of a spinner.
+            <View>
+              <PostSkeleton />
+              <PostSkeleton />
+              <PostSkeleton />
+            </View>
+          ) : null
+        }
+        ListFooterComponent={
+          state === 'more' ? (
+            <ActivityIndicator style={{ margin: 16 }} color={DARK.accent} />
+          ) : posts.length > 2 && !cursor && state === 'idle' ? (
+            // D78: the end of the list says so, instead of just stopping.
+            <View
+              style={{ alignItems: 'center', paddingVertical: 20, gap: 4 }}
+              accessibilityRole="text"
+            >
+              <Ionicons name="checkmark-circle-outline" size={22} color={DARK.textMuted} />
+              <Text style={{ color: DARK.textMuted, fontWeight: '600' }}>You’re all caught up</Text>
+            </View>
+          ) : null
+        }
+        onEndReachedThreshold={0.5}
+        onEndReached={() => {
+          if (state === 'idle' && cursor) void fetchPage('more', cursor);
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={state === 'refreshing'}
+            onRefresh={() => void fetchPage('refreshing')}
+            tintColor={DARK.accent}
+            colors={[DARK.onAccent]}
+            progressBackgroundColor={DARK.accent}
           />
-        ) : state === 'loading' ? (
-          // D78: placeholders shaped like posts instead of a spinner.
-          <View>
-            <PostSkeleton />
-            <PostSkeleton />
-            <PostSkeleton />
-          </View>
-        ) : null
-      }
-      ListFooterComponent={
-        state === 'more' ? (
-          <ActivityIndicator style={{ margin: 16 }} color={DARK.accent} />
-        ) : posts.length > 2 && !cursor && state === 'idle' ? (
-          // D78: the end of the list says so, instead of just stopping.
-          <View
-            style={{ alignItems: 'center', paddingVertical: 20, gap: 4 }}
-            accessibilityRole="text"
-          >
-            <Ionicons name="checkmark-circle-outline" size={22} color={DARK.textMuted} />
-            <Text style={{ color: DARK.textMuted, fontWeight: '600' }}>You’re all caught up</Text>
-          </View>
-        ) : null
-      }
-      onEndReachedThreshold={0.5}
-      onEndReached={() => {
-        if (state === 'idle' && cursor) void fetchPage('more', cursor);
-      }}
-      refreshControl={
-        <RefreshControl
-          refreshing={state === 'refreshing'}
-          onRefresh={() => void fetchPage('refreshing')}
-          tintColor={DARK.accent}
-          colors={[DARK.onAccent]}
-          progressBackgroundColor={DARK.accent}
-        />
-      }
-    />
+        }
+      />
+      {posts.length > 0 ? fab : null}
+    </>
   );
 }

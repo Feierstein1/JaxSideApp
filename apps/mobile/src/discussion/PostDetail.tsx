@@ -148,6 +148,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
       style={{ flex: 1, backgroundColor: DARK.page }}
       keyboardVerticalOffset={90}
     >
+      {post.place ? <PlaceContext place={post.place} /> : null}
       <ScrollView
         contentContainerStyle={{ paddingTop: 6, paddingBottom: SPACE.xl }}
         keyboardShouldPersistTaps="handled"
@@ -458,5 +459,54 @@ function CommentRow({
         </View>
       </View>
     </View>
+  );
+}
+
+/**
+ * D80: on a place's post, a strip fixed under the header names the place, so you don't lose
+ * track of where you are while reading comments. Tap it to go back to the place.
+ */
+function PlaceContext({ place }: { place: { id: string; name: string } }) {
+  function open() {
+    if (router.canGoBack()) router.back();
+    else router.push(`/places/${place.id}`);
+  }
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Posted in ${place.name}. Go to the place.`}
+      onPress={open}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACE.md,
+        minHeight: 56,
+        paddingHorizontal: SPACE.lg,
+        paddingVertical: SPACE.sm,
+        backgroundColor: pressed ? DARK.raised : DARK.bar,
+        borderBottomWidth: 1,
+        borderBottomColor: DARK.hairline,
+      })}
+    >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 11,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: DARK.accentSoft,
+        }}
+      >
+        <Ionicons name="storefront" size={18} color={DARK.accent} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[TYPE.overline, { color: DARK.textMuted }]}>Posted in</Text>
+        <Text numberOfLines={1} style={{ fontSize: 16, fontWeight: '800' }}>
+          {place.name}
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={DARK.textMuted} />
+    </Pressable>
   );
 }

@@ -88,6 +88,10 @@ and icon).
 **Home and Places top block (black):** "Near Avondale · within 528 yd" (tap → Account to change
 the radius), then search pill + refresh (+ filters on Places), then the post-type tabs.
 
+**Posting (D80):** the round + appears only when a feed has posts (an empty feed shows its own
+"Start a post" button). The composer starts with a Text & photos / Voice switch; "Add a photo" is
+a dashed gold button under the text. A place's post shows a fixed "Posted in [place]" strip.
+
 **Account:** one page. Profile card (color band, photo with camera badge, name, joined, Edit
 bio / Color / View buttons), About, Medals, then grouped settings cards.
 

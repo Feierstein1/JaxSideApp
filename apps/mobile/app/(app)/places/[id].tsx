@@ -143,9 +143,8 @@ export default function PlaceScreen() {
             emptyTitle="No posts here yet"
             emptyBody={`Been to ${place.name}? Start the conversation for people nearby.`}
             emptyAction={{ label: 'Start a post', onPress: compose }}
+            fab={<FloatingButton label={`Write a post about ${place.name}`} onPress={compose} />}
           />
-          {/* Same round + button as the area feed (D70). */}
-          <FloatingButton label={`Write a post about ${place.name}`} onPress={compose} />
         </>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
