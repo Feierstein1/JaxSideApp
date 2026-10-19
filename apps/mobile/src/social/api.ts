@@ -20,10 +20,15 @@ export const social = {
   decline: (id: string) => api.post(`/api/v1/friends/requests/${id}/decline`, {}),
   cancel: (id: string) => api.delete(`/api/v1/friends/requests/${id}`),
   unfriend: (username: string) => api.delete(`/api/v1/friends/${encodeURIComponent(username)}`),
-  activity: (before?: string) =>
-    api.get<{ items: FriendActivityItem[]; nextBefore: string | null }>(
-      `/api/v1/friends/activity${before ? `?before=${encodeURIComponent(before)}` : ''}`,
-    ),
+  activity: (before?: string, q?: string) => {
+    const params = new URLSearchParams();
+    if (before) params.set('before', before);
+    if (q) params.set('q', q); // D89: search by friend username
+    const qs = params.toString();
+    return api.get<{ items: FriendActivityItem[]; nextBefore: string | null }>(
+      `/api/v1/friends/activity${qs ? `?${qs}` : ''}`,
+    );
+  },
   notifications: () => api.get<{ notifications: NotificationView[] }>('/api/v1/notifications'),
   unread: () => api.get<{ unread: number }>('/api/v1/notifications/unread'),
   markRead: () => api.post('/api/v1/notifications/read', {}),

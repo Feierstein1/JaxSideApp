@@ -478,7 +478,7 @@ function Settings() {
       {/* D76: friends see where you post unless you turn this on. */}
       <ListGroup
         title="Friends"
-        footer="When off, friends see “posted near [area]” or “posted at [place]” for your posts from the last two weeks. They never see the post itself unless they’re nearby."
+        footer="When off, friends see “posted near [area]” or “posted at [place]” for your posts from the last 3 days. They never see the post itself unless they’re nearby."
       >
         <ListRow
           icon="eye-off-outline"

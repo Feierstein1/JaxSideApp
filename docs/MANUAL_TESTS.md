@@ -174,6 +174,12 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Open a post (not in a feed): next to the vote pill, a teal ▲ count and a gold ▼ count (D83).
 - [ ] Blocking a friend removes the friendship. Guests don't see the Friends tab or the bell.
 
+- [ ] **Friends tab switch (D89):** **Friend activity** / **Your friends**; the search box finds a
+      friend's recent activity by username; activity only covers the last 3 days.
+- [ ] Open a place from Friend activity, then tap the **Places** tab: the Places list shows (not
+      that place). The place's back arrow also goes to the list.
+- [ ] Places filter has **Gyms & fitness** (indigo, barbell icon).
+
 ## 8. Profiles and blocking
 
 - [ ] Tap a username on a post or comment: profile shows bio, join date, post count, recent posts.

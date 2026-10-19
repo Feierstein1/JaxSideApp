@@ -84,6 +84,14 @@ export default function AppLayout() {
           href: isGuest ? null : undefined,
           tabBarIcon: tabIcon('storefront'),
         }}
+        // D89: tapping Places always shows the Places list, even if a place was opened in
+        // this tab from somewhere else (e.g. a friend's "posted at …").
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('places', { screen: 'index' });
+          },
+        })}
       />
       <Tabs.Screen
         name="friends"

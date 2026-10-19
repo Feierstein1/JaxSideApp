@@ -18,8 +18,10 @@ export const CATEGORY_GROUPS = [
   {
     key: 'fun',
     label: 'Things to do',
-    categories: ['entertainment', 'attraction', 'museum', 'arts', 'venue', 'library', 'fitness'],
+    categories: ['entertainment', 'attraction', 'museum', 'arts', 'venue', 'library'],
   },
+  // D89: gyms get their own group and color (OSM fitness and sports centres).
+  { key: 'fitness', label: 'Gyms & fitness', categories: ['fitness'] },
   {
     key: 'services',
     label: 'Services & auto',
@@ -41,6 +43,7 @@ export const CATEGORY_COLORS: Record<(typeof CATEGORY_GROUPS)[number]['key'] | '
   fun: '#BF360C', // burnt orange
   services: '#0D47A1', // blue
   lodging: '#00695C', // teal-green
+  fitness: '#283593', // indigo (D89)
   other: '#37474F', // slate
 };
 

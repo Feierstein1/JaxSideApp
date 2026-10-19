@@ -64,8 +64,8 @@ export const CONFIG_DEFAULTS = {
   /** D76: friends per person, and requests waiting on others at once. */
   'friends.max': 1000,
   'friends.maxPendingOut': 100,
-  /** D76: the friends feed covers posts from this many days. */
-  'friends.activityDays': 14,
+  /** D76 / D89: the friends feed covers posts from this many days. */
+  'friends.activityDays': 3,
 
   // Phase 3 discussions (D41)
   'feed.pageSize': 15,

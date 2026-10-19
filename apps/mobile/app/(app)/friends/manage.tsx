@@ -29,7 +29,8 @@ import {
  * D79: dark page with a title; add-by-username at the top; requests, sent requests and
  * friends in grouped cards. Removing a friend is in each friend's "•••" (asks first).
  */
-export default function ManageFriends() {
+/** D89: also shown inside the Friends tab ("Your friends" side of the switch). */
+export function FriendsManager({ embedded = false }: { embedded?: boolean }) {
   const [friends, setFriends] = useState<FriendView[]>();
   const [incoming, setIncoming] = useState<FriendRequestView[]>([]);
   const [outgoing, setOutgoing] = useState<FriendRequestView[]>([]);
@@ -98,12 +99,18 @@ export default function ManageFriends() {
 
   return (
     <Screen keyboard>
-      <PageTitle
-        title="Your friends"
-        subtitle="Friends see where you post (not what), and which places you’ve favorited."
-        icon="people-outline"
-        inline
-      />
+      {embedded ? (
+        <Text style={[TYPE.callout, { color: DARK.textMuted, marginBottom: SPACE.lg }]}>
+          Friends see where you post (not what), and which places you’ve favorited.
+        </Text>
+      ) : (
+        <PageTitle
+          title="Your friends"
+          subtitle="Friends see where you post (not what), and which places you’ve favorited."
+          icon="people-outline"
+          inline
+        />
+      )}
 
       {/* Add by username, with the send button inside the row. */}
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: SPACE.sm }}>
@@ -257,4 +264,8 @@ export default function ManageFriends() {
       )}
     </Screen>
   );
+}
+
+export default function ManageFriends() {
+  return <FriendsManager />;
 }

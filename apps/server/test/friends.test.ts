@@ -241,9 +241,38 @@ describe('friends feed (D76)', () => {
     await db.generalPost.updateMany({ data: { status: 'REMOVED' } });
     expect((await activity(ann)).items).toEqual([]);
     await db.generalPost.updateMany({
-      data: { status: 'VISIBLE', createdAt: new Date(Date.now() - 15 * 86_400_000) },
+      data: { status: 'VISIBLE', createdAt: new Date(Date.now() - 4 * 86_400_000) },
     });
-    expect((await activity(ann)).items).toEqual([]); // older than 14 days
+    expect((await activity(ann)).items).toEqual([]); // older than 3 days (D89)
+    await db.generalPost.updateMany({
+      data: { createdAt: new Date(Date.now() - 2 * 86_400_000) },
+    });
+    expect((await activity(ann)).items).toHaveLength(1);
+  });
+});
+
+describe('friend activity search (D89)', () => {
+  it('narrows the feed to friends whose name starts with the search', async () => {
+    await befriend(ann, bob);
+    await befriend(ann, cat);
+    for (const p of [bob, cat]) {
+      await call(postsPOST as H, 'POST', {
+        token: p.token,
+        body: { reading: reading(), body: `hello from ${p.name}` },
+      });
+    }
+    const search = async (q: string) =>
+      (
+        (await call(activityGET as H, 'GET', { token: ann.token, query: { q } })).body.items as {
+          author: { username: string };
+        }[]
+      ).map((i) => i.author.username);
+    expect(await search('BO')).toEqual(['bob_f']);
+    expect(await search('@cat')).toEqual(['cat_f']);
+    expect((await search('')).sort()).toEqual(['bob_f', 'cat_f']);
+    expect(await search('zzz')).toEqual([]);
+    // Anything that isn't a username is ignored rather than passed to the query.
+    expect((await search("%' or 1=1")).sort()).toEqual(['bob_f', 'cat_f']);
   });
 });
 

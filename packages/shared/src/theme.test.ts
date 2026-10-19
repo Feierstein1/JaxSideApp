@@ -71,7 +71,7 @@ describe('category colors (D70)', () => {
   });
 
   it('9 distinct colors, every category maps to one', () => {
-    expect(new Set(Object.values(CATEGORY_COLORS)).size).toBe(9);
+    expect(new Set(Object.values(CATEGORY_COLORS)).size).toBe(10);
     expect(categoryColor('cafe')).toBe(CATEGORY_COLORS.coffee);
     expect(categoryColor('somethingnew')).toBe(CATEGORY_COLORS.other);
   });

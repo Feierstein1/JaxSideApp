@@ -273,6 +273,8 @@ interface ActivityRow {
 export async function friendActivity(
   me: string,
   before?: string,
+  /** D89: only friends whose username starts with this. */
+  q?: string,
 ): Promise<{ items: FriendActivityItem[]; nextBefore: string | null }> {
   const ids = await friendIds(me);
   if (!ids.length) return { items: [], nextBefore: null };
@@ -285,6 +287,7 @@ export async function friendActivity(
   const authors = Prisma.sql`(SELECT u.id FROM "User" u
       WHERE u.id IN (${Prisma.join(ids.map((i) => Prisma.sql`${i}::uuid`))})
         AND u.status = 'ACTIVE' AND u."hidePostsFromFriends" = false
+        ${q ? Prisma.sql`AND u."usernameNormalized" LIKE ${q.toLowerCase() + '%'}` : Prisma.empty}
         AND NOT EXISTS (SELECT 1 FROM "UserBlock" b
           WHERE (b."blockerId" = u.id AND b."blockedId" = ${me}::uuid)
              OR (b."blockerId" = ${me}::uuid AND b."blockedId" = u.id)))`;

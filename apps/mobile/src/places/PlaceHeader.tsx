@@ -17,6 +17,7 @@ const GROUP_ICONS: Record<string, IconName> = {
   fun: 'ticket',
   services: 'car',
   lodging: 'bed',
+  fitness: 'barbell', // D89
 };
 
 export function categoryIcon(category: string): IconName {

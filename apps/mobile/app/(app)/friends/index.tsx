@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -9,7 +9,8 @@ import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { social } from '@/social/api';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
-import { Bone, EmptyState, ErrorState, PressableScale, Pulse, SectionTitle } from '@/ui';
+import { Bone, EmptyState, ErrorState, Pulse, SearchField, SectionTitle, Segmented } from '@/ui';
+import { FriendsManager } from './manage';
 
 /**
  * D76: the friends feed: "@bob posted near Riverside" / "@bob posted at Bold Bean". It
@@ -18,29 +19,40 @@ import { Bone, EmptyState, ErrorState, PressableScale, Pulse, SectionTitle } fro
  * then activity cards with each friend's color stripe.
  */
 export default function FriendsFeed() {
+  // D89: a switch between friend activity and your friends list, like Home's switches.
+  const [view, setView] = useState<'activity' | 'friends'>('activity');
+  const [typed, setTyped] = useState('');
+  const [q, setQ] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setQ(typed.trim().replace(/^@/, '')), 350);
+    return () => clearTimeout(t);
+  }, [typed]);
   const [items, setItems] = useState<FriendActivityItem[]>();
   const [next, setNext] = useState<string | null>(null);
   const [incoming, setIncoming] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
 
-  const load = useCallback(async (before?: string) => {
-    setLoading(true);
-    setError(undefined);
-    try {
-      const [page, reqs] = await Promise.all([
-        social.activity(before),
-        before ? null : social.requests(),
-      ]);
-      setItems((prev) => (before ? [...(prev ?? []), ...page.items] : page.items));
-      setNext(page.nextBefore);
-      if (reqs) setIncoming(reqs.incoming.length);
-    } catch (e) {
-      setError(e instanceof ApiRequestError ? e.message : 'Couldn’t load.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (before?: string) => {
+      setLoading(true);
+      setError(undefined);
+      try {
+        const [page, reqs] = await Promise.all([
+          social.activity(before, q || undefined),
+          before ? null : social.requests(),
+        ]);
+        setItems((prev) => (before ? [...(prev ?? []), ...page.items] : page.items));
+        setNext(page.nextBefore);
+        if (reqs) setIncoming(reqs.incoming.length);
+      } catch (e) {
+        setError(e instanceof ApiRequestError ? e.message : 'Couldn’t load.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [q],
+  );
   useFocusEffect(
     useCallback(() => {
       void load();
@@ -49,110 +61,96 @@ export default function FriendsFeed() {
 
   return (
     <View style={{ flex: 1, backgroundColor: DARK.page }}>
-      <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, paddingBottom: 12 }}>
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel={`Your friends and requests${incoming ? `, ${incoming} new` : ''}`}
-          onPress={() => router.push('/friends/manage')}
-          scaleTo={0.98}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: SPACE.md,
-            minHeight: 56,
-            paddingHorizontal: 14,
-            borderRadius: RADIUS.lg,
-            backgroundColor: DARK.raised,
-          }}
-        >
-          <View
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 11,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: DARK.accentSoft,
-            }}
-          >
-            <Ionicons name="people" size={18} color={DARK.accent} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontWeight: '800', fontSize: 15.5 }}>Your friends</Text>
-            <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
-              Add friends and answer requests
-            </Text>
-          </View>
-          {incoming ? (
-            <View
-              style={{
-                paddingHorizontal: 9,
-                height: 24,
-                borderRadius: RADIUS.pill,
-                backgroundColor: DARK.accent,
-                justifyContent: 'center',
-              }}
-            >
-              <Text style={{ color: DARK.onAccent, fontWeight: '800', fontSize: 12 }}>
-                {incoming} new
-              </Text>
-            </View>
-          ) : null}
-          <Ionicons name="chevron-forward" size={18} color={DARK.textMuted} />
-        </PressableScale>
+      <View
+        style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, paddingBottom: 12, gap: 10 }}
+      >
+        <Segmented
+          stretch
+          options={[
+            { key: 'activity', label: 'Friend activity', icon: 'pulse' },
+            {
+              key: 'friends',
+              label: incoming ? `Your friends (${incoming} new)` : 'Your friends',
+              icon: 'people',
+            },
+          ]}
+          value={view}
+          onChange={(v) => setView(v as 'activity' | 'friends')}
+        />
+        {view === 'activity' ? (
+          <SearchField
+            label="Search friend activity"
+            placeholder="Search friends by username"
+            value={typed}
+            onChangeText={setTyped}
+            maxLength={21}
+          />
+        ) : null}
       </View>
 
-      <FlatList
-        data={items ?? []}
-        keyExtractor={(i) => `${i.kind}:${i.id}`}
-        contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={loading && !!items?.length}
-            onRefresh={() => void load()}
-            tintColor={DARK.accent}
-            colors={[DARK.onAccent]}
-            progressBackgroundColor={DARK.accent}
-          />
-        }
-        onEndReached={() => {
-          if (!loading && next) void load(next);
-        }}
-        ListHeaderComponent={
-          <>
-            {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
-            {items?.length ? <SectionTitle>Where your friends posted</SectionTitle> : null}
-          </>
-        }
-        ListEmptyComponent={
-          !items ? (
-            error ? null : (
-              <View style={{ paddingTop: SPACE.md }}>
-                <ActivitySkeleton />
-                <ActivitySkeleton />
-                <ActivitySkeleton />
-              </View>
-            )
-          ) : (
-            <EmptyState
-              icon="people-outline"
-              title="No friend activity yet"
-              body="When your friends post, you’ll see where here. Add friends from their profile (tap a name on any post) or from Your friends."
-              action={{
-                label: 'Find friends',
-                icon: 'person-add',
-                onPress: () => router.push('/friends/manage'),
-              }}
+      {view === 'friends' ? (
+        <FriendsManager embedded />
+      ) : (
+        <FlatList
+          data={items ?? []}
+          keyExtractor={(i) => `${i.kind}:${i.id}`}
+          contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading && !!items?.length}
+              onRefresh={() => void load()}
+              tintColor={DARK.accent}
+              colors={[DARK.onAccent]}
+              progressBackgroundColor={DARK.accent}
             />
-          )
-        }
-        ListFooterComponent={
-          loading && items?.length ? (
-            <ActivityIndicator style={{ margin: 16 }} color={DARK.accent} />
-          ) : null
-        }
-        renderItem={({ item }) => <ActivityRow item={item} />}
-      />
+          }
+          onEndReached={() => {
+            if (!loading && next) void load(next);
+          }}
+          ListHeaderComponent={
+            <>
+              {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
+              {items?.length ? <SectionTitle>Where your friends posted</SectionTitle> : null}
+            </>
+          }
+          ListEmptyComponent={
+            !items ? (
+              error ? null : (
+                <View style={{ paddingTop: SPACE.md }}>
+                  <ActivitySkeleton />
+                  <ActivitySkeleton />
+                  <ActivitySkeleton />
+                </View>
+              )
+            ) : (
+              <EmptyState
+                icon="people-outline"
+                title={q ? `No recent posts from “${q}”` : 'No friend activity yet'}
+                body={
+                  q
+                    ? 'Only friends’ posts from the last 3 days show here.'
+                    : 'When your friends post in the last 3 days, you’ll see where here. Add friends from their profile (tap a name on any post) or from Your friends.'
+                }
+                action={
+                  q
+                    ? undefined
+                    : {
+                        label: 'Find friends',
+                        icon: 'person-add',
+                        onPress: () => setView('friends'),
+                      }
+                }
+              />
+            )
+          }
+          ListFooterComponent={
+            loading && items?.length ? (
+              <ActivityIndicator style={{ margin: 16 }} color={DARK.accent} />
+            ) : null
+          }
+          renderItem={({ item }) => <ActivityRow item={item} />}
+        />
+      )}
     </View>
   );
 }
