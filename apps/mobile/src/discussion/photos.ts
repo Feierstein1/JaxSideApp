@@ -1,3 +1,4 @@
+import { FileSystemUploadType, uploadAsync } from 'expo-file-system/legacy';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import type { PhotoView } from '@jax/shared';
@@ -62,22 +63,36 @@ export async function uploadPhoto(asset: {
   return postRawFile<Uploaded>('/api/v1/photos', uri, gif ? 'image/gif' : 'image/jpeg');
 }
 
-/** Sends a local file's bytes as the request body (photos, D75 voice clips). */
+/**
+ * Sends a local file's bytes as the request body (photos, D75 voice clips).
+ *
+ * D78: streamed straight from disk by expo-file-system. Reading the file with
+ * `fetch(uri).blob()` and posting the Blob fails on current Expo ("Response.blob() is
+ * using React Native's Blob"), which broke every photo upload.
+ */
 export async function postRawFile<T>(path: string, uri: string, contentType: string): Promise<T> {
-  const file = await (await fetch(uri)).blob();
   const headers: Record<string, string> = { 'Content-Type': contentType };
   const token = await secureTokenStore.get();
   if (token) headers.Authorization = `Bearer ${token}`;
   const installation = await installationStore.get();
   if (installation) headers[INSTALLATION_HEADER] = installation;
-  let res: Response;
+  let res: { status: number; body: string };
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers, body: file });
+    res = await uploadAsync(`${API_BASE_URL}${path}`, uri, {
+      httpMethod: 'POST',
+      uploadType: FileSystemUploadType.BINARY_CONTENT,
+      headers,
+    });
   } catch {
     throw new ApiRequestError(0, 'NETWORK', 'Could not reach the server. Check your connection.');
   }
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
+  let json: { error?: { code?: string; message?: string } } = {};
+  try {
+    json = JSON.parse(res.body);
+  } catch {
+    // not JSON (e.g. a proxy error page)
+  }
+  if (res.status < 200 || res.status >= 300) {
     throw new ApiRequestError(
       res.status,
       json.error?.code ?? 'HTTP_ERROR',
