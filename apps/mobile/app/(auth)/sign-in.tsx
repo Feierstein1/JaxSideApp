@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { loginRequestSchema, DARK } from '@jax/shared';
@@ -8,7 +8,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { restrictedCredentials } from '@/standing/restricted-credentials';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { SPACE, TYPE } from '@/tokens';
-import { Banner, BrandMark, Button, Field, FormError, PasswordField } from '@/ui';
+import { Banner, BrandMark, Button, Field, FormError, PasswordField, KeyboardSafeView } from '@/ui';
 import { Text } from '@/text';
 
 export default function SignIn() {
@@ -58,10 +58,7 @@ export default function SignIn() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: DARK.bar }}
-    >
+    <KeyboardSafeView style={{ flex: 1, backgroundColor: DARK.bar }}>
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
@@ -181,6 +178,6 @@ export default function SignIn() {
           </Text>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 }

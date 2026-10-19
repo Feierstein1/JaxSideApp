@@ -1,13 +1,5 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack } from 'expo-router';
 import { PHOTOS_MAX, POST_MAX, profileColor, DARK } from '@jax/shared';
@@ -16,7 +8,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { haptic } from '@/motion';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
-import { Banner, FormError, Segmented } from '@/ui';
+import { Banner, FormError, Segmented, KeyboardSafeView } from '@/ui';
 import { createPost, markFeedsDirty } from './api';
 import { pickPhoto, uploadPhoto, type Uploaded } from './photos';
 import { sendScreened } from './screening';
@@ -147,11 +139,7 @@ export function Compose({
   const full = photos.length >= PHOTOS_MAX;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: DARK.page }}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
-    >
+    <KeyboardSafeView style={{ flex: 1, backgroundColor: DARK.page }}>
       <Stack.Screen
         options={{
           headerLeft: () => (
@@ -380,6 +368,6 @@ export function Compose({
           </Text>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 }

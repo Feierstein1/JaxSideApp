@@ -1,11 +1,20 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, View } from 'react-native';
+import { Pressable, ScrollView, Switch, View } from 'react-native';
 import { router } from 'expo-router';
 import { PASSWORD_MIN, registerRequestSchema, DARK } from '@jax/shared';
 import { api } from '@/api';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { SPACE, TYPE } from '@/tokens';
-import { Banner, Button, Field, FormError, PasswordField, styles, switchColors } from '@/ui';
+import {
+  Banner,
+  Button,
+  Field,
+  FormError,
+  PasswordField,
+  styles,
+  switchColors,
+  KeyboardSafeView,
+} from '@/ui';
 import { Text } from '@/text';
 
 export default function Register() {
@@ -49,10 +58,7 @@ export default function Register() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1 }}
-    >
+    <KeyboardSafeView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
         <Text style={[TYPE.title, { color: DARK.text }]}>Join your neighbors</Text>
         <Text style={[TYPE.callout, { color: DARK.textMuted, marginBottom: SPACE.lg }]}>
@@ -148,7 +154,7 @@ export default function Register() {
           style={{ marginTop: SPACE.lg }}
         />
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 }
 

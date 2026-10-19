@@ -95,6 +95,9 @@ a dashed gold button under the text. A place's post shows a fixed "Posted in [pl
 **Account:** one page. Profile card (color band, photo with camera badge, name, joined, Edit
 bio / Color / View buttons), About, Medals, then grouped settings cards.
 
+**Keyboard:** anything with typing sits in `KeyboardSafeView` (or `Screen keyboard`), which
+lifts the content above the keyboard on Android and iPhone. Don't use `KeyboardAvoidingView`.
+
 **Forms:** filled dark fields with a leading icon, gold outline while typing, error line with
 an icon; primary button gold with black text, secondary raised grey, danger red outline.
 

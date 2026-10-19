@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
@@ -24,7 +16,7 @@ import { timeAgo } from '@/format';
 import { haptic } from '@/motion';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
-import { Button, ErrorState, openMenu, SectionTitle } from '@/ui';
+import { Button, ErrorState, openMenu, SectionTitle, KeyboardSafeView } from '@/ui';
 import { createComment, deleteComment, deletePost, fetchPost, markFeedsDirty } from './api';
 import { sendScreened } from './screening';
 import { authorName, openAuthor, PostCard, PostSkeleton } from './PostCard';
@@ -142,12 +134,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
       : undefined;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      // D70: same dark grey as the feeds behind the white post and comment cards.
-      style={{ flex: 1, backgroundColor: DARK.page }}
-      keyboardVerticalOffset={90}
-    >
+    <KeyboardSafeView style={{ flex: 1, backgroundColor: DARK.page }}>
       {post.place ? <PlaceContext place={post.place} /> : null}
       <ScrollView
         contentContainerStyle={{ paddingTop: 6, paddingBottom: SPACE.xl }}
@@ -314,7 +301,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
         </View>
       </View>
       <ReportSheet target={reporting} onClose={() => setReporting(undefined)} />
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 }
 

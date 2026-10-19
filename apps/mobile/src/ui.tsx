@@ -12,7 +12,8 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  KeyboardAvoidingView,
+  Keyboard,
+  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
@@ -148,15 +149,51 @@ export function Screen({
     <View style={[{ flex: 1, backgroundColor: DARK.page }, pad]}>{children}</View>
   );
   return keyboard ? (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: DARK.page }}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      {body}
-    </KeyboardAvoidingView>
+    <KeyboardSafeView style={{ backgroundColor: DARK.page }}>{body}</KeyboardSafeView>
   ) : (
     body
+  );
+}
+
+/**
+ * D81: keeps what you're typing above the keyboard on both Android and iPhone. When the
+ * keyboard opens it measures how much of this view the keyboard covers and adds that much
+ * space at the bottom, so the content (e.g. the comment box) sits right on top of the
+ * keyboard. React Native's KeyboardAvoidingView doesn't do this on Android now that Expo
+ * draws apps edge to edge (the phone no longer shrinks the screen for the keyboard).
+ */
+export function KeyboardSafeView({
+  children,
+  style,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const ref = useRef<View>(null);
+  const [inset, setInset] = useState(0);
+  useEffect(() => {
+    const ios = Platform.OS === 'ios';
+    const show = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (e) => {
+      const keyboardTop = e.endCoordinates.screenY;
+      ref.current?.measureInWindow((_x, y, _w, h) => {
+        if (ios) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setInset(Math.max(0, y + h - keyboardTop));
+      });
+    });
+    const hide = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => {
+      if (ios) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setInset(0);
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return (
+    <View ref={ref} style={[{ flex: 1 }, style]}>
+      <View style={{ flex: 1 }}>{children}</View>
+      <View style={{ height: inset }} />
+    </View>
   );
 }
 

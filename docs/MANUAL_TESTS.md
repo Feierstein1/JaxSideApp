@@ -212,6 +212,9 @@ checks. Tick each box when it looks right; note anything odd next to it.
       optional. Record a clip, switch to Text & photos: a note says the clip won't be posted.
 - [ ] **Empty feed** (Home or a place with no posts): only the "Start a post" button, no round +.
       After the first post appears, the round + shows bottom-right and the big button is gone.
+- [ ] **Keyboard (Android and iPhone):** on a post, tap the comment box and type a few lines: the
+      box sits right on top of the keyboard and you can see everything you type. Same for the
+      new-post screen, sign-in, register and the Account forms.
 - [ ] Open a place, then one of its posts: a "Posted in [place]" strip stays under the header
       while you scroll the comments; tapping it goes back to the place.
 - [ ] **Account:** one page: profile card (color band, photo with camera badge, Edit bio /
