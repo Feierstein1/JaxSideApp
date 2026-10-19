@@ -276,3 +276,63 @@ export function AppealDecision({ appealId }: { appealId: string }) {
     </div>
   );
 }
+
+/**
+ * D90: a Contact us message: resolve / reopen, and (only if the person allowed it) show
+ * their account email to reply. Showing it is audited.
+ */
+export function ContactActions({
+  id,
+  resolved,
+  canReply,
+}: {
+  id: string;
+  resolved: boolean;
+  canReply: boolean;
+}) {
+  const [email, setEmail] = useState<string | null>();
+  const { busy, error, done, run } = useSubmit();
+  const setResolved = (value: boolean) =>
+    run(async () => {
+      await adminFetch(`/api/v1/admin/contact/${id}`, {
+        method: 'POST',
+        body: { resolved: value },
+      });
+      setTimeout(() => window.location.reload(), 500);
+      return value ? 'Marked resolved.' : 'Opened again.';
+    });
+  const showEmail = () =>
+    run(async () => {
+      const r = await adminFetch<{ email: string | null }>(
+        `/api/v1/admin/contact/${id}/reply-email`,
+      );
+      setEmail(r.email);
+      return r.email ? 'Shown (this is logged).' : 'No address available.';
+    });
+  return (
+    <div>
+      {canReply ? (
+        email ? (
+          <p>
+            Reply to: <a href={`mailto:${email}`}>{email}</a>
+          </p>
+        ) : (
+          <button style={ui.buttonSecondary} disabled={busy} onClick={showEmail}>
+            Show reply email
+          </button>
+        )
+      ) : (
+        <p style={{ color: COLORS.textMuted }}>The sender didn’t ask for a reply by email.</p>
+      )}{' '}
+      <button style={ui.button} disabled={busy} onClick={() => setResolved(!resolved)}>
+        {resolved ? 'Open again' : 'Mark resolved'}
+      </button>
+      {error ? (
+        <p role="alert" style={ui.error}>
+          {error}
+        </p>
+      ) : null}
+      {done ? <p role="status">{done}</p> : null}
+    </div>
+  );
+}

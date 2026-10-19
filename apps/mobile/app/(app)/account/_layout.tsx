@@ -20,6 +20,7 @@ export default function AccountLayout() {
       <Stack.Screen name="standing" options={{ title: 'Account standing' }} />
       <Stack.Screen name="delete" options={{ title: 'Delete account' }} />
       <Stack.Screen name="legal/[key]" options={{ title: 'Policies' }} />
+      <Stack.Screen name="contact" options={{ title: 'Contact us' }} />
     </Stack>
   );
 }

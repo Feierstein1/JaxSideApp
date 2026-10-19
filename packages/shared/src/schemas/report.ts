@@ -64,3 +64,20 @@ export interface MyReport {
   createdAt: string;
   resolvedAt: string | null;
 }
+
+/** D90: Contact us. A support ticket (something's wrong) or a general message. */
+export const CONTACT_CATEGORIES = ['SUPPORT', 'GENERAL'] as const;
+export const contactSchema = z.strictObject({
+  category: z.enum(CONTACT_CATEGORIES),
+  subject: z.string().trim().min(3, 'Add a short subject').max(100),
+  body: z
+    .string()
+    .trim()
+    .min(10, 'Tell us a bit more')
+    .max(2000)
+    // eslint-disable-next-line no-control-regex
+    .refine((v) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(v), 'Invalid characters'),
+  /** May a moderator see your account email to reply? Off unless you turn it on. */
+  allowReply: z.boolean().default(false),
+});
+export const contactResolveSchema = z.strictObject({ resolved: z.boolean() });

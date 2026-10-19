@@ -205,6 +205,9 @@ model User {
   notifications        Notification[] @relation("NotificationFor")
   notificationsCaused  Notification[] @relation("NotificationActor")
 
+  contactMessages ContactMessage[] @relation("ContactFrom")
+  contactResolved ContactMessage[] @relation("ContactResolvedBy")
+
   @@index([status])
 }
 
@@ -289,11 +292,12 @@ model GuestSession {
   bannedAt       DateTime?    @db.Timestamptz(3)
   installation   Installation @relation(fields: [installationId], references: [id])
 
-  comments       Comment[]
-  reports        Report[]
-  modActions     ModerationAction[]
-  locationChecks LocationCheck[]
-  locationFlags  LocationFlag[]
+  comments        Comment[]
+  reports         Report[]
+  modActions      ModerationAction[]
+  locationChecks  LocationCheck[]
+  locationFlags   LocationFlag[]
+  contactMessages ContactMessage[]
 
   @@index([installationId])
   @@index([status, expiresAt])
@@ -704,6 +708,38 @@ model Notification {
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
+}
+
+/// D90: Contact us. A support ticket or a general message, read in the admin portal.
+enum ContactCategory {
+  SUPPORT
+  GENERAL
+}
+
+enum ContactStatus {
+  OPEN
+  RESOLVED
+}
+
+model ContactMessage {
+  id             String          @id @default(uuid(7)) @db.Uuid
+  userId         String?         @db.Uuid
+  guestSessionId String?         @db.Uuid
+  category       ContactCategory
+  subject        String          @db.VarChar(100)
+  body           String          @db.VarChar(2000)
+  /// The person agreed that a moderator may see their account email to reply.
+  allowReply     Boolean         @default(false)
+  status         ContactStatus   @default(OPEN)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  resolvedAt     DateTime?       @db.Timestamptz(3)
+  resolvedById   String?         @db.Uuid
+  user           User?           @relation("ContactFrom", fields: [userId], references: [id], onDelete: Cascade)
+  guestSession   GuestSession?   @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
+  resolvedBy     User?           @relation("ContactResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
 }
 
 model UserBlock {

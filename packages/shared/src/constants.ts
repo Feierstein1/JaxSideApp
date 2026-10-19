@@ -178,6 +178,8 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.edit.perMinute': 10,
   'rateLimit.profile.perMinute': 10,
   'rateLimit.block.perMinute': 20,
+  /** D90: Contact us messages per person per hour. */
+  'rateLimit.contact.perHour': 5,
   // D76 friends and notifications
   'rateLimit.friendRequest.perHour': 30,
   'rateLimit.friends.perMinute': 60,

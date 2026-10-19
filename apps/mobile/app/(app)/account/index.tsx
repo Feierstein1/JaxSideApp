@@ -534,6 +534,7 @@ function Settings() {
         />
       </ListGroup>
 
+      <Help />
       <LocationHelp />
       <Policies />
 
@@ -595,9 +596,19 @@ function GuestAccount() {
           }
         />
       </ListGroup>
+      <Help />
       <LocationHelp />
       <Policies />
     </ScrollView>
+  );
+}
+
+/** D90: Contact us (support ticket or general message), for people and guests. */
+function Help() {
+  return (
+    <ListGroup title="Help">
+      <ListRow icon="chatbubbles-outline" label="Contact us" href="/account/contact" />
+    </ListGroup>
   );
 }
 

@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-95 endpoints.
+98 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -12,18 +12,24 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
   like `{ "error": { "code", "message", "details"? } }`; rate limits answer 429 with `Retry-After`.
 - The app also sends `X-Installation-Token` (from `POST /installations`) for ban carry-over.
 
+## contact
+
+| Method | Path              | Who           | Location | What it does                                                                      |
+| ------ | ----------------- | ------------- | -------- | --------------------------------------------------------------------------------- |
+| POST   | `/api/v1/contact` | user or guest |          | D90: Contact us: a support ticket or a general message, read in the admin portal. |
+
 ## friends
 
-| Method | Path                                   | Who                    | Location | What it does                                                                       |
-| ------ | -------------------------------------- | ---------------------- | -------- | ---------------------------------------------------------------------------------- |
-| GET    | `/api/v1/friends`                      | user                   |          | D76: your friends (private to you).                                                |
-| DELETE | `/api/v1/friends/:username`            | user                   |          | D76: remove a friend.                                                              |
-| GET    | `/api/v1/friends/activity`             | user                   |          | D76: the friends feed ("@name posted near Avondale"). No post text or coordinates. |
-| GET    | `/api/v1/friends/requests`             | user (confirmed email) |          | D76: requests waiting on you (incoming) and on others (outgoing).                  |
-| POST   | `/api/v1/friends/requests`             | user (confirmed email) |          | D76: send a friend request (accepts theirs if they already asked you).             |
-| DELETE | `/api/v1/friends/requests/:id`         | user                   |          | D76: withdraw a request you sent.                                                  |
-| POST   | `/api/v1/friends/requests/:id/accept`  | user                   |          | D76: accept a friend request sent to you. Only the person asked can answer it.     |
-| POST   | `/api/v1/friends/requests/:id/decline` | user                   |          | D76: decline a friend request sent to you. Only the person asked can answer it.    |
+| Method | Path                                   | Who                    | Location | What it does                                                                                                                                                   |
+| ------ | -------------------------------------- | ---------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/v1/friends`                      | user                   |          | D76: your friends (private to you).                                                                                                                            |
+| DELETE | `/api/v1/friends/:username`            | user                   |          | D76: remove a friend.                                                                                                                                          |
+| GET    | `/api/v1/friends/activity`             | user                   |          | D76 / D89: the friends feed ("@name posted near Avondale"), last 3 days; `q` narrows it to friends whose username starts with it. No post text or coordinates. |
+| GET    | `/api/v1/friends/requests`             | user (confirmed email) |          | D76: requests waiting on you (incoming) and on others (outgoing).                                                                                              |
+| POST   | `/api/v1/friends/requests`             | user (confirmed email) |          | D76: send a friend request (accepts theirs if they already asked you).                                                                                         |
+| DELETE | `/api/v1/friends/requests/:id`         | user                   |          | D76: withdraw a request you sent.                                                                                                                              |
+| POST   | `/api/v1/friends/requests/:id/accept`  | user                   |          | D76: accept a friend request sent to you. Only the person asked can answer it.                                                                                 |
+| POST   | `/api/v1/friends/requests/:id/decline` | user                   |          | D76: decline a friend request sent to you. Only the person asked can answer it.                                                                                |
 
 ## notifications
 
@@ -192,22 +198,24 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 
 ## admin
 
-| Method | Path                              | Who                   | Location | What it does                                                                            |
-| ------ | --------------------------------- | --------------------- | -------- | --------------------------------------------------------------------------------------- |
-| GET    | `/api/v1/admin/appeals`           | admin (cookie + CSRF) |          | P5.7 / P5.14: appeals waiting (or decided).                                             |
-| POST   | `/api/v1/admin/appeals/:id`       | admin (cookie + CSRF) |          | P5.7: accept (cancels the strike) or reject an appeal, with a note the person sees.     |
-| GET    | `/api/v1/admin/audit`             | admin (cookie + CSRF) |          | P5.16: the admin audit log, newest first.                                               |
-| GET    | `/api/v1/admin/cases`             | admin (cookie + CSRF) |          | P5.14: the moderation queue (open reports grouped by item, most urgent first).          |
-| GET    | `/api/v1/admin/cases/:type/:id`   | admin (cookie + CSRF) |          | P5.14: one case with its reports, context and the author's history.                     |
-| POST   | `/api/v1/admin/cases/:type/:id`   | admin (cookie + CSRF) |          | P5.14: decide the case (remove, approve, dismiss, escalate), optionally with a strike.  |
-| POST   | `/api/v1/admin/login`             | public                |          | P5.11 step 1: password. Returns a short-lived challenge (and 2FA setup the first time). |
-| POST   | `/api/v1/admin/login/verify`      | public                |          | P5.11 step 2: authenticator code. Starts the admin session (cookies).                   |
-| POST   | `/api/v1/admin/logout`            | admin (cookie + CSRF) |          | P5.11: end the admin session.                                                           |
-| GET    | `/api/v1/admin/photos/:id`        | admin (cookie + CSRF) |          | P6.5: moderators can see a reported photo, including after it's removed.                |
-| GET    | `/api/v1/admin/submissions`       | admin (cookie + CSRF) |          | P5.12: the submission queue with filters, duplicate candidates and submitter history.   |
-| POST   | `/api/v1/admin/submissions/:id`   | admin (cookie + CSRF) |          | P5.12 / P5.13: approve (optionally corrected), reject with a reason, or merge.          |
-| POST   | `/api/v1/admin/submissions/bulk`  | admin (cookie + CSRF) |          | P5.12: approve or reject a selected batch (the page lists them for confirmation first). |
-| GET    | `/api/v1/admin/summary`           | admin (cookie + CSRF) |          | P5.11: counts for the admin dashboard.                                                  |
-| GET    | `/api/v1/admin/users`             | admin (cookie + CSRF) |          | P5.14: find a person by username (prefix).                                              |
-| GET    | `/api/v1/admin/users/:id`         | admin (cookie + CSRF) |          | P5.14: a person's record: status, history, recent content (never their email).          |
-| POST   | `/api/v1/admin/users/:id/actions` | admin (cookie + CSRF) |          | P5.6 / P5.14: strike, suspend, ban, lift, note, or cancel a strike.                     |
+| Method | Path                                    | Who                   | Location | What it does                                                                                                              |
+| ------ | --------------------------------------- | --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/v1/admin/appeals`                 | admin (cookie + CSRF) |          | P5.7 / P5.14: appeals waiting (or decided).                                                                               |
+| POST   | `/api/v1/admin/appeals/:id`             | admin (cookie + CSRF) |          | P5.7: accept (cancels the strike) or reject an appeal, with a note the person sees.                                       |
+| GET    | `/api/v1/admin/audit`                   | admin (cookie + CSRF) |          | P5.16: the admin audit log, newest first.                                                                                 |
+| GET    | `/api/v1/admin/cases`                   | admin (cookie + CSRF) |          | P5.14: the moderation queue (open reports grouped by item, most urgent first).                                            |
+| GET    | `/api/v1/admin/cases/:type/:id`         | admin (cookie + CSRF) |          | P5.14: one case with its reports, context and the author's history.                                                       |
+| POST   | `/api/v1/admin/cases/:type/:id`         | admin (cookie + CSRF) |          | P5.14: decide the case (remove, approve, dismiss, escalate), optionally with a strike.                                    |
+| POST   | `/api/v1/admin/contact/:id`             | admin (cookie + CSRF) |          | D90: mark a Contact us message resolved (or open again).                                                                  |
+| GET    | `/api/v1/admin/contact/:id/reply-email` | admin (cookie + CSRF) |          | D90: the sender's account email, only if they allowed replies on this message. Every viewing is written to the audit log. |
+| POST   | `/api/v1/admin/login`                   | public                |          | P5.11 step 1: password. Returns a short-lived challenge (and 2FA setup the first time).                                   |
+| POST   | `/api/v1/admin/login/verify`            | public                |          | P5.11 step 2: authenticator code. Starts the admin session (cookies).                                                     |
+| POST   | `/api/v1/admin/logout`                  | admin (cookie + CSRF) |          | P5.11: end the admin session.                                                                                             |
+| GET    | `/api/v1/admin/photos/:id`              | admin (cookie + CSRF) |          | P6.5: moderators can see a reported photo, including after it's removed.                                                  |
+| GET    | `/api/v1/admin/submissions`             | admin (cookie + CSRF) |          | P5.12: the submission queue with filters, duplicate candidates and submitter history.                                     |
+| POST   | `/api/v1/admin/submissions/:id`         | admin (cookie + CSRF) |          | P5.12 / P5.13: approve (optionally corrected), reject with a reason, or merge.                                            |
+| POST   | `/api/v1/admin/submissions/bulk`        | admin (cookie + CSRF) |          | P5.12: approve or reject a selected batch (the page lists them for confirmation first).                                   |
+| GET    | `/api/v1/admin/summary`                 | admin (cookie + CSRF) |          | P5.11: counts for the admin dashboard.                                                                                    |
+| GET    | `/api/v1/admin/users`                   | admin (cookie + CSRF) |          | P5.14: find a person by username (prefix).                                                                                |
+| GET    | `/api/v1/admin/users/:id`               | admin (cookie + CSRF) |          | P5.14: a person's record: status, history, recent content (never their email).                                            |
+| POST   | `/api/v1/admin/users/:id/actions`       | admin (cookie + CSRF) |          | P5.6 / P5.14: strike, suspend, ban, lift, note, or cancel a strike.                                                       |

@@ -9,6 +9,7 @@ const TILES = [
   { key: 'held', label: 'Held for review', href: '/admin/reports' },
   { key: 'openAppeals', label: 'Open appeals', href: '/admin/appeals' },
   { key: 'pendingSubmissions', label: 'Place suggestions', href: '/admin/submissions' },
+  { key: 'openMessages', label: 'Messages', href: '/admin/messages' },
 ] as const;
 
 /** P5.11: what's waiting, with links to each queue. */

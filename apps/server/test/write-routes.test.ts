@@ -38,6 +38,7 @@ import * as userProfile from '@/app/api/v1/users/[username]/route';
 import * as reports from '@/app/api/v1/reports/route';
 import * as photos from '@/app/api/v1/photos/route';
 import * as voice from '@/app/api/v1/voice/route';
+import * as contact from '@/app/api/v1/contact/route';
 import * as friendRequests from '@/app/api/v1/friends/requests/route';
 import * as friendRequest from '@/app/api/v1/friends/requests/[id]/route';
 import * as friendAccept from '@/app/api/v1/friends/requests/[id]/accept/route';
@@ -327,6 +328,16 @@ const ROWS: Row[] = [
     auth: true,
     id: null,
     location: false,
+  },
+  // D90: Contact us (contact.test.ts).
+  {
+    route: 'contact',
+    method: 'POST',
+    handler: h(contact, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ category: 'GENERAL', subject: 'Hello', body: 'Just saying hello to you.' }),
   },
   // D76: friends and the bell (friends.test.ts has the behavior).
   {

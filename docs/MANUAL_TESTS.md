@@ -204,6 +204,11 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] **Account standing** says "good standing" with the How it works text.
 - [ ] Delete account (password + type DELETE) signs you out; that account can't sign in again.
 
+- [ ] **Contact us (D90):** Account → Help → **Contact us**: pick Support ticket or General, add a
+      subject and message, send → "Thanks!". In the portal, **Messages** lists it; **Show reply
+      email** appears only if you turned on "You can reply to my account email"; **Mark resolved**
+      moves it to Resolved.
+
 ## 9b. Accessibility (P7.6)
 
 - [ ] Phone settings → largest font size: screens still readable, nothing cut off or overlapping.
