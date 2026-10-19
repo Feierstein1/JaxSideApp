@@ -102,6 +102,7 @@ export default function ManageFriends() {
         title="Your friends"
         subtitle="Friends see where you post (not what), and which places you’ve favorited."
         icon="people-outline"
+        inline
       />
 
       {/* Add by username, with the send button inside the row. */}

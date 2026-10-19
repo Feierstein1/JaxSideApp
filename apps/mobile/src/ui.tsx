@@ -98,11 +98,42 @@ export function PageTitle({
   title,
   subtitle,
   icon,
+  inline = false,
 }: {
   title: string;
   subtitle?: string;
   icon?: IconName;
+  /** D88: the icon tile beside the title instead of above it. */
+  inline?: boolean;
 }) {
+  if (inline) {
+    return (
+      <View style={{ marginBottom: SPACE.xl - 4, gap: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.md }}>
+          {icon ? (
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 13,
+                backgroundColor: DARK.raised,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name={icon} size={22} color={DARK.accent} />
+            </View>
+          ) : null}
+          <Text accessibilityRole="header" style={[TYPE.title, { flexShrink: 1 }]}>
+            {title}
+          </Text>
+        </View>
+        {subtitle ? (
+          <Text style={[TYPE.callout, { color: DARK.textMuted }]}>{subtitle}</Text>
+        ) : null}
+      </View>
+    );
+  }
   return (
     <View style={{ marginBottom: SPACE.xl - 4, gap: 6 }}>
       {icon ? (

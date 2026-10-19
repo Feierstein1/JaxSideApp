@@ -52,7 +52,7 @@ export default function Notifications() {
 
   return (
     <Screen>
-      <PageTitle title="Notifications" icon="notifications-outline" />
+      <PageTitle title="Notifications" icon="notifications-outline" inline />
       {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
       {!items ? (
         error ? null : (
