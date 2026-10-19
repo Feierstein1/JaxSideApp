@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack } from 'expo-router';
 import { PHOTOS_MAX, POST_MAX, profileColor, DARK } from '@jax/shared';
@@ -64,8 +64,34 @@ export function Compose({
     }
   }
 
-  async function submit() {
+  /**
+   * D87: a post carries photos or a voice clip, not both. If the other kind is also
+   * attached, say so before posting and let the person choose, instead of quietly
+   * leaving it out.
+   */
+  function submit() {
     if (!ready) return;
+    const leftOut =
+      mode === 'text' && voice
+        ? 'your voice recording'
+        : mode === 'voice' && photos.length
+          ? photos.length === 1
+            ? 'your photo'
+            : `your ${photos.length} photos`
+          : null;
+    if (!leftOut) return void send();
+    const other = mode === 'text' ? 'Voice' : 'Text & photos';
+    Alert.alert(
+      'Photos or voice, not both',
+      `A post can have photos or a voice recording, not both. If you post now, ${leftOut} won’t be included. To post ${leftOut === 'your voice recording' ? 'it' : 'them'} instead, switch to ${other}.`,
+      [
+        { text: 'Go back', style: 'cancel' },
+        { text: `Post without ${leftOut.replace('your ', '')}`, onPress: () => void send() },
+      ],
+    );
+  }
+
+  async function send() {
     setBusy(true);
     setError(undefined);
     try {
@@ -158,7 +184,7 @@ export function Compose({
               accessibilityLabel="Post"
               accessibilityState={{ disabled: !canPost, busy }}
               disabled={!canPost}
-              onPress={() => void submit()}
+              onPress={submit}
               style={({ pressed }) => ({
                 minWidth: 72,
                 height: 36,

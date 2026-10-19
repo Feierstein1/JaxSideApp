@@ -87,7 +87,8 @@ checks. Tick each box when it looks right; note anything odd next to it.
       up; tap to stop (or it stops at 1:00). The clip appears with play and a trash can.
 - [ ] Post it with no text: it shows in the feed with a black play bar; play, pause and the time
       work, and starting one clip pauses any other.
-- [ ] While a clip is attached the photo box is hidden, and with a photo the recorder is hidden.
+- [ ] Add a photo, switch to **Voice**, record, tap **Post**: a warning says the photo won't be
+      included, with **Go back** / **Post without photo** (D87). Same the other way round.
 - [ ] On an iPhone (if you have one), clips play too.
 - [ ] Home and place pages show **All / Text / Media / Voice** under the black bar; each tab only
       shows that kind of post ("No voice posts nearby yet" when empty).
