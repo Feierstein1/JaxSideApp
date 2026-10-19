@@ -65,14 +65,14 @@ function Meta({ icon, text, color }: { icon: IconName; text: string; color?: str
 /**
  * One place in the list (D79). A dark card with the category color as a thick stripe on
  * the left; a colored icon tile; the name large; category and distance under it; then
- * posts, favorites and (when you're close enough) "You can post". A gold ★ shows on your
- * favorites.
+ * posts and favorites. A gold ★ shows on your favorites. Every listed place is within your
+ * radius, so you can post at any of them (no "You can post" badge, D82).
  */
 export function PlaceRow({ place, onPress }: { place: PlaceSummary; onPress: () => void }) {
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={`${place.name}, ${categoryLabel(place.category)}, ${formatDistance(place.distanceMeters)} away, ${plural(place.postCount, 'post')}, ${plural(place.favoriteCount, 'favorite')}${place.isFavorite ? ', one of your favorites' : ''}${place.withinRoomRadius ? ', you can post here' : ''}`}
+      accessibilityLabel={`${place.name}, ${categoryLabel(place.category)}, ${formatDistance(place.distanceMeters)} away, ${plural(place.postCount, 'post')}, ${plural(place.favoriteCount, 'favorite')}${place.isFavorite ? ', one of your favorites' : ''}`}
       onPress={onPress}
       scaleTo={0.98}
       containerStyle={{ marginHorizontal: SPACE.md, marginVertical: 6 }}
@@ -123,26 +123,6 @@ export function PlaceRow({ place, onPress }: { place: PlaceSummary; onPress: () 
           </View>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 8 }}>
-          {place.withinRoomRadius ? (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-                paddingHorizontal: 8,
-                height: 24,
-                borderRadius: RADIUS.pill,
-                backgroundColor: DARK.tealSoft,
-              }}
-            >
-              <View
-                style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: DARK.tealText }}
-              />
-              <Text style={{ color: DARK.tealText, fontSize: 11.5, fontWeight: '800' }}>
-                You can post
-              </Text>
-            </View>
-          ) : null}
           <Ionicons name="chevron-forward" size={18} color={DARK.textMuted} />
         </View>
       </View>

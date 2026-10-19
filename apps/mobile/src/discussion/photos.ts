@@ -66,7 +66,7 @@ export async function uploadPhoto(asset: {
 /**
  * Sends a local file's bytes as the request body (photos, D75 voice clips).
  *
- * D78: streamed straight from disk by expo-file-system. Reading the file with
+ * D81: streamed straight from disk by expo-file-system. Reading the file with
  * `fetch(uri).blob()` and posting the Blob fails on current Expo ("Response.blob() is
  * using React Native's Blob"), which broke every photo upload.
  */
