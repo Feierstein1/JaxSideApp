@@ -30,6 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK } from '@jax/shared';
 import { UserBadge } from './auth/UserBadge';
+import { Bell } from './social/Bell';
 import { haptic, useReducedMotion } from './motion';
 import { Text, TextInput } from './text';
 import { elevation, GUTTER, RADIUS, SPACE, TYPE } from './tokens';
@@ -78,7 +79,13 @@ export function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
 export const headerOptions = {
   headerTitle: () => <BrandMark />,
   headerTitleAlign: 'left' as const,
-  headerRight: () => <UserBadge />,
+  // D76: the notification bell before your username.
+  headerRight: () => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <Bell />
+      <UserBadge />
+    </View>
+  ),
   headerStyle: { backgroundColor: DARK.bar },
   headerShadowVisible: false,
   headerBackButtonDisplayMode: 'minimal' as const,

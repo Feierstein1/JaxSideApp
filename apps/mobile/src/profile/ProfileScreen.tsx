@@ -9,6 +9,8 @@ import { useGuest } from '@/auth/guest';
 import { PostCard, PostSkeleton } from '@/discussion/PostCard';
 import { getFreshReading } from '@/location/device';
 import { ReportSheet } from '@/report/ReportSheet';
+import { social } from '@/social/api';
+import { refreshUnread } from '@/social/unread';
 import { MedalIcons, MedalList } from './Medals';
 import { ProfileAvatar } from './ProfileAvatar';
 
@@ -64,6 +66,32 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
     }
   }
 
+  /** D76: friend requests from a profile. */
+  async function friendAction(action: () => Promise<unknown>) {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await action();
+      await load();
+      void refreshUnread();
+    } catch (e) {
+      setError(e instanceof ApiRequestError ? e.message : 'Couldn’t save.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function confirmUnfriend() {
+    Alert.alert(`Remove ${username} as a friend?`, 'You can send a new request later.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => void friendAction(() => social.unfriend(username)),
+      },
+    ]);
+  }
+
   function confirmBlock() {
     Alert.alert(
       `Block ${username}?`,
@@ -92,6 +120,9 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
   const canAct = !profile.isMe && !isGuest;
   const menu = () =>
     openMenu(profile.username, [
+      ...(profile.friendship === 'friends'
+        ? [{ label: 'Remove friend', destructive: true, onPress: confirmUnfriend }]
+        : []),
       profile.blockedByMe
         ? { label: 'Unblock', onPress: () => void setBlocked(false) }
         : { label: 'Block', destructive: true, onPress: confirmBlock },
@@ -174,6 +205,16 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
             />
             <StatTile icon="calendar" value={joined} label="Joined" color={DARK.tealText} />
           </View>
+          {canAct && !profile.blockedByMe ? (
+            <FriendButton
+              profile={profile}
+              busy={busy}
+              onAdd={() => void friendAction(() => social.send(profile.username))}
+              onCancel={() => void friendAction(() => social.cancel(profile.friendRequestId!))}
+              onAccept={() => void friendAction(() => social.accept(profile.friendRequestId!))}
+              onDecline={() => void friendAction(() => social.decline(profile.friendRequestId!))}
+            />
+          ) : null}
           {profile.blockedByMe ? (
             <Button
               variant="secondary"
@@ -216,4 +257,60 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
       />
     </ScrollView>
   );
+}
+
+/**
+ * D76: the friend button's states. Styled with the shared Button for now; the UX pass
+ * may restyle it.
+ */
+function FriendButton({
+  profile,
+  busy,
+  onAdd,
+  onCancel,
+  onAccept,
+  onDecline,
+}: {
+  profile: PublicProfile;
+  busy: boolean;
+  onAdd: () => void;
+  onCancel: () => void;
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  const top = { marginTop: SPACE.md };
+  switch (profile.friendship) {
+    case 'friends':
+      return (
+        <View style={[top, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+          <Ionicons name="people" size={18} color={DARK.tealText} />
+          <Text style={[TYPE.body, { color: DARK.tealText, fontWeight: '700' }]}>Friends</Text>
+        </View>
+      );
+    case 'requested':
+      return (
+        <Button
+          variant="secondary"
+          title="Request sent · Cancel"
+          icon="time-outline"
+          busy={busy}
+          onPress={onCancel}
+          style={top}
+        />
+      );
+    case 'incoming':
+      return (
+        <View style={[top, { gap: SPACE.sm }]}>
+          <Text style={TYPE.body}>{profile.username} wants to be friends.</Text>
+          <View style={{ flexDirection: 'row', gap: SPACE.sm }}>
+            <Button title="Accept" icon="checkmark" busy={busy} onPress={onAccept} />
+            <Button variant="secondary" title="Decline" onPress={onDecline} />
+          </View>
+        </View>
+      );
+    default:
+      return (
+        <Button title="Add friend" icon="person-add" busy={busy} onPress={onAdd} style={top} />
+      );
+  }
 }

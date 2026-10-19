@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Switch, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
@@ -25,6 +25,7 @@ import { pickPhoto, uploadPhoto } from '@/discussion/photos';
 import { categoryLabel } from '@/format';
 import { haptic } from '@/motion';
 import { categoryIcon } from '@/places/PlaceHeader';
+import { social } from '@/social/api';
 import { Text, TextInput } from '@/text';
 import { GUTTER, RADIUS, SPACE, TYPE } from '@/tokens';
 import {
@@ -37,6 +38,7 @@ import {
   Segmented,
   Sheet,
   styles,
+  switchColors,
 } from '@/ui';
 
 interface Favorite {
@@ -397,6 +399,15 @@ function Settings() {
     CONFIG_DEFAULTS['radius.general.maxMiles'],
   );
 
+  async function setHidePosts(hidePostsFromFriends: boolean) {
+    try {
+      await social.setHidePosts(hidePostsFromFriends);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof ApiRequestError ? e.message : 'Couldn’t save.');
+    }
+  }
+
   async function setRadius(miles: number) {
     try {
       await api.patch('/api/v1/me/preferences', { radiusMiles: miles });
@@ -462,6 +473,25 @@ function Settings() {
             onChange={(k) => void setRadius(Number(k))}
           />
         </View>
+      </ListGroup>
+
+      {/* D76: friends see where you post unless you turn this on. */}
+      <ListGroup
+        title="Friends"
+        footer="When off, friends see “posted near [area]” or “posted at [place]” for your posts from the last two weeks. They never see the post itself unless they’re nearby."
+      >
+        <ListRow
+          icon="eye-off-outline"
+          label="Hide my recent posts from friends"
+          right={
+            <Switch
+              accessibilityLabel="Hide my recent posts from friends"
+              value={user.hidePostsFromFriends}
+              onValueChange={(v) => void setHidePosts(v)}
+              {...switchColors}
+            />
+          }
+        />
       </ListGroup>
 
       <ListGroup

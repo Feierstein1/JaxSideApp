@@ -197,6 +197,14 @@ model User {
 
   autoSuspensions AutoSuspension[]
 
+  /// D76: hide my recent posts from the friends feed.
+  hidePostsFromFriends Boolean        @default(false)
+  friendshipsLow       Friendship[]   @relation("FriendLow")
+  friendshipsHigh      Friendship[]   @relation("FriendHigh")
+  friendRequestsSent   Friendship[]   @relation("FriendRequester")
+  notifications        Notification[] @relation("NotificationFor")
+  notificationsCaused  Notification[] @relation("NotificationActor")
+
   @@index([status])
 }
 
@@ -652,6 +660,50 @@ model Report {
   @@index([commentId])
   @@index([photoId])
   @@index([reportedUserId])
+}
+
+/// D76: friendships are mutual and by request. One row per pair (low id, high id), so
+/// two people can't have two rows; `requesterId` says who asked.
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
+model Friendship {
+  id          String           @id @default(uuid(7)) @db.Uuid
+  userLowId   String           @db.Uuid
+  userHighId  String           @db.Uuid
+  requesterId String           @db.Uuid
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  acceptedAt  DateTime?        @db.Timestamptz(3)
+  userLow     User             @relation("FriendLow", fields: [userLowId], references: [id], onDelete: Cascade)
+  userHigh    User             @relation("FriendHigh", fields: [userHighId], references: [id], onDelete: Cascade)
+  requester   User             @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@unique([userLowId, userHighId])
+  @@index([userHighId, status])
+  @@index([requesterId, status])
+}
+
+/// D76: in-app notifications (the bell). Kept small: type + who caused it.
+enum NotificationType {
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+}
+
+model Notification {
+  id        String           @id @default(uuid(7)) @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType
+  actorId   String?          @db.Uuid
+  createdAt DateTime         @default(now()) @db.Timestamptz(3)
+  readAt    DateTime?        @db.Timestamptz(3)
+  user      User             @relation("NotificationFor", fields: [userId], references: [id], onDelete: Cascade)
+  actor     User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
 }
 
 model UserBlock {

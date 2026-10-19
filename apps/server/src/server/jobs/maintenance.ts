@@ -1,5 +1,6 @@
 import { evaluateAchievements } from '../achievements';
 import { purgeUnusedPhotos } from '../media/photos';
+import { purgeOldNotifications } from '../social/notifications';
 import { purgeDeletedAccounts } from '../auth/account';
 import { getConfig } from '../config';
 import { db } from '../db';
@@ -146,6 +147,8 @@ export async function runMaintenance(now: Date = new Date()): Promise<Maintenanc
         achievementsAwarded: await evaluateAchievements(now, undefined, tx),
         // P6.2: uploads never attached to a post or profile within a day.
         unusedPhotosDeleted: await purgeUnusedPhotos(now),
+        // D76: the bell keeps 90 days.
+        notificationsDeleted: await purgeOldNotifications(now),
       };
       logger.info({ report }, 'maintenance complete');
       return report;

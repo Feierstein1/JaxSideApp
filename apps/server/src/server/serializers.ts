@@ -14,6 +14,7 @@ interface UserLike {
   emailVerifiedAt?: Date | null;
   generalRadiusMiles?: number | null;
   businessRadiusMiles?: number | null;
+  hidePostsFromFriends?: boolean;
   profile?: { bio: string | null; avatarPhotoId: string | null } | null;
   profileColor?: string;
 }
@@ -47,6 +48,8 @@ export interface MeUser extends PublicUser {
   emailVerified: boolean;
   /** D71: your radius in miles (null = the default, 0.3). */
   radiusMiles: number | null;
+  /** D76: left out of the friends feed. */
+  hidePostsFromFriends: boolean;
 }
 
 export function toMe(u: UserLike & { email: string; emailVerifiedAt: Date | null }): MeUser {
@@ -55,6 +58,7 @@ export function toMe(u: UserLike & { email: string; emailVerifiedAt: Date | null
     email: u.email,
     emailVerified: u.emailVerifiedAt !== null,
     radiusMiles: u.generalRadiusMiles ?? null,
+    hidePostsFromFriends: u.hidePostsFromFriends ?? false,
   };
 }
 

@@ -147,6 +147,22 @@ checks. Tick each box when it looks right; note anything odd next to it.
       the app's Places list, and My suggestions says "Approved". Reject another with a reason:
       My suggestions shows the reason.
 
+## 7c. Friends and notifications (D76, two accounts)
+
+- [ ] A opens B's profile → **Add friend**: A's profile view says "Friend request sent".
+- [ ] Within about 30 s B's top bar shows a red number on the **bell**; opening it shows the request
+      with **Accept** / **Decline**, and the number clears.
+- [ ] B accepts: both profiles say "✓ Friends"; A's bell gets "accepted your friend request".
+- [ ] **Friends** tab (bottom bar): after B posts in the area, A sees "B posted near [area]";
+      after a place post, "posted at [place]". The post text is never shown there.
+- [ ] B turns on Account → Settings → **Hide my recent posts from friends**: B's posts leave A's
+      Friends tab.
+- [ ] Friends tab → **Your friends and requests**: add by username, cancel a sent request, remove
+      a friend.
+- [ ] B favorites a place: on A's view of that place, "Favorited by your friend B" shows under
+      the card.
+- [ ] Blocking a friend removes the friendship. Guests don't see the Friends tab or the bell.
+
 ## 8. Profiles and blocking
 
 - [ ] Tap a username on a post or comment: profile shows bio, join date, post count, recent posts.

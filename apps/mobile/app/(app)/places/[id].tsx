@@ -20,6 +20,7 @@ import { getFreshReading } from '@/location/device';
 import { haptic } from '@/motion';
 import { OsmAttribution } from '@/places/Attribution';
 import { PlaceHero, PlaceSkeleton } from '@/places/PlaceHeader';
+import { social } from '@/social/api';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { ErrorState, FloatingButton, SectionTitle, useToast } from '@/ui';
@@ -37,6 +38,14 @@ export default function PlaceScreen() {
   const [busy, setBusy] = useState(false);
   const toast = useToast(); // D70 / D78: "Added to favorites"
   const [type, setType] = useState<PostTypeFilter>('all'); // D75
+  // D76: which of your friends favorited this place (others see only the count).
+  const [friendFans, setFriendFans] = useState<string[]>([]);
+  useEffect(() => {
+    social
+      .friendsFavorited(id)
+      .then((r) => setFriendFans(r.friends.map((f) => f.username)))
+      .catch(() => setFriendFans([]));
+  }, [id, place?.isFavorite]);
   const loadRoom = useCallback((cursor?: string) => fetchRoom(id, cursor, type), [id, type]);
   const verified = state.status === 'signedIn' && state.user.emailVerified;
 
@@ -108,7 +117,26 @@ export default function PlaceScreen() {
   }
 
   const hero = (
-    <PlaceHero place={place} onFavorite={() => void toggleFavorite()} favoriteBusy={busy} />
+    <>
+      <PlaceHero place={place} onFavorite={() => void toggleFavorite()} favoriteBusy={busy} />
+      {friendFans.length ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: SPACE.sm,
+            marginHorizontal: SPACE.md,
+            marginTop: SPACE.sm,
+          }}
+        >
+          <Ionicons name="people" size={16} color={DARK.accent} />
+          <Text style={[TYPE.body, { flex: 1 }]}>
+            Favorited by your friend{friendFans.length === 1 ? ' ' : 's '}
+            <Text style={{ fontWeight: '800' }}>{friendFans.join(', ')}</Text>
+          </Text>
+        </View>
+      ) : null}
+    </>
   );
 
   return (

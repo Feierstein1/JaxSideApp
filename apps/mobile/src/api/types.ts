@@ -12,6 +12,8 @@ export interface MeUser {
   emailVerified: boolean;
   /** D71: your radius in miles (0.1 / 0.2 / 0.3); null = default 0.3. */
   radiusMiles: number | null;
+  /** D76: left out of the friends feed. */
+  hidePostsFromFriends: boolean;
 }
 
 export interface LoginResponse {

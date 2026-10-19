@@ -1,3 +1,4 @@
+import { endFriendship, friendshipState } from './social/friends';
 import { normalizeUsername, type PublicProfile } from '@jax/shared';
 import { medalsFor } from './achievements';
 import { signedPhotoUrl } from './media/photos';
@@ -43,6 +44,13 @@ export async function getPublicProfile(username: string, viewerUserId: string | 
     medals: await medalsFor(user.id),
     avatarUrl: user.profile?.avatarPhotoId ? signedPhotoUrl(user.profile.avatarPhotoId) : null,
     color: user.profileColor,
+    // D76: your relationship with them (none for guests or your own profile).
+    ...(viewerUserId
+      ? await friendshipState(viewerUserId, user.id).then((f) => ({
+          friendship: f.state,
+          friendRequestId: f.requestId,
+        }))
+      : { friendship: 'none' as const, friendRequestId: null }),
   };
   return { id: user.id, profile };
 }
@@ -57,9 +65,12 @@ export async function setBlock(blockerId: string, username: string, blocked: boo
   if (target.id === blockerId)
     throw new ApiError(400, 'CANNOT_BLOCK_SELF', "You can't block yourself");
   if (blocked) {
-    await db.userBlock.createMany({
-      data: [{ blockerId, blockedId: target.id }],
-      skipDuplicates: true,
+    await db.$transaction(async (tx) => {
+      await tx.userBlock.createMany({
+        data: [{ blockerId, blockedId: target.id }],
+        skipDuplicates: true,
+      });
+      await endFriendship(tx, blockerId, target.id); // D76: blocking ends a friendship
     });
   } else {
     await db.userBlock.deleteMany({ where: { blockerId, blockedId: target.id } });
