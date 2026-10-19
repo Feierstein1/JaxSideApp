@@ -69,6 +69,14 @@ Questions marked **BLOCKING** must be answered before the phase listed. Each has
 - [x] **Q12 — Can guests vote? Can guests file reports? (BLOCKING Phase 4)** → Answered: no voting; reports allowed, with report rate limits for **all** users (D28). **Changed 2026-10-16: guests can't report either (D54)**
   §5 lists guest capabilities as browse and comment only, so voting isn't included. §5 also says guests "cannot bypass … reporting", which is unclear: it could mean they can be reported, or that they can report.
   *Recommendation:* Guests **cannot vote** (keeps vote totals tied to accountable accounts) but **can report** content (safety reports should be easy for anyone who can see content). The schema already supports this: `Vote.voterId` is a required User, and `Report` allows a guest reporter.
+- [ ] **Q18 — First-time guides: a few choices before building (Phase 11, `docs/FIRST_TIME_GUIDES.md`)**
+  1. *"Anonymous" wording:* posts show your username, photo and rough distance, so the app is **pseudonymous**, not anonymous. *Recommendation:* "People see your username and photo, never your email or exact location. It's your choice whether to tell anyone who you really are."
+  2. *Skippable?* *Recommendation:* no Skip on the first showing; closing cancels the action and the guide shows again next time. Rereadable any time from Account → Community rules.
+  3. *Business owners posting about their own place:* allowed if they say so, or not allowed? *Recommendation:* allowed with a disclosure line ("I own / work here"), and no repeated promotions.
+  4. *General posts that mention a business:* the drafted rule says posts *mostly about* one business belong in its discussion; a passing mention in the area feed is fine. OK?
+  5. *Extra guides suggested* (comment, photo, voice, friend request, block, guest welcome): keep all, or only the ones you listed?
+  6. *Existing accounts:* everyone sees each guide once at their next first-of-kind action after this ships (there's no record of who has seen what yet). OK?
+
 - [ ] **Q17 — Community place voting (next build, user 2026-10-19)**
   Agreed so far: a suggested place is added automatically after **10** different people vote for it (the suggester counts as the first); closed places are hidden after enough "doesn't exist" votes; every vote is kept for the admin to review (who, when, how far away); votes count only from confirmed accounts a few days old that are near the spot; suggestions that don't reach 10 in about 60 days expire; similar names within ~50 yd merge into one entry. A temporary table holds the votes until a place is added or dropped. Google Maps checks were ruled out (paid; its terms forbid using its data with our OpenStreetMap map).
   *Waiting on:* the user's idea for the voting flow and the add/remove styling.
@@ -381,6 +389,21 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 
 - [ ] P10.1 Design first (conversations, reporting and blocking from day one, retention)
 
+## Phase 11 — First-time guides (user idea 2026-10-19, not started)
+
+A short swipeable guide (Do's ✅ / Don'ts ❌ / Good to know, page dots, Next, "Got it") shown the first time someone does each action, once per account. Drafted wording for every guide: `docs/FIRST_TIME_GUIDES.md`. Decisions pending in Q18; add a Decision Log entry before building (not in the spec).
+
+- [ ] P11.1 Guide sheet component: pages, dots, Next/Back, last-page "Got it"; closing cancels the action; screen reader "Page 1 of 3", reduce motion, large text
+- [ ] P11.2 🔒 "Guides seen" per account on the server, with a version per guide (so a new phone or reinstall doesn't show it again, and a big rule change can show it once more). Back-end item
+- [ ] P11.3 Guide text in one shared file, and the Community Guidelines updated so every rule a guide mentions is in them
+- [ ] P11.4 Guides: first area post, first place post, first comment, first photo, first voice post
+- [ ] P11.5 Guides: first place suggestion, first report, first profile change (bio / username / photo)
+- [ ] P11.6 Guides: first friend request, first block, guest welcome
+- [ ] P11.7 Guide: first "closed / doesn't exist" vote (with Q17 place voting)
+- [ ] P11.8 Guide: first private message (with Phase 10)
+- [ ] P11.9 Account → **Community rules** to reread any guide, plus a small "Rules" link in each composer
+
+
 ## Acceptance Criteria Tracker (§20)
 
 Every row needs a linked test or a written manual procedure before it can be checked.
@@ -546,3 +569,4 @@ Events/meetups/RSVPs · sponsored content / ads / subscriptions · phone push no
 | 2026-10-19 | Fix | Comment box (and other typing screens) hid behind the keyboard on Android: Expo 57 draws apps edge to edge, so the phone no longer shrinks the screen and React Native's KeyboardAvoidingView was off on Android. New `KeyboardSafeView` measures how much the keyboard covers and lifts the content above it, on both platforms; used on the post page, composer, sign-in, register and every Account form. Typecheck, lint, tests, Android bundle pass |
 | 2026-10-18 | Phase 9, D76 | Friends (requests, accept/decline/cancel, remove, block ends it), notification bell (30 s polling, answer requests inline), Friends tab feed (neighborhood/place only), hide-from-friends setting, friends who favorited a place. Migration `friends_notifications`. Built on branch `phase-9` in a separate worktree so the user could keep testing main. 653 server + 90 shared + 40 app tests, Android bundle |
 | 2026-10-19 | Phase 9 merge, D83 | Merged branch `phase-9` into main after the D79 redesign (conflicts in 4 screens resolved in favor of the redesign, Phase 9 pieces re-added with the new components); friends migration applied to the dev database. Up/down split on opened posts. UX handoff list in `docs/agents/UX_HANDOFF_PHASE9.md`. Q17 recorded. 653 server + 128 shared + 41 app tests, Android bundle, live check 98/98 |
+| 2026-10-19 | Phase 11 (planned) | First-time guides: user idea recorded as Phase 11 (P11.1–P11.9); Do's / Don'ts / Good to know drafted for 13 guides in `docs/FIRST_TIME_GUIDES.md` (the user's 7 plus comment, photo, voice, friend request, block, guest welcome); open choices in Q18. Nothing built |
