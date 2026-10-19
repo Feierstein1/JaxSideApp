@@ -482,7 +482,8 @@ function Settings() {
       >
         <ListRow
           icon="eye-off-outline"
-          label="Hide my recent posts from friends"
+          label="Hide my posts from friends"
+          detail={user.hidePostsFromFriends ? 'On: friends don’t see where you post' : 'Off'}
           right={
             <Switch
               accessibilityLabel="Hide my recent posts from friends"

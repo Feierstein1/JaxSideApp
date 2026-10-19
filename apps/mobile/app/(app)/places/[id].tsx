@@ -117,26 +117,12 @@ export default function PlaceScreen() {
   }
 
   const hero = (
-    <>
-      <PlaceHero place={place} onFavorite={() => void toggleFavorite()} favoriteBusy={busy} />
-      {friendFans.length ? (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: SPACE.sm,
-            marginHorizontal: SPACE.md,
-            marginTop: SPACE.sm,
-          }}
-        >
-          <Ionicons name="people" size={16} color={DARK.accent} />
-          <Text style={[TYPE.body, { flex: 1 }]}>
-            Favorited by your friend{friendFans.length === 1 ? ' ' : 's '}
-            <Text style={{ fontWeight: '800' }}>{friendFans.join(', ')}</Text>
-          </Text>
-        </View>
-      ) : null}
-    </>
+    <PlaceHero
+      place={place}
+      onFavorite={() => void toggleFavorite()}
+      favoriteBusy={busy}
+      friendFans={friendFans}
+    />
   );
 
   return (

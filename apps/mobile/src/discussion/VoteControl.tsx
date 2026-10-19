@@ -114,14 +114,23 @@ export function VoteControl({
   );
   if (!counts) return pill;
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
       {pill}
-      <Text
+      {/* D83 / D79: the split as two small tallies: teal up, gold down. */}
+      <View
+        accessible
         accessibilityLabel={`${counts.up} up, ${counts.down} down`}
-        style={{ color: DARK.textMuted, fontSize: 12.5, fontWeight: '600' }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
       >
-        {counts.up} up · {counts.down} down
-      </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+          <Ionicons name="caret-up" size={13} color={DARK.tealText} />
+          <Text style={{ color: DARK.tealText, fontSize: 13, fontWeight: '800' }}>{counts.up}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+          <Ionicons name="caret-down" size={13} color={DARK.accent} />
+          <Text style={{ color: DARK.accent, fontSize: 13, fontWeight: '800' }}>{counts.down}</Text>
+        </View>
+      </View>
     </View>
   );
 }

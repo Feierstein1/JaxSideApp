@@ -150,18 +150,27 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ## 7c. Friends and notifications (D76, two accounts)
 
-- [ ] A opens B's profile → **Add friend**: A's profile view says "Friend request sent".
-- [ ] Within about 30 s B's top bar shows a red number on the **bell**; opening it shows the request
-      with **Accept** / **Decline**, and the number clears.
-- [ ] B accepts: both profiles say "✓ Friends"; A's bell gets "accepted your friend request".
-- [ ] **Friends** tab (bottom bar): after B posts in the area, A sees "B posted near [area]";
-      after a place post, "posted at [place]". The post text is never shown there.
-- [ ] B turns on Account → Settings → **Hide my recent posts from friends**: B's posts leave A's
-      Friends tab.
-- [ ] Friends tab → **Your friends and requests**: add by username, cancel a sent request, remove
-      a friend.
-- [ ] B favorites a place: on A's view of that place, "Favorited by your friend B" shows under
-      the card.
+- [ ] A opens B's profile → gold **Add friend** under the profile card: it turns into a grey
+      "Request sent · tap to cancel".
+- [ ] Within about 30 s B's **bell** (round button left of the username, top-right) turns gold
+      with a red number. Opening it shows a dark **Notifications** page with a back arrow; the
+      request is under "Friend requests" with **Accept** / **Decline**, and the number clears.
+- [ ] B accepts: both profiles show a teal **Friends ▾** button; A's bell lists "Accepted your
+      friend request" under "Earlier". Tapping **Friends ▾** offers **Remove friend** (asks first).
+- [ ] On Android, a friend's profile **•••** shows Block (or Unblock) and Report profile, nothing
+      cut off.
+- [ ] **Friends** tab (bottom bar, filled gold when active): a "Your friends" button at the top
+      (gold "N new" when requests are waiting). After B posts in the area, A sees a dark card with
+      B's color stripe: "**B** posted near **[area]**" and a teal pin; after a place post, "posted
+      at **[place]**" with a gold storefront. The post text is never shown there. Empty: "No friend
+      activity yet" with **Find friends**.
+- [ ] B turns on Account → Friends → **Hide my posts from friends** (the line under it says "On:
+      friends don't see where you post"): B's posts leave A's Friends tab.
+- [ ] Friends tab → **Your friends**: type a username and tap the gold button beside it (a teal
+      "Request sent" note appears); cancel a sent request; remove a friend from their **•••**.
+- [ ] B favorites a place: on A's view of that place, a gold-tinted "Favorited by your friend
+      **B**" line shows inside the place card, above **Save to favorites**.
+- [ ] Open a post (not in a feed): next to the vote pill, a teal ▲ count and a gold ▼ count (D83).
 - [ ] Blocking a friend removes the friendship. Guests don't see the Friends tab or the bell.
 
 ## 8. Profiles and blocking
@@ -172,8 +181,8 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ## 9. Account settings
 
-- [ ] Profile tab: the header is in your color; the **paint-brush** button opens 24 colors, and
-      picking one changes the header (and your posts) right away.
+- [ ] Profile card: the band across the top is your color; the **Color** button opens 24 colors,
+      and picking one changes the band (and your post stripes) right away.
 - [ ] **About** and **Medals** have black title bars with white text, joined to white boxes with
       black text; **Edit bio** sits under the bio box on the left; add/edit a bio (300 max).
 - [ ] Home: a black bar under the header holds New / Top this week; posts sit on dark grey.

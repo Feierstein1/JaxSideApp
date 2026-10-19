@@ -139,10 +139,13 @@ export function PlaceHero({
   place,
   onFavorite,
   favoriteBusy,
+  friendFans = [],
 }: {
   place: PlaceSummary;
   onFavorite: () => void;
   favoriteBusy: boolean;
+  /** D76: usernames of your friends who favorited it (others only see the count). */
+  friendFans?: string[];
 }) {
   const color = categoryColor(place.category);
   return (
@@ -188,6 +191,27 @@ export function PlaceHero({
             label={place.favoriteCount === 1 ? 'Favorite' : 'Favorites'}
           />
         </View>
+        {friendFans.length ? (
+          <View
+            accessible
+            accessibilityLabel={`Favorited by your friends ${friendFans.join(', ')}`}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderRadius: RADIUS.md,
+              backgroundColor: DARK.accentSoft,
+            }}
+          >
+            <Ionicons name="people" size={16} color={DARK.accent} />
+            <Text style={[TYPE.callout, { flex: 1 }]} numberOfLines={2}>
+              Favorited by your friend{friendFans.length === 1 ? ' ' : 's '}
+              <Text style={{ fontWeight: '800' }}>{friendFans.join(', ')}</Text>
+            </Text>
+          </View>
+        ) : null}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={place.isFavorite ? 'Remove from favorites' : 'Add to favorites'}

@@ -1,11 +1,16 @@
 import type { ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
-import { COLORS, type FriendUser } from '@jax/shared';
+import { DARK, profileColor, type FriendUser } from '@jax/shared';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
-import { styles } from '@/ui';
+import { Text } from '@/text';
+import { SPACE, TYPE } from '@/tokens';
 
-/** D76: a person in a friends list or the bell: photo, name (opens profile), actions. */
+/**
+ * D76 / D79: a person in a friends list or the bell, made to sit inside a `ListGroup`:
+ * photo ringed in their account color, name (opens their profile), a line under it, and
+ * actions on the right.
+ */
 export function FriendRow({
   user,
   children,
@@ -15,30 +20,51 @@ export function FriendRow({
   children?: ReactNode;
   subtitle?: ReactNode;
 }) {
+  const color = profileColor(user.color);
   return (
     <View
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: SPACE.md,
+        minHeight: 68,
+        paddingHorizontal: 14,
         paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.cardBorder,
       }}
     >
       <Pressable
         accessibilityRole="link"
         accessibilityLabel={`Open ${user.username}'s profile`}
         onPress={() => router.push(`/user/${encodeURIComponent(user.username)}`)}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: SPACE.md,
+          flex: 1,
+          opacity: pressed ? 0.7 : 1,
+        })}
       >
-        <ProfileAvatar name={user.username} url={user.avatarUrl} size={40} />
+        <ProfileAvatar
+          name={user.username}
+          url={user.avatarUrl}
+          size={44}
+          ringColor={color.hex}
+          fill={color.hex}
+        />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.body, { fontWeight: '700' }]}>{user.username}</Text>
-          {subtitle ? <Text style={styles.muted}>{subtitle}</Text> : null}
+          <Text numberOfLines={1} style={{ fontSize: 16, fontWeight: '800' }}>
+            {user.username}
+          </Text>
+          {subtitle ? (
+            <Text numberOfLines={2} style={[TYPE.caption, { color: DARK.textMuted }]}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
       </Pressable>
-      {children}
+      {children ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>{children}</View>
+      ) : null}
     </View>
   );
 }

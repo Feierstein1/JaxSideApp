@@ -20,3 +20,28 @@ haptics). Don't change behavior, API calls or what's shown (privacy rules in D76
 
 When done: run the usual checks (typecheck, lint, prettier, app tests, Android export) and
 update `docs/MANUAL_TESTS.md` §7c if anything visible changed.
+
+## Done (2026-10-19)
+
+All rows restyled to D79 without changing what's shown or which API calls are made:
+
+- **Bell:** round raised button like the username pill; gold icon and a red count badge when
+  something is new.
+- **Notifications:** dark `Screen` + `PageTitle`; waiting requests grouped under "Friend
+  requests" (Accept / Decline), the rest under "Earlier"; skeleton and empty state. It's a
+  hidden tab, so it now gets the app header and its own back arrow (it had no header before).
+- **Friends tab:** black strip with a "Your friends" button (gold "N new"); activity cards with
+  the friend's color stripe, ringed photo and a place / area icon tile; skeletons, pull to
+  refresh, empty state with **Find friends**.
+- **Your friends:** `PageTitle`; add by username with a gold send button in the row; requests,
+  sent requests and friends in `ListGroup`s; Remove moved into each friend's **•••** (still
+  asks first).
+- **FriendRow:** sits inside `ListGroup`s; photo ringed in the person's color.
+- **Profile friend button:** gold Add friend / grey Request sent / gold-tinted Accept + Decline
+  box / teal **Friends ▾**. "Remove friend" moved from the profile ••• menu to **Friends ▾**:
+  with it, that menu had three actions plus Cancel, and Android dialogs only fit three buttons.
+- **Settings switch:** label shortened to fit one line ("Hide my posts from friends"), with an
+  On / Off line under it.
+- **Place page:** "Favorited by your friends" is now inside `PlaceHero`, above the Save button.
+- **Vote split:** teal ▲ count and gold ▼ count beside the pill.
+- **Tab bar:** Friends uses the same filled / outline icon and active pill as the other tabs.

@@ -95,7 +95,7 @@ These are true today; check them again when building.
 **Good to know**
 
 - Place discussions open only within about 528 yards of the place.
-- **Own or work at this place?** Say so in your post. (See question Q18.)
+- **Own or work at this place?** Say so in your post. Owners can get a verified **Owner** tag (see Q19). Repeated promotions aren't allowed.
 
 ## 3. First comment or reply _(suggested addition: short, one page plus "Good to know")_
 

@@ -1,15 +1,34 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { COLORS, type FriendRequestView, type FriendView } from '@jax/shared';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { DARK, type FriendRequestView, type FriendView } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
-import { timeAgo } from '@/format';
+import { postTime } from '@/format';
+import { haptic } from '@/motion';
 import { social } from '@/social/api';
 import { FriendRow } from '@/social/FriendRow';
 import { refreshUnread } from '@/social/unread';
-import { Button, Field, styles } from '@/ui';
+import { Text } from '@/text';
+import { SPACE, TYPE } from '@/tokens';
+import {
+  Banner,
+  Bone,
+  Button,
+  Field,
+  FormError,
+  ListGroup,
+  openMenu,
+  PageTitle,
+  Pulse,
+  Screen,
+} from '@/ui';
 
-/** D76: add a friend by username, answer requests, and see or remove friends. */
+/**
+ * D76: add a friend by username, answer requests, and see or remove friends.
+ * D79: dark page with a title; add-by-username at the top; requests, sent requests and
+ * friends in grouped cards. Removing a friend is in each friend's "•••" (asks first).
+ */
 export default function ManageFriends() {
   const [friends, setFriends] = useState<FriendView[]>();
   const [incoming, setIncoming] = useState<FriendRequestView[]>([]);
@@ -53,6 +72,7 @@ export default function ManageFriends() {
     setNote(undefined);
     await run(async () => {
       const r = await social.send(username);
+      haptic.success();
       setNote(
         r.state === 'friends'
           ? `You and ${username} are now friends.`
@@ -74,69 +94,166 @@ export default function ManageFriends() {
     ]);
   }
 
-  if (!friends) {
-    return error ? (
-      <Text style={[styles.screen, styles.error]}>{error}</Text>
-    ) : (
-      <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.primary} />
-    );
-  }
+  const canSend = !!name.trim().replace(/^@/, '') && !busy;
+
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-      <Field
-        label="Add a friend by username"
-        value={name}
-        onChangeText={setName}
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={21}
-        placeholder="username"
+    <Screen keyboard>
+      <PageTitle
+        title="Your friends"
+        subtitle="Friends see where you post (not what), and which places you’ve favorited."
+        icon="people-outline"
       />
-      <Button title="Send request" busy={busy} onPress={() => void send()} />
-      {note ? <Text style={[styles.body, { marginTop: 6 }]}>{note}</Text> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {incoming.length ? (
-        <Text style={[styles.label, { marginTop: 20 }]}>Requests for you</Text>
-      ) : null}
-      {incoming.map((r) => (
-        <FriendRow key={r.id} user={r.user} subtitle={timeAgo(r.createdAt)}>
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            <Button title="Accept" onPress={() => void run(() => social.accept(r.id))} />
-            <Button
-              variant="link"
-              title="Decline"
-              onPress={() => void run(() => social.decline(r.id))}
-            />
-          </View>
-        </FriendRow>
-      ))}
-
-      {outgoing.length ? (
-        <Text style={[styles.label, { marginTop: 20 }]}>Sent requests</Text>
-      ) : null}
-      {outgoing.map((r) => (
-        <FriendRow key={r.id} user={r.user} subtitle={`Sent ${timeAgo(r.createdAt)}`}>
-          <Button
-            variant="link"
-            title="Cancel"
-            onPress={() => void run(() => social.cancel(r.id))}
+      {/* Add by username, with the send button inside the row. */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: SPACE.sm }}>
+        <View style={{ flex: 1 }}>
+          <Field
+            label="Add a friend by username"
+            icon="at"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={21}
+            placeholder="username"
+            returnKeyType="send"
+            onSubmitEditing={() => void send()}
           />
-        </FriendRow>
-      ))}
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Send friend request"
+          accessibilityState={{ disabled: !canSend, busy }}
+          disabled={!canSend}
+          onPress={() => void send()}
+          style={({ pressed }) => ({
+            width: 52,
+            height: 52,
+            marginBottom: SPACE.lg,
+            borderRadius: 14,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: canSend ? DARK.accent : DARK.raised,
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <Ionicons
+            name={busy ? 'hourglass-outline' : 'person-add'}
+            size={21}
+            color={canSend ? DARK.onAccent : DARK.textMuted}
+          />
+        </Pressable>
+      </View>
+      {note ? (
+        <Banner tone="success" icon="checkmark-circle">
+          {note}
+        </Banner>
+      ) : null}
+      <FormError>{error}</FormError>
 
-      <Text style={[styles.label, { marginTop: 20 }]}>Friends ({friends.length})</Text>
-      {friends.length === 0 ? (
-        <Text style={styles.muted}>
-          No friends yet. Only people who accept your request become friends.
-        </Text>
+      {!friends ? (
+        error ? null : (
+          <Pulse>
+            <View style={{ gap: 12, marginTop: SPACE.md }}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                  <Bone w={44} h={44} r={22} />
+                  <Bone w="45%" h={13} />
+                </View>
+              ))}
+            </View>
+          </Pulse>
+        )
       ) : (
-        friends.map((f) => (
-          <FriendRow key={f.username} user={f} subtitle={`Friends since ${timeAgo(f.since)}`}>
-            <Button variant="link" title="Remove" onPress={() => remove(f)} />
-          </FriendRow>
-        ))
+        <>
+          {incoming.length ? (
+            <ListGroup title={`Requests for you · ${incoming.length}`}>
+              {incoming.map((r) => (
+                <FriendRow
+                  key={r.id}
+                  user={r.user}
+                  subtitle={`Wants to be friends · ${postTime(r.createdAt)}`}
+                >
+                  <Button
+                    size="sm"
+                    title="Accept"
+                    onPress={() =>
+                      void run(async () => {
+                        await social.accept(r.id);
+                        haptic.success();
+                      })
+                    }
+                    style={{ marginTop: 0 }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    title="Decline"
+                    onPress={() => void run(() => social.decline(r.id))}
+                    style={{ marginTop: 0 }}
+                  />
+                </FriendRow>
+              ))}
+            </ListGroup>
+          ) : null}
+
+          {outgoing.length ? (
+            <ListGroup title="Sent requests">
+              {outgoing.map((r) => (
+                <FriendRow key={r.id} user={r.user} subtitle={`Sent ${postTime(r.createdAt)}`}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    title="Cancel"
+                    onPress={() => void run(() => social.cancel(r.id))}
+                    style={{ marginTop: 0 }}
+                  />
+                </FriendRow>
+              ))}
+            </ListGroup>
+          ) : null}
+
+          <ListGroup title={`Friends · ${friends.length}`}>
+            {friends.length === 0 ? (
+              <View style={{ padding: SPACE.lg, alignItems: 'center', gap: 6 }}>
+                <Ionicons name="people-outline" size={28} color={DARK.accent} />
+                <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
+                  No friends yet. Only people who accept your request become friends.
+                </Text>
+              </View>
+            ) : (
+              friends.map((f) => (
+                <FriendRow
+                  key={f.username}
+                  user={f}
+                  subtitle={`Friends since ${new Date(f.since).toLocaleDateString('en-US', {
+                    month: 'short',
+                    year: 'numeric',
+                  })}`}
+                >
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`More options for ${f.username}`}
+                    onPress={() =>
+                      openMenu(f.username, [
+                        { label: 'Remove friend', destructive: true, onPress: () => remove(f) },
+                      ])
+                    }
+                    style={{
+                      width: 44,
+                      height: 44,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name="ellipsis-horizontal" size={20} color={DARK.textMuted} />
+                  </Pressable>
+                </FriendRow>
+              ))
+            )}
+          </ListGroup>
+        </>
       )}
-    </ScrollView>
+    </Screen>
   );
 }

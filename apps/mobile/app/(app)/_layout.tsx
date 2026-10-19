@@ -1,5 +1,5 @@
-import { ActivityIndicator, View, type ColorValue } from 'react-native';
-import { Tabs } from 'expo-router';
+import { ActivityIndicator, Pressable, View, type ColorValue } from 'react-native';
+import { router, Tabs } from 'expo-router';
 import * as Location from 'expo-location';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK } from '@jax/shared';
@@ -7,7 +7,7 @@ import { useGuest } from '@/auth/guest';
 import { LocationGate } from '@/location/LocationGate';
 import { haptic } from '@/motion';
 import { FONT } from '@/text';
-import { type IconName } from '@/ui';
+import { headerOptions, type IconName } from '@/ui';
 
 /**
  * D78 / D79: tab icon. The active tab is filled and gold on a raised pill (the Material 3
@@ -92,11 +92,30 @@ export default function AppLayout() {
           title: 'Friends',
           // D76: friends are for registered users.
           href: isGuest ? null : undefined,
-          tabBarIcon: ({ color, size }) => <Ionicons name="people" color={color} size={size} />,
+          tabBarIcon: tabIcon('people'),
         }}
       />
       {/* D76: opened from the bell, not a tab. */}
-      <Tabs.Screen name="notifications" options={{ href: null, title: 'Notifications' }} />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
+          title: 'Notifications',
+          // D79: a hidden tab has no stack, so it gets the app header and its own back arrow.
+          ...headerOptions,
+          headerShown: true,
+          headerLeft: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              onPress={() => router.back()}
+              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="arrow-back" size={24} color={DARK.accent} />
+            </Pressable>
+          ),
+        }}
+      />
       <Tabs.Screen
         name="account"
         options={{ title: 'Account', tabBarIcon: tabIcon('person-circle') }}

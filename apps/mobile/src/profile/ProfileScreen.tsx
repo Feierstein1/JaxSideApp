@@ -120,9 +120,6 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
   const canAct = !profile.isMe && !isGuest;
   const menu = () =>
     openMenu(profile.username, [
-      ...(profile.friendship === 'friends'
-        ? [{ label: 'Remove friend', destructive: true, onPress: confirmUnfriend }]
-        : []),
       profile.blockedByMe
         ? { label: 'Unblock', onPress: () => void setBlocked(false) }
         : { label: 'Block', destructive: true, onPress: confirmBlock },
@@ -213,6 +210,7 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
               onCancel={() => void friendAction(() => social.cancel(profile.friendRequestId!))}
               onAccept={() => void friendAction(() => social.accept(profile.friendRequestId!))}
               onDecline={() => void friendAction(() => social.decline(profile.friendRequestId!))}
+              onRemove={confirmUnfriend}
             />
           ) : null}
           {profile.blockedByMe ? (
@@ -260,8 +258,12 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
 }
 
 /**
- * D76: the friend button's states. Styled with the shared Button for now; the UX pass
- * may restyle it.
+ * D76 / D79: the friend button's four states, full width under the profile card:
+ * - not friends: gold "Add friend";
+ * - request sent: grey "Request sent", tap to cancel;
+ * - they asked you: "wants to be friends" with Accept and Decline side by side;
+ * - friends: teal "Friends ▾", which opens "Remove friend" (kept out of the ··· menu so
+ *   that menu fits Android's three-button dialogs).
  */
 function FriendButton({
   profile,
@@ -270,6 +272,7 @@ function FriendButton({
   onCancel,
   onAccept,
   onDecline,
+  onRemove,
 }: {
   profile: PublicProfile;
   busy: boolean;
@@ -277,21 +280,46 @@ function FriendButton({
   onCancel: () => void;
   onAccept: () => void;
   onDecline: () => void;
+  onRemove: () => void;
 }) {
   const top = { marginTop: SPACE.md };
   switch (profile.friendship) {
     case 'friends':
       return (
-        <View style={[top, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Friends with ${profile.username}. More options`}
+          onPress={() =>
+            openMenu(profile.username, [
+              { label: 'Remove friend', destructive: true, onPress: onRemove },
+            ])
+          }
+          style={({ pressed }) => [
+            top,
+            {
+              minHeight: 48,
+              borderRadius: RADIUS.md + 2,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              backgroundColor: DARK.tealSoft,
+              borderWidth: 1,
+              borderColor: DARK.tealText,
+              opacity: pressed ? 0.8 : 1,
+            },
+          ]}
+        >
           <Ionicons name="people" size={18} color={DARK.tealText} />
-          <Text style={[TYPE.body, { color: DARK.tealText, fontWeight: '700' }]}>Friends</Text>
-        </View>
+          <Text style={{ color: DARK.tealText, fontWeight: '800', fontSize: 15.5 }}>Friends</Text>
+          <Ionicons name="chevron-down" size={16} color={DARK.tealText} />
+        </Pressable>
       );
     case 'requested':
       return (
         <Button
           variant="secondary"
-          title="Request sent · Cancel"
+          title="Request sent · tap to cancel"
           icon="time-outline"
           busy={busy}
           onPress={onCancel}
@@ -300,11 +328,37 @@ function FriendButton({
       );
     case 'incoming':
       return (
-        <View style={[top, { gap: SPACE.sm }]}>
-          <Text style={TYPE.body}>{profile.username} wants to be friends.</Text>
+        <View
+          style={[
+            top,
+            {
+              padding: SPACE.md,
+              borderRadius: RADIUS.md + 2,
+              backgroundColor: DARK.accentSoft,
+              gap: SPACE.sm,
+            },
+          ]}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="person-add" size={16} color={DARK.accent} />
+            <Text style={[TYPE.callout, { flex: 1, fontWeight: '700' }]}>
+              {profile.username} wants to be friends
+            </Text>
+          </View>
           <View style={{ flexDirection: 'row', gap: SPACE.sm }}>
-            <Button title="Accept" icon="checkmark" busy={busy} onPress={onAccept} />
-            <Button variant="secondary" title="Decline" onPress={onDecline} />
+            <Button
+              title="Accept"
+              icon="checkmark"
+              busy={busy}
+              onPress={onAccept}
+              style={{ flex: 1, marginTop: 0 }}
+            />
+            <Button
+              variant="secondary"
+              title="Decline"
+              onPress={onDecline}
+              style={{ flex: 1, marginTop: 0 }}
+            />
           </View>
         </View>
       );
