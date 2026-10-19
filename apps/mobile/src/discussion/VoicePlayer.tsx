@@ -16,6 +16,19 @@ import { photoUri } from './photos';
 let current: AudioPlayer | null = null;
 
 /**
+ * D84: pausing another clip must never crash. Its player may already be released (its post
+ * scrolled away or a recording was deleted); the native call then rejects asynchronously.
+ */
+function pauseQuietly(p: AudioPlayer) {
+  try {
+    const r = p.pause() as unknown;
+    if (r instanceof Promise) r.catch(() => undefined);
+  } catch {
+    // already released
+  }
+}
+
+/**
  * D75: play/pause a voice post with a progress bar and time. The clip loads on the first
  * tap (not when the feed scrolls by), through the post's signed link.
  */
@@ -29,12 +42,20 @@ export function VoicePlayer({ voice }: { voice: Pick<VoiceView, 'url' | 'duratio
     if (status.didJustFinish) void player.seekTo(0);
   }, [status.didJustFinish, player]);
 
+  // D84: forget this player when it goes away, so nothing tries to pause a released one.
+  useEffect(
+    () => () => {
+      if (current === player) current = null;
+    },
+    [player],
+  );
+
   async function toggle() {
     if (status.playing) {
       player.pause();
       return;
     }
-    if (current && current !== player) current.pause();
+    if (current && current !== player) pauseQuietly(current);
     current = player;
     if (!status.isLoaded) {
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
