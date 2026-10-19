@@ -38,8 +38,15 @@ export function VoicePlayer({ voice }: { voice: Pick<VoiceView, 'url' | 'duratio
   const total = status.duration > 0 ? status.duration : voice.durationMs / 1000;
   const progress = total > 0 ? Math.min(1, status.currentTime / total) : 0;
 
+  // D86: a clip plays once. At the end it stops and rewinds, and waits for another tap
+  // (rewinding a player that still counts as "playing" would start it again on Android).
   useEffect(() => {
-    if (status.didJustFinish) void player.seekTo(0);
+    player.loop = false;
+  }, [player]);
+  useEffect(() => {
+    if (!status.didJustFinish) return;
+    pauseQuietly(player);
+    void player.seekTo(0).catch(() => undefined);
   }, [status.didJustFinish, player]);
 
   // D84: forget this player when it goes away, so nothing tries to pause a released one.
