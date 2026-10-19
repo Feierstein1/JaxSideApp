@@ -18,15 +18,19 @@ export function VoteControl({
   score: initialScore,
   myVote: initialVote,
   compact = false,
+  split,
   onError,
 }: {
   target: { type: DiscussionKind | 'comment'; id: string };
   score: number;
   myVote: -1 | 0 | 1;
   compact?: boolean;
+  /** D83: show "12 up · 3 down" beside the score (the opened post only; feeds show the net). */
+  split?: { up: number; down: number };
   onError?: (message: string) => void;
 }) {
   const [score, setScore] = useState(initialScore);
+  const [counts, setCounts] = useState(split);
   const [mine, setMine] = useState(initialVote);
   const [busy, setBusy] = useState(false);
   const { isGuest, promptAccount } = useGuest();
@@ -35,17 +39,25 @@ export function VoteControl({
     if (isGuest) return promptAccount('vote'); // P4.2: the server refuses guest votes too
     if (busy) return;
     const next = mine === dir ? 0 : dir;
-    const before = { score, mine };
+    const before = { score, mine, counts };
     setMine(next);
     setScore(score - mine + next);
+    if (counts) {
+      setCounts({
+        up: counts.up + (next === 1 ? 1 : 0) - (mine === 1 ? 1 : 0),
+        down: counts.down + (next === -1 ? 1 : 0) - (mine === -1 ? 1 : 0),
+      });
+    }
     setBusy(true);
     try {
       const r = await vote(target, next);
       setScore(r.score);
       setMine(r.myVote);
+      if (counts) setCounts({ up: r.upCount, down: r.downCount });
     } catch (e) {
       setScore(before.score);
       setMine(before.mine);
+      if (split) setCounts(before.counts);
       onError?.(e instanceof ApiRequestError ? e.message : 'Couldn’t save your vote.');
     } finally {
       setBusy(false);
@@ -60,7 +72,7 @@ export function VoteControl({
       : mine === -1
         ? DARK.accentSoft
         : DARK.raised;
-  return (
+  const pill = (
     <View
       style={{
         flexDirection: 'row',
@@ -98,6 +110,18 @@ export function VoteControl({
         onPress={() => void press(-1)}
         color={mine === -1 ? DARK.accent : DARK.textMuted}
       />
+    </View>
+  );
+  if (!counts) return pill;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      {pill}
+      <Text
+        accessibilityLabel={`${counts.up} up, ${counts.down} down`}
+        style={{ color: DARK.textMuted, fontSize: 12.5, fontWeight: '600' }}
+      >
+        {counts.up} up · {counts.down} down
+      </Text>
     </View>
   );
 }

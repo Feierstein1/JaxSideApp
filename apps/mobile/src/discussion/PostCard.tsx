@@ -211,6 +211,7 @@ export function PostCard({
             target={{ type: post.kind, id: post.id }}
             score={post.score}
             myVote={post.myVote}
+            split={full ? { up: post.upCount, down: post.downCount } : undefined}
             onError={onError}
           />
           <Pressable

@@ -97,6 +97,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 - [ ] Account B comments on A's post; A replies to B; replies are indented (max 3 levels).
 - [ ] Up/down votes change color and score; tapping your vote again clears it.
+- [ ] On an opened post, "N up · N down" shows beside the score and updates when you vote (D83).
 - [ ] Delete your own comment: it shows "[deleted]" if it had replies.
 - [ ] B reports A's post (**Report post**) and a comment (**Report**): the sheet shows reasons,
       details, and the "call 911" note for Child safety; then "Thanks for reporting".
