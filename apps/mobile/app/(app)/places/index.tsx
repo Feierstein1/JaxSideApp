@@ -1,22 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, ScrollView, Text, View } from 'react-native';
-import { router, Stack } from 'expo-router';
-import { CATEGORY_GROUPS, COLORS, type PlaceSort, type PlaceSummary } from '@jax/shared';
+import { ActivityIndicator, Alert, FlatList, ScrollView, View } from 'react-native';
+import { router } from 'expo-router';
+import {
+  CATEGORY_COLORS,
+  CATEGORY_GROUPS,
+  DARK,
+  type PlaceSort,
+  type PlaceSummary,
+} from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
-import { categoryLabel, formatDistance, plural } from '@/format';
 import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/device';
-import { AreaTitle } from '@/location/AreaLabel';
+import { AreaStrip } from '@/location/AreaLabel';
 import { OsmAttribution } from '@/places/Attribution';
-import {
-  categoryIcon,
-  PlaceSkeleton,
-  PlaceStats,
-  PlaceTop,
-  placeFrame,
-} from '@/places/PlaceHeader';
+import { categoryIcon, PlaceRow, PlaceSkeleton } from '@/places/PlaceHeader';
 import { refreshLimiter } from '@/refresh-limit';
-import { elevation, TYPE } from '@/tokens';
+import { Text } from '@/text';
+import { TYPE } from '@/tokens';
 import {
   Button,
   Chip,
@@ -24,7 +24,6 @@ import {
   ErrorState,
   FloatingButton,
   IconButton,
-  PressableScale,
   RefreshButton,
   SearchField,
   Sheet,
@@ -113,48 +112,42 @@ export default function PlacesScreen() {
   const sortLabel = sort && sort !== 'distance' ? SORTS.find((x) => x.key === sort)?.label : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
-      <Stack.Screen options={{ headerTitle: () => <AreaTitle title="Places" area={area} /> }} />
-      {/* Black bar under the black header: filters, search, refresh (D70, D78). */}
-      <View
-        style={{
-          backgroundColor: COLORS.surfaceInverse,
-          paddingHorizontal: 12,
-          paddingTop: 2,
-          paddingBottom: 12,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-        }}
-      >
-        <IconButton
-          icon="options-outline"
-          label={filtered ? 'Filters (on)' : 'Filters'}
-          active={filtered}
-          onPress={() => setFiltersOpen(true)}
-        />
-        <SearchField
-          label="Search places"
-          placeholder="Search places nearby"
-          value={q}
-          onChangeText={setQ}
-          autoCapitalize="words"
-        />
-        <RefreshButton
-          onPress={() => {
-            const wait = refreshLimiter.tap(); // D74: 30 a minute
-            if (wait) Alert.alert('Slow down a little', `You can refresh again in ${wait} s.`);
-            else void load(0, true);
-          }}
-          busy={loading && places.length > 0}
-        />
+    <View style={{ flex: 1, backgroundColor: DARK.page }}>
+      {/* D79: one black block under the header: where you are, then filters, search, refresh. */}
+      <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, paddingBottom: 12, gap: 6 }}>
+        <AreaStrip area={area} label="Places near you" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <IconButton
+            icon="options-outline"
+            label={filtered ? 'Filters (on)' : 'Filters'}
+            active={filtered}
+            onPress={() => setFiltersOpen(true)}
+          />
+          <SearchField
+            label="Search places"
+            placeholder="Search places nearby"
+            value={q}
+            onChangeText={setQ}
+            autoCapitalize="words"
+          />
+          <RefreshButton
+            onPress={() => {
+              const wait = refreshLimiter.tap(); // D74: 30 a minute
+              if (wait) Alert.alert('Slow down a little', `You can refresh again in ${wait} s.`);
+              else void load(0, true);
+            }}
+            busy={loading && places.length > 0}
+          />
+        </View>
       </View>
 
       <FlatList
         data={places}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ paddingTop: 6, paddingBottom: 104, flexGrow: 1 }}
-        renderItem={({ item }) => <PlaceCard place={item} />}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: 110, flexGrow: 1 }}
+        renderItem={({ item }) => (
+          <PlaceRow place={item} onPress={() => router.push(`/places/${item.id}`)} />
+        )}
         onEndReached={() => {
           if (!loading && nextOffset !== null) void load(nextOffset);
         }}
@@ -174,7 +167,6 @@ export default function PlacesScreen() {
               >
                 {groupLabel ? (
                   <Chip
-                    dark
                     active
                     label={groupLabel}
                     onPress={() => setGroup(null)}
@@ -183,7 +175,6 @@ export default function PlacesScreen() {
                 ) : null}
                 {sortLabel ? (
                   <Chip
-                    dark
                     active
                     label={sortLabel}
                     onPress={() => setSort(null)}
@@ -192,7 +183,7 @@ export default function PlacesScreen() {
                 ) : null}
               </View>
             ) : null}
-            {error ? <ErrorState dark message={error} onRetry={() => void load(0)} /> : null}
+            {error ? <ErrorState message={error} onRetry={() => void load(0)} /> : null}
           </>
         }
         ListEmptyComponent={
@@ -205,7 +196,6 @@ export default function PlacesScreen() {
             </View>
           ) : !error ? (
             <EmptyState
-              dark
               icon={q || filtered ? 'search-outline' : 'storefront-outline'}
               title={q || filtered ? 'No matching places nearby' : 'No places within your radius'}
               body={
@@ -224,7 +214,7 @@ export default function PlacesScreen() {
         ListFooterComponent={
           <>
             {loading && places.length > 0 ? (
-              <ActivityIndicator style={{ margin: 16 }} color={COLORS.accent} />
+              <ActivityIndicator style={{ margin: 16 }} color={DARK.accent} />
             ) : null}
             <OsmAttribution dark />
           </>
@@ -246,22 +236,6 @@ export default function PlacesScreen() {
   );
 }
 
-/** One place (D69, D70, D78): category-colored header + distance, favorites and posts. */
-function PlaceCard({ place }: { place: PlaceSummary }) {
-  return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel={`${place.name}, ${categoryLabel(place.category)}, ${formatDistance(place.distanceMeters)} away, ${plural(place.postCount, 'post')}, ${plural(place.favoriteCount, 'favorite')}`}
-      onPress={() => router.push(`/places/${place.id}`)}
-      scaleTo={0.98}
-      style={[placeFrame, elevation(1)]}
-    >
-      <PlaceTop place={place} />
-      <PlaceStats place={place} chevron />
-    </PressableScale>
-  );
-}
-
 function FilterSheet({
   open,
   onClose,
@@ -280,7 +254,7 @@ function FilterSheet({
   return (
     <Sheet open={open} onClose={onClose} title="Sort & filter">
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 4, gap: 10 }}>
-        <Text style={[TYPE.overline, { color: COLORS.textMuted }]}>Sort by</Text>
+        <Text style={[TYPE.overline, { color: DARK.textMuted }]}>Sort by</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {SORTS.map((s) => (
             <Chip
@@ -291,7 +265,7 @@ function FilterSheet({
             />
           ))}
         </View>
-        <Text style={[TYPE.overline, { color: COLORS.textMuted, marginTop: 10 }]}>Category</Text>
+        <Text style={[TYPE.overline, { color: DARK.textMuted, marginTop: 10 }]}>Category</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           <Chip label="All" active={group === null} onPress={() => setGroup(null)} />
           {CATEGORY_GROUPS.map((g) => (
@@ -299,6 +273,7 @@ function FilterSheet({
               key={g.key}
               label={g.label}
               icon={categoryIcon(g.categories[0])}
+              iconColor={CATEGORY_COLORS[g.key]}
               active={group === g.key}
               onPress={() => setGroup(group === g.key ? null : g.key)}
             />

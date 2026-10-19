@@ -1,29 +1,55 @@
-import { Stack } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
-import { BRAND, COLORS } from '@jax/shared';
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/plus-jakarta-sans';
+import { DARK } from '@jax/shared';
 import { AuthProvider, useAuth } from '@/auth/AuthContext';
+import { BrandMark } from '@/ui';
+
+/** D79: navigation colors match the dark theme, so no white flashes between screens. */
+const NAV_THEME = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: DARK.accent,
+    background: DARK.page,
+    card: DARK.bar,
+    text: DARK.text,
+    border: DARK.bar,
+    notification: DARK.accent,
+  },
+};
+
+function Loading() {
+  return (
+    <View
+      style={{
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 24,
+        backgroundColor: DARK.bar,
+      }}
+    >
+      <BrandMark size="lg" />
+      <ActivityIndicator color={DARK.accent} />
+    </View>
+  );
+}
 
 function RootStack() {
   const { state } = useAuth();
-  if (state.status === 'loading') {
-    // D78: black, like the splash and the header, so start-up doesn't flash white.
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: COLORS.surfaceInverse,
-        }}
-      >
-        <ActivityIndicator color={BRAND.gold} />
-      </View>
-    );
-  }
+  if (state.status === 'loading') return <Loading />;
   const signedIn = state.status === 'signedIn' || state.status === 'guest';
   return (
-    <Stack screenOptions={{ headerTitleAlign: 'center' }}>
+    <Stack screenOptions={{ contentStyle: { backgroundColor: DARK.page } }}>
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
       </Stack.Protected>
@@ -35,10 +61,25 @@ function RootStack() {
 }
 
 export default function RootLayout() {
+  // D79: the app typeface (see src/text.tsx).
+  const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+  });
   return (
-    <AuthProvider>
+    <ThemeProvider value={NAV_THEME}>
       <StatusBar style="light" />
-      <RootStack />
-    </AuthProvider>
+      {/* If the fonts fail to load the app still opens, in the phone's own font. */}
+      {fontsLoaded || fontError ? (
+        <AuthProvider>
+          <RootStack />
+        </AuthProvider>
+      ) : (
+        <View style={{ flex: 1, backgroundColor: DARK.bar }} />
+      )}
+    </ThemeProvider>
   );
 }

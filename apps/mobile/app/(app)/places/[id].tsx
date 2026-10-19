@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
-  BRAND,
-  COLORS,
+  DARK,
   CONFIG_DEFAULTS,
   yardsLabel,
   type PlaceSummary,
@@ -20,8 +19,9 @@ import { formatDistance } from '@/format';
 import { getFreshReading } from '@/location/device';
 import { haptic } from '@/motion';
 import { OsmAttribution } from '@/places/Attribution';
-import { PlaceSkeleton, PlaceStats, PlaceTop, placeFrame } from '@/places/PlaceHeader';
-import { elevation, SPACE, TYPE } from '@/tokens';
+import { PlaceHero, PlaceSkeleton } from '@/places/PlaceHeader';
+import { Text } from '@/text';
+import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { ErrorState, FloatingButton, SectionTitle, useToast } from '@/ui';
 
 /**
@@ -101,56 +101,42 @@ export default function PlaceScreen() {
 
   if (!place) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark, paddingTop: SPACE.sm }}>
-        {error ? (
-          <ErrorState dark message={error} onRetry={() => void load()} />
-        ) : (
-          <PlaceSkeleton />
-        )}
+      <View style={{ flex: 1, backgroundColor: DARK.page, paddingTop: SPACE.sm }}>
+        {error ? <ErrorState message={error} onRetry={() => void load()} /> : <PlaceSkeleton />}
       </View>
     );
   }
 
-  const info = (
-    <View style={[placeFrame, elevation(1), { marginTop: SPACE.md, marginBottom: SPACE.xs }]}>
-      <PlaceTop place={place} large favorite={{ onPress: () => void toggleFavorite(), busy }} />
-      <PlaceStats place={place} />
-      {place.address ? (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            gap: 8,
-            paddingHorizontal: 14,
-            paddingBottom: 12,
-            backgroundColor: COLORS.background,
-          }}
-        >
-          <Ionicons name="location-outline" size={17} color={COLORS.textMuted} />
-          <Text style={[TYPE.callout, { flex: 1, color: COLORS.text }]}>{place.address}</Text>
-        </View>
-      ) : null}
-    </View>
+  const hero = (
+    <PlaceHero place={place} onFavorite={() => void toggleFavorite()} favoriteBusy={busy} />
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
+    <View style={{ flex: 1, backgroundColor: DARK.page }}>
       <Stack.Screen options={{ title: place.name }} />
-      {error ? <ErrorState dark message={error} onRetry={() => void load()} /> : null}
+      {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
       {place.withinRoomRadius ? (
         <>
-          {/* D75: the same post-type bar as Home, fixed above the room's posts. */}
-          <View style={{ backgroundColor: COLORS.surfaceInverse, paddingHorizontal: 12 }}>
-            <PostTypeTabs value={type} onChange={setType} />
-          </View>
           <PostList
             load={loadRoom}
             reloadKey={type}
             onOpen={(p) => router.push(`/places/post/${p.id}`)}
             header={
               <>
-                {info}
-                <SectionTitle dark>Discussion</SectionTitle>
+                {hero}
+                <SectionTitle>Discussion</SectionTitle>
+                {/* D75: the same post-type tabs as Home. */}
+                <View
+                  style={{
+                    marginHorizontal: SPACE.md,
+                    marginBottom: 6,
+                    paddingHorizontal: 4,
+                    borderRadius: RADIUS.md,
+                    backgroundColor: DARK.card,
+                  }}
+                >
+                  <PostTypeTabs value={type} onChange={setType} />
+                </View>
               </>
             }
             emptyIcon="chatbubbles-outline"
@@ -162,15 +148,18 @@ export default function PlaceScreen() {
           <FloatingButton label={`Write a post about ${place.name}`} onPress={compose} />
         </>
       ) : (
-        <View>
-          {info}
+        <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
+          {hero}
           {/* D78: a clear "locked" state that says how far you are. */}
           <View
             style={{
               margin: SPACE.md,
               padding: SPACE.xl - 4,
-              borderRadius: 16,
-              backgroundColor: COLORS.surfaceDarkRaised,
+              borderRadius: RADIUS.lg,
+              backgroundColor: DARK.card,
+              borderWidth: 1,
+              borderColor: DARK.hairline,
+              borderStyle: 'dashed',
               alignItems: 'center',
               gap: SPACE.sm,
             }}
@@ -182,24 +171,21 @@ export default function PlaceScreen() {
                 borderRadius: 28,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: COLORS.surfaceInverse,
+                backgroundColor: DARK.accentSoft,
               }}
             >
-              <Ionicons name="lock-closed" size={26} color={BRAND.gold} />
+              <Ionicons name="lock-closed" size={26} color={DARK.accent} />
             </View>
-            <Text
-              accessibilityRole="header"
-              style={[TYPE.headline, { color: COLORS.onSurfaceDark, textAlign: 'center' }]}
-            >
+            <Text accessibilityRole="header" style={[TYPE.headline, { textAlign: 'center' }]}>
               Get closer to join the conversation
             </Text>
-            <Text style={[TYPE.callout, { color: COLORS.onSurfaceDarkMuted, textAlign: 'center' }]}>
+            <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
               The discussion opens within {yardsLabel(CONFIG_DEFAULTS['radius.business.maxMiles'])}{' '}
               of {place.name}. You’re about {formatDistance(place.distanceMeters)} away.
             </Text>
           </View>
           <OsmAttribution dark />
-        </View>
+        </ScrollView>
       )}
       {toast.node}
     </View>

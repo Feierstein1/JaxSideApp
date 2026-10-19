@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
 import {
   EMAIL_CODE_LENGTH,
@@ -9,7 +8,8 @@ import {
 } from '@jax/shared';
 import { api } from '@/api';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
-import { Button, Field, FormError, PasswordField, styles } from '@/ui';
+import { Banner, Button, Field, FormError, PageTitle, PasswordField, Screen, styles } from '@/ui';
+import { Text } from '@/text';
 
 /**
  * In-app password reset (D31): 1) enter email, 2) enter the emailed code plus a new password.
@@ -58,67 +58,69 @@ export default function ForgotPassword() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1 }}
-    >
-      <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-        <FormError>{errors.form}</FormError>
-        {step === 'email' ? (
-          <>
-            <Text style={styles.body}>
-              Enter your account email. If it matches an account, we'll email you a 6-digit code.
-            </Text>
-            <Field
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              autoComplete="email"
-              error={errors.email}
-            />
-            <Button title="Send code" onPress={requestCode} busy={busy} />
-          </>
-        ) : (
-          <>
-            <Text style={[styles.body, styles.banner]}>
-              If {email.trim()} has an account, a code is on its way. It expires in 15 minutes.
-            </Text>
-            <Field
-              label="6-digit code"
-              value={code}
-              onChangeText={setCode}
-              keyboardType="number-pad"
-              autoComplete="one-time-code"
-              textContentType="oneTimeCode"
-              maxLength={EMAIL_CODE_LENGTH + 1}
-              placeholder="123 456"
-              error={errors.code}
-            />
-            <PasswordField
-              label="New password"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              autoComplete="new-password"
-              textContentType="newPassword"
-              placeholder={`At least ${PASSWORD_MIN} characters`}
-              error={errors.newPassword}
-            />
-            <PasswordField
-              label="Confirm new password"
-              value={confirm}
-              onChangeText={setConfirm}
-              autoComplete="new-password"
-              textContentType="newPassword"
-              error={errors.confirm}
-            />
-            <Button title="Reset password" onPress={resetPassword} busy={busy} />
-            <Button variant="link" title="Send a new code" onPress={requestCode} />
-          </>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <Screen keyboard>
+      <PageTitle
+        title="Reset password"
+        subtitle="We’ll email you a 6-digit code."
+        icon="key-outline"
+      />
+      <FormError>{errors.form}</FormError>
+      {step === 'email' ? (
+        <>
+          <Text style={styles.body}>
+            Enter your account email. If it matches an account, we'll email you a 6-digit code.
+          </Text>
+          <Field
+            label="Email"
+            icon="mail-outline"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            autoComplete="email"
+            error={errors.email}
+          />
+          <Button title="Send code" onPress={requestCode} busy={busy} />
+        </>
+      ) : (
+        <>
+          <Banner icon="mail-open-outline" tone="info">
+            If {email.trim()} has an account, a code is on its way. It expires in 15 minutes.
+          </Banner>
+          <Field
+            label="6-digit code"
+            icon="keypad-outline"
+            value={code}
+            onChangeText={setCode}
+            keyboardType="number-pad"
+            autoComplete="one-time-code"
+            textContentType="oneTimeCode"
+            maxLength={EMAIL_CODE_LENGTH + 1}
+            placeholder="123 456"
+            error={errors.code}
+          />
+          <PasswordField
+            label="New password"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            placeholder={`At least ${PASSWORD_MIN} characters`}
+            error={errors.newPassword}
+          />
+          <PasswordField
+            label="Confirm new password"
+            value={confirm}
+            onChangeText={setConfirm}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            error={errors.confirm}
+          />
+          <Button title="Reset password" onPress={resetPassword} busy={busy} />
+          <Button variant="link" title="Send a new code" onPress={requestCode} />
+        </>
+      )}
+    </Screen>
   );
 }

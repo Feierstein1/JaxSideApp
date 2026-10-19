@@ -1,9 +1,10 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { BRAND, COLORS } from '@jax/shared';
+import { DARK } from '@jax/shared';
 import { useAuth } from './AuthContext';
+import { Text } from '@/text';
 
 /**
  * "Hide my name on screen" (D43): a per-device display preference, e.g. when showing the
@@ -56,7 +57,7 @@ export function UserBadge() {
     return (
       <View
         style={{
-          backgroundColor: BRAND.gold,
+          backgroundColor: DARK.accent,
           borderRadius: 999,
           paddingHorizontal: 10,
           paddingVertical: 4,
@@ -64,7 +65,7 @@ export function UserBadge() {
         }}
       >
         {/* Black on gold (D33). */}
-        <Text style={{ color: COLORS.onAccent, fontWeight: '800', fontSize: 12 }}>GUEST</Text>
+        <Text style={{ color: DARK.onAccent, fontWeight: '800', fontSize: 12 }}>GUEST</Text>
       </View>
     );
   }
@@ -84,17 +85,17 @@ export function UserBadge() {
         paddingHorizontal: 10,
         borderRadius: 999,
         marginRight: 4,
-        backgroundColor: COLORS.surfaceDarkRaised,
+        backgroundColor: DARK.raised,
         opacity: pressed ? 0.7 : 1,
       })}
     >
       <Text
-        style={{ color: COLORS.onSurfaceInverse, fontWeight: '700', fontSize: 13, maxWidth: 110 }}
+        style={{ color: DARK.text, fontWeight: '700', fontSize: 13, maxWidth: 110 }}
         numberOfLines={1}
       >
         {isHidden ? '••••••' : `@${state.user.username}`}
       </Text>
-      <Ionicons name={isHidden ? 'eye-off-outline' : 'eye-outline'} size={16} color={BRAND.gold} />
+      <Ionicons name={isHidden ? 'eye-off-outline' : 'eye-outline'} size={16} color={DARK.accent} />
     </Pressable>
   );
 }

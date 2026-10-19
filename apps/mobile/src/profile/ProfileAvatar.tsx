@@ -1,44 +1,65 @@
-import { Image, Text, View } from 'react-native';
-import { BRAND, COLORS } from '@jax/shared';
+import { Image, View } from 'react-native';
+import { DARK, textOn } from '@jax/shared';
 import { photoUri } from '@/discussion/photos';
+import { Text } from '@/text';
 
-/** Round profile picture (P6.5) with a gold ring (on the black header, D33); initial if none. */
+/**
+ * Round profile picture (P6.5). D79: a ring (usually the person's account color) with a
+ * thin dark gap inside it, so the ring reads on the dark cards; the initial on `fill`
+ * (their color, or raised grey) when there's no photo.
+ */
 export function ProfileAvatar({
   name,
   url,
   size = 72,
-  ringColor = BRAND.gold,
+  ringColor = DARK.accent,
+  fill = DARK.raised,
 }: {
   name: string;
   url: string | null;
   size?: number;
   ringColor?: string;
+  fill?: string;
 }) {
+  const ring = size < 48 ? 2 : 3;
+  const gap = size < 48 ? 2 : 3;
+  const inner = size - 2 * (ring + gap);
+  const initialColor = fill.startsWith('#') && fill.length === 7 ? textOn(fill) : DARK.text;
   return (
     <View
       style={{
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: COLORS.primary,
+        borderWidth: ring,
+        borderColor: ringColor,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: size < 48 ? 2 : 3,
-        borderColor: ringColor,
-        overflow: 'hidden',
       }}
     >
-      {url ? (
-        <Image
-          source={{ uri: photoUri(url) }}
-          style={{ width: size, height: size }}
-          accessibilityLabel={`${name}'s profile photo`}
-        />
-      ) : (
-        <Text style={{ color: COLORS.onPrimary, fontSize: size * 0.42, fontWeight: '700' }}>
-          {name.charAt(0).toUpperCase()}
-        </Text>
-      )}
+      <View
+        style={{
+          width: inner,
+          height: inner,
+          borderRadius: inner / 2,
+          backgroundColor: fill,
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+        }}
+      >
+        {url ? (
+          <Image
+            source={{ uri: photoUri(url) }}
+            style={{ width: inner, height: inner }}
+            accessibilityLabel={`${name}'s profile photo`}
+          />
+        ) : (
+          <Text style={{ color: initialColor, fontSize: inner * 0.44, fontWeight: '800' }}>
+            {name.charAt(0).toUpperCase()}
+          </Text>
+        )}
+      </View>
     </View>
   );
 }

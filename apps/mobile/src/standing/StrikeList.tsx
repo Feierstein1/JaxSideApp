@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
-import { APPEAL_MAX, COLORS } from '@jax/shared';
+import { View } from 'react-native';
+import { APPEAL_MAX, DARK } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import { Button, styles } from '@/ui';
+import { Text, TextInput } from '@/text';
 
 export interface Strike {
   id: string;
@@ -85,7 +86,14 @@ function StrikeRow({
 
   return (
     <View
-      style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.cardBorder }}
+      style={{
+        padding: 16,
+        marginBottom: 8,
+        borderRadius: 16,
+        backgroundColor: DARK.card,
+        borderLeftWidth: 4,
+        borderLeftColor: s.action === 'WARN' ? DARK.accent : DARK.error,
+      }}
     >
       <Text style={[styles.label, { marginBottom: 2 }]}>
         {LABEL[s.action]} · {shortDate(s.createdAt)}
@@ -117,7 +125,7 @@ function StrikeRow({
             maxLength={APPEAL_MAX}
             multiline
             placeholder="Explain what happened. A moderator will read it."
-            placeholderTextColor={COLORS.placeholder}
+            placeholderTextColor={DARK.placeholder}
             style={[styles.input, { minHeight: 90, textAlignVertical: 'top' }]}
           />
           {error ? <Text style={styles.error}>{error}</Text> : null}

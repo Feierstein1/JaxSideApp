@@ -1,16 +1,17 @@
 import { useRef, useState } from 'react';
-import { Animated, Pressable, Text, View } from 'react-native';
+import { Animated, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { BRAND, COLORS, type DiscussionKind } from '@jax/shared';
+import { DARK, type DiscussionKind } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import { useGuest } from '@/auth/guest';
 import { haptic, useReducedMotion } from '@/motion';
+import { Text } from '@/text';
 import { vote } from './api';
 
 /**
  * Up/down voting (P3.4). Tapping your current vote again clears it. The count shown is
  * always the server's answer (§8); the button state flips immediately for feel.
- * Upvote = teal, downvote = old gold (D33). D78: a pill that tints when you've voted.
+ * D79: a pill that tints when you've voted: teal for up, gold for down.
  */
 export function VoteControl({
   target,
@@ -55,10 +56,10 @@ export function VoteControl({
   const bg = compact
     ? 'transparent'
     : mine === 1
-      ? COLORS.primarySoft
+      ? DARK.tealSoft
       : mine === -1
-        ? COLORS.accentSoft
-        : COLORS.surfaceMuted;
+        ? DARK.accentSoft
+        : DARK.raised;
   return (
     <View
       style={{
@@ -75,7 +76,7 @@ export function VoteControl({
         on={mine === 1}
         size={size}
         onPress={() => void press(1)}
-        color={mine === 1 ? COLORS.primary : COLORS.textMuted}
+        color={mine === 1 ? DARK.tealText : DARK.textMuted}
       />
       <Text
         accessibilityLabel={`Score ${score}`}
@@ -85,8 +86,7 @@ export function VoteControl({
           fontWeight: '800',
           fontSize: compact ? 13 : 14,
           fontVariant: ['tabular-nums'],
-          // Old gold isn't readable as small text (D33), so a downvoted score stays black.
-          color: mine === 1 ? COLORS.primary : COLORS.text,
+          color: mine === 1 ? DARK.tealText : mine === -1 ? DARK.accent : DARK.text,
         }}
       >
         {score}
@@ -96,7 +96,7 @@ export function VoteControl({
         on={mine === -1}
         size={size}
         onPress={() => void press(-1)}
-        color={mine === -1 ? BRAND.oldGold : COLORS.textMuted}
+        color={mine === -1 ? DARK.accent : DARK.textMuted}
       />
     </View>
   );

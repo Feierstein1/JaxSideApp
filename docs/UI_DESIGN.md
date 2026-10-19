@@ -40,32 +40,59 @@ that test tells you whether the result is still readable.
 | **Gold on teal**  | 2.9:1    | ❌ Never for text                                   |
 | Black on teal     | 3.2:1    | ❌ Never for normal text                            |
 
-## Current conventions (mobile)
+## Mobile app: dark theme everywhere (D79)
 
-- **Navigation header:** black background, white title, gold back arrow. Status bar text is light.
-- **Primary button:** teal fill, white text. **Text links:** teal.
-- **Info banners:** light gold tint (`accentSoft`) with a gold left stripe and black text.
-- **Switches:** teal when on.
-- **Errors:** red `#B00020`. It's outside the brand palette on purpose, so errors never look like
-  branding.
-- **Background:** white.
+The phone app is dark on every screen: feeds, places, posts, profiles, Account, sign-in, forms,
+sheets, policy pages. The admin portal keeps the light `COLORS`.
 
-Shared building blocks live in `apps/mobile/src/ui.tsx` (see "Design system" below). Reuse
-them instead of styling screens one by one.
+**In mobile code use `DARK` from `@jax/shared`, never `COLORS`.** Layers, darkest first:
 
-## Screen look (D69, D70)
+| Token                                   | Hex       | Use                                                         |
+| --------------------------------------- | --------- | ----------------------------------------------------------- |
+| `bar`                                   | `#000000` | Header, tab bar, and the control block under the header     |
+| `page`                                  | `#1E1F22` | Every screen's background                                   |
+| `card`                                  | `#2B2D31` | Posts, places, grouped lists, sheets                        |
+| `raised`                                | `#383A40` | Inputs, pills, chips, icon buttons                          |
+| `text`                                  | `#F2F3F5` | Main text                                                   |
+| `textMuted`                             | `#B5BAC1` | Secondary text                                              |
+| `accent`                                | gold      | Main buttons (black text), links, active tab, focus, stars  |
+| `teal`                                  | teal      | Switches, selected fills (white text)                       |
+| `tealText`                              | `#6CC5D4` | Teal for text and icons ("Confirmed", upvotes, post counts) |
+| `accentSoft` / `tealSoft` / `errorSoft` | tints     | Notice and status backgrounds                               |
 
-- **Bars and backgrounds:** the header and the bar under it (search, feed controls) are black
-  (`surfaceInverse`). Content behind cards is dark grey (`surfaceDark` #1E1F22), a visible step
-  lighter than the bar. Text directly on it uses `onSurfaceDark` / `onSurfaceDarkMuted`, errors
-  `errorOnDark`.
-- **Posts:** white cards with black text, framed and headed in the author's **account color**
-  (24-color palette in `@jax/shared/profile-colors.ts`; header text black or white, whichever
-  reads ≥ 4.5:1).
-- **Places:** cards with a 2 px black frame; the header uses the **category color** (below) with a
-  white category pill and white name; distance and post count on a white row.
-- **Round gold + button** bottom-right for every "create" action (new post, Add new place):
-  `FloatingButton` in `src/ui.tsx`.
+Brand teal is too dark to read as text on these greys (2.1:1), so `tealText` is a light tint of
+it. Every text color is tested at 4.5:1 on `page`, `card` and `raised`, and input outlines
+(`border`) at 3:1 (`theme.test.ts`).
+
+**Typeface:** Plus Jakarta Sans (free, Open Font License, `@expo-google-fonts`). Import `Text`
+and `TextInput` from `@/text`, not from `react-native`: they pick the right font file for
+`fontWeight` and default to the dark theme's text color.
+
+**Header (every screen):** black bar, the **Jax mark (gold pin tile + "Jax") top-left**, gold
+back arrow before it on inner screens, username pill on the right. No centered page names; an
+inner page shows its own name at the top of the page with `PageTitle` (big title, optional line
+and icon).
+
+**Cards share one language:** a dark rounded card with a **thick colored stripe on the left**:
+
+- **Posts:** the author's account color (D69). Photo ringed in that color, name with ★ and
+  medals, "5 min ago · 120 yd" under it, the text, media, then vote and comment pills, and
+  "Voice" / "2 photos" tags on the right. "Popular" tag at a score of 10+. Very dark account
+  colors (navy, black) get a thin light edge so the stripe still shows.
+- **Places:** the category color (D70) as the stripe and as an icon tile; name large;
+  category · distance; posts and ★ count; a teal "You can post" badge when you're within the
+  room radius; chevron.
+- **Place page:** the same stripe and tile, bigger; address; three stat tiles (Away, Posts,
+  Favorites); a full-width "Save to favorites" button (gold when saved).
+
+**Home and Places top block (black):** "Near Avondale · within 528 yd" (tap → Account to change
+the radius), then search pill + refresh (+ filters on Places), then the post-type tabs.
+
+**Account:** one page. Profile card (color band, photo with camera badge, name, joined, Edit
+bio / Color / View buttons), About, Medals, then grouped settings cards.
+
+**Forms:** filled dark fields with a leading icon, gold outline while typing, error line with
+an icon; primary button gold with black text, secondary raised grey, danger red outline.
 
 ### Category colors (D70)
 
@@ -75,46 +102,25 @@ magenta · Things to do `#BF360C` burnt orange · Services & auto `#0D47A1` blue
 `#00695C` teal-green · Other `#37474F` slate. Defined once as `CATEGORY_COLORS` in
 `@jax/shared`.
 
-## Design system (D78, experimental redesign)
+## Components and tokens (D78, D79)
 
-The 2026-10-18 redesign is **one commit** so it can be reverted as a whole. Colors are
-unchanged (D33); what changed is structure, spacing, motion and components.
+**Tokens** (`apps/mobile/src/tokens.ts`): spacing `SPACE` 2 · 4 · 8 · 12 · 16 · 24 · 32,
+corners `RADIUS` 8 · 12 · 16 · 24 · pill, type `TYPE` display 44 · title 26 · headline 18 ·
+body 16 · callout 15 · label 14 · caption 13 · overline 12 (caps), `elevation(1|2|3)`.
 
-**Tokens** (`apps/mobile/src/tokens.ts`):
+**Components** (`apps/mobile/src/ui.tsx`): `BrandMark`, `headerOptions`, `PageTitle`, `Screen`
+(dark page + padding + keyboard), `Card`, `PressableScale`, `Field` (with `icon`),
+`PasswordField`, `Button` (primary/gold, secondary, teal, danger, link), `FormError`, `Banner`
+(info/success/error), `Chip`, `Segmented`, `IconButton`, `RefreshButton`, `SearchField`,
+`FloatingButton`, `EmptyState`, `ErrorState`, `Pulse` + `Bone` (skeletons), `useToast`, `Sheet`,
+`ListGroup` + `ListRow`, `SectionTitle`, `StatTile`, `StatusBadge`, `openMenu`. Place pieces
+(`PlaceRow`, `PlaceHero`, `CategoryTile`) are in `src/places/PlaceHeader.tsx`.
 
-- Spacing `SPACE`: 2 · 4 · 8 · 12 · 16 · 24 · 32. Corners `RADIUS`: 8 · 12 · 16 · 24 · pill.
-- Type `TYPE`: display 40 · title 24 · headline 18 · body 16 · callout 15 · label 14 ·
-  caption 13 · overline 12 (caps). Use these instead of ad-hoc font sizes.
-- `elevation(1|2|3)`: resting card, floating button, toast or sheet.
-- New colors in `@jax/shared` (tested): `surfaceDarkRaised` (search pills, chips and icon
-  buttons on black), `skeletonOnDark` / `skeletonOnLight` (loading shapes), `hairline`
-  (dividers inside white cards), `errorSoft` (behind form errors).
-
-**Components** (`apps/mobile/src/ui.tsx`): `PressableScale` (shrinks a little when pressed),
-`Button` (primary, accent = gold, secondary, danger, link, linkOnDark, ghostOnDark; optional
-icon), `Field` (teal 2 px outline while typing, `hint` line, error with an icon),
-`PasswordField` (eye icon inside), `Banner`, `Chip` (`dark`, removable), `Segmented` (pill
-track; `dark` = gold thumb), `IconButton`, `SearchField`, `FloatingButton`, `EmptyState`,
-`ErrorState`, `Pulse` + `Bone` (skeletons), `useToast`, `Sheet` (bottom sheet with handle),
-`ListGroup` + `ListRow` (grouped settings), `SectionTitle`, `openMenu` ("•••" menus).
-
-**Patterns:**
-
-- **Content first:** only search and the type tabs stay fixed above the feed; sort and
-  notices scroll away. The neighborhood moves into the header as a subtitle.
-- **Loading** shows skeletons shaped like the content; **empty** states have an icon, a
-  title, one helpful line and (where it makes sense) one action; **errors** show the message
-  with Try again.
-- **Secondary actions** (report, delete, block) live in "•••" menus, not as loose links.
-  Anything destructive asks first.
-- **Feedback:** light haptics (`src/motion.ts`, `expo-haptics`, free and in Expo Go) on votes,
-  favorites, tab switches and successful posts. Every animation checks the phone's reduce
-  motion setting (`useReducedMotion`).
-- **Two moods:** dark feeds (Home, Places, posts, profiles) and a light grey Account area with
-  white grouped cards.
-- **Post cards** keep the author's color header (D69) but drop the 3 px colored frame; the
-  name and "time · distance" are stacked; votes and comments are pills. **Place cards** keep
-  the category color (D70), add a category icon, and drop the 2 px black frame.
+**Patterns:** content first (sort and notices scroll away with the feed); skeletons while
+loading; empty states with an icon, title, one helpful line and one action; secondary actions
+(report, delete, block) in "•••" menus, destructive ones confirmed; light haptics on votes,
+favorites, tabs and successful posts; every animation respects the phone's reduce-motion
+setting.
 
 ## Planned (not built yet)
 

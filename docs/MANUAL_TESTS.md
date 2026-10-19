@@ -179,43 +179,40 @@ checks. Tick each box when it looks right; note anything odd next to it.
       comment without looking.
 - [ ] Phone setting **Remove animations** (Android) / **Reduce Motion** (iPhone) on: buttons,
       votes, sheets and toasts no longer move or bounce; loading placeholders hold still (D78).
-- [ ] Dark backgrounds use white or gold text only; no gold text on white anywhere.
+- [ ] Text on the dark screens is white, grey, gold or light teal and easy to read.
 
-## 9c. Look and feel (D78, experimental redesign)
+## 9c. Look and feel (D78, D79)
 
-- [ ] **Sign in** opens on a black welcome ("Jax", gold pin) with the form on a white sheet.
-      Order: Sign in → Create an account → Continue as guest. "Forgot password?" sits under the
-      password field; the eye icon inside the field shows/hides the password.
-- [ ] Without location permission: a pin icon, three reasons with icons, a privacy note, one
-      **Allow location** button.
-- [ ] **Home** header reads **Jax** with "Near [neighborhood]" under it. Under it: a dark round
-      search box (× clears it), a round refresh button, and the All / Text / Media / Voice tabs
-      (active one gold with a short gold bar). **New / Top this week** and any banners scroll
+- [ ] **Every screen is dark**: feeds, Places, a place, a post, profiles, Account and all its
+      sub-pages, sign-in, register, reset password, the filter / report / color sheets and the
+      policy pages. No white page anywhere (the only light things are the toast and photos).
+- [ ] **Header:** the gold pin + **Jax** sits top-left on every screen (after the back arrow on
+      inner screens); no "JAX", "PLACES" or "ACCOUNT" titles. Your @username pill is on the right.
+- [ ] Text is in the new typeface (rounded, geometric). Headings and names are heavy.
+- [ ] **Sign in:** Jax top-left, a big "Your neighborhood, live." welcome, then the form on a
+      dark sheet. Fields have icons; the field you're typing in gets a gold outline.
+- [ ] **Home:** under the header, "Near [neighborhood] · within 528 yd" (tap: opens Account),
+      search pill + refresh, then All / Text / Media / Voice. Latest / Top this week scrolls
       away with the posts.
-- [ ] While the feed loads you see grey post-shaped placeholders, not a spinner. At the end of a
-      long feed: "You're all caught up".
-- [ ] **Posts:** author's color on top with photo, name (★ on yours), and "5 min ago · 120 yd"
-      under the name. Votes are a grey pill (teal tint when upvoted, gold tint when downvoted,
-      the arrow pops and the phone ticks). Comments are a pill next to it. Long posts end with
-      "Read more". Two photos sit side by side.
-- [ ] **Post page:** "•••" in the post header opens Report (others' posts) or Delete (yours).
-      Comments sit in one white panel with avatars; replies hang off a thin line. Each comment
-      has Reply and "•••" (Report or Delete, Delete asks to confirm). The reply box is a round
-      field with a round send arrow; "Replying to …" is a teal chip you tap to cancel.
-- [ ] **New post:** Cancel top-left, gold **Post** top-right (grey until you type or record).
-      Your photo and a "People near you" (or place name) chip at the top; a photo button and
-      the character count in a bar above the keyboard.
-- [ ] **Places:** the header says Places with "Near …" under it. Filter button (gold dot when
-      filters are on), search pill, refresh. Cards: category pill with an icon, name below,
-      then walking distance, ★ count and posts with icons. Applied filters show as gold chips
-      above the list; tap one to clear it. The filter sheet has Reset and Show places.
-- [ ] **Place page:** star button on a black circle (tap: phone ticks, "Added to favorites"
-      slides up near the bottom). Too far away: a lock card says how far you are.
-- [ ] **Account:** light grey page with white grouped cards. Profile: color header, camera badge
-      on the photo, a **Color** button top-right. Settings: email with a Confirmed / Not
-      confirmed badge, radius as a three-way switch, favorites with category icons, Sign out
-      and Delete account at the bottom.
-- [ ] **Tab bar:** active tab icon is filled gold on a dark pill; tapping tabs ticks the phone.
+- [ ] **Posts:** dark cards with a thick stripe in the author's color down the left; photo
+      ringed in that color; name, ★ on yours, medals; "5 min ago · 120 yd"; vote pill (teal
+      when up, gold when down) and comment pill; "Voice" / "Photo" tag on the right; "Popular"
+      at 10+ points. A navy or black account color still shows a visible stripe.
+- [ ] **Places list:** each place is a dark card with a thick category-colored stripe, a colored
+      icon tile, the name large, "Coffee · 120 yd", posts (teal) and ★ count, and "You can post"
+      when you're close enough. Your favorites show a gold ★ next to the name.
+- [ ] **Place page:** big tile and name, address, three tiles (Away / Posts / Favorites), a
+      "Save to favorites" button (turns gold when saved, toast at the bottom). Too far away: a
+      dashed lock card with your distance.
+- [ ] **Post page:** "•••" for Report/Delete; comments in a dark panel with avatars and thread
+      lines; reply bar with a round gold send button.
+- [ ] **New post:** × top-left, gold Post top-right; your photo and a "People near you" chip.
+- [ ] **Account:** one page: profile card (color band, photo with camera badge, Edit bio /
+      Color / View), About, Medals, then dark grouped settings. Email shows a Confirmed / Not
+      confirmed badge; radius is a three-way switch.
+- [ ] **Account sub-pages** (username, email, password, blocked, reports, suggestions, standing,
+      delete, policies) each start with an icon and a big title. Reports and suggestions are
+      cards with colored status badges.
 
 ## 10. Admin portal (on your computer)
 

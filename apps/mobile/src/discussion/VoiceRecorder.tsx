@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   RecordingPresets,
@@ -8,9 +8,10 @@ import {
   useAudioRecorder,
   type RecordingOptions,
 } from 'expo-audio';
-import { COLORS, VOICE_MAX_SECONDS } from '@jax/shared';
+import { DARK, VOICE_MAX_SECONDS } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import { clock } from '@/format';
+import { Text } from '@/text';
 import { postRawFile } from './photos';
 import { VoicePlayer } from './VoicePlayer';
 
@@ -104,7 +105,7 @@ export function VoiceRecorder({
           hitSlop={8}
           style={{ padding: 6 }}
         >
-          <Ionicons name="trash-outline" size={22} color={COLORS.text} />
+          <Ionicons name="trash-outline" size={22} color={DARK.text} />
         </Pressable>
       </View>
     );
@@ -126,21 +127,21 @@ export function VoiceRecorder({
           paddingHorizontal: 14,
           borderRadius: 26,
           borderWidth: 1.5,
-          borderColor: recording ? COLORS.error : COLORS.primarySoft,
-          backgroundColor: recording ? COLORS.errorSoft : COLORS.primarySoft,
+          borderColor: recording ? DARK.error : DARK.hairline,
+          backgroundColor: recording ? DARK.errorSoft : DARK.raised,
           opacity: disabled ? 0.5 : 1,
         }}
       >
         {state === 'uploading' ? (
-          <ActivityIndicator color={COLORS.primary} />
+          <ActivityIndicator color={DARK.accent} />
         ) : (
           <Ionicons
             name={recording ? 'stop-circle' : 'mic'}
             size={26}
-            color={recording ? COLORS.error : COLORS.primary}
+            color={recording ? DARK.error : DARK.accent}
           />
         )}
-        <Text style={{ color: COLORS.text, fontWeight: '600' }}>
+        <Text style={{ color: DARK.text, fontWeight: '600' }}>
           {recording
             ? `Recording ${clock(seconds)} / ${clock(VOICE_MAX_SECONDS)}: tap to stop`
             : state === 'uploading'
@@ -148,7 +149,7 @@ export function VoiceRecorder({
               : `Record a voice post (up to ${VOICE_MAX_SECONDS} s)`}
         </Text>
       </Pressable>
-      {error ? <Text style={{ color: COLORS.error, marginTop: 4 }}>{error}</Text> : null}
+      {error ? <Text style={{ color: DARK.error, marginTop: 4 }}>{error}</Text> : null}
     </View>
   );
 }

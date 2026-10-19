@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { COLORS, loginRequestSchema } from '@jax/shared';
+import { loginRequestSchema, DARK } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
 import { restrictedCredentials } from '@/standing/restricted-credentials';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { SPACE, TYPE } from '@/tokens';
-import { Banner, Button, Field, FormError, PasswordField } from '@/ui';
+import { Banner, BrandMark, Button, Field, FormError, PasswordField } from '@/ui';
+import { Text } from '@/text';
 
 export default function SignIn() {
   const { signIn, continueAsGuest } = useAuth();
@@ -60,43 +60,32 @@ export default function SignIn() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: COLORS.surfaceInverse }}
+      style={{ flex: 1, backgroundColor: DARK.bar }}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
         bounces={false}
       >
-        {/* D78: a branded welcome on black (no team names or marks, see UI_DESIGN.md). */}
+        {/* D79: the Jax mark top-left like every other screen, then a big welcome line
+            (no team names or marks, see UI_DESIGN.md). */}
         <View
           style={{
-            paddingTop: insets.top + 40,
-            paddingBottom: 36,
+            paddingTop: insets.top + 14,
+            paddingBottom: 32,
             paddingHorizontal: SPACE.xl,
-            alignItems: 'center',
-            gap: SPACE.sm,
+            gap: SPACE.md,
           }}
         >
-          <View
-            style={{
-              width: 68,
-              height: 68,
-              borderRadius: 34,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: COLORS.accent,
-              marginBottom: SPACE.xs,
-            }}
-          >
-            <Ionicons name="location-sharp" size={36} color={COLORS.onAccent} />
-          </View>
+          <BrandMark />
           <Text
             accessibilityRole="header"
-            style={[TYPE.display, { color: COLORS.onSurfaceInverse }]}
+            style={[TYPE.display, { fontSize: 40, lineHeight: 46, marginTop: 28 }]}
           >
-            Jax
+            Your neighborhood,{'\n'}
+            <Text style={{ color: DARK.accent }}>live.</Text>
           </Text>
-          <Text style={[TYPE.callout, { color: COLORS.onSurfaceDarkMuted, textAlign: 'center' }]}>
+          <Text style={[TYPE.callout, { color: DARK.textMuted }]}>
             What’s happening around you in Jacksonville, from people who are actually there.
           </Text>
         </View>
@@ -104,14 +93,14 @@ export default function SignIn() {
         <View
           style={{
             flexGrow: 1,
-            backgroundColor: COLORS.background,
+            backgroundColor: DARK.card,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             padding: SPACE.xl,
             paddingBottom: insets.bottom + SPACE.xl,
           }}
         >
-          <Text style={[TYPE.title, { color: COLORS.text, marginBottom: SPACE.lg }]}>Sign in</Text>
+          <Text style={[TYPE.title, { color: DARK.text, marginBottom: SPACE.lg }]}>Sign in</Text>
           {params.registered ? (
             <Banner icon="checkmark-circle-outline">
               Account created. Sign in, then enter the 6-digit code we emailed you.
@@ -133,6 +122,7 @@ export default function SignIn() {
           ) : null}
           <Field
             label="Username or email"
+            icon="person-outline"
             value={identifier}
             onChangeText={setIdentifier}
             autoCapitalize="none"
@@ -168,9 +158,9 @@ export default function SignIn() {
               marginVertical: SPACE.lg,
             }}
           >
-            <View style={{ flex: 1, height: 1, backgroundColor: COLORS.cardBorder }} />
-            <Text style={[TYPE.caption, { color: COLORS.textMuted }]}>New to Jax?</Text>
-            <View style={{ flex: 1, height: 1, backgroundColor: COLORS.cardBorder }} />
+            <View style={{ flex: 1, height: 1, backgroundColor: DARK.hairline }} />
+            <Text style={[TYPE.caption, { color: DARK.textMuted }]}>New to Jax?</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: DARK.hairline }} />
           </View>
           <Button
             variant="secondary"
@@ -185,7 +175,7 @@ export default function SignIn() {
             busy={guestBusy}
             style={{ marginTop: SPACE.sm }}
           />
-          <Text style={[TYPE.caption, { color: COLORS.textMuted, textAlign: 'center' }]}>
+          <Text style={[TYPE.caption, { color: DARK.textMuted, textAlign: 'center' }]}>
             Guests can browse posts nearby right away. Posting, commenting, voting and place
             discussions need a free account.
           </Text>

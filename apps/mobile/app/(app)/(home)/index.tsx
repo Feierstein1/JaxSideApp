@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
-import { router, Stack } from 'expo-router';
-import { COLORS, type FeedSort, type PostTypeFilter } from '@jax/shared';
+import { router } from 'expo-router';
+import { DARK, type FeedSort, type PostTypeFilter } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { fetchFeed } from '@/discussion/api';
-import { AreaTitle } from '@/location/AreaLabel';
+import { AreaStrip } from '@/location/AreaLabel';
 import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/device';
 import { PostList } from '@/discussion/PostList';
 import { PostTypeTabs } from '@/discussion/PostTypeTabs';
@@ -77,10 +77,10 @@ export default function HomeFeed() {
     router.push('/compose');
   }
 
-  // D78: sort and notices sit at the top of the list and scroll away with it, so the
-  // feed gets the screen; search and the type tabs stay put.
+  // D78 / D79: sort and notices sit at the top of the list and scroll away with it, so
+  // the feed gets the screen; where you are, search and the type tabs stay put.
   const listHeader = (
-    <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 2, gap: 10 }}>
+    <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10 }}>
       {guest?.expiringSoon ? (
         <Banner icon="time-outline" style={{ marginBottom: 0 }}>
           {`Your guest session ends in ${guest.daysLeft} ${guest.daysLeft === 1 ? 'day' : 'days'} unless you use Jax before then.`}
@@ -96,10 +96,9 @@ export default function HomeFeed() {
         </Banner>
       ) : null}
       <Segmented
-        dark
         options={[
-          { key: 'new', label: 'New' },
-          { key: 'top', label: 'Top this week' },
+          { key: 'new', label: 'Latest', icon: 'time-outline' },
+          { key: 'top', label: 'Top this week', icon: 'trending-up' },
         ]}
         value={sort}
         onChange={(v) => setSort(v as FeedSort)}
@@ -108,17 +107,10 @@ export default function HomeFeed() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}>
-      <Stack.Screen options={{ headerTitle: () => <AreaTitle title="Jax" area={area} brand /> }} />
-      {/* D70 / D78: a black bar under the black header with search, refresh and type tabs. */}
-      <View
-        style={{
-          backgroundColor: COLORS.surfaceInverse,
-          paddingHorizontal: 12,
-          paddingTop: 2,
-          gap: 4,
-        }}
-      >
+    <View style={{ flex: 1, backgroundColor: DARK.page }}>
+      {/* D79: one black block under the header: where you are, search, type tabs. */}
+      <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, gap: 6 }}>
+        <AreaStrip area={area} label="Your area" />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <SearchField
             label="Search posts"

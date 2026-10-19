@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
 import { CONFIG_DEFAULTS, usernameChangeSchema } from '@jax/shared';
 import { api } from '@/api';
 import { useAuth } from '@/auth/AuthContext';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
-import { Button, Field, FormError, styles } from '@/ui';
+import { Button, Field, FormError, PageTitle, Screen, styles } from '@/ui';
+import { Text } from '@/text';
 
 /** P4.9: change your username. Your account ID never changes; there's a cooldown. */
 export default function ChangeUsername() {
@@ -32,7 +32,8 @@ export default function ChangeUsername() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
+    <Screen keyboard>
+      <PageTitle title="Username" subtitle="This is the name people see on your posts." icon="at" />
       <Text style={[styles.body, { marginBottom: 12 }]}>
         You can change your username once every {CONFIG_DEFAULTS['username.changeCooldownDays']}{' '}
         days. Changing only capital letters is always allowed. Your old name stays reserved for a
@@ -41,6 +42,7 @@ export default function ChangeUsername() {
       <FormError>{errors.form}</FormError>
       <Field
         label="New username"
+        icon="at"
         value={username}
         onChangeText={setUsername}
         autoCapitalize="none"
@@ -50,6 +52,6 @@ export default function ChangeUsername() {
         onSubmitEditing={submit}
       />
       <Button title="Save username" onPress={submit} busy={busy} />
-    </ScrollView>
+    </Screen>
   );
 }

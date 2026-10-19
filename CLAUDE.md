@@ -3,7 +3,7 @@
 Location-verified, pseudonymous social network for Jacksonville, FL (iOS/Android + web admin portal).
 
 - **Requirements:** [docs/SPEC.md](docs/SPEC.md). Never edit it to record decisions.
-- **UI design:** [docs/UI_DESIGN.md](docs/UI_DESIGN.md): Jaguars colors + white (D33). Use `COLORS` from `@jax/shared`; never hard-code hex values or use gold text on white.
+- **UI design:** [docs/UI_DESIGN.md](docs/UI_DESIGN.md): Jaguars colors + white (D33). Mobile uses the dark palette `DARK` and admin/web use `COLORS`, both from `@jax/shared`; never hard-code hex values or use gold text on white. Mobile text comes from `@/text`.
 - **Tracker:** [PROJECT_PLAN.md](PROJECT_PLAN.md) is the single source of progress, decisions (Decision Log), and open questions.
 
 ## Workflow

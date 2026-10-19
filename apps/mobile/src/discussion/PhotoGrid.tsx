@@ -1,5 +1,5 @@
 import { Image, Pressable, View, type ImageStyle } from 'react-native';
-import { COLORS, type PhotoView } from '@jax/shared';
+import { DARK, type PhotoView } from '@jax/shared';
 import { photoUri } from './photos';
 
 /**
@@ -26,7 +26,7 @@ export function PhotoGrid({
     >
       <Image
         source={{ uri: photoUri(p.url) }}
-        style={[{ borderRadius: 12, backgroundColor: COLORS.surfaceMuted }, style]}
+        style={[{ borderRadius: 12, backgroundColor: DARK.raised }, style]}
         resizeMode="cover"
       />
     </Pressable>
@@ -35,7 +35,7 @@ export function PhotoGrid({
 
   if (photos.length === 2) {
     return (
-      <View style={{ marginTop: 10, flexDirection: 'row', gap: 6 }}>
+      <View style={{ marginTop: 12, flexDirection: 'row', gap: 6 }}>
         {photos.map((p) => img(p, square, true))}
       </View>
     );
@@ -43,7 +43,7 @@ export function PhotoGrid({
   const [first, ...rest] = photos;
   const ratio = Math.min(1.8, Math.max(0.7, first!.width / first!.height));
   return (
-    <View style={{ marginTop: 10, gap: 6 }}>
+    <View style={{ marginTop: 12, gap: 6 }}>
       {img(first!, { width: '100%', aspectRatio: ratio })}
       {rest.length ? (
         <View style={{ flexDirection: 'row', gap: 6 }}>

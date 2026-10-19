@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { COLORS, type PostView } from '@jax/shared';
+import { DARK, type PostView } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Text } from '@/text';
 import { EmptyState, ErrorState, type IconName } from '@/ui';
 import { takeFeedsDirty, type PostPage } from './api';
 import { PostCard, PostSkeleton } from './PostCard';
@@ -82,8 +83,8 @@ export function PostList({
   return (
     <FlatList
       // D70: dark grey behind the white post cards, a step lighter than the black header.
-      style={{ backgroundColor: COLORS.surfaceDark }}
-      contentContainerStyle={{ paddingTop: 6, paddingBottom: 104, flexGrow: 1 }}
+      style={{ backgroundColor: DARK.page }}
+      contentContainerStyle={{ paddingTop: 4, paddingBottom: 110, flexGrow: 1 }}
       data={posts}
       keyExtractor={(p) => p.id}
       renderItem={({ item }) => (
@@ -92,15 +93,12 @@ export function PostList({
       ListHeaderComponent={
         <>
           {header}
-          {error ? (
-            <ErrorState dark message={error} onRetry={() => void fetchPage('loading')} />
-          ) : null}
+          {error ? <ErrorState message={error} onRetry={() => void fetchPage('loading')} /> : null}
         </>
       }
       ListEmptyComponent={
         state === 'idle' && !error ? (
           <EmptyState
-            dark
             icon={emptyIcon}
             title={emptyTitle}
             body={emptyBody}
@@ -121,17 +119,15 @@ export function PostList({
       }
       ListFooterComponent={
         state === 'more' ? (
-          <ActivityIndicator style={{ margin: 16 }} color={COLORS.accent} />
+          <ActivityIndicator style={{ margin: 16 }} color={DARK.accent} />
         ) : posts.length > 2 && !cursor && state === 'idle' ? (
           // D78: the end of the list says so, instead of just stopping.
           <View
             style={{ alignItems: 'center', paddingVertical: 20, gap: 4 }}
             accessibilityRole="text"
           >
-            <Ionicons name="checkmark-circle-outline" size={22} color={COLORS.onSurfaceDarkMuted} />
-            <Text style={{ color: COLORS.onSurfaceDarkMuted, fontWeight: '600' }}>
-              You’re all caught up
-            </Text>
+            <Ionicons name="checkmark-circle-outline" size={22} color={DARK.textMuted} />
+            <Text style={{ color: DARK.textMuted, fontWeight: '600' }}>You’re all caught up</Text>
           </View>
         ) : null
       }
@@ -143,8 +139,9 @@ export function PostList({
         <RefreshControl
           refreshing={state === 'refreshing'}
           onRefresh={() => void fetchPage('refreshing')}
-          tintColor={COLORS.accent}
-          colors={[COLORS.primary]}
+          tintColor={DARK.accent}
+          colors={[DARK.onAccent]}
+          progressBackgroundColor={DARK.accent}
         />
       }
     />

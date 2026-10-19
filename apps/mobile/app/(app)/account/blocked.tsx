@@ -1,11 +1,19 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { COLORS } from '@jax/shared';
+import { DARK } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
-import { SPACE } from '@/tokens';
-import { Button, EmptyState, ErrorState, FormError, ListGroup, ListRow } from '@/ui';
+import {
+  Button,
+  EmptyState,
+  ErrorState,
+  FormError,
+  ListGroup,
+  ListRow,
+  PageTitle,
+  Screen,
+} from '@/ui';
 
 interface Block {
   username: string;
@@ -43,14 +51,16 @@ export default function BlockedUsers() {
     return error ? (
       <ErrorState message={error} onRetry={() => void load()} />
     ) : (
-      <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.primary} />
+      <ActivityIndicator style={{ marginTop: 32 }} color={DARK.accent} />
     );
   }
   return (
-    <ScrollView
-      style={{ backgroundColor: COLORS.surfaceMuted }}
-      contentContainerStyle={{ padding: SPACE.lg, flexGrow: 1 }}
-    >
+    <Screen>
+      <PageTitle
+        title="Blocked users"
+        subtitle="Blocked people can’t see your profile, and you won’t see their posts or comments. They aren’t told."
+        icon="ban-outline"
+      />
       {error ? <FormError>{error}</FormError> : null}
       {blocks.length === 0 ? (
         <EmptyState
@@ -59,7 +69,7 @@ export default function BlockedUsers() {
           body="To block someone, open their profile and choose Block from the ••• menu."
         />
       ) : (
-        <ListGroup footer="Blocked people can’t see your profile, and you won’t see their posts or comments. They aren’t told.">
+        <ListGroup first>
           {blocks.map((b) => (
             <ListRow
               key={b.username}
@@ -78,6 +88,6 @@ export default function BlockedUsers() {
           ))}
         </ListGroup>
       )}
-    </ScrollView>
+    </Screen>
   );
 }

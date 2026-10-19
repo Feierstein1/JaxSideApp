@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { COLORS, profileColor, type PostView, type PublicProfile } from '@jax/shared';
+import { profileColor, type PostView, type PublicProfile, DARK } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { useGuest } from '@/auth/guest';
@@ -11,9 +11,10 @@ import { getFreshReading } from '@/location/device';
 import { ReportSheet } from '@/report/ReportSheet';
 import { MedalIcons, MedalList } from './Medals';
 import { ProfileAvatar } from './ProfileAvatar';
-import { plural } from '@/format';
+
 import { RADIUS, SPACE, TYPE } from '@/tokens';
-import { Button, EmptyState, ErrorState, openMenu, SectionTitle, styles } from '@/ui';
+import { Button, EmptyState, ErrorState, openMenu, SectionTitle, StatTile } from '@/ui';
+import { Text } from '@/text';
 
 /** P4.8: someone's public profile and recent area posts, with Block (P5.2). */
 export function ProfileScreen({ username, postPath }: { username: string; postPath: string }) {
@@ -76,8 +77,8 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
 
   if (!profile) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark, paddingTop: SPACE.sm }}>
-        {error ? <ErrorState dark message={error} onRetry={() => void load()} /> : <PostSkeleton />}
+      <View style={{ flex: 1, backgroundColor: DARK.page, paddingTop: SPACE.sm }}>
+        {error ? <ErrorState message={error} onRetry={() => void load()} /> : <PostSkeleton />}
       </View>
     );
   }
@@ -85,7 +86,7 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
   // D69: the person's own account color.
   const color = profileColor(profile.color);
   const joined = new Date(profile.joinedAt).toLocaleDateString('en-US', {
-    month: 'long',
+    month: 'short',
     year: 'numeric',
   });
   const canAct = !profile.isMe && !isGuest;
@@ -99,20 +100,19 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
 
   return (
     <ScrollView
-      style={{ backgroundColor: COLORS.surfaceDark }}
-      contentContainerStyle={{ paddingBottom: SPACE.xxl }}
+      style={{ backgroundColor: DARK.page }}
+      contentContainerStyle={{ paddingTop: SPACE.md, paddingBottom: 56 }}
     >
+      {/* D79: the same profile card as Account: color band, photo, name, stats. */}
       <View
         style={{
-          alignItems: 'center',
-          paddingTop: SPACE.xl,
-          paddingBottom: SPACE.xl - 4,
-          paddingHorizontal: SPACE.lg,
-          backgroundColor: color.hex,
-          borderBottomLeftRadius: RADIUS.xl,
-          borderBottomRightRadius: RADIUS.xl,
+          marginHorizontal: SPACE.md,
+          borderRadius: RADIUS.lg + 4,
+          overflow: 'hidden',
+          backgroundColor: DARK.card,
         }}
       >
+        <View style={{ height: 64, backgroundColor: color.hex }} />
         {canAct ? (
           <Pressable
             accessibilityRole="button"
@@ -120,61 +120,92 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
             onPress={menu}
             style={{
               position: 'absolute',
-              top: 8,
-              right: 8,
-              width: 44,
-              height: 44,
+              top: 10,
+              right: 10,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
               alignItems: 'center',
               justifyContent: 'center',
+              backgroundColor: DARK.bar,
             }}
           >
-            <Ionicons name="ellipsis-horizontal-circle-outline" size={28} color={color.text} />
+            <Ionicons name="ellipsis-horizontal" size={20} color={DARK.text} />
           </Pressable>
         ) : null}
-        <ProfileAvatar
-          name={profile.username}
-          url={profile.avatarUrl}
-          size={92}
-          ringColor={color.text}
-        />
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-          <Text style={{ color: color.text, fontSize: 24, fontWeight: '900' }}>
-            {profile.username}
+        <View style={{ paddingHorizontal: SPACE.lg, paddingBottom: SPACE.lg, marginTop: -44 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: SPACE.md }}>
+            <View style={{ borderRadius: 50, backgroundColor: DARK.card, padding: 4 }}>
+              <ProfileAvatar
+                name={profile.username}
+                url={profile.avatarUrl}
+                size={88}
+                ringColor={color.hex}
+                fill={color.hex}
+              />
+            </View>
+            <View style={{ flex: 1, paddingBottom: 6 }}>
+              <Text
+                numberOfLines={1}
+                style={{ fontSize: 24, fontWeight: '800', letterSpacing: -0.5 }}
+              >
+                {profile.username}
+              </Text>
+              {profile.medals.length ? (
+                <MedalIcons keys={profile.medals.map((m) => m.key)} color={DARK.accent} size={15} />
+              ) : null}
+            </View>
+          </View>
+          <Text
+            style={[TYPE.body, { marginTop: SPACE.md }, !profile.bio && { color: DARK.textMuted }]}
+          >
+            {profile.bio || 'No bio yet.'}
           </Text>
-          <MedalIcons keys={profile.medals.map((m) => m.key)} color={color.text} size={16} />
-        </View>
-        <Text style={{ color: color.text, marginTop: 2, fontWeight: '600' }}>
-          Joined {joined} · {plural(profile.postCount, 'post')}
-        </Text>
-        {profile.blockedByMe ? (
-          <View style={{ alignSelf: 'stretch', marginTop: SPACE.md }}>
+          <View style={{ flexDirection: 'row', gap: SPACE.sm, marginTop: SPACE.lg }}>
+            <StatTile
+              icon="create"
+              value={String(profile.postCount)}
+              label={profile.postCount === 1 ? 'Post' : 'Posts'}
+            />
+            <StatTile
+              icon="ribbon"
+              value={String(profile.medals.length)}
+              label={profile.medals.length === 1 ? 'Medal' : 'Medals'}
+            />
+            <StatTile icon="calendar" value={joined} label="Joined" color={DARK.tealText} />
+          </View>
+          {profile.blockedByMe ? (
             <Button
               variant="secondary"
               title="Unblock"
               icon="lock-open-outline"
               busy={busy}
               onPress={() => void setBlocked(false)}
+              style={{ marginTop: SPACE.md }}
             />
-          </View>
-        ) : null}
+          ) : null}
+        </View>
       </View>
 
-      <View style={{ paddingHorizontal: SPACE.md }}>
-        {error ? <ErrorState dark message={error} /> : null}
-        <View style={card}>
-          <Text style={[TYPE.overline, { color: COLORS.textMuted, marginBottom: 6 }]}>About</Text>
-          <Text style={[styles.body, !profile.bio && styles.muted]}>
-            {profile.bio || 'No bio yet.'}
-          </Text>
-        </View>
-        <View style={card}>
-          <Text style={[TYPE.overline, { color: COLORS.textMuted, marginBottom: 10 }]}>Medals</Text>
-          <MedalList medals={profile.medals} />
-        </View>
-      </View>
-      <SectionTitle dark>Recent posts nearby</SectionTitle>
+      {error ? <ErrorState message={error} /> : null}
+      {profile.medals.length ? (
+        <>
+          <SectionTitle>Medals</SectionTitle>
+          <View
+            style={{
+              marginHorizontal: SPACE.md,
+              padding: SPACE.lg,
+              borderRadius: RADIUS.lg,
+              backgroundColor: DARK.card,
+            }}
+          >
+            <MedalList medals={profile.medals} />
+          </View>
+        </>
+      ) : null}
+      <SectionTitle>Recent posts nearby</SectionTitle>
       {posts.length === 0 ? (
-        <EmptyState dark icon="newspaper-outline" title="Nothing in your area yet" />
+        <EmptyState icon="newspaper-outline" title="Nothing in your area yet" />
       ) : null}
       {posts.map((p) => (
         <PostCard key={p.id} post={p} onOpen={() => router.push(`${postPath}/${p.id}` as never)} />
@@ -186,10 +217,3 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
     </ScrollView>
   );
 }
-
-const card = {
-  marginTop: SPACE.md,
-  padding: SPACE.lg,
-  borderRadius: RADIUS.lg,
-  backgroundColor: COLORS.background,
-} as const;

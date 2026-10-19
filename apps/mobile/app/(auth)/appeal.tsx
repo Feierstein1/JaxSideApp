@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { COLORS } from '@jax/shared';
+import { DARK } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { restrictedCredentials } from '@/standing/restricted-credentials';
 import { HowStrikesWork } from '@/standing/HowStrikesWork';
 import { StrikeList, shortDate, type Standing } from '@/standing/StrikeList';
-import { Button, styles } from '@/ui';
+import { Button, ErrorState, PageTitle, Screen } from '@/ui';
 
 /**
  * P5.7 (D59): a banned or suspended person can't sign in, so this screen uses the
@@ -35,31 +35,36 @@ export default function AppealScreen() {
 
   if (!creds) {
     return (
-      <ScrollView contentContainerStyle={styles.screen}>
-        <Text style={styles.body}>Sign in first, then choose “See why and appeal”.</Text>
+      <Screen>
+        <PageTitle
+          title="Account standing"
+          subtitle="Sign in first, then choose “See why and appeal”."
+          icon="shield-outline"
+        />
         <Button title="Back to sign in" onPress={() => router.back()} />
-      </ScrollView>
+      </Screen>
     );
   }
   if (!standing) {
     return error ? (
-      <Text style={[styles.screen, styles.error]}>{error}</Text>
+      <ErrorState message={error} />
     ) : (
-      <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.primary} />
+      <ActivityIndicator style={{ marginTop: 32 }} color={DARK.accent} />
     );
   }
   const ban = standing.status === 'BANNED';
   const suspension = [...standing.strikes].reverse().find((s) => s.until);
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>
-        {ban ? 'Your account is banned' : 'Your account is suspended'}
-      </Text>
-      {!ban && suspension?.until ? (
-        <Text style={[styles.body, { marginBottom: 8 }]}>
-          You can sign in again after {shortDate(suspension.until)}.
-        </Text>
-      ) : null}
+    <Screen keyboard>
+      <PageTitle
+        title={ban ? 'Your account is banned' : 'Your account is suspended'}
+        subtitle={
+          !ban && suspension?.until
+            ? `You can sign in again after ${shortDate(suspension.until)}.`
+            : undefined
+        }
+        icon={ban ? 'ban-outline' : 'pause-circle-outline'}
+      />
       <StrikeList
         strikes={standing.strikes}
         onAppeal={async (actionId, message) => {
@@ -73,6 +78,6 @@ export default function AppealScreen() {
         title="Read the Community Guidelines"
         onPress={() => router.push('/legal/guidelines')}
       />
-    </ScrollView>
+    </Screen>
   );
 }

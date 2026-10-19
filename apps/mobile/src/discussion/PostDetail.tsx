@@ -6,20 +6,18 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
-  COLORS,
   COMMENT_MAX,
   CONFIG_DEFAULTS,
   type CommentView,
   type DiscussionKind,
   type PostView,
   type ReportTarget,
+  DARK,
 } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import { timeAgo } from '@/format';
@@ -34,6 +32,7 @@ import { useGuest } from '@/auth/guest';
 import { MedalIcons } from '@/profile/Medals';
 import { ReportSheet } from '@/report/ReportSheet';
 import { VoteControl } from './VoteControl';
+import { Text, TextInput } from '@/text';
 
 const MAX_DEPTH = CONFIG_DEFAULTS['comments.maxDepth'];
 
@@ -120,7 +119,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
 
   if (!post) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.surfaceDark, paddingTop: 6 }}>
+      <View style={{ flex: 1, backgroundColor: DARK.page, paddingTop: 6 }}>
         {error ? <ErrorState dark message={error} onRetry={() => void load()} /> : <PostSkeleton />}
       </View>
     );
@@ -146,7 +145,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       // D70: same dark grey as the feeds behind the white post and comment cards.
-      style={{ flex: 1, backgroundColor: COLORS.surfaceDark }}
+      style={{ flex: 1, backgroundColor: DARK.page }}
       keyboardVerticalOffset={90}
     >
       <ScrollView
@@ -170,15 +169,15 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
           style={{
             marginHorizontal: SPACE.md,
             borderRadius: RADIUS.lg,
-            backgroundColor: COLORS.background,
+            backgroundColor: DARK.card,
             overflow: 'hidden',
           }}
         >
           {comments.length === 0 ? (
             <View style={{ alignItems: 'center', padding: SPACE.xl, gap: 6 }}>
-              <Ionicons name="chatbubble-ellipses-outline" size={30} color={COLORS.primary} />
-              <Text style={[TYPE.headline, { color: COLORS.text }]}>No comments yet</Text>
-              <Text style={[TYPE.callout, { color: COLORS.textMuted, textAlign: 'center' }]}>
+              <Ionicons name="chatbubble-ellipses-outline" size={30} color={DARK.accent} />
+              <Text style={[TYPE.headline, { color: DARK.text }]}>No comments yet</Text>
+              <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
                 {canComment ? 'Start the conversation.' : 'Nobody has replied yet.'}
               </Text>
             </View>
@@ -215,9 +214,9 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
         <View
           style={{
             padding: SPACE.md,
-            backgroundColor: COLORS.background,
+            backgroundColor: DARK.card,
             borderTopWidth: 1,
-            borderTopColor: COLORS.hairline,
+            borderTopColor: DARK.hairline,
           }}
         >
           <Button
@@ -232,8 +231,8 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
         style={{
           display: canComment ? 'flex' : 'none',
           borderTopWidth: 1,
-          borderTopColor: COLORS.hairline,
-          backgroundColor: COLORS.background,
+          borderTopColor: DARK.hairline,
+          backgroundColor: DARK.card,
           paddingHorizontal: SPACE.md,
           paddingVertical: 10,
           gap: SPACE.sm,
@@ -252,21 +251,21 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
               paddingHorizontal: 12,
               minHeight: 32,
               borderRadius: RADIUS.pill,
-              backgroundColor: COLORS.primarySoft,
+              backgroundColor: DARK.tealSoft,
             }}
           >
-            <Ionicons name="return-down-forward" size={15} color={COLORS.primary} />
-            <Text style={{ color: COLORS.primary, fontWeight: '700' }}>
+            <Ionicons name="return-down-forward" size={15} color={DARK.tealText} />
+            <Text style={{ color: DARK.tealText, fontWeight: '700' }}>
               Replying to {authorName(replyTo.author)}
             </Text>
-            <Ionicons name="close" size={16} color={COLORS.primary} />
+            <Ionicons name="close" size={16} color={DARK.tealText} />
           </Pressable>
         ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: SPACE.sm }}>
           <TextInput
             accessibilityLabel="Write a comment"
             placeholder={replyTo ? 'Write a reply…' : 'Add a comment…'}
-            placeholderTextColor={COLORS.placeholder}
+            placeholderTextColor={DARK.placeholder}
             value={text}
             onChangeText={setText}
             maxLength={COMMENT_MAX}
@@ -277,13 +276,12 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
               maxHeight: 120,
               borderRadius: 22,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: DARK.border,
               paddingHorizontal: 16,
               paddingTop: 11,
               paddingBottom: 11,
               fontSize: 16,
-              color: COLORS.text,
-              backgroundColor: COLORS.background,
+              backgroundColor: DARK.raised,
             }}
           />
           <Pressable
@@ -298,17 +296,17 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
               borderRadius: 22,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: text.trim() ? COLORS.primary : COLORS.skeletonOnLight,
+              backgroundColor: text.trim() ? DARK.accent : DARK.raised,
               opacity: pressed ? 0.8 : 1,
             })}
           >
             {sending ? (
-              <ActivityIndicator color={COLORS.onPrimary} />
+              <ActivityIndicator color={DARK.onAccent} />
             ) : (
               <Ionicons
                 name="arrow-up"
                 size={22}
-                color={text.trim() ? COLORS.onPrimary : COLORS.textMuted}
+                color={text.trim() ? DARK.onAccent : DARK.textMuted}
               />
             )}
           </Pressable>
@@ -358,7 +356,7 @@ function CommentRow({
     <View
       style={{
         borderTopWidth: first || c.depth > 0 ? 0 : 1,
-        borderTopColor: COLORS.hairline,
+        borderTopColor: DARK.hairline,
         paddingLeft: SPACE.md + c.depth * 20,
         paddingRight: SPACE.xs,
       }}
@@ -371,7 +369,7 @@ function CommentRow({
           paddingBottom: visible ? 2 : SPACE.md,
           // D78: replies hang off a thin thread line.
           borderLeftWidth: c.depth > 0 ? 2 : 0,
-          borderLeftColor: COLORS.cardBorder,
+          borderLeftColor: DARK.hairline,
           paddingLeft: c.depth > 0 ? 10 : 0,
         }}
       >
@@ -382,7 +380,7 @@ function CommentRow({
             accessibilityRole={'username' in c.author ? 'link' : undefined}
             accessibilityLabel={'username' in c.author ? `${name}'s profile` : undefined}
           >
-            <ProfileAvatar name={name} url={null} size={32} ringColor={COLORS.background} />
+            <ProfileAvatar name={name} url={null} size={34} ringColor={DARK.hairline} />
           </Pressable>
         ) : (
           <View
@@ -390,15 +388,15 @@ function CommentRow({
               width: 32,
               height: 32,
               borderRadius: 16,
-              backgroundColor: COLORS.skeletonOnLight,
+              backgroundColor: DARK.raised,
             }}
           />
         )}
         <View style={{ flex: 1 }}>
           {visible ? (
-            <Text style={[TYPE.caption, { color: COLORS.textMuted }]}>
+            <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
               <Text
-                style={{ fontWeight: '800', color: COLORS.text, fontSize: 14 }}
+                style={{ fontWeight: '800', color: DARK.text, fontSize: 14 }}
                 onPress={'username' in c.author ? () => openAuthor(c.author) : undefined}
               >
                 {name}
@@ -412,7 +410,7 @@ function CommentRow({
               TYPE.callout,
               {
                 marginTop: visible ? 2 : 6,
-                color: visible ? COLORS.text : COLORS.textMuted,
+                color: visible ? DARK.text : DARK.textMuted,
                 fontStyle: visible ? 'normal' : 'italic',
               },
             ]}
@@ -439,7 +437,7 @@ function CommentRow({
                   onPress={onReply}
                   style={{ minHeight: 44, paddingHorizontal: 10, justifyContent: 'center' }}
                 >
-                  <Text style={{ color: COLORS.textMuted, fontWeight: '800', fontSize: 13 }}>
+                  <Text style={{ color: DARK.textMuted, fontWeight: '800', fontSize: 13 }}>
                     Reply
                   </Text>
                 </Pressable>
@@ -452,7 +450,7 @@ function CommentRow({
                   onPress={menu}
                   style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textMuted} />
+                  <Ionicons name="ellipsis-horizontal" size={18} color={DARK.textMuted} />
                 </Pressable>
               ) : null}
             </View>

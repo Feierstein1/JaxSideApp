@@ -1,8 +1,9 @@
 import type { ComponentProps } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { COLORS, type Medal } from '@jax/shared';
+import { type Medal, DARK } from '@jax/shared';
 import { styles } from '@/ui';
+import { Text } from '@/text';
 
 /** P6.9: medal icons. Old gold is for medals and icons only (D33), never body text. */
 const ICON: Record<string, ComponentProps<typeof Ionicons>['name']> = {
@@ -21,7 +22,7 @@ const iconFor = (key: string) => ICON[key] ?? 'ribbon';
 export function MedalIcons({
   keys,
   size = 13,
-  color = COLORS.accentDark,
+  color = DARK.accent,
 }: {
   keys: string[];
   size?: number;
@@ -61,17 +62,17 @@ export function MedalList({ medals }: { medals: Medal[] }) {
               height: 44,
               borderRadius: 22,
               borderWidth: 2,
-              borderColor: COLORS.accent,
-              backgroundColor: COLORS.accentSoft,
+              borderColor: DARK.accent,
+              backgroundColor: DARK.accentSoft,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            {/* Old gold icon on the light gold tint (icons need 3:1, D33). */}
-            <Ionicons name={iconFor(m.key)} size={21} color={COLORS.accentDark} />
+            {/* Gold icon on the gold-tinted dark circle (D79). */}
+            <Ionicons name={iconFor(m.key)} size={21} color={DARK.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.label}>{m.name}</Text>
+            <Text style={[styles.label, { marginBottom: 2 }]}>{m.name}</Text>
             <Text style={styles.muted}>{m.description}</Text>
           </View>
         </View>

@@ -1,11 +1,12 @@
-import { Linking, ScrollView, Text, View } from 'react-native';
+import { Linking, ScrollView, View } from 'react-native';
 import type { LocationPermissionResponse } from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { BRAND, COLORS } from '@jax/shared';
+import { DARK } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { Banner, Button, type IconName } from '@/ui';
+import { Text } from '@/text';
 
 const REASONS: { icon: IconName; title: string; body: string }[] = [
   {
@@ -46,7 +47,7 @@ export function LocationGate({
 
   return (
     <ScrollView
-      style={{ backgroundColor: COLORS.background }}
+      style={{ backgroundColor: DARK.page }}
       contentContainerStyle={{
         padding: SPACE.xl,
         paddingTop: insets.top + SPACE.xxl,
@@ -62,18 +63,18 @@ export function LocationGate({
             borderRadius: 48,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: COLORS.surfaceInverse,
+            backgroundColor: DARK.bar,
           }}
         >
-          <Ionicons name="location-sharp" size={48} color={BRAND.gold} />
+          <Ionicons name="location-sharp" size={48} color={DARK.accent} />
         </View>
         <Text
           accessibilityRole="header"
-          style={[TYPE.title, { color: COLORS.text, textAlign: 'center' }]}
+          style={[TYPE.title, { color: DARK.text, textAlign: 'center' }]}
         >
           Jax needs your location
         </Text>
-        <Text style={[TYPE.callout, { color: COLORS.textMuted, textAlign: 'center' }]}>
+        <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
           We use it only while you use the app, to:
         </Text>
       </View>
@@ -88,21 +89,21 @@ export function LocationGate({
                 borderRadius: RADIUS.md,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: COLORS.primarySoft,
+                backgroundColor: DARK.raised,
               }}
             >
-              <Ionicons name={r.icon} size={22} color={COLORS.primary} />
+              <Ionicons name={r.icon} size={22} color={DARK.accent} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[TYPE.label, { color: COLORS.text }]}>{r.title}</Text>
-              <Text style={[TYPE.caption, { color: COLORS.textMuted }]}>{r.body}</Text>
+              <Text style={[TYPE.label, { color: DARK.text }]}>{r.title}</Text>
+              <Text style={[TYPE.caption, { color: DARK.textMuted }]}>{r.body}</Text>
             </View>
           </View>
         ))}
       </View>
 
       <Banner icon="eye-off-outline" style={{ marginBottom: 0 }}>
-        <Text style={[TYPE.callout, { color: COLORS.text }]}>
+        <Text style={[TYPE.callout, { color: DARK.text }]}>
           Choose <Text style={{ fontWeight: '800' }}>&quot;While using the app&quot;</Text>. We
           never track you in the background, and other people never see your exact location.
         </Text>
@@ -110,7 +111,7 @@ export function LocationGate({
 
       {blocked ? (
         <View>
-          <Text style={[TYPE.callout, { color: COLORS.text }]}>
+          <Text style={[TYPE.callout, { color: DARK.text }]}>
             Location is turned off for Jax. Turn it on in Settings → Location → &quot;While using
             the app&quot;.
           </Text>
@@ -123,7 +124,7 @@ export function LocationGate({
       ) : (
         <Button title="Allow location" icon="navigate" onPress={() => void request()} />
       )}
-      <Text style={[TYPE.caption, { color: COLORS.textMuted, textAlign: 'center' }]}>
+      <Text style={[TYPE.caption, { color: DARK.textMuted, textAlign: 'center' }]}>
         Without location you can still manage your account, but you won&apos;t see the feed or
         places.
       </Text>

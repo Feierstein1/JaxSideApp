@@ -1,34 +1,32 @@
-import type { ComponentProps } from 'react';
 import { ActivityIndicator, View, type ColorValue } from 'react-native';
 import { Tabs } from 'expo-router';
 import * as Location from 'expo-location';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { BRAND, COLORS } from '@jax/shared';
+import { DARK } from '@jax/shared';
 import { useGuest } from '@/auth/guest';
 import { LocationGate } from '@/location/LocationGate';
 import { haptic } from '@/motion';
-import { headerOptions } from '@/ui';
-
-type IconName = ComponentProps<typeof Ionicons>['name'];
+import { FONT } from '@/text';
+import { type IconName } from '@/ui';
 
 /**
- * D78: tab icon. The active tab is filled and gold on a raised pill (the Material 3
- * "active indicator"); the others are white outlines.
+ * D78 / D79: tab icon. The active tab is filled and gold on a raised pill (the Material 3
+ * "active indicator"); the others are grey outlines.
  */
 function tabIcon(name: string) {
   function TabIcon({ focused, color }: { focused: boolean; color: ColorValue }) {
     return (
       <View
         style={{
-          width: 56,
-          height: 30,
-          borderRadius: 15,
+          width: 60,
+          height: 32,
+          borderRadius: 16,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: focused ? COLORS.surfaceDarkRaised : 'transparent',
+          backgroundColor: focused ? DARK.raised : 'transparent',
         }}
       >
-        <Ionicons name={(focused ? name : `${name}-outline`) as IconName} color={color} size={22} />
+        <Ionicons name={(focused ? name : `${name}-outline`) as IconName} color={color} size={23} />
       </View>
     );
   }
@@ -51,10 +49,10 @@ export default function AppLayout() {
           flex: 1,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: COLORS.surfaceInverse,
+          backgroundColor: DARK.page,
         }}
       >
-        <ActivityIndicator color={BRAND.gold} />
+        <ActivityIndicator color={DARK.accent} />
       </View>
     );
   }
@@ -64,30 +62,23 @@ export default function AppLayout() {
     <Tabs
       screenListeners={{ tabPress: () => haptic.select() }}
       screenOptions={{
-        ...headerOptions,
-        // Black tab bar with gold for the active tab (9.2:1) and white for the rest (D33).
+        headerShown: false,
+        sceneStyle: { backgroundColor: DARK.page },
+        // Black tab bar: gold for the active tab (9.2:1), grey for the rest (D33).
         tabBarStyle: {
-          backgroundColor: COLORS.surfaceInverse,
-          borderTopColor: COLORS.surfaceDark,
+          backgroundColor: DARK.bar,
+          borderTopColor: DARK.hairline,
+          paddingTop: 6,
         },
-        tabBarActiveTintColor: BRAND.gold,
-        tabBarInactiveTintColor: COLORS.onSurfaceInverse,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 2 },
+        tabBarActiveTintColor: DARK.accent,
+        tabBarInactiveTintColor: DARK.textMuted,
+        tabBarLabelStyle: { fontSize: 11.5, fontFamily: FONT.bold, marginTop: 2 },
       }}
     >
-      <Tabs.Screen
-        name="(home)"
-        options={{
-          headerShown: false,
-          title: 'Home',
-          tabBarLabel: 'Home',
-          tabBarIcon: tabIcon('home'),
-        }}
-      />
+      <Tabs.Screen name="(home)" options={{ title: 'Home', tabBarIcon: tabIcon('home') }} />
       <Tabs.Screen
         name="places"
         options={{
-          headerShown: false,
           title: 'Places',
           // P4.2: business rooms are for registered users only.
           href: isGuest ? null : undefined,
@@ -96,11 +87,7 @@ export default function AppLayout() {
       />
       <Tabs.Screen
         name="account"
-        options={{
-          headerShown: false,
-          title: 'Account',
-          tabBarIcon: tabIcon('person-circle'),
-        }}
+        options={{ title: 'Account', tabBarIcon: tabIcon('person-circle') }}
       />
     </Tabs>
   );

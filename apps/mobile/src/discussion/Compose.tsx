@@ -6,13 +6,11 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack } from 'expo-router';
-import { BRAND, COLORS, PHOTOS_MAX, POST_MAX, profileColor } from '@jax/shared';
+import { PHOTOS_MAX, POST_MAX, profileColor, DARK } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
 import { haptic } from '@/motion';
@@ -23,6 +21,7 @@ import { createPost, markFeedsDirty } from './api';
 import { pickPhoto, uploadPhoto, type Uploaded } from './photos';
 import { sendScreened } from './screening';
 import { VoiceRecorder, type UploadedVoice } from './VoiceRecorder';
+import { Text, TextInput } from '@/text';
 
 /**
  * Write a post (P3.11). Area posts are placed at the author's (rounded) location by the
@@ -95,7 +94,7 @@ export function Compose({
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: COLORS.background }}
+      style={{ flex: 1, backgroundColor: DARK.page }}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
       <Stack.Screen
@@ -103,12 +102,11 @@ export function Compose({
           headerLeft: () => (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Cancel"
               onPress={() => router.back()}
-              style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 }}
+              style={{ width: 44, height: 44, justifyContent: 'center', marginRight: 4 }}
             >
-              <Text style={{ color: COLORS.onSurfaceInverse, fontSize: 16, fontWeight: '600' }}>
-                Cancel
-              </Text>
+              <Ionicons name="close" size={26} color={DARK.text} />
             </Pressable>
           ),
           headerRight: () => (
@@ -126,16 +124,16 @@ export function Compose({
                 alignItems: 'center',
                 justifyContent: 'center',
                 // Gold with black text (D33); greyed out until there's something to post.
-                backgroundColor: canPost ? BRAND.gold : COLORS.surfaceDarkRaised,
+                backgroundColor: canPost ? DARK.accent : DARK.raised,
                 opacity: pressed ? 0.8 : 1,
               })}
             >
               {busy ? (
-                <ActivityIndicator color={COLORS.onAccent} />
+                <ActivityIndicator color={DARK.onAccent} />
               ) : (
                 <Text
                   style={{
-                    color: canPost ? COLORS.onAccent : COLORS.onSurfaceDarkMuted,
+                    color: canPost ? DARK.onAccent : DARK.textMuted,
                     fontWeight: '800',
                     fontSize: 15,
                   }}
@@ -158,12 +156,11 @@ export function Compose({
               url={user.avatarUrl}
               size={44}
               ringColor={profileColor(user.color).hex}
+              fill={profileColor(user.color).hex}
             />
           ) : null}
           <View style={{ flex: 1, gap: 4 }}>
-            {user ? (
-              <Text style={[TYPE.label, { color: COLORS.text }]}>{user.username}</Text>
-            ) : null}
+            {user ? <Text style={[TYPE.label, { color: DARK.text }]}>{user.username}</Text> : null}
             {/* Where the post is going. */}
             <View
               style={{
@@ -174,17 +171,17 @@ export function Compose({
                 paddingHorizontal: 10,
                 paddingVertical: 4,
                 borderRadius: RADIUS.pill,
-                backgroundColor: COLORS.primarySoft,
+                backgroundColor: DARK.tealSoft,
               }}
             >
               <Ionicons
                 name={target.kind === 'general' ? 'location' : 'storefront'}
                 size={13}
-                color={COLORS.primary}
+                color={DARK.tealText}
               />
               <Text
                 numberOfLines={1}
-                style={{ color: COLORS.primary, fontWeight: '700', fontSize: 13 }}
+                style={{ color: DARK.tealText, fontWeight: '700', fontSize: 13 }}
               >
                 {target.kind === 'general' ? 'People near you' : (placeName ?? 'This place')}
               </Text>
@@ -199,14 +196,14 @@ export function Compose({
               ? 'What’s happening around here?'
               : 'Share something about this place…'
           }
-          placeholderTextColor={COLORS.placeholder}
+          placeholderTextColor={DARK.placeholder}
           value={body}
           onChangeText={setBody}
           maxLength={POST_MAX}
           multiline
           autoFocus
           textAlignVertical="top"
-          style={{ fontSize: 19, lineHeight: 26, color: COLORS.text, minHeight: 140 }}
+          style={{ fontSize: 19, lineHeight: 26, color: DARK.text, minHeight: 140 }}
         />
 
         {photos.length ? (
@@ -232,10 +229,10 @@ export function Compose({
                     borderRadius: 13,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: COLORS.surfaceInverse,
+                    backgroundColor: DARK.bar,
                   }}
                 >
-                  <Ionicons name="close" size={16} color={COLORS.onSurfaceInverse} />
+                  <Ionicons name="close" size={16} color={DARK.text} />
                 </Pressable>
               </View>
             ))}
@@ -245,12 +242,12 @@ export function Compose({
                   width: 96,
                   height: 96,
                   borderRadius: RADIUS.md,
-                  backgroundColor: COLORS.surfaceMuted,
+                  backgroundColor: DARK.page,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <ActivityIndicator color={COLORS.primary} />
+                <ActivityIndicator color={DARK.accent} />
               </View>
             ) : null}
           </View>
@@ -264,8 +261,8 @@ export function Compose({
         {error ? <FormError>{error}</FormError> : null}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="shield-checkmark-outline" size={14} color={COLORS.textMuted} />
-          <Text style={[TYPE.caption, { color: COLORS.textMuted, flex: 1 }]}>
+          <Ionicons name="shield-checkmark-outline" size={14} color={DARK.textMuted} />
+          <Text style={[TYPE.caption, { color: DARK.textMuted, flex: 1 }]}>
             {target.kind === 'general'
               ? 'People within about 500 yards will see this. Your exact location is never shown.'
               : `Posting in ${placeName ?? 'this place'}’s discussion.`}{' '}
@@ -283,8 +280,8 @@ export function Compose({
           paddingHorizontal: SPACE.md,
           paddingVertical: SPACE.sm,
           borderTopWidth: 1,
-          borderTopColor: COLORS.hairline,
-          backgroundColor: COLORS.background,
+          borderTopColor: DARK.hairline,
+          backgroundColor: DARK.card,
         }}
       >
         <Pressable
@@ -299,13 +296,13 @@ export function Compose({
             borderRadius: 22,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: pressed ? COLORS.primarySoft : 'transparent',
+            backgroundColor: pressed ? DARK.tealSoft : 'transparent',
             opacity: voice || photos.length >= PHOTOS_MAX ? 0.35 : 1,
           })}
         >
-          <Ionicons name="image-outline" size={25} color={COLORS.primary} />
+          <Ionicons name="image-outline" size={25} color={DARK.accent} />
         </Pressable>
-        <Text style={[TYPE.caption, { color: COLORS.textMuted }]}>
+        <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
           {photos.length > 0 ? `${photos.length}/${PHOTOS_MAX} photos` : ''}
         </Text>
         <View style={{ flex: 1 }} />
@@ -315,7 +312,7 @@ export function Compose({
             TYPE.caption,
             {
               fontVariant: ['tabular-nums'],
-              color: nearLimit ? COLORS.error : COLORS.textMuted,
+              color: nearLimit ? DARK.error : DARK.textMuted,
               fontWeight: nearLimit ? '800' : '500',
             },
           ]}

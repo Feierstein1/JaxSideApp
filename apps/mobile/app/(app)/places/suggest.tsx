@@ -1,22 +1,16 @@
 import { useEffect, useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, View } from 'react-native';
 import { router } from 'expo-router';
-import { COLORS, SUBMIT_CATEGORIES, type PlaceCandidate } from '@jax/shared';
+import { categoryColor, DARK, SUBMIT_CATEGORIES, type PlaceCandidate } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { sendScreened } from '@/discussion/screening';
 import { categoryLabel, formatDistance } from '@/format';
 import { getFreshReading } from '@/location/device';
+import { categoryIcon } from '@/places/PlaceHeader';
 import { serverErrors, type FieldErrors } from '@/forms';
-import { Button, Chip, Field, FormError, styles } from '@/ui';
+import { Banner, Button, Chip, Field, FormError, PageTitle, Screen, styles } from '@/ui';
+import { Text, TextInput } from '@/text';
 
 /**
  * P5.8 (D63): suggest a place that's missing from the list. Stand at the place: your
@@ -84,72 +78,78 @@ export default function SuggestPlace() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1 }}
-    >
-      <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-        <Text style={[styles.body, styles.banner]}>
-          Stand at the place you’re suggesting: your current location is used as its spot on the
-          map. Only the place’s location is saved with it.
-        </Text>
-        <FormError>{errors.form}</FormError>
-        <Field
-          label="Name"
-          value={name}
-          onChangeText={setName}
-          maxLength={120}
-          error={errors.name}
-        />
-        {similar.length ? (
-          <View style={[styles.banner, { marginTop: -4 }]}>
-            <Text style={[styles.label]}>Already listed nearby?</Text>
-            {similar.map((p) => (
-              <Text
-                key={p.id}
-                style={[styles.linkText, { paddingVertical: 4 }]}
-                onPress={() => router.replace(`/places/${p.id}`)}
-              >
-                {p.name} · {categoryLabel(p.category)} · {formatDistance(p.distanceMeters)}
-              </Text>
-            ))}
-            <Text style={styles.muted}>
-              If it’s one of these, tap it instead of suggesting it again.
+    <Screen keyboard>
+      <PageTitle
+        title="Suggest a place"
+        subtitle="Missing a spot nearby? An admin reviews every suggestion."
+        icon="add-circle-outline"
+      />
+      <Banner icon="navigate-outline" tone="info">
+        Stand at the place you’re suggesting: your current location is used as its spot on the map.
+        Only the place’s location is saved with it.
+      </Banner>
+      <FormError>{errors.form}</FormError>
+      <Field label="Name" value={name} onChangeText={setName} maxLength={120} error={errors.name} />
+      {similar.length ? (
+        <View
+          style={{
+            backgroundColor: DARK.card,
+            borderRadius: 12,
+            padding: 14,
+            marginBottom: 16,
+            borderLeftWidth: 4,
+            borderLeftColor: DARK.accent,
+          }}
+        >
+          <Text style={[styles.label]}>Already listed nearby?</Text>
+          {similar.map((p) => (
+            <Text
+              key={p.id}
+              style={[styles.linkText, { paddingVertical: 4 }]}
+              onPress={() => router.replace(`/places/${p.id}`)}
+            >
+              {p.name} · {categoryLabel(p.category)} · {formatDistance(p.distanceMeters)}
             </Text>
-          </View>
-        ) : null}
-        <Text style={styles.label}>Category</Text>
-        <View style={[styles.row, { flexWrap: 'wrap', gap: 8 }]}>
-          {SUBMIT_CATEGORIES.map((c) => (
-            <Chip
-              key={c}
-              label={categoryLabel(c)}
-              active={category === c}
-              onPress={() => setCategory(c)}
-            />
           ))}
+          <Text style={styles.muted}>
+            If it’s one of these, tap it instead of suggesting it again.
+          </Text>
         </View>
-        {errors.category ? <Text style={styles.error}>{errors.category}</Text> : null}
-        <Field
-          label="Address (optional)"
-          value={address}
-          onChangeText={setAddress}
-          maxLength={200}
-          error={errors.address}
-        />
-        <Text style={styles.label}>Notes for the reviewer (optional)</Text>
-        <TextInput
-          accessibilityLabel="Notes for the reviewer"
-          value={notes}
-          onChangeText={setNotes}
-          maxLength={1000}
-          multiline
-          placeholder="Anything that helps, like opening hours or what it is"
-          placeholderTextColor={COLORS.placeholder}
-          style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
-        />
-        <Button title="Send suggestion" onPress={() => void submit()} busy={busy} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+      ) : null}
+      <Text style={styles.label}>Category</Text>
+      <View style={[styles.row, { flexWrap: 'wrap', gap: 8 }]}>
+        {SUBMIT_CATEGORIES.map((c) => (
+          <Chip
+            key={c}
+            label={categoryLabel(c)}
+            icon={categoryIcon(c)}
+            iconColor={categoryColor(c)}
+            active={category === c}
+            onPress={() => setCategory(c)}
+          />
+        ))}
+      </View>
+      {errors.category ? <Text style={styles.error}>{errors.category}</Text> : null}
+      <Field
+        label="Address (optional)"
+        icon="location-outline"
+        value={address}
+        onChangeText={setAddress}
+        maxLength={200}
+        error={errors.address}
+      />
+      <Text style={styles.label}>Notes for the reviewer (optional)</Text>
+      <TextInput
+        accessibilityLabel="Notes for the reviewer"
+        value={notes}
+        onChangeText={setNotes}
+        maxLength={1000}
+        multiline
+        placeholder="Anything that helps, like opening hours or what it is"
+        placeholderTextColor={DARK.placeholder}
+        style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
+      />
+      <Button title="Send suggestion" onPress={() => void submit()} busy={busy} />
+    </Screen>
   );
 }

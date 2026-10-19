@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { COLORS } from '@jax/shared';
+import { DARK } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { HowStrikesWork } from '@/standing/HowStrikesWork';
 import { StrikeList, type Standing } from '@/standing/StrikeList';
-import { Button, styles } from '@/ui';
+import { Banner, Button, ErrorState, PageTitle, Screen } from '@/ui';
 
 /** P5.6 / P5.7: your warnings and suspensions that still count, with appeals. */
 export default function AccountStanding() {
@@ -23,19 +23,22 @@ export default function AccountStanding() {
 
   if (!standing) {
     return error ? (
-      <Text style={[styles.screen, styles.error]}>{error}</Text>
+      <ErrorState message={error} />
     ) : (
-      <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.primary} />
+      <ActivityIndicator style={{ marginTop: 32 }} color={DARK.accent} />
     );
   }
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
+    <Screen keyboard>
+      <PageTitle
+        title="Account standing"
+        subtitle="Warnings and suspensions that still count, and your appeals."
+        icon="shield-checkmark-outline"
+      />
       {standing.strikes.length === 0 ? (
-        <View style={styles.banner}>
-          <Text style={styles.body}>
-            Your account is in good standing. Thanks for being a good neighbor.
-          </Text>
-        </View>
+        <Banner icon="shield-checkmark" tone="success">
+          Your account is in good standing. Thanks for being a good neighbor.
+        </Banner>
       ) : (
         <StrikeList
           strikes={standing.strikes}
@@ -51,6 +54,6 @@ export default function AccountStanding() {
         title="Read the Community Guidelines"
         onPress={() => router.push('/account/legal/guidelines')}
       />
-    </ScrollView>
+    </Screen>
   );
 }

@@ -1,8 +1,9 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
-import { BRAND, COLORS, type PostTypeFilter } from '@jax/shared';
+import { DARK, type PostTypeFilter } from '@jax/shared';
 import { haptic } from '@/motion';
+import { Text } from '@/text';
 
 /** D75: shown types. Video joins when video posts are built (P8.9). */
 const TABS: {
@@ -32,7 +33,7 @@ export function PostTypeTabs({
     <View accessibilityRole="tablist" style={{ flexDirection: 'row' }}>
       {TABS.map((t) => {
         const active = t.key === value;
-        const color = active ? BRAND.gold : COLORS.onSurfaceInverse;
+        const color = active ? DARK.accent : DARK.textMuted;
         return (
           <Pressable
             key={t.key}
@@ -66,10 +67,10 @@ export function PostTypeTabs({
               style={{
                 position: 'absolute',
                 bottom: 0,
-                width: 36,
+                width: 44,
                 height: 3,
                 borderRadius: 2,
-                backgroundColor: active ? BRAND.gold : 'transparent',
+                backgroundColor: active ? DARK.accent : 'transparent',
               }}
             />
           </Pressable>

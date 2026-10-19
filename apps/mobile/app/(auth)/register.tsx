@@ -1,19 +1,12 @@
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Switch,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, View } from 'react-native';
 import { router } from 'expo-router';
-import { COLORS, PASSWORD_MIN, registerRequestSchema } from '@jax/shared';
+import { PASSWORD_MIN, registerRequestSchema, DARK } from '@jax/shared';
 import { api } from '@/api';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { SPACE, TYPE } from '@/tokens';
 import { Banner, Button, Field, FormError, PasswordField, styles, switchColors } from '@/ui';
+import { Text } from '@/text';
 
 export default function Register() {
   const [username, setUsername] = useState('');
@@ -61,13 +54,13 @@ export default function Register() {
       style={{ flex: 1 }}
     >
       <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-        <Text style={[TYPE.title, { color: COLORS.text }]}>Join your neighbors</Text>
-        <Text style={[TYPE.callout, { color: COLORS.textMuted, marginBottom: SPACE.lg }]}>
+        <Text style={[TYPE.title, { color: DARK.text }]}>Join your neighbors</Text>
+        <Text style={[TYPE.callout, { color: DARK.textMuted, marginBottom: SPACE.lg }]}>
           A pseudonymous community for people in Jacksonville. Pick a username; nobody sees your
           real name or email.
         </Text>
         <Banner icon="shield-checkmark-outline">
-          <Text style={[TYPE.callout, { color: COLORS.text }]}>
+          <Text style={[TYPE.callout, { color: DARK.text }]}>
             Jax is for adults 18 and older. We use your birth year only to check that, then discard
             it. We don&apos;t store it. Your email is stored encrypted and never shown to anyone.
             This is a simple age check, not identity verification.
@@ -76,6 +69,7 @@ export default function Register() {
         <FormError>{errors.form}</FormError>
         <Field
           label="Username"
+          icon="at"
           hint="This is the name people see. You can change it later."
           value={username}
           onChangeText={setUsername}
@@ -86,6 +80,7 @@ export default function Register() {
         />
         <Field
           label="Email (private)"
+          icon="mail-outline"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -112,6 +107,7 @@ export default function Register() {
         />
         <Field
           label="Birth year"
+          icon="calendar-outline"
           hint="Only used to check you're 18+. Not stored."
           value={birthYear}
           onChangeText={setBirthYear}
@@ -181,11 +177,11 @@ function SwitchRow({
         marginBottom: SPACE.sm,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: value ? COLORS.primary : COLORS.cardBorder,
-        backgroundColor: pressed || value ? COLORS.primarySoft : COLORS.background,
+        borderColor: value ? DARK.tealText : DARK.hairline,
+        backgroundColor: pressed || value ? DARK.tealSoft : DARK.raised,
       })}
     >
-      <Text style={[TYPE.body, { flex: 1, color: COLORS.text }]}>{label}</Text>
+      <Text style={[TYPE.body, { flex: 1, color: DARK.text }]}>{label}</Text>
       <Switch
         {...switchColors}
         value={value}

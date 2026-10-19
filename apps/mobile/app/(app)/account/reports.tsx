@@ -1,11 +1,13 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { COLORS, REPORT_REASON_LABELS, type MyReport } from '@jax/shared';
+import { REPORT_REASON_LABELS, type MyReport, DARK } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { timeAgo } from '@/format';
-import { styles } from '@/ui';
+import { SPACE, TYPE } from '@/tokens';
+import { Card, EmptyState, ErrorState, PageTitle, Screen, StatusBadge } from '@/ui';
+import { Text } from '@/text';
 
 const STATUS: Record<MyReport['status'], string> = {
   OPEN: 'Waiting for review',
@@ -38,46 +40,51 @@ export default function MyReports() {
 
   if (!reports) {
     return error ? (
-      <Text style={[styles.screen, styles.error]}>{error}</Text>
+      <Screen>
+        <ErrorState message={error} />
+      </Screen>
     ) : (
-      <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.primary} />
+      <Screen>
+        <ActivityIndicator style={{ marginTop: 32 }} color={DARK.accent} />
+      </Screen>
     );
   }
   return (
-    <ScrollView contentContainerStyle={styles.screen}>
+    <Screen>
+      <PageTitle
+        title="My reports"
+        subtitle="What you’ve reported and where it stands. The people you report are never told who reported them."
+        icon="flag-outline"
+      />
       {reports.length === 0 ? (
-        <Text style={styles.muted}>
-          You haven’t reported anything. To report a post, comment or profile, open it and tap
-          Report.
-        </Text>
+        <EmptyState
+          icon="flag-outline"
+          title="No reports"
+          body="To report a post, comment or profile, open it and choose Report from the ••• menu."
+        />
       ) : (
-        reports.map((r) => (
-          <View
-            key={r.id}
-            style={{
-              paddingVertical: 10,
-              borderBottomWidth: 1,
-              borderBottomColor: COLORS.cardBorder,
-            }}
-          >
-            <Text style={styles.muted}>
-              {KIND[r.targetType]} · {REPORT_REASON_LABELS[r.reason]} · {timeAgo(r.createdAt)}
-            </Text>
-            <Text style={styles.body} numberOfLines={2}>
-              {r.preview}
-            </Text>
-            <Text
-              style={{
-                marginTop: 2,
-                fontWeight: '700',
-                color: r.status === 'OPEN' ? COLORS.textMuted : COLORS.primary,
-              }}
-            >
-              {STATUS[r.status]}
-            </Text>
-          </View>
-        ))
+        <View style={{ gap: SPACE.sm }}>
+          {reports.map((r) => (
+            <Card key={r.id} style={{ gap: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={[TYPE.overline, { color: DARK.textMuted, flex: 1 }]}>
+                  {KIND[r.targetType]} · {timeAgo(r.createdAt)}
+                </Text>
+                <StatusBadge
+                  text={STATUS[r.status]}
+                  tone={r.status === 'OPEN' ? 'wait' : r.status === 'ACTIONED' ? 'good' : 'neutral'}
+                />
+              </View>
+              <Text style={TYPE.body} numberOfLines={2}>
+                {r.preview}
+              </Text>
+              <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
+                Reason: {REPORT_REASON_LABELS[r.reason]}
+              </Text>
+            </Card>
+          ))}
+        </View>
       )}
-    </ScrollView>
+    </Screen>
   );
 }

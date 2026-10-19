@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { ScrollView, Text } from 'react-native';
 import { PASSWORD_MIN, passwordChangeSchema } from '@jax/shared';
 import { api } from '@/api';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
-import { Button, FormError, PasswordField, styles } from '@/ui';
+import { Banner, Button, FormError, PageTitle, PasswordField, Screen } from '@/ui';
 
 /** P4.10: change password. Every other device is signed out; this one stays signed in. */
 export default function ChangePassword() {
@@ -31,11 +30,16 @@ export default function ChangePassword() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
+    <Screen keyboard>
+      <PageTitle
+        title="Change password"
+        subtitle="Every other phone signed in to your account will be signed out."
+        icon="key-outline"
+      />
       {done ? (
-        <Text style={[styles.body, styles.banner]}>
+        <Banner icon="checkmark-circle" tone="success">
           Password changed. Any other phones signed in to your account were signed out.
-        </Text>
+        </Banner>
       ) : null}
       <FormError>{errors.form}</FormError>
       <PasswordField
@@ -56,6 +60,6 @@ export default function ChangePassword() {
         onSubmitEditing={submit}
       />
       <Button title="Change password" onPress={submit} busy={busy} />
-    </ScrollView>
+    </Screen>
   );
 }

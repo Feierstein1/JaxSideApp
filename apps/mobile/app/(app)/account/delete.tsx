@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Alert, ScrollView, Text } from 'react-native';
+import { Alert } from 'react-native';
 import { router } from 'expo-router';
 import { accountDeleteSchema, CONFIG_DEFAULTS } from '@jax/shared';
 import { api } from '@/api';
 import { useAuth } from '@/auth/AuthContext';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
-import { Button, Field, FormError, PasswordField, styles } from '@/ui';
+import { Button, Field, FormError, PageTitle, PasswordField, Screen, styles } from '@/ui';
+import { Text } from '@/text';
 
 /** P4.12: delete your account (password, plus typing DELETE). */
 export default function DeleteAccount() {
@@ -35,7 +36,8 @@ export default function DeleteAccount() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
+    <Screen keyboard>
+      <PageTitle title="Delete account" icon="trash-outline" />
       <Text style={[styles.body, { marginBottom: 8 }]}>
         Deleting your account signs you out everywhere and hides your profile right away. Your posts
         stay but show “deleted user.” Your email is kept encrypted for {days} days in case of abuse
@@ -57,6 +59,7 @@ export default function DeleteAccount() {
       />
       <Field
         label="Type DELETE to confirm"
+        icon="warning-outline"
         value={confirm}
         onChangeText={setConfirm}
         autoCapitalize="characters"
@@ -64,6 +67,6 @@ export default function DeleteAccount() {
         error={errors.confirm}
       />
       <Button variant="danger" title="Delete my account" onPress={submit} busy={busy} />
-    </ScrollView>
+    </Screen>
   );
 }

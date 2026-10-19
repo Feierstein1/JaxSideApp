@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   setAudioModeAsync,
@@ -7,8 +7,9 @@ import {
   useAudioPlayerStatus,
   type AudioPlayer,
 } from 'expo-audio';
-import { COLORS, type VoiceView } from '@jax/shared';
+import { DARK, type VoiceView } from '@jax/shared';
 import { clock } from '@/format';
+import { Text } from '@/text';
 import { photoUri } from './photos';
 
 /** Only one clip plays at a time across the app. */
@@ -52,7 +53,7 @@ export function VoicePlayer({ voice }: { voice: Pick<VoiceView, 'url' | 'duratio
         paddingLeft: 6,
         paddingRight: 14,
         borderRadius: 26,
-        backgroundColor: COLORS.surfaceInverse,
+        backgroundColor: DARK.raised,
       }}
     >
       <Pressable
@@ -66,33 +67,29 @@ export function VoicePlayer({ voice }: { voice: Pick<VoiceView, 'url' | 'duratio
           borderRadius: 20,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: COLORS.accent,
+          backgroundColor: DARK.accent,
         }}
       >
         {/* D78: black icon on a gold circle (D33). */}
         <Ionicons
           name={status.playing ? 'pause' : 'play'}
           size={20}
-          color={COLORS.onAccent}
+          color={DARK.onAccent}
           style={status.playing ? undefined : { marginLeft: 2 }}
         />
       </Pressable>
-      <Ionicons name="mic" size={16} color={COLORS.onSurfaceDarkMuted} />
-      <View
-        style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: COLORS.surfaceDarkRaised }}
-      >
+      <Ionicons name="mic" size={16} color={DARK.textMuted} />
+      <View style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: DARK.hairline }}>
         <View
           style={{
             width: `${progress * 100}%`,
             height: 4,
             borderRadius: 2,
-            backgroundColor: COLORS.accent,
+            backgroundColor: DARK.accent,
           }}
         />
       </View>
-      <Text
-        style={{ color: COLORS.onSurfaceInverse, fontWeight: '700', fontVariant: ['tabular-nums'] }}
-      >
+      <Text style={{ color: DARK.text, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
         {status.playing || status.currentTime > 0 ? clock(status.currentTime) : clock(total)}
       </Text>
     </View>

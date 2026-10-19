@@ -1,11 +1,14 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { COLORS, type MySubmission } from '@jax/shared';
+import { type MySubmission, DARK } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { categoryLabel, timeAgo } from '@/format';
-import { Button, styles } from '@/ui';
+import { CategoryTile } from '@/places/PlaceHeader';
+import { SPACE, TYPE } from '@/tokens';
+import { Button, Card, EmptyState, ErrorState, PageTitle, Screen, StatusBadge } from '@/ui';
+import { Text } from '@/text';
 
 const STATUS: Record<MySubmission['status'], string> = {
   PENDING: 'Waiting for review',
@@ -33,51 +36,68 @@ export default function MySuggestions() {
 
   if (!items) {
     return error ? (
-      <Text style={[styles.screen, styles.error]}>{error}</Text>
+      <Screen>
+        <ErrorState message={error} />
+      </Screen>
     ) : (
-      <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.primary} />
+      <Screen>
+        <ActivityIndicator style={{ marginTop: 32 }} color={DARK.accent} />
+      </Screen>
     );
   }
   return (
-    <ScrollView contentContainerStyle={styles.screen}>
+    <Screen>
+      <PageTitle
+        title="My suggestions"
+        subtitle="Places you suggested and how the review went."
+        icon="add-circle-outline"
+      />
       {items.length === 0 ? (
-        <Text style={styles.muted}>
-          You haven’t suggested any places. Missing a spot? Go to Places and tap “Suggest a place”.
-        </Text>
+        <EmptyState
+          icon="storefront-outline"
+          title="No suggestions yet"
+          body="Missing a spot? Go to Places and tap the + button to suggest it."
+          action={{
+            label: 'Suggest a place',
+            icon: 'add',
+            onPress: () => router.push('/places/suggest'),
+          }}
+        />
       ) : (
-        items.map((s) => (
-          <View
-            key={s.id}
-            style={{
-              paddingVertical: 10,
-              borderBottomWidth: 1,
-              borderBottomColor: COLORS.cardBorder,
-            }}
-          >
-            <Text style={styles.label}>{s.name}</Text>
-            <Text style={styles.muted}>
-              {categoryLabel(s.category)} · {timeAgo(s.createdAt)}
-            </Text>
-            <Text
-              style={{
-                marginTop: 2,
-                fontWeight: '700',
-                color: s.status === 'APPROVED' ? COLORS.primary : COLORS.textMuted,
-              }}
-            >
-              {STATUS[s.status]}
-              {s.decisionReason ? `: ${s.decisionReason}` : ''}
-            </Text>
-            {s.placeId ? (
-              <Button
-                variant="link"
-                title="Open place"
-                onPress={() => router.push(`/places/${s.placeId}`)}
-              />
-            ) : null}
-          </View>
-        ))
+        <View style={{ gap: SPACE.sm }}>
+          {items.map((s) => (
+            <Card key={s.id} style={{ flexDirection: 'row', gap: SPACE.md, alignItems: 'center' }}>
+              <CategoryTile category={s.category} size={44} />
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text style={TYPE.headline} numberOfLines={1}>
+                  {s.name}
+                </Text>
+                <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
+                  {categoryLabel(s.category)} · {timeAgo(s.createdAt)}
+                </Text>
+                <View style={{ flexDirection: 'row', marginTop: 4 }}>
+                  <StatusBadge
+                    text={STATUS[s.status]}
+                    tone={
+                      s.status === 'APPROVED' ? 'good' : s.status === 'PENDING' ? 'wait' : 'neutral'
+                    }
+                  />
+                </View>
+                {s.decisionReason ? (
+                  <Text style={[TYPE.caption, { color: DARK.textMuted }]}>{s.decisionReason}</Text>
+                ) : null}
+              </View>
+              {s.placeId ? (
+                <Button
+                  variant="link"
+                  title="Open"
+                  onPress={() => router.push(`/places/${s.placeId}`)}
+                />
+              ) : null}
+            </Card>
+          ))}
+        </View>
       )}
-    </ScrollView>
+    </Screen>
   );
 }

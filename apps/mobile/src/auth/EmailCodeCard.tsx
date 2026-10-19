@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
-import { EMAIL_CODE_LENGTH, verifyEmailCodeSchema } from '@jax/shared';
+import { View } from 'react-native';
+import { DARK, EMAIL_CODE_LENGTH, verifyEmailCodeSchema } from '@jax/shared';
 import { api } from '@/api';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { Button, Field, FormError, styles } from '@/ui';
 import { useAuth } from './AuthContext';
+import { Text } from '@/text';
 
 /** D31: confirm your email with the 6-digit code (shown until confirmed). */
 export function EmailCodeCard({ email }: { email: string }) {
@@ -42,13 +43,23 @@ export function EmailCodeCard({ email }: { email: string }) {
   }
 
   return (
-    <View style={[styles.banner, { marginTop: 12 }]}>
+    <View
+      style={{
+        marginTop: 12,
+        padding: 16,
+        borderRadius: 16,
+        backgroundColor: DARK.card,
+        borderWidth: 1,
+        borderColor: DARK.accent,
+      }}
+    >
       <Text style={[styles.body, { marginBottom: 8 }]}>
         Confirm your email to post, comment and vote. Enter the 6-digit code we sent to {email}.
       </Text>
       <FormError>{errors.form}</FormError>
       <Field
         label="6-digit code"
+        icon="keypad-outline"
         value={code}
         onChangeText={setCode}
         keyboardType="number-pad"

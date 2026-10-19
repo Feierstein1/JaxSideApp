@@ -1,12 +1,13 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { BRAND, CATEGORY_GROUPS, categoryColor, COLORS, type PlaceSummary } from '@jax/shared';
+import { CATEGORY_GROUPS, categoryColor, DARK, type PlaceSummary } from '@jax/shared';
 import { categoryLabel, formatDistance, plural } from '@/format';
 import { haptic } from '@/motion';
-import { elevation, RADIUS, SPACE } from '@/tokens';
-import { Bone, Pulse, type IconName } from '@/ui';
+import { Text } from '@/text';
+import { RADIUS, SPACE, TYPE } from '@/tokens';
+import { Bone, PressableScale, Pulse, StatTile, type IconName } from '@/ui';
 
-/** D78: an icon per category group, shown in the category pill and on favorites. */
+/** D78: an icon per category group (pill, tile, favorites list, filter chips). */
 const GROUP_ICONS: Record<string, IconName> = {
   food: 'restaurant',
   coffee: 'cafe',
@@ -23,177 +24,260 @@ export function categoryIcon(category: string): IconName {
   return GROUP_ICONS[group?.key ?? ''] ?? 'location';
 }
 
-/**
- * A place's header (D69, D70, D78), the same in the list and on the place page: the
- * category's color, a white category pill with its icon, the name (shrinks if long) and a
- * star: white outline when not a favorite, gold when it is. On the place page the star is
- * a round button (`favorite`).
- */
-export function PlaceTop({
-  place,
-  favorite,
-  large = false,
-}: {
-  place: PlaceSummary;
-  favorite?: { onPress: () => void; busy: boolean };
-  large?: boolean;
-}) {
-  const long = place.name.length > 20;
-  const star = (
-    <Ionicons
-      name={place.isFavorite ? 'star' : 'star-outline'}
-      size={large ? 22 : 18}
-      color={place.isFavorite ? BRAND.gold : COLORS.onSurfaceInverse}
+/** The category color as a thick stripe down the card's left edge (D79). */
+function Stripe({ color }: { color: string }) {
+  return (
+    <View
+      style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, backgroundColor: color }}
     />
   );
+}
+
+/** A rounded tile in the category color with the category's icon in white. */
+export function CategoryTile({ category, size = 52 }: { category: string; size?: number }) {
   return (
     <View
       style={{
-        backgroundColor: categoryColor(place.category),
-        paddingHorizontal: 14,
-        paddingVertical: large ? 16 : 12,
-        gap: large ? 10 : 8,
+        width: size,
+        height: size,
+        borderRadius: size * 0.3,
+        backgroundColor: categoryColor(category),
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <View
-          style={{
-            backgroundColor: COLORS.background,
-            borderRadius: RADIUS.pill,
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 5,
-          }}
-        >
-          <Ionicons
-            name={categoryIcon(place.category)}
-            size={13}
-            color={categoryColor(place.category)}
-          />
-          <Text style={{ color: COLORS.text, fontSize: 12, fontWeight: '800' }}>
-            {categoryLabel(place.category)}
-          </Text>
-        </View>
-        <View style={{ flex: 1 }} />
-        {favorite ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={place.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-            accessibilityState={{ selected: place.isFavorite, busy: favorite.busy }}
-            onPress={() => {
-              haptic.tap();
-              favorite.onPress();
-            }}
-            disabled={favorite.busy}
-            style={({ pressed }) => ({
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              alignItems: 'center',
-              justifyContent: 'center',
-              // Gold star on black (9.2:1, D33).
-              backgroundColor: COLORS.surfaceInverse,
-              opacity: pressed ? 0.75 : 1,
-            })}
-          >
-            {favorite.busy ? <ActivityIndicator color={COLORS.onSurfaceInverse} /> : star}
-          </Pressable>
-        ) : place.isFavorite ? (
-          <View accessibilityLabel="Favorite">{star}</View>
-        ) : null}
-      </View>
-      <Text
-        numberOfLines={large ? 2 : 1}
-        adjustsFontSizeToFit={!large}
-        minimumFontScale={0.7}
-        style={{
-          color: COLORS.onSurfaceInverse,
-          fontWeight: '800',
-          fontSize: (large ? 26 : 19) - (long ? 2 : 0),
-          letterSpacing: -0.3,
-        }}
-      >
-        {place.name}
+      <Ionicons name={categoryIcon(category)} size={size * 0.48} color={DARK.onTeal} />
+    </View>
+  );
+}
+
+function Meta({ icon, text, color }: { icon: IconName; text: string; color?: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <Ionicons name={icon} size={14} color={color ?? DARK.textMuted} />
+      <Text style={{ color: color ?? DARK.textMuted, fontWeight: '700', fontSize: 13 }}>
+        {text}
       </Text>
     </View>
   );
 }
 
-function Stat({ icon, text, color }: { icon: IconName; text: string; color?: string }) {
+/**
+ * One place in the list (D79). A dark card with the category color as a thick stripe on
+ * the left; a colored icon tile; the name large; category and distance under it; then
+ * posts, favorites and (when you're close enough) "You can post". A gold ★ shows on your
+ * favorites.
+ */
+export function PlaceRow({ place, onPress }: { place: PlaceSummary; onPress: () => void }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-      <Ionicons name={icon} size={16} color={color ?? COLORS.textMuted} />
-      <Text style={{ color: color ?? COLORS.text, fontWeight: '700', fontSize: 14 }}>{text}</Text>
-    </View>
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={`${place.name}, ${categoryLabel(place.category)}, ${formatDistance(place.distanceMeters)} away, ${plural(place.postCount, 'post')}, ${plural(place.favoriteCount, 'favorite')}${place.isFavorite ? ', one of your favorites' : ''}${place.withinRoomRadius ? ', you can post here' : ''}`}
+      onPress={onPress}
+      scaleTo={0.98}
+      containerStyle={{ marginHorizontal: SPACE.md, marginVertical: 6 }}
+      style={{
+        borderRadius: RADIUS.lg,
+        overflow: 'hidden',
+        backgroundColor: DARK.card,
+      }}
+    >
+      <Stripe color={categoryColor(place.category)} />
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 14,
+          paddingLeft: 20,
+          paddingRight: 14,
+          paddingVertical: 14,
+        }}
+      >
+        <CategoryTile category={place.category} />
+        <View style={{ flex: 1, gap: 3 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text
+              numberOfLines={2}
+              style={{ fontSize: 17, lineHeight: 22, fontWeight: '800', flexShrink: 1 }}
+            >
+              {place.name}
+            </Text>
+            {place.isFavorite ? <Ionicons name="star" size={15} color={DARK.accent} /> : null}
+          </View>
+          <Text style={{ color: DARK.textMuted, fontSize: 13.5, fontWeight: '500' }}>
+            {categoryLabel(place.category)}
+            <Text style={{ color: DARK.textMuted }}>{'  ·  '}</Text>
+            <Text style={{ color: DARK.text, fontWeight: '700' }}>
+              {formatDistance(place.distanceMeters)}
+            </Text>
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 5 }}>
+            <Meta
+              icon="chatbubbles"
+              text={place.postCount > 0 ? plural(place.postCount, 'post') : 'No posts yet'}
+              color={place.postCount > 0 ? DARK.tealText : undefined}
+            />
+            {place.favoriteCount > 0 ? (
+              <Meta icon="star" text={String(place.favoriteCount)} />
+            ) : null}
+          </View>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 8 }}>
+          {place.withinRoomRadius ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                paddingHorizontal: 8,
+                height: 24,
+                borderRadius: RADIUS.pill,
+                backgroundColor: DARK.tealSoft,
+              }}
+            >
+              <View
+                style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: DARK.tealText }}
+              />
+              <Text style={{ color: DARK.tealText, fontSize: 11.5, fontWeight: '800' }}>
+                You can post
+              </Text>
+            </View>
+          ) : null}
+          <Ionicons name="chevron-forward" size={18} color={DARK.textMuted} />
+        </View>
+      </View>
+    </PressableScale>
   );
 }
 
-/** Distance, favorites and posts with icons (white row under the header). */
-export function PlaceStats({ place, chevron = false }: { place: PlaceSummary; chevron?: boolean }) {
+/**
+ * The top of a place's page (D79): the same stripe and tile as the list, bigger; the name
+ * large; category and address; three stat tiles; and a full-width Save button (gold
+ * when saved).
+ */
+export function PlaceHero({
+  place,
+  onFavorite,
+  favoriteBusy,
+}: {
+  place: PlaceSummary;
+  onFavorite: () => void;
+  favoriteBusy: boolean;
+}) {
+  const color = categoryColor(place.category);
   return (
     <View
       style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: SPACE.lg,
-        paddingHorizontal: 14,
-        paddingVertical: 11,
-        backgroundColor: COLORS.background,
+        marginHorizontal: SPACE.md,
+        marginTop: SPACE.md,
+        borderRadius: RADIUS.lg + 4,
+        overflow: 'hidden',
+        backgroundColor: DARK.card,
       }}
     >
-      <Stat icon="walk" text={formatDistance(place.distanceMeters)} />
-      {/* D74: how many people favorited it (count only; never who). */}
-      <View
-        accessible
-        accessibilityLabel={`Favorited by ${place.favoriteCount === 1 ? '1 person' : `${place.favoriteCount} people`}`}
-      >
-        <Stat icon="star" text={String(place.favoriteCount)} />
+      <Stripe color={color} />
+      <View style={{ paddingLeft: 22, paddingRight: SPACE.lg, paddingVertical: 18, gap: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <CategoryTile category={place.category} size={64} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text accessibilityRole="header" style={[TYPE.title, { fontSize: 24, lineHeight: 29 }]}>
+              {place.name}
+            </Text>
+            <Text style={{ color: DARK.textMuted, fontWeight: '600' }}>
+              {categoryLabel(place.category)}
+            </Text>
+          </View>
+        </View>
+        {place.address ? (
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+            <Ionicons name="location-outline" size={17} color={DARK.textMuted} />
+            <Text style={[TYPE.callout, { flex: 1, color: DARK.textMuted }]}>{place.address}</Text>
+          </View>
+        ) : null}
+        <View style={{ flexDirection: 'row', gap: SPACE.sm }}>
+          <StatTile icon="walk" value={formatDistance(place.distanceMeters)} label="Away" />
+          <StatTile
+            icon="chatbubbles"
+            value={String(place.postCount)}
+            label={place.postCount === 1 ? 'Post' : 'Posts'}
+            color={DARK.tealText}
+          />
+          <StatTile
+            icon="star"
+            value={String(place.favoriteCount)}
+            label={place.favoriteCount === 1 ? 'Favorite' : 'Favorites'}
+          />
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={place.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          accessibilityState={{ selected: place.isFavorite, busy: favoriteBusy }}
+          disabled={favoriteBusy}
+          onPress={() => {
+            haptic.tap();
+            onFavorite();
+          }}
+          style={({ pressed }) => ({
+            minHeight: 48,
+            borderRadius: RADIUS.md + 2,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            borderWidth: 1.5,
+            borderColor: DARK.accent,
+            backgroundColor: place.isFavorite ? DARK.accent : 'transparent',
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          {favoriteBusy ? (
+            <ActivityIndicator color={place.isFavorite ? DARK.onAccent : DARK.accent} />
+          ) : (
+            <>
+              <Ionicons
+                name={place.isFavorite ? 'star' : 'star-outline'}
+                size={19}
+                color={place.isFavorite ? DARK.onAccent : DARK.accent}
+              />
+              <Text
+                style={{
+                  fontWeight: '800',
+                  fontSize: 15.5,
+                  color: place.isFavorite ? DARK.onAccent : DARK.accent,
+                }}
+              >
+                {place.isFavorite ? 'Saved to favorites' : 'Save to favorites'}
+              </Text>
+            </>
+          )}
+        </Pressable>
       </View>
-      <Stat
-        icon="chatbubbles"
-        text={place.postCount > 0 ? plural(place.postCount, 'post') : 'No posts yet'}
-        color={place.postCount > 0 ? COLORS.primary : undefined}
-      />
-      {chevron ? (
-        <Ionicons
-          name="chevron-forward"
-          size={18}
-          color={COLORS.border}
-          style={{ marginLeft: 'auto' }}
-        />
-      ) : null}
     </View>
   );
 }
 
-/** D78: the rounded card every place sits in (replaces D70's 2 px black frame). */
-export const placeFrame = {
-  marginHorizontal: SPACE.md,
-  marginVertical: 6,
-  borderRadius: RADIUS.lg,
-  overflow: 'hidden',
-  backgroundColor: COLORS.background,
-} as const;
-
-/** D78: the shape of a place card while the list loads. */
+/** The shape of a place card while the list loads. */
 export function PlaceSkeleton() {
   return (
     <Pulse>
       <View
-        style={[
-          placeFrame,
-          { backgroundColor: COLORS.surfaceDarkRaised, padding: 14, gap: 10 },
-          elevation(1),
-        ]}
+        style={{
+          marginHorizontal: SPACE.md,
+          marginVertical: 6,
+          borderRadius: RADIUS.lg,
+          backgroundColor: DARK.card,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 14,
+          paddingLeft: 20,
+          paddingVertical: 14,
+        }}
       >
-        <Bone w={90} h={20} r={10} dark />
-        <Bone w="70%" h={18} dark />
-        <View style={{ flexDirection: 'row', gap: 16, marginTop: 4 }}>
-          <Bone w={60} h={12} dark />
-          <Bone w={36} h={12} dark />
-          <Bone w={70} h={12} dark />
+        <Bone w={52} h={52} r={16} />
+        <View style={{ gap: 8, flex: 1 }}>
+          <Bone w="65%" h={16} />
+          <Bone w="40%" h={12} />
+          <Bone w="50%" h={12} />
         </View>
       </View>
     </Pulse>

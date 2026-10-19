@@ -1,19 +1,20 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
-  COLORS,
   REPORT_DETAILS_MAX,
   REPORT_REASON_LABELS,
   REPORT_REASONS,
   type ReportReason,
   type ReportTarget,
+  DARK,
 } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { getFreshReading } from '@/location/device';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { Banner, Button, Field, FormError, Sheet } from '@/ui';
+import { Text } from '@/text';
 
 /**
  * P5.1: report a post, comment or profile. Pick a reason, optionally add details.
@@ -68,11 +69,11 @@ export function ReportSheet({
       >
         {sent ? (
           <View style={{ alignItems: 'center', gap: SPACE.sm, paddingTop: SPACE.lg }}>
-            <Ionicons name="checkmark-circle" size={56} color={COLORS.primary} />
+            <Ionicons name="checkmark-circle" size={56} color={DARK.accent} />
             <Text accessibilityRole="header" style={[TYPE.title, { textAlign: 'center' }]}>
               Thanks for reporting
             </Text>
-            <Text style={[TYPE.callout, { color: COLORS.textMuted, textAlign: 'center' }]}>
+            <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
               A moderator will review it. You can follow its status in Account → Settings → My
               reports. You can also block this person from their profile.
             </Text>
@@ -80,7 +81,7 @@ export function ReportSheet({
           </View>
         ) : (
           <>
-            <Text style={[TYPE.callout, { color: COLORS.textMuted, marginBottom: 6 }]}>
+            <Text style={[TYPE.callout, { color: DARK.textMuted, marginBottom: 6 }]}>
               What’s wrong? The person won’t be told who reported them.
             </Text>
             {REPORT_REASONS.map((r) => {
@@ -99,14 +100,14 @@ export function ReportSheet({
                     paddingHorizontal: SPACE.md,
                     borderRadius: RADIUS.md,
                     borderWidth: 1,
-                    borderColor: active ? COLORS.primary : COLORS.cardBorder,
-                    backgroundColor: active || pressed ? COLORS.primarySoft : COLORS.background,
+                    borderColor: active ? DARK.tealText : DARK.raised,
+                    backgroundColor: active || pressed ? DARK.tealSoft : DARK.raised,
                   })}
                 >
                   <Ionicons
                     name={active ? 'radio-button-on' : 'radio-button-off'}
                     size={22}
-                    color={active ? COLORS.primary : COLORS.border}
+                    color={active ? DARK.tealText : DARK.textMuted}
                   />
                   <Text style={[TYPE.body, { flex: 1 }, active && { fontWeight: '700' }]}>
                     {REPORT_REASON_LABELS[r]}

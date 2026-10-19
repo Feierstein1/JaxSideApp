@@ -1,49 +1,52 @@
-import { Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { BRAND, COLORS } from '@jax/shared';
+import { CONFIG_DEFAULTS, DARK, yardsLabel } from '@jax/shared';
+import { router } from 'expo-router';
+import { useAuth } from '@/auth/AuthContext';
+import { Text } from '@/text';
 
 /**
- * D72 / D78: the header title on Home and Places, with "Near Avondale" under it. The server
- * picks the closest named neighborhood to your verified location; the second line is left
- * out when none is close. `brand` shows the app name with a gold pin (Home).
+ * D72 / D79: "Near Avondale · within 528 yd" at the top of the black bar on Home and
+ * Places: where you are (the server's closest named neighborhood) and how far the list
+ * reaches. Tapping it opens Account, where the radius is set. The neighborhood part is
+ * left out when none is close.
  */
-export function AreaTitle({
-  title,
-  area,
-  brand = false,
-}: {
-  title: string;
-  area: string | null | undefined;
-  brand?: boolean;
-}) {
+export function AreaStrip({ area, label }: { area: string | null | undefined; label: string }) {
+  const { state } = useAuth();
+  const miles =
+    state.status === 'signedIn'
+      ? Math.min(
+          state.user.radiusMiles ?? CONFIG_DEFAULTS['radius.general.defaultMiles'],
+          CONFIG_DEFAULTS['radius.general.maxMiles'],
+        )
+      : CONFIG_DEFAULTS['radius.general.defaultMiles'];
+  const radius = yardsLabel(miles);
+  const signedIn = state.status === 'signedIn';
   return (
-    <View
-      accessible
-      accessibilityRole="header"
-      accessibilityLabel={area ? `${title}. You're near ${area}` : title}
-      style={{ alignItems: 'center', maxWidth: 220 }}
+    <Pressable
+      accessibilityRole={signedIn ? 'button' : 'text'}
+      accessibilityLabel={`${label}${area ? ` near ${area}` : ''}, within ${radius}.${signedIn ? ' Change radius.' : ''}`}
+      onPress={signedIn ? () => router.push('/account') : undefined}
+      disabled={!signedIn}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 36 }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-        {brand ? <Ionicons name="location-sharp" size={19} color={BRAND.gold} /> : null}
-        <Text
-          style={{
-            color: COLORS.onSurfaceInverse,
-            fontSize: brand ? 22 : 17,
-            fontWeight: brand ? '900' : '800',
-            letterSpacing: brand ? -0.5 : 0,
-          }}
-        >
-          {title}
-        </Text>
+      <View
+        style={{
+          width: 26,
+          height: 26,
+          borderRadius: 13,
+          backgroundColor: DARK.accentSoft,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Ionicons name="navigate" size={13} color={DARK.accent} />
       </View>
-      {area ? (
-        <Text
-          numberOfLines={1}
-          style={{ color: COLORS.onSurfaceDarkMuted, fontSize: 12, fontWeight: '600' }}
-        >
-          Near {area}
-        </Text>
-      ) : null}
-    </View>
+      <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 15 }}>
+        <Text style={{ fontWeight: '800' }}>{area ? `Near ${area}` : label}</Text>
+        <Text style={{ color: DARK.textMuted, fontWeight: '500' }}>{`  ·  within ${radius}`}</Text>
+      </Text>
+      {signedIn ? <Ionicons name="chevron-forward" size={14} color={DARK.textMuted} /> : null}
+    </Pressable>
   );
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CATEGORY_COLORS, categoryColor } from './schemas/directory';
-import { BRAND, COLORS } from './theme';
+import { BRAND, COLORS, DARK } from './theme';
 
 /** WCAG 2 contrast ratio between two #RRGGBB colors. */
 function contrast(a: string, b: string): number {
@@ -78,5 +78,42 @@ describe('category colors (D70)', () => {
 
   it('the dark background is visibly lighter than the black header', () => {
     expect(contrast(COLORS.surfaceDark, COLORS.surfaceInverse)).toBeGreaterThan(1.15);
+  });
+});
+
+describe('dark theme (D79)', () => {
+  const bgs = { page: DARK.page, card: DARK.card, raised: DARK.raised } as const;
+  // Text and links must read at 4.5:1 on every layer they can sit on.
+  it.each(
+    (['text', 'textMuted', 'placeholder', 'accent', 'tealText', 'error'] as const).flatMap((fg) =>
+      Object.entries(bgs).map(([bg, hex]) => [`${fg} on ${bg}`, DARK[fg], hex] as const),
+    ),
+  )('%s passes 4.5:1', (_label, fg, bg) => {
+    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    ['onAccent on accent', DARK.onAccent, DARK.accent],
+    ['onTeal on teal', DARK.onTeal, DARK.teal],
+    ['text on accentSoft', DARK.text, DARK.accentSoft],
+    ['accent on accentSoft', DARK.accent, DARK.accentSoft],
+    ['tealText on tealSoft', DARK.tealText, DARK.tealSoft],
+    ['text on tealSoft', DARK.text, DARK.tealSoft],
+    ['error on errorSoft', DARK.error, DARK.errorSoft],
+    ['text on bar', DARK.text, DARK.bar],
+    ['textMuted on bar', DARK.textMuted, DARK.bar],
+  ])('%s passes 4.5:1', (_label, fg, bg) => {
+    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('input outlines reach 3:1 on every layer', () => {
+    for (const bg of Object.values(bgs))
+      expect(contrast(DARK.border, bg)).toBeGreaterThanOrEqual(3);
+  });
+
+  it('category colors take white text, so they work as icon tiles on dark cards', () => {
+    for (const hex of Object.values(CATEGORY_COLORS)) {
+      expect(contrast(BRAND.white, hex)).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });

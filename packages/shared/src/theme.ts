@@ -62,3 +62,38 @@ export const COLORS = {
   error: '#B00020', // 7.3:1 on white
   errorSoft: '#FDECEE', // D78: light red tint behind form errors; error and black text pass
 } as const;
+
+/**
+ * D79: the mobile app's dark theme, used on every screen. Layers go from black bars to a
+ * dark-grey page to lighter cards and raised controls. Brand colors stay: gold for
+ * actions and highlights (black text on it), teal for selected states (white text on it).
+ * Teal is too dark to read as text on these greys, so `tealText` is a light tint of it.
+ * Every text pairing is tested in theme.test.ts. The admin portal keeps `COLORS`.
+ */
+export const DARK = {
+  bar: BRAND.black, // header, tab bar and the control bar under the header
+  page: '#1E1F22', // every screen's background
+  card: '#2B2D31', // posts, places, grouped lists, sheets
+  raised: '#383A40', // inputs, pills, chips and icon buttons
+  hairline: '#3F4147', // dividers (decorative)
+
+  text: '#F2F3F5',
+  textMuted: '#B5BAC1',
+  placeholder: '#A3A9B1',
+  border: '#878C94', // input outlines (≥ 3:1 on raised, card and page)
+
+  accent: BRAND.gold, // main actions, links, active tab, focus
+  onAccent: BRAND.black,
+  accentSoft: '#3A3020', // gold-tinted notice background
+
+  teal: BRAND.teal, // selected fills, switches (white text on it)
+  onTeal: BRAND.white,
+  tealText: '#6CC5D4', // teal for text and icons on dark
+  tealSoft: '#173A42', // teal-tinted selected background
+
+  error: '#FF8A80',
+  errorSoft: '#3D2224',
+
+  scrim: 'rgba(0,0,0,0.6)',
+  shadow: BRAND.black,
+} as const;

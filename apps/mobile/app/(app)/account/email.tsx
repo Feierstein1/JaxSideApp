@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
 import { EMAIL_CODE_LENGTH, emailChangeConfirmSchema, emailChangeSchema } from '@jax/shared';
 import { api } from '@/api';
 import { useAuth } from '@/auth/AuthContext';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
-import { Button, Field, FormError, PasswordField, styles } from '@/ui';
+import { Banner, Button, Field, FormError, PageTitle, PasswordField, Screen } from '@/ui';
 
 /**
  * P4.10: change email. A 6-digit code goes to the new address; the switch happens only
@@ -53,12 +52,18 @@ export default function ChangeEmail() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
+    <Screen keyboard>
+      <PageTitle
+        title="Change email"
+        subtitle="We send a code to the new address. Your old address gets a notice."
+        icon="mail-outline"
+      />
       <FormError>{errors.form}</FormError>
       {step === 'request' ? (
         <>
           <Field
             label="New email"
+            icon="mail-outline"
             value={newEmail}
             onChangeText={setNewEmail}
             autoCapitalize="none"
@@ -80,11 +85,12 @@ export default function ChangeEmail() {
         </>
       ) : (
         <>
-          <Text style={[styles.body, styles.banner]}>
+          <Banner icon="mail-open-outline" tone="info">
             If {newEmail.trim()} can be used, we sent it a 6-digit code. Enter it to finish.
-          </Text>
+          </Banner>
           <Field
             label="6-digit code"
+            icon="keypad-outline"
             value={code}
             onChangeText={setCode}
             keyboardType="number-pad"
@@ -99,6 +105,6 @@ export default function ChangeEmail() {
           <Button variant="link" title="Use a different email" onPress={() => setStep('request')} />
         </>
       )}
-    </ScrollView>
+    </Screen>
   );
 }

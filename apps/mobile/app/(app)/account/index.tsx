@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   BIO_MAX,
   categoryColor,
-  COLORS,
   CONFIG_DEFAULTS,
+  DARK,
   RADIUS_OPTIONS_MILES,
   yardsLabel,
   PROFILE_COLORS,
@@ -25,8 +25,19 @@ import { pickPhoto, uploadPhoto } from '@/discussion/photos';
 import { categoryLabel } from '@/format';
 import { haptic } from '@/motion';
 import { categoryIcon } from '@/places/PlaceHeader';
-import { elevation, RADIUS, SPACE, TYPE } from '@/tokens';
-import { Button, FormError, ListGroup, ListRow, Segmented, Sheet, styles } from '@/ui';
+import { Text, TextInput } from '@/text';
+import { GUTTER, RADIUS, SPACE, TYPE } from '@/tokens';
+import {
+  Button,
+  Card,
+  FormError,
+  type IconName,
+  ListGroup,
+  ListRow,
+  Segmented,
+  Sheet,
+  styles,
+} from '@/ui';
 
 interface Favorite {
   id: string;
@@ -35,41 +46,75 @@ interface Favorite {
 }
 
 /**
- * Account, in two tabs (no location needed here, D16):
- * - Profile: what other people see (username, bio, join date); edit your bio (P4.8, early).
- * - Settings (P4.11): account changes, radius, favorites, blocked users, policies,
- *   location help, sign-out (only here) and account deletion.
- *
- * D78: a light grey page with white grouped cards (the standard settings look), so it
- * reads as a calm, different place from the dark feeds.
+ * Account (no location needed here, D16). D79: one scrolling page, like the "you" tab of
+ * most social apps: your profile card (what others see) at the top with quick actions,
+ * your bio and medals, then settings in grouped cards (P4.11): email, radius, favorites,
+ * account changes, safety, location, policies, sign-out and account deletion.
  */
 export default function AccountScreen() {
   const { state } = useAuth();
-  const [tab, setTab] = useState<'profile' | 'settings'>('profile');
   if (state.status === 'guest') return <GuestAccount />;
   if (state.status !== 'signedIn') return null;
-
   return (
     <ScrollView
-      style={{ backgroundColor: COLORS.surfaceMuted }}
-      contentContainerStyle={{ padding: SPACE.lg, paddingBottom: 48 }}
+      style={{ backgroundColor: DARK.page }}
+      contentContainerStyle={{ padding: GUTTER, paddingBottom: 56 }}
       keyboardShouldPersistTaps="handled"
     >
-      <Segmented
-        stretch
-        options={[
-          { key: 'profile', label: 'Profile' },
-          { key: 'settings', label: 'Settings' },
-        ]}
-        value={tab}
-        onChange={(v) => setTab(v as 'profile' | 'settings')}
-      />
-      {tab === 'profile' ? <ProfileTab /> : <SettingsTab />}
+      <ProfileSection />
+      <Settings />
     </ScrollView>
   );
 }
 
-function ProfileTab() {
+/** A compact action button for the profile card. */
+function QuickAction({
+  icon,
+  label,
+  onPress,
+  swatch,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  swatch?: string;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: 1,
+        minHeight: 44,
+        borderRadius: RADIUS.md,
+        backgroundColor: pressed ? DARK.hairline : DARK.raised,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+      })}
+    >
+      {swatch ? (
+        <View
+          style={{
+            width: 14,
+            height: 14,
+            borderRadius: 7,
+            backgroundColor: swatch,
+            borderWidth: 1.5,
+            borderColor: DARK.text,
+          }}
+        />
+      ) : (
+        <Ionicons name={icon} size={16} color={DARK.accent} />
+      )}
+      <Text style={{ fontWeight: '700', fontSize: 13.5 }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function ProfileSection() {
   const { state, refresh } = useAuth();
   const user = state.status === 'signedIn' ? state.user : undefined;
   const [bio, setBio] = useState(user?.bio ?? '');
@@ -132,80 +177,78 @@ function ProfileTab() {
 
   return (
     <View>
-      {/* Header in your account color (D69). */}
-      <View
-        style={{
-          alignItems: 'center',
-          paddingTop: SPACE.xl,
-          paddingBottom: SPACE.xl - 4,
-          paddingHorizontal: SPACE.lg,
-          marginTop: SPACE.lg,
-          borderRadius: RADIUS.lg + 4,
-          backgroundColor: color.hex,
-          ...elevation(1),
-        }}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Change your color"
-          onPress={() => setPicking(true)}
-          style={{
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            height: 36,
-            paddingHorizontal: 12,
-            borderRadius: 18,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            borderWidth: 1.5,
-            borderColor: color.text,
-          }}
-        >
-          <Ionicons name="color-palette-outline" size={16} color={color.text} />
-          <Text style={{ color: color.text, fontWeight: '700', fontSize: 13 }}>Color</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={user.avatarUrl ? 'Change profile photo' : 'Add a profile photo'}
-          accessibilityState={{ busy: photoBusy }}
-          onPress={() => void changePhoto()}
-          disabled={photoBusy}
-        >
-          <ProfileAvatar
-            name={user.username}
-            url={user.avatarUrl}
-            size={92}
-            ringColor={color.text}
-          />
-          {/* D78: camera badge on the photo, the usual "tap to change" cue. */}
-          <View
-            style={{
-              position: 'absolute',
-              right: -2,
-              bottom: -2,
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: COLORS.accent,
-              borderWidth: 2,
-              borderColor: COLORS.background,
-            }}
-          >
-            <Ionicons
-              name={photoBusy ? 'hourglass-outline' : 'camera'}
-              size={16}
-              color={COLORS.onAccent}
+      {/* Profile card: your account color as a band across the top (D69). */}
+      <View style={{ borderRadius: RADIUS.lg + 4, overflow: 'hidden', backgroundColor: DARK.card }}>
+        <View style={{ height: 64, backgroundColor: color.hex }} />
+        <View style={{ paddingHorizontal: SPACE.lg, paddingBottom: SPACE.lg, marginTop: -44 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: SPACE.md }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={user.avatarUrl ? 'Change profile photo' : 'Add a profile photo'}
+              accessibilityState={{ busy: photoBusy }}
+              onPress={() => void changePhoto()}
+              disabled={photoBusy}
+              style={{ borderRadius: 50, backgroundColor: DARK.card, padding: 4 }}
+            >
+              <ProfileAvatar
+                name={user.username}
+                url={user.avatarUrl}
+                size={88}
+                ringColor={color.hex}
+                fill={color.hex}
+              />
+              {/* Camera badge: the usual "tap to change" cue. */}
+              <View
+                style={{
+                  position: 'absolute',
+                  right: 2,
+                  bottom: 2,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: DARK.accent,
+                  borderWidth: 3,
+                  borderColor: DARK.card,
+                }}
+              >
+                <Ionicons
+                  name={photoBusy ? 'hourglass-outline' : 'camera'}
+                  size={15}
+                  color={DARK.onAccent}
+                />
+              </View>
+            </Pressable>
+            <View style={{ flex: 1, paddingBottom: 6 }}>
+              <Text
+                numberOfLines={1}
+                style={{ fontSize: 24, fontWeight: '800', letterSpacing: -0.5 }}
+              >
+                {user.username}
+              </Text>
+              <Text style={{ color: DARK.textMuted, fontWeight: '500' }}>Joined {joined}</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: SPACE.sm, marginTop: SPACE.lg }}>
+            <QuickAction
+              icon="create-outline"
+              label={user.bio ? 'Edit bio' : 'Add bio'}
+              onPress={() => setEditing(true)}
+            />
+            <QuickAction
+              icon="color-palette-outline"
+              label="Color"
+              swatch={color.hex}
+              onPress={() => setPicking(true)}
+            />
+            <QuickAction
+              icon="eye-outline"
+              label="View"
+              onPress={() => router.push(`/user/${encodeURIComponent(user.username)}`)}
             />
           </View>
-        </Pressable>
-        <Text style={{ color: color.text, fontSize: 24, fontWeight: '900', marginTop: 12 }}>
-          {user.username}
-        </Text>
-        <Text style={{ color: color.text, marginTop: 2, fontWeight: '600' }}>Joined {joined}</Text>
+        </View>
       </View>
 
       <ListGroup title="About">
@@ -220,7 +263,6 @@ function ProfileTab() {
                 multiline
                 autoFocus
                 placeholder="A line or two about you (optional)"
-                placeholderTextColor={COLORS.placeholder}
                 style={[styles.input, { minHeight: 96, textAlignVertical: 'top' }]}
               />
               <Text style={[styles.hint, { textAlign: 'right' }]}>
@@ -241,25 +283,10 @@ function ProfileTab() {
               </View>
             </>
           ) : (
-            <>
-              <Text style={[styles.body, !user.bio && styles.muted]}>
-                {user.bio || 'No bio yet. Say a little about yourself.'}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setEditing(true)}
-                style={{
-                  alignSelf: 'flex-start',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  minHeight: 44,
-                }}
-              >
-                <Ionicons name="create-outline" size={17} color={COLORS.primary} />
-                <Text style={styles.linkText}>{user.bio ? 'Edit bio' : 'Add a bio'}</Text>
-              </Pressable>
-            </>
+            <Text style={[TYPE.body, !user.bio && { color: DARK.textMuted }]}>
+              {user.bio ||
+                'No bio yet. Say a little about yourself so neighbors know who’s posting.'}
+            </Text>
           )}
         </View>
       </ListGroup>
@@ -307,8 +334,8 @@ function ColorPicker({
   return (
     <Sheet open={open} onClose={onClose} title="Your color">
       <View style={{ paddingHorizontal: 20, paddingBottom: SPACE.sm }}>
-        <Text style={[TYPE.callout, { color: COLORS.textMuted, marginBottom: SPACE.lg }]}>
-          Used for your profile and the header of your posts.
+        <Text style={[TYPE.callout, { color: DARK.textMuted, marginBottom: SPACE.lg }]}>
+          Shown on your profile and as the stripe on your posts.
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
           {PROFILE_COLORS.map((c) => {
@@ -331,7 +358,7 @@ function ColorPicker({
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderWidth: selected ? 3 : 1,
-                  borderColor: selected ? COLORS.text : COLORS.cardBorder,
+                  borderColor: selected ? DARK.text : DARK.hairline,
                   transform: [{ scale: pressed ? 0.9 : 1 }],
                 })}
               >
@@ -345,7 +372,7 @@ function ColorPicker({
   );
 }
 
-function SettingsTab() {
+function Settings() {
   const { state, signOut, refresh } = useAuth();
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [error, setError] = useState<string>();
@@ -398,21 +425,21 @@ function SettingsTab() {
                 alignItems: 'center',
                 gap: 4,
                 paddingHorizontal: 8,
-                paddingVertical: 3,
+                height: 24,
                 borderRadius: RADIUS.pill,
-                backgroundColor: user.emailVerified ? COLORS.primarySoft : COLORS.accentSoft,
+                backgroundColor: user.emailVerified ? DARK.tealSoft : DARK.accentSoft,
               }}
             >
               <Ionicons
                 name={user.emailVerified ? 'checkmark-circle' : 'alert-circle'}
-                size={14}
-                color={user.emailVerified ? COLORS.primary : COLORS.text}
+                size={13}
+                color={user.emailVerified ? DARK.tealText : DARK.accent}
               />
               <Text
                 style={{
-                  fontSize: 12,
+                  fontSize: 11.5,
                   fontWeight: '800',
-                  color: user.emailVerified ? COLORS.primary : COLORS.text,
+                  color: user.emailVerified ? DARK.tealText : DARK.accent,
                 }}
               >
                 {user.emailVerified ? 'Confirmed' : 'Not confirmed'}
@@ -423,16 +450,9 @@ function SettingsTab() {
       </ListGroup>
       {!user.emailVerified ? <EmailCodeCard email={user.email} /> : null}
 
-      <ListGroup title="Your account">
-        <ListRow icon="at" label="Change username" href="/account/username" />
-        <ListRow icon="mail-outline" label="Change email" href="/account/email" />
-        <ListRow icon="key-outline" label="Change password" href="/account/password" />
-        <ListRow icon="ban-outline" label="Blocked users" href="/account/blocked" />
-      </ListGroup>
-
       <ListGroup
         title="Radius"
-        footer={`How far around you the feed and Places reach. To comment, vote or join a business discussion you need to be within ${yardsLabel(CONFIG_DEFAULTS['radius.general.maxMiles'])} of it.`}
+        footer={`How far around you the feed and Places reach. To comment, vote or join a place discussion you need to be within ${yardsLabel(CONFIG_DEFAULTS['radius.general.maxMiles'])} of it.`}
       >
         <View style={{ padding: SPACE.md }}>
           <Segmented
@@ -446,7 +466,9 @@ function SettingsTab() {
 
       <ListGroup
         title="Favorite places"
-        footer={favorites.length === 0 ? 'Tap the ☆ on a place to save it here.' : undefined}
+        footer={
+          favorites.length === 0 ? 'Tap “Save to favorites” on a place to keep it here.' : undefined
+        }
       >
         {favorites.length === 0 ? (
           <ListRow icon="star-outline" label="No favorites yet" />
@@ -462,6 +484,13 @@ function SettingsTab() {
             />
           ))
         )}
+      </ListGroup>
+
+      <ListGroup title="Your account">
+        <ListRow icon="at" label="Username" value={user.username} href="/account/username" />
+        <ListRow icon="mail-outline" label="Change email" href="/account/email" />
+        <ListRow icon="key-outline" label="Change password" href="/account/password" />
+        <ListRow icon="ban-outline" label="Blocked users" href="/account/blocked" />
       </ListGroup>
 
       <ListGroup title="Safety">
@@ -492,48 +521,36 @@ function GuestAccount() {
   const { guest } = state;
   return (
     <ScrollView
-      style={{ backgroundColor: COLORS.surfaceMuted }}
-      contentContainerStyle={{ padding: SPACE.lg, paddingBottom: 48 }}
+      style={{ backgroundColor: DARK.page }}
+      contentContainerStyle={{ padding: GUTTER, paddingBottom: 56 }}
     >
-      <View
-        style={{
-          alignItems: 'center',
-          padding: SPACE.xl,
-          gap: SPACE.sm,
-          borderRadius: RADIUS.lg + 4,
-          backgroundColor: COLORS.surfaceInverse,
-        }}
-      >
+      <Card style={{ alignItems: 'center', padding: SPACE.xl, gap: SPACE.sm }}>
         <View
           style={{
-            width: 72,
-            height: 72,
-            borderRadius: 36,
+            width: 76,
+            height: 76,
+            borderRadius: 38,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: COLORS.surfaceDarkRaised,
+            backgroundColor: DARK.accentSoft,
           }}
         >
-          <Ionicons name="person-outline" size={34} color={COLORS.accent} />
+          <Ionicons name="person-outline" size={36} color={DARK.accent} />
         </View>
-        <Text
-          accessibilityRole="header"
-          style={[TYPE.title, { color: COLORS.onSurfaceInverse, textAlign: 'center' }]}
-        >
+        <Text accessibilityRole="header" style={[TYPE.title, { textAlign: 'center' }]}>
           You’re browsing as a guest
         </Text>
-        <Text style={[TYPE.callout, { color: COLORS.onSurfaceDarkMuted, textAlign: 'center' }]}>
+        <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
           Guests can browse posts and comments nearby. Create a free account to post, comment, vote,
           report, join place discussions and keep a profile.
         </Text>
         <Button
-          variant="accent"
           title="Sign up or sign in"
           icon="person-add-outline"
           onPress={() => void signOut()}
           style={{ alignSelf: 'stretch', marginTop: SPACE.md }}
         />
-      </View>
+      </Card>
       <ListGroup
         title="Guest session"
         footer={`Your guest session ends after ${CONFIG_DEFAULTS['guest.inactivityDays']} days without use. Using Jax resets the clock.`}
