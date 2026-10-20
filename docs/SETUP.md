@@ -126,3 +126,9 @@ Authenticator, Microsoft Authenticator, 1Password…). Every sign-in after that 
   Expo's bundler (Metro) was started before the packages were installed and doesn't see the new
   files (seen 2026-10-15 with `@expo/vector-icons`: "Unable to resolve module …Ionicons.ttf").
   Stop it (`Ctrl+C`) and restart with a cleared cache: `npm run dev:mobile -- --clear`.
+
+### If the phone can't connect away from Wi-Fi (D91)
+
+1. Make sure only `npm run dev` and `npm run dev:remote` are running. Stop `npm run dev:mobile` (Ctrl+C): it's Wi-Fi only.
+2. Wait for the **✅ Ready** line in the `dev:remote` window. Ignore anything printed before it (Expo briefly falls back to a Wi-Fi address while its tunnel starts).
+3. In Expo Go, don't reopen the old project from the recent list. Scan the new QR code, or tap **Enter URL manually** and type the `exp://….exp.direct` address from the ✅ line (it stays the same between runs).

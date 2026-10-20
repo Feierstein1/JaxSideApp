@@ -30,6 +30,17 @@ async function localServerUp() {
   }
 }
 
+// D91: the Wi-Fi-only app (dev:mobile, port 8081) running at the same time is the usual
+// reason the phone "can't connect" away from home: Expo Go reopens that version.
+async function wifiOnlyExpoUp() {
+  try {
+    await fetch('http://localhost:8081/status', { signal: AbortSignal.timeout(1500) });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 if (!(await localServerUp())) {
   console.error(
     'The server isn’t running. Start it first with `npm run dev`, then run this again.',
@@ -94,6 +105,14 @@ console.log(
     : `Tunnel open at ${url} (not answering yet; it may take a moment)`,
 );
 
+if (await wifiOnlyExpoUp()) {
+  console.warn(
+    '\n  ⚠  `npm run dev:mobile` (Wi-Fi only) is also running. Stop it (Ctrl+C in its window).\n' +
+      '     On your phone, don’t reopen the old project from Expo Go’s recent list: it only\n' +
+      '     works on home Wi-Fi. Use the address printed below instead.\n',
+  );
+}
+
 console.log('Starting Expo in tunnel mode (the QR code works from anywhere)…\n');
 const expo = spawn('npx', ['expo', 'start', '--tunnel', '--clear', '--port', '8082'], {
   cwd: new URL('../apps/mobile/', import.meta.url),
@@ -101,6 +120,29 @@ const expo = spawn('npx', ['expo', 'start', '--tunnel', '--clear', '--port', '80
   shell: true,
   env: { ...process.env, EXPO_PUBLIC_API_URL: url },
 });
+
+// D91: once Expo's tunnel is up, print the exact address to open on the phone.
+void (async () => {
+  for (let i = 0; i < 120; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const res = await fetch('http://localhost:8082', {
+        headers: { 'expo-platform': 'android', accept: 'application/expo+json,application/json' },
+      });
+      const host = (await res.json())?.extra?.expoClient?.hostUri;
+      if (host && host.includes('exp.direct')) {
+        console.log(
+          `\n  ✅ Ready. On your phone (any network): open Expo Go → scan the QR code above,\n` +
+            `     or tap "Enter URL manually" and type:  exp://${host}\n` +
+            `     The app talks to the server at ${url}\n`,
+        );
+        return;
+      }
+    } catch {
+      // not up yet
+    }
+  }
+})();
 
 const stop = () => {
   tunnel.kill();
