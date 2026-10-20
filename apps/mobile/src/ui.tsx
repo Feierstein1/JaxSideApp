@@ -98,12 +98,12 @@ export function PageTitle({
   title,
   subtitle,
   icon,
-  inline = false,
+  inline = true,
 }: {
   title: string;
   subtitle?: string;
   icon?: IconName;
-  /** D88: the icon tile beside the title instead of above it. */
+  /** D88 / D93: the icon tile beside the title (every page now); `false` stacks it above. */
   inline?: boolean;
 }) {
   if (inline) {
