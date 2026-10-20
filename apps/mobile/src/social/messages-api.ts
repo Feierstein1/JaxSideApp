@@ -2,7 +2,7 @@ import type { ChatMessage, ConversationSummary, FriendUser } from '@jax/shared';
 import { api } from '@/api';
 import { getFreshReading } from '@/location/device';
 
-/** D97: private messages (mutual friends only). */
+/** D98: private messages (mutual friends only). */
 export const messagesApi = {
   list: () => api.get<{ conversations: ConversationSummary[] }>('/api/v1/messages'),
   unread: () => api.get<{ unread: number }>('/api/v1/messages/unread'),

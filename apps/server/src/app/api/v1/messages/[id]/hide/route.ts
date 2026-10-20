@@ -7,7 +7,7 @@ import { enforce } from '@/server/rate-limit';
 import { hideMessage } from '@/server/social/messages';
 import { parseBody } from '@/server/validate';
 
-/** D97: "Delete for me": hide one message from your own view. */
+/** D98: "Delete for me": hide one message from your own view. */
 export const POST = route<IdCtx>(async (req, ctx) => {
   const { user } = await requireUser(req);
   const id = await idFrom(ctx);

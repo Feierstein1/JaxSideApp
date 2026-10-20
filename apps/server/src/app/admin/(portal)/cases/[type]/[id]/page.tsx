@@ -46,7 +46,7 @@ export default async function CasePage(ctx: {
           <audio controls src={c.voiceUrl} style={{ display: 'block', margin: '8px 0' }} />
         ) : null}
         {c.messageContext ? (
-          // D97: the conversation around the reported message (snapshot at report time).
+          // D98: the conversation around the reported message (snapshot at report time).
           <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
             <p style={ui.muted}>Private message, with the messages around it:</p>
             {c.messageContext.map((m) => (

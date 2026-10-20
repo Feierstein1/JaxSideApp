@@ -245,7 +245,7 @@ export function FriendsManager({ embedded = false }: { embedded?: boolean }) {
                     year: 'numeric',
                   })}`}
                 >
-                  {/* D97: message a friend. */}
+                  {/* D98: message a friend. */}
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Message ${f.username}`}

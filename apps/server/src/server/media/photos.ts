@@ -183,7 +183,7 @@ export async function attachPhotos(
       status: 'ACTIVE',
       generalPostId: null,
       businessPostId: null,
-      messageId: null, // D97: not one already sent in a message
+      messageId: null, // D98: not one already sent in a message
       avatarOf: null,
     },
     data: target,
@@ -276,7 +276,7 @@ export async function purgeUnusedPhotos(now = new Date()) {
       createdAt: { lt: new Date(now.getTime() - 86_400_000) },
       generalPostId: null,
       businessPostId: null,
-      messageId: null, // D97: photos sent in messages are attached
+      messageId: null, // D98: photos sent in messages are attached
       avatarOf: null,
       status: 'ACTIVE',
     },

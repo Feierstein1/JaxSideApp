@@ -12,7 +12,7 @@ import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { EmptyState, ErrorState, PageTitle } from '@/ui';
 
 /**
- * D97: your chats, newest first. Long-press a chat to delete it for yourself. New chats
+ * D98: your chats, newest first. Long-press a chat to delete it for yourself. New chats
  * start from a friend's profile or the friends list ("Message").
  */
 export default function Messages() {

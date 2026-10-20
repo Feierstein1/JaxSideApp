@@ -24,7 +24,7 @@ import { relaxBurstLimits, resetDb } from './db-helpers';
 import { callRoute as call, type AnyHandler as H } from './route-call';
 import { createTestUser } from './user-factory';
 
-// D97: private messages between mutual friends.
+// D98: private messages between mutual friends.
 
 const HERE = { latitude: 30.3149, longitude: -81.6853 };
 const OUTSIDE = { latitude: 30.1661, longitude: -81.7065 }; // Orange Park
@@ -70,7 +70,7 @@ beforeEach(async () => {
   await befriend(ann, bob);
 });
 
-describe('messaging friends (D97)', () => {
+describe('messaging friends (D98)', () => {
   it('friends chat; the other side sees it as unread until they open it', async () => {
     expect((await send(ann, 'bob_m', 'Hey Bob!')).status).toBe(201);
     expect(await unread(bob)).toBe(1);
@@ -223,7 +223,7 @@ describe('messaging friends (D97)', () => {
   });
 });
 
-describe('reporting a message (D97)', () => {
+describe('reporting a message (D98)', () => {
   it('the report keeps the message and the 10 around it; removing it unsends it', async () => {
     for (let i = 0; i < 6; i++) await send(ann, 'bob_m', `before ${i}`);
     const bad = (await send(ann, 'bob_m', 'the nasty one')).body.message;

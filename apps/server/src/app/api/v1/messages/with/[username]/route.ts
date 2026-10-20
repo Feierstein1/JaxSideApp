@@ -7,7 +7,7 @@ import { chatWith } from '@/server/social/messages';
 
 export const dynamic = 'force-dynamic';
 
-/** D97: your chat with someone (newest 50, or older with `before`). Opening it marks it read. */
+/** D98: your chat with someone (newest 50, or older with `before`). Opening it marks it read. */
 export const GET = route<UsernameCtx>(async (req, ctx) => {
   const { user } = await requireUser(req);
   const username = await usernameFrom(ctx);

@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import { messagesApi } from './messages-api';
 
 /**
- * D97: the Messages badge (chats with something you haven't seen). Checked every 30 s
+ * D98: the Messages badge (chats with something you haven't seen). Checked every 30 s
  * while the app is open, like the bell (D76), and right after opening a chat.
  */
 const POLL_MS = 30_000;

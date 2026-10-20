@@ -38,7 +38,7 @@ function refOf(r: {
   messageId?: string | null;
   messageEvidence?: unknown;
 }): CaseRef | null {
-  // D97: a reported message (its snapshot keeps the case even after it's unsent).
+  // D98: a reported message (its snapshot keeps the case even after it's unsent).
   if (r.messageId) return { type: 'message', id: r.messageId };
   const ev = r.messageEvidence as { messageId?: string } | null | undefined;
   if (ev?.messageId) return { type: 'message', id: ev.messageId };
@@ -182,7 +182,7 @@ async function subject(
     );
   }
   if (ref.type === 'message') {
-    // D97: the snapshot taken when it was reported (the message may since be unsent).
+    // D98: the snapshot taken when it was reported (the message may since be unsent).
     const r = await db.report.findFirst({
       where: { ...reportWhere(ref), messageEvidence: { not: Prisma.DbNull } },
       orderBy: { createdAt: 'desc' },
@@ -329,7 +329,7 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
     photoUrl: ref.type === 'photo' ? `/api/v1/admin/photos/${ref.id}` : null,
     /** D75: a voice post's clip, playable by the moderator (any status). */
     voiceUrl: voice ? `/api/v1/admin/photos/${voice.id}` : null,
-    /** D97: the chat around a reported message, from the newest report's snapshot. */
+    /** D98: the chat around a reported message, from the newest report's snapshot. */
     messageContext:
       ref.type === 'message'
         ? ((
@@ -426,7 +426,7 @@ async function setStatus(
   to: 'VISIBLE' | 'REMOVED',
 ) {
   if (ref.type === 'message') {
-    // D97: removing a message unsends it for both people (the report keeps the snapshot).
+    // D98: removing a message unsends it for both people (the report keeps the snapshot).
     if (to === 'REMOVED') {
       await tx.message.updateMany({
         where: { id: ref.id, unsentAt: null },

@@ -336,7 +336,7 @@ const ROWS: Row[] = [
     id: null,
     location: false,
   },
-  // D97: private messages (messages.test.ts has membership and friendship checks).
+  // D98: private messages (messages.test.ts has membership and friendship checks).
   {
     route: 'messages',
     method: 'POST',

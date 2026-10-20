@@ -6,7 +6,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { Text } from '@/text';
 import { useUnreadMessages } from './messages-unread';
 
-/** D97: the Messages button in the top bar, next to the bell, with an unread badge. */
+/** D98: the Messages button in the top bar, next to the bell, with an unread badge. */
 export function MessagesButton() {
   const { state } = useAuth();
   const signedIn = state.status === 'signedIn';

@@ -10,7 +10,7 @@ import { parseBody } from '@/server/validate';
 
 export const dynamic = 'force-dynamic';
 
-/** D97: your chats, newest first. */
+/** D98: your chats, newest first. */
 export const GET = route(async (req) => {
   const { user } = await requireUser(req);
   await messageReadLimit(user.id);
@@ -18,7 +18,7 @@ export const GET = route(async (req) => {
 });
 
 /**
- * D97: send a message to a friend (text and/or photos). Mutual friends only, inside Duval,
+ * D98: send a message to a friend (text and/or photos). Mutual friends only, inside Duval,
  * screened like posts but never held: refused or sent.
  */
 export const POST = route(async (req) => {

@@ -24,7 +24,7 @@ export const PUT = route(async (req) => {
       status: 'ACTIVE',
       generalPostId: null,
       businessPostId: null,
-      messageId: null, // D97
+      messageId: null, // D98
     },
   });
   if (!photo) throw new ApiError(400, 'INVALID_PHOTO', 'That photo can’t be used.');

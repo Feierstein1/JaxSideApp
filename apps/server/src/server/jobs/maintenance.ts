@@ -156,7 +156,7 @@ export async function runMaintenance(now: Date = new Date()): Promise<Maintenanc
         notificationsDeleted: await purgeOldNotifications(now),
         // D94: place suggestions and removal requests undecided after 60 days.
         placeChangesExpired: await expirePlaceChanges(now),
-        // D97: message snapshots on reports are kept for a year.
+        // D98: message snapshots on reports are kept for a year.
         messageEvidencePurged: await purgeOldMessageEvidence(now),
       };
       logger.info({ report }, 'maintenance complete');

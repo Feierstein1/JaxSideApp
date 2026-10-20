@@ -651,7 +651,7 @@ model Photo {
   bytes          Int?
   generalPostId  String?       @db.Uuid
   businessPostId String?       @db.Uuid
-  /// D97: a photo sent in a private message.
+  /// D98: a photo sent in a private message.
   messageId      String?       @db.Uuid
   createdAt      DateTime      @default(now()) @db.Timestamptz(3)
   processedAt    DateTime?     @db.Timestamptz(3)
@@ -709,9 +709,9 @@ model Report {
   commentId       String?       @db.Uuid
   photoId         String?       @db.Uuid
   reportedUserId  String?       @db.Uuid
-  /// D97: a reported private message (null once it's unsent or its sender deleted).
+  /// D98: a reported private message (null once it's unsent or its sender deleted).
   messageId       String?       @db.Uuid
-  /// D97: snapshot of the reported message and the 10 around it, kept 1 year as evidence.
+  /// D98: snapshot of the reported message and the 10 around it, kept 1 year as evidence.
   messageEvidence Json?
   reason          ReportReason
   details         String?       @db.VarChar(1000)
@@ -815,7 +815,7 @@ model ContactMessage {
   @@index([userId, createdAt])
 }
 
-/// D97: private messaging between two friends. One conversation per pair (ordered ids).
+/// D98: private messaging between two friends. One conversation per pair (ordered ids).
 model Conversation {
   id            String               @id @default(uuid(7)) @db.Uuid
   userLowId     String               @db.Uuid

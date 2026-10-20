@@ -188,7 +188,7 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.block.perMinute': 20,
   /** D90: Contact us messages per person per hour. */
   'rateLimit.contact.perHour': 5,
-  // D97 private messages
+  // D98 private messages
   'rateLimit.message.perMinute': 30,
   'rateLimit.message.perDay': 1000,
   'rateLimit.messageNewChat.perDay': 10,

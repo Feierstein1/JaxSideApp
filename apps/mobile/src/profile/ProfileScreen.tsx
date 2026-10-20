@@ -298,7 +298,7 @@ function FriendButton({
   switch (profile.friendship) {
     case 'friends':
       return (
-        // D97: friends can message each other.
+        // D98: friends can message each other.
         <View style={[top, { flexDirection: 'row', gap: SPACE.sm }]}>
           <Pressable
             accessibilityRole="button"

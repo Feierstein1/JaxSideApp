@@ -217,7 +217,7 @@ export async function deleteAccount(user: User, password: string, now = new Date
     });
     await tx.profile.updateMany({ where: { userId: user.id }, data: { bio: null } });
     await tx.favoritePlace.deleteMany({ where: { userId: user.id } });
-    // D97: every private message they sent goes (reports keep their snapshot).
+    // D98: every private message they sent goes (reports keep their snapshot).
     await deleteMessagesFrom(tx, user.id);
     await tx.accountDeletion.create({
       data: {

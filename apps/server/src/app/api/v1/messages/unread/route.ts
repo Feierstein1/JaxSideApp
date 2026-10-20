@@ -6,7 +6,7 @@ import { unreadChats } from '@/server/social/messages';
 
 export const dynamic = 'force-dynamic';
 
-/** D97: how many chats have a message you haven't seen (the top-bar badge). */
+/** D98: how many chats have a message you haven't seen (the top-bar badge). */
 export const GET = route(async (req) => {
   const { user } = await requireUser(req);
   await messageReadLimit(user.id);

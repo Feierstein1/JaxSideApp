@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-107 endpoints.
+100 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -30,18 +30,6 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | DELETE | `/api/v1/friends/requests/:id`         | user                   |          | D76: withdraw a request you sent.                                                                                                                              |
 | POST   | `/api/v1/friends/requests/:id/accept`  | user                   |          | D76: accept a friend request sent to you. Only the person asked can answer it.                                                                                 |
 | POST   | `/api/v1/friends/requests/:id/decline` | user                   |          | D76: decline a friend request sent to you. Only the person asked can answer it.                                                                                |
-
-## messages
-
-| Method | Path                                      | Who                    | Location | What it does                                                                                                                                  |
-| ------ | ----------------------------------------- | ---------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/api/v1/messages`                        | user (confirmed email) | yes      | D97: your chats, newest first.                                                                                                                |
-| POST   | `/api/v1/messages`                        | user (confirmed email) | yes      | D97: send a message to a friend (text and/or photos). Mutual friends only, inside Duval, screened like posts but never held: refused or sent. |
-| POST   | `/api/v1/messages/:id/hide`               | user                   |          | D97: "Delete for me": hide one message from your own view.                                                                                    |
-| POST   | `/api/v1/messages/:id/unsend`             | user                   |          | D97: unsend your own message within 15 minutes (gone for both).                                                                               |
-| POST   | `/api/v1/messages/conversations/:id/hide` | user                   |          | D97: "Delete chat for me": hides everything so far; new messages still arrive.                                                                |
-| GET    | `/api/v1/messages/unread`                 | user                   |          | D97: how many chats have a message you haven't seen (the top-bar badge).                                                                      |
-| GET    | `/api/v1/messages/with/:username`         | user                   |          | D97: your chat with someone (newest 50, or older with `before`). Opening it marks it read.                                                    |
 
 ## notifications
 

@@ -7,7 +7,7 @@ import { enforce } from '@/server/rate-limit';
 import { hideConversation } from '@/server/social/messages';
 import { parseBody } from '@/server/validate';
 
-/** D97: "Delete chat for me": hides everything so far; new messages still arrive. */
+/** D98: "Delete chat for me": hides everything so far; new messages still arrive. */
 export const POST = route<IdCtx>(async (req, ctx) => {
   const { user } = await requireUser(req);
   const id = await idFrom(ctx);

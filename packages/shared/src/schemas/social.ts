@@ -58,7 +58,7 @@ export interface FriendActivityItem {
   createdAt: string;
 }
 
-// ───────────── D97: private messages (mutual friends only) ─────────────
+// ───────────── D98: private messages (mutual friends only) ─────────────
 
 export const MESSAGE_MAX = 1000;
 export const MESSAGE_PHOTOS_MAX = 4;

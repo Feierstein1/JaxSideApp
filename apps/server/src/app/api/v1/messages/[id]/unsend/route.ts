@@ -7,7 +7,7 @@ import { enforce } from '@/server/rate-limit';
 import { unsendMessage } from '@/server/social/messages';
 import { parseBody } from '@/server/validate';
 
-/** D97: unsend your own message within 15 minutes (gone for both). */
+/** D98: unsend your own message within 15 minutes (gone for both). */
 export const POST = route<IdCtx>(async (req, ctx) => {
   const { user } = await requireUser(req);
   const id = await idFrom(ctx);

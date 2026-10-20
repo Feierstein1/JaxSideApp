@@ -21,11 +21,11 @@ import { Text, TextInput } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { ErrorState, KeyboardSafeView, openMenu } from '@/ui';
 
-/** D97 / design #12: while a chat is open it checks for new messages this often. */
+/** D98 / design #12: while a chat is open it checks for new messages this often. */
 const POLL_MS = 3_000;
 
 /**
- * D97: a chat with one friend. Newest at the bottom; scroll up for older. Long-press a
+ * D98: a chat with one friend. Newest at the bottom; scroll up for older. Long-press a
  * message: Unsend (yours, 15 min), Delete for me, or Report (theirs).
  */
 export default function Chat() {

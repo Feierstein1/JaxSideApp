@@ -1,6 +1,6 @@
 import { enforce } from '../rate-limit';
 
-/** D97: reading chats and the unread badge (a chat checks every 3 s while open). */
+/** D98: reading chats and the unread badge (a chat checks every 3 s while open). */
 export const messageReadLimit = (userId: string) =>
   enforce([
     {

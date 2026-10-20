@@ -24,7 +24,7 @@ interface ResolvedTarget {
     photoId?: string;
     /** Profile reports only; content reports reach the author through the content. */
     reportedUserId?: string;
-    /** D97: a private message, with its snapshot (evidence). */
+    /** D98: a private message, with its snapshot (evidence). */
     messageId?: string;
     messageEvidence?: Prisma.InputJsonValue;
   };
@@ -70,7 +70,7 @@ async function resolveTarget(target: ReportTarget, viewerUserId: string | null) 
     } satisfies ResolvedTarget;
   }
   if (target.type === 'message') {
-    // D97: only someone in the chat can report a message; the report keeps a snapshot.
+    // D98: only someone in the chat can report a message; the report keeps a snapshot.
     if (!viewerUserId) throw NOT_FOUND();
     const { authorUserId, evidence } = await messageReportEvidence(viewerUserId, target.id);
     return {

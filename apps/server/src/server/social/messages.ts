@@ -22,7 +22,7 @@ import { enforce } from '../rate-limit';
 import { friendUser, pair } from './friends';
 
 /**
- * D97: private messages between mutual friends (docs/MESSAGING_DESIGN.md). One conversation
+ * D98: private messages between mutual friends (docs/MESSAGING_DESIGN.md). One conversation
  * per pair. Text is encrypted with a per-conversation key wrapped by the master key (D35),
  * so the database alone can't read chats. Every function checks that the caller is one of
  * the two people; nothing about membership is trusted from the app.
@@ -400,7 +400,7 @@ export async function hideConversation(meId: string, conversationId: string, now
 // ───────────────────────────── Reports ─────────────────────────────
 
 /**
- * D97 / design #6: a report on a message carries a snapshot of it and the 10 messages
+ * D98 / design #6: a report on a message carries a snapshot of it and the 10 messages
  * around it (5 before, 5 after), kept with the report as evidence for a year. Only someone
  * in the chat may report, and not their own message.
  */

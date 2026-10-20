@@ -194,7 +194,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Portal → **Places** shows each suggestion's votes; **Removals** lists requests with every
       vote (who, which way, how far) and **Restore place** / **Remove now**.
 
-## 7e. Private messages (D97, two accounts that are friends)
+## 7e. Private messages (D98, two accounts that are friends)
 
 - [ ] The top bar has a chat-bubble **Messages** button next to the bell.
 - [ ] On a friend's profile, **Message** opens a chat; so does the chat icon in Friends → Your
