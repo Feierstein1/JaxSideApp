@@ -166,11 +166,12 @@ These are true today; check them again when building.
 
 **Good to know**
 
-- An admin (or, once Q17 is built, community votes) decides whether it's added. Approved
-  suggestions earn the **Approved Contributor** medal.
+- People nearby vote on it under **Verify changes near you** in Places: 10 "It's here" votes add it
+  (yours counts first), 10 "Not here" votes drop it, and it expires after 60 days without a
+  result (D94). Added suggestions earn the **Approved Contributor** medal.
 - Only the place's location is saved with it, not yours.
 
-## 7. First "closed / doesn't exist" vote (remove a place) _(depends on Q17)_
+## 7. First "closed / doesn't exist" vote (remove a place)
 
 **Do**
 
@@ -185,8 +186,10 @@ These are true today; check them again when building.
 
 **Good to know**
 
-- Every vote is kept with who voted, when and how far away. Admins review unusual voting, and
-  misuse counts as breaking the rules.
+- You can vote once on each place, and you can't change it.
+- 10 "Closed" votes from people nearby take a place off Places; 10 "Still open" votes keep it.
+- Every vote is kept with who voted, when and how far away. Admins review unusual voting, can
+  restore a place, and misuse counts as breaking the rules.
 
 ## 8. First report
 

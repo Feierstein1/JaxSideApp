@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
@@ -116,13 +116,71 @@ export default function PlaceScreen() {
     );
   }
 
+  /** D94: start (or join) a "closed / doesn't exist" vote. Needs you near the place. */
+  function askRemoval() {
+    if (!place) return;
+    Alert.alert(
+      `Is ${place.name} closed?`,
+      'Only if it has closed for good, moved, or was never here. People nearby will vote; 10 votes take it off Places. Your vote counts first and can’t be changed.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Yes, it’s closed',
+          style: 'destructive',
+          onPress: () =>
+            void (async () => {
+              try {
+                const reading = await getFreshReading({ fresh: true });
+                const r = await api.post<{ outcome: string }>(
+                  `/api/v1/places/${place.id}/removal`,
+                  { reading },
+                );
+                Alert.alert(
+                  'Thanks',
+                  r.outcome === 'removed'
+                    ? 'That was the deciding vote: it’s off Places.'
+                    : 'People nearby can now vote on it under “Verify changes near you” in Places.',
+                );
+              } catch (e) {
+                Alert.alert(
+                  'Couldn’t send',
+                  e instanceof ApiRequestError ? e.message : 'Try again.',
+                );
+              }
+            })(),
+        },
+      ],
+    );
+  }
+
   const hero = (
-    <PlaceHero
-      place={place}
-      onFavorite={() => void toggleFavorite()}
-      favoriteBusy={busy}
-      friendFans={friendFans}
-    />
+    <>
+      <PlaceHero
+        place={place}
+        onFavorite={() => void toggleFavorite()}
+        favoriteBusy={busy}
+        friendFans={friendFans}
+      />
+      {place.withinRoomRadius ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={askRemoval}
+          hitSlop={8}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            alignSelf: 'flex-start',
+            marginHorizontal: SPACE.md,
+            marginTop: SPACE.sm,
+            minHeight: 36,
+          }}
+        >
+          <Ionicons name="close-circle-outline" size={16} color={DARK.textMuted} />
+          <Text style={[TYPE.caption, { color: DARK.textMuted }]}>Closed or doesn’t exist?</Text>
+        </Pressable>
+      ) : null}
+    </>
   );
 
   return (

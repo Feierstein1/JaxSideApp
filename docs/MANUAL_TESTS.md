@@ -180,6 +180,20 @@ checks. Tick each box when it looks right; note anything odd next to it.
       that place). The place's back arrow also goes to the list.
 - [ ] Places filter has **Gyms & fitness** (indigo, barbell icon).
 
+## 7d. Verify changes: community place voting (D94)
+
+- [ ] Run `npm run demo:data -w @jax/server -- --changes` (demo suggestions near your area posts).
+- [ ] Near that spot, Places shows **Verify changes near you** at the top: a "New place?" card
+      (Corner Taco Window, 3/10) and a "Closed?" card. Swipe sideways if there are more.
+- [ ] Tap **It's here**: the card says "You voted…"; you can't vote again on it.
+- [ ] Far away (more than 528 yd) the strip doesn't show; voting from too far is refused.
+- [ ] On a place page within range, **Closed or doesn't exist?** asks first, then the place
+      appears in the strip for others.
+- [ ] Suggest a place: the message says people nearby will vote it in; My suggestions says
+      "Waiting for votes nearby".
+- [ ] Portal → **Places** shows each suggestion's votes; **Removals** lists requests with every
+      vote (who, which way, how far) and **Restore place** / **Remove now**.
+
 ## 8. Profiles and blocking
 
 - [ ] Tap a username on a post or comment: profile shows bio, join date, post count, recent posts.

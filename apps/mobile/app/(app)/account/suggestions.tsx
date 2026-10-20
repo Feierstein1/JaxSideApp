@@ -11,7 +11,7 @@ import { Button, Card, EmptyState, ErrorState, PageTitle, Screen, StatusBadge } 
 import { Text } from '@/text';
 
 const STATUS: Record<MySubmission['status'], string> = {
-  PENDING: 'Waiting for review',
+  PENDING: 'Waiting for votes nearby', // D94
   APPROVED: 'Approved: it’s in Places',
   REJECTED: 'Not approved',
   DUPLICATE: 'Already listed',

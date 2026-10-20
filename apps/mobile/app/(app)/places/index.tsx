@@ -11,6 +11,7 @@ import {
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/device';
+import { VerifyChanges } from '@/places/VerifyChanges';
 import { AreaStrip } from '@/location/AreaLabel';
 import { OsmAttribution } from '@/places/Attribution';
 import { categoryIcon, PlaceRow, PlaceSkeleton } from '@/places/PlaceHeader';
@@ -59,6 +60,8 @@ export default function PlacesScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [area, setArea] = useState<string | null>(null);
+  // D94: reloads the Verify changes strip along with the list.
+  const [changesKey, setChangesKey] = useState(0);
   const requestId = useRef(0);
   const filtered = group !== null || (sort !== null && sort !== 'distance');
 
@@ -83,6 +86,7 @@ export default function PlacesScreen() {
         if (offset === 0) {
           setArea(res.area ?? null);
           noteListLoad(); // D77
+          setChangesKey((k) => k + 1);
         }
       } catch (e) {
         if (id !== requestId.current) return;
@@ -153,6 +157,8 @@ export default function PlacesScreen() {
         }}
         ListHeaderComponent={
           <>
+            {/* D94: places people asked to add or remove nearby, voted on here. */}
+            <VerifyChanges reloadKey={String(changesKey)} onDecided={() => void load(0)} />
             {/* D78: what's applied, each removable with one tap. */}
             {groupLabel || sortLabel ? (
               <View

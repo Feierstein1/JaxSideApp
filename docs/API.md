@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-98 endpoints.
+102 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -159,15 +159,18 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 
 ## places
 
-| Method | Path                                   | Who                    | Location | What it does                                                                             |
-| ------ | -------------------------------------- | ---------------------- | -------- | ---------------------------------------------------------------------------------------- |
-| POST   | `/api/v1/places/:id`                   | user                   | yes      | P2.13: one place's info and distance. Body carries the reading, so it's a POST.          |
-| PUT    | `/api/v1/places/:id/favorite`          | user                   |          |                                                                                          |
-| DELETE | `/api/v1/places/:id/favorite`          | user                   |          |                                                                                          |
-| GET    | `/api/v1/places/:id/friends-favorited` | user                   |          | D74/D76: which of your friends favorited this place (everyone else sees only the count). |
-| POST   | `/api/v1/places/:id/posts`             | user (confirmed email) | yes      | P3.2: post in a place's room (within 0.3 mi, D19).                                       |
-| POST   | `/api/v1/places/:id/posts/list`        | user                   | yes      | P3.2: a place's room, newest first (within 0.3 mi, D19).                                 |
-| POST   | `/api/v1/places/search`                | user                   | yes      | P2.13: search the directory. Needs a fresh in-Duval reading (D16); no radius (D19).      |
+| Method | Path                                   | Who                    | Location | What it does                                                                                                                                                                   |
+| ------ | -------------------------------------- | ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| POST   | `/api/v1/places/:id`                   | user                   | yes      | P2.13: one place's info and distance. Body carries the reading, so it's a POST.                                                                                                |
+| PUT    | `/api/v1/places/:id/favorite`          | user                   |          |                                                                                                                                                                                |
+| DELETE | `/api/v1/places/:id/favorite`          | user                   |          |                                                                                                                                                                                |
+| GET    | `/api/v1/places/:id/friends-favorited` | user                   |          | D74/D76: which of your friends favorited this place (everyone else sees only the count).                                                                                       |
+| POST   | `/api/v1/places/:id/posts`             | user (confirmed email) | yes      | P3.2: post in a place's room (within 0.3 mi, D19).                                                                                                                             |
+| POST   | `/api/v1/places/:id/posts/list`        | user                   | yes      | P3.2: a place's room, newest first (within 0.3 mi, D19).                                                                                                                       |
+| POST   | `/api/v1/places/:id/removal`           | user (confirmed email) | yes      | D94: "Closed or doesn't exist?" Opens a removal request (or joins the open one) with your "closed" vote. You must be within 528 yd of the place.                               |
+| POST   | `/api/v1/places/changes`               | user                   | yes      | D94: "Verify changes near you": suggested places and removal requests within 528 yd.                                                                                           |
+| POST   | `/api/v1/places/changes/vote`          | user (confirmed email) | yes      | D94: one final vote on a suggested place ("It's here" / "Not here") or a removal request ("Closed" / "Still open"). Confirmed accounts a few days old, standing within 528 yd. |
+| POST   | `/api/v1/places/search`                | user                   | yes      | P2.13: search the directory. Needs a fresh in-Duval reading (D16); no radius (D19).                                                                                            |
 
 ## submissions
 
@@ -212,6 +215,7 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | POST   | `/api/v1/admin/login/verify`            | public                |          | P5.11 step 2: authenticator code. Starts the admin session (cookies).                                                     |
 | POST   | `/api/v1/admin/logout`                  | admin (cookie + CSRF) |          | P5.11: end the admin session.                                                                                             |
 | GET    | `/api/v1/admin/photos/:id`              | admin (cookie + CSRF) |          | P6.5: moderators can see a reported photo, including after it's removed.                                                  |
+| POST   | `/api/v1/admin/removals/:id`            | admin (cookie + CSRF) |          | D94: overrule the community: keep (or restore) the place, or take it down now.                                            |
 | GET    | `/api/v1/admin/submissions`             | admin (cookie + CSRF) |          | P5.12: the submission queue with filters, duplicate candidates and submitter history.                                     |
 | POST   | `/api/v1/admin/submissions/:id`         | admin (cookie + CSRF) |          | P5.12 / P5.13: approve (optionally corrected), reject with a reason, or merge.                                            |
 | POST   | `/api/v1/admin/submissions/bulk`        | admin (cookie + CSRF) |          | P5.12: approve or reject a selected batch (the page lists them for confirmation first).                                   |

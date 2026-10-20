@@ -4,6 +4,8 @@
  *
  *   npm run demo:data -w @jax/server -- [--near <username>]   (default TestAdmin)
  *   npm run demo:data -w @jax/server -- --remove                (deletes every demo_ account)
+ *   npm run demo:data -w @jax/server -- --changes [--near <username>]
+ *     (D94: demo place changes to vote on near that account's area posts)
  *
  * Accounts are named demo_*, confirmed, and share one password (printed at the end). Photos
  * and a GIF are drawn here and go through the real upload pipeline (checked, re-encoded,
@@ -18,6 +20,8 @@ import { db } from '../../src/server/db';
 import { createComment } from '../../src/server/discussions/comments';
 import { createBusinessPost, createGeneralPost } from '../../src/server/discussions/posts';
 import { castVote } from '../../src/server/discussions/votes';
+import { castPlaceVote, requestRemoval } from '../../src/server/directory/place-changes';
+import { createSubmission } from '../../src/server/directory/submissions';
 import { uploadPhoto } from '../../src/server/media/photos';
 import { sendFriendRequest } from '../../src/server/social/friends';
 
@@ -189,6 +193,12 @@ async function removeDemo() {
       (SELECT count(*) FROM "Comment" c WHERE c."generalPostId" = p.id AND c.status = 'VISIBLE')`;
     await tx.$executeRaw`UPDATE "BusinessPost" p SET "commentCount" =
       (SELECT count(*) FROM "Comment" c WHERE c."businessPostId" = p.id AND c.status = 'VISIBLE')`;
+    // D94: their votes, suggestions and removal requests.
+    await tx.placeChangeVote.deleteMany({ where: { voterId: { in: ids } } });
+    await tx.placeRemoval.deleteMany({ where: { requesterId: { in: ids } } });
+    await tx.businessSubmission.deleteMany({
+      where: { submitterId: { in: ids }, status: { not: 'APPROVED' } },
+    });
     await tx.photo.deleteMany({ where: { uploaderId: { in: ids } } });
     await tx.generalPost.deleteMany({ where: { id: { in: generalIds } } });
     await tx.businessPost.deleteMany({ where: { id: { in: businessIds } } });
@@ -346,9 +356,52 @@ async function createDemo() {
   console.log(`${people[2]!.username} sent ${anchor.username} a friend request.`);
 }
 
+/**
+ * D94: a suggested place and a removal request near the anchor's area posts, each with a
+ * few demo votes, so "Verify changes near you" has something to show.
+ */
+async function createChanges() {
+  const anchor = await db.user.findUnique({
+    where: { usernameNormalized: normalizeUsername(near) },
+    select: { id: true },
+  });
+  if (!anchor) throw new Error(`No user named ${near}`);
+  const demo = await db.user.findMany({
+    where: { username: { startsWith: 'demo_' } },
+    orderBy: { username: 'asc' },
+  });
+  if (demo.length < 4) throw new Error('Run demo:data first (demo accounts are needed).');
+  const [spot] = await db.$queryRaw<{ latitude: number; longitude: number }[]>`
+    SELECT ST_Y(location::geometry) AS latitude, ST_X(location::geometry) AS longitude
+    FROM "GeneralPost" WHERE "authorId" = ${anchor.id}::uuid AND status = 'VISIBLE'
+    ORDER BY "createdAt" DESC LIMIT 1`;
+  if (!spot) throw new Error(`${near} has no area posts to put changes near.`);
+  const at = { latitude: spot.latitude + 0.0005, longitude: spot.longitude };
+
+  const s = await createSubmission(demo[0]!, at, {
+    name: 'Corner Taco Window',
+    category: 'fast_food',
+  });
+  for (const v of demo.slice(1, 3)) await castPlaceVote(v, { kind: 'add', id: s.id }, true, at);
+
+  const [place] = await db.$queryRaw<{ id: string; name: string }[]>`
+    SELECT id, name FROM "BusinessPlace"
+    WHERE status = 'ACTIVE'
+      AND ST_DWithin(location, ST_SetSRID(ST_MakePoint(${spot.longitude}, ${spot.latitude}), 4326)::geography, 400)
+      AND NOT EXISTS (SELECT 1 FROM "PlaceRemoval" r WHERE r."placeId" = "BusinessPlace".id AND r.status = 'OPEN')
+    ORDER BY random() LIMIT 1`;
+  if (place) {
+    const r = await requestRemoval(demo[3]!, place.id, at);
+    await castPlaceVote(demo[4] ?? demo[1]!, { kind: 'remove', id: r.id }, false, at);
+    console.log(`Removal request on "${place.name}" (1 closed, 1 still open).`);
+  }
+  console.log(`Suggested "Corner Taco Window" (3 of 10 "It's here" votes).`);
+}
+
 async function main() {
   if (process.env.NODE_ENV === 'production') throw new Error('Dev only.');
   if (args.includes('--remove')) await removeDemo();
+  else if (args.includes('--changes')) await createChanges();
   else await createDemo();
 }
 

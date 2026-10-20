@@ -55,7 +55,7 @@ export default function SuggestPlace() {
     try {
       const sent = await sendScreened(async (confirmWarning) => {
         const reading = await getFreshReading({ fresh: true });
-        return api.post('/api/v1/submissions', {
+        return api.post<{ merged?: boolean }>('/api/v1/submissions', {
           reading,
           name: name.trim(),
           category,
@@ -65,9 +65,12 @@ export default function SuggestPlace() {
         });
       });
       if (!sent) return;
+      // D94: people nearby vote it in; a near-identical suggestion counts as a vote.
       Alert.alert(
         'Thanks for the suggestion',
-        'An admin will review it. You can follow it in Account → Settings → My suggestions.',
+        sent.merged
+          ? 'Someone nearby already suggested this place, so we counted your vote for it.'
+          : 'People nearby can now vote on it under “Verify changes near you”. Ten “It’s here” votes add it to Places. Follow it in Account → My suggestions.',
       );
       router.back();
     } catch (e) {
@@ -81,7 +84,7 @@ export default function SuggestPlace() {
     <Screen keyboard>
       <PageTitle
         title="Suggest a place"
-        subtitle="Missing a spot nearby? An admin reviews every suggestion."
+        subtitle="Missing a spot nearby? People nearby vote it in."
         icon="add-circle-outline"
       />
       <Banner icon="navigate-outline" tone="info">
