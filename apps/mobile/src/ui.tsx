@@ -29,6 +29,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK } from '@jax/shared';
 import { UserBadge } from './auth/UserBadge';
 import { Bell } from './social/Bell';
+import { MessagesButton } from './social/MessagesButton';
 import { showMenu, type MenuItem } from './dialog';
 import { haptic, useReducedMotion } from './motion';
 import { Text, TextInput } from './text';
@@ -81,6 +82,7 @@ export const headerOptions = {
   // D76: the notification bell before your username.
   headerRight: () => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <MessagesButton />
       <Bell />
       <UserBadge />
     </View>

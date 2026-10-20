@@ -298,39 +298,48 @@ function FriendButton({
   switch (profile.friendship) {
     case 'friends':
       return (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Friends with ${profile.username}. More options`}
-          onPress={() =>
-            openMenu(profile.username, [
+        // D97: friends can message each other.
+        <View style={[top, { flexDirection: 'row', gap: SPACE.sm }]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Friends with ${profile.username}. More options`}
+            onPress={() =>
+              openMenu(profile.username, [
+                {
+                  label: 'Remove friend',
+                  icon: 'person-remove-outline',
+                  destructive: true,
+                  onPress: onRemove,
+                },
+              ])
+            }
+            style={({ pressed }) => [
               {
-                label: 'Remove friend',
-                icon: 'person-remove-outline',
-                destructive: true,
-                onPress: onRemove,
+                flex: 1,
+                minHeight: 48,
+                borderRadius: RADIUS.md + 2,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                backgroundColor: DARK.tealSoft,
+                borderWidth: 1,
+                borderColor: DARK.tealText,
+                opacity: pressed ? 0.8 : 1,
               },
-            ])
-          }
-          style={({ pressed }) => [
-            top,
-            {
-              minHeight: 48,
-              borderRadius: RADIUS.md + 2,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              backgroundColor: DARK.tealSoft,
-              borderWidth: 1,
-              borderColor: DARK.tealText,
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
-        >
-          <Ionicons name="people" size={18} color={DARK.tealText} />
-          <Text style={{ color: DARK.tealText, fontWeight: '800', fontSize: 15.5 }}>Friends</Text>
-          <Ionicons name="chevron-down" size={16} color={DARK.tealText} />
-        </Pressable>
+            ]}
+          >
+            <Ionicons name="people" size={18} color={DARK.tealText} />
+            <Text style={{ color: DARK.tealText, fontWeight: '800', fontSize: 15.5 }}>Friends</Text>
+            <Ionicons name="chevron-down" size={16} color={DARK.tealText} />
+          </Pressable>
+          <Button
+            title="Message"
+            icon="chatbubble-ellipses"
+            onPress={() => router.push(`/messages/${encodeURIComponent(profile.username)}`)}
+            style={{ flex: 1 }}
+          />
+        </View>
       );
     case 'requested':
       return (

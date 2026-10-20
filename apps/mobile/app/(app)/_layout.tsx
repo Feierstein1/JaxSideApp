@@ -103,6 +103,11 @@ export default function AppLayout() {
           tabBarIcon: tabIcon('people'),
         }}
       />
+      {/* D97: opened from the Messages button, not a tab. */}
+      <Tabs.Screen
+        name="messages"
+        options={{ href: null, headerShown: false, title: 'Messages' }}
+      />
       {/* D76: opened from the bell, not a tab. */}
       <Tabs.Screen
         name="notifications"

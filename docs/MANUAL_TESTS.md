@@ -194,6 +194,21 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Portal → **Places** shows each suggestion's votes; **Removals** lists requests with every
       vote (who, which way, how far) and **Restore place** / **Remove now**.
 
+## 7e. Private messages (D97, two accounts that are friends)
+
+- [ ] The top bar has a chat-bubble **Messages** button next to the bell.
+- [ ] On a friend's profile, **Message** opens a chat; so does the chat icon in Friends → Your
+      friends. A non-friend's profile has no Message button.
+- [ ] Send text and a photo: the other phone shows a red number on Messages within about 30 s;
+      with the chat open, new messages appear within a few seconds.
+- [ ] Long-press your message within 15 minutes → **Unsend (for both)**: it disappears on both
+      phones. **Delete for me** hides it only for you.
+- [ ] Long-press their message → **Report**: in the portal the case shows the message with the
+      messages around it; **Remove** unsends it.
+- [ ] Messages → long-press a chat → **Delete for me**: it's gone from your list until they send
+      something new.
+- [ ] Unfriend or block: you can't send any more (old messages stay readable until deleted).
+
 ## 8. Profiles and blocking
 
 - [ ] Tap a username on a post or comment: profile shows bio, join date, post count, recent posts.

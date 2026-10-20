@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK, type FriendRequestView, type FriendView } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
@@ -245,6 +245,21 @@ export function FriendsManager({ embedded = false }: { embedded?: boolean }) {
                     year: 'numeric',
                   })}`}
                 >
+                  {/* D97: message a friend. */}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Message ${f.username}`}
+                    onPress={() => router.push(`/messages/${encodeURIComponent(f.username)}`)}
+                    hitSlop={6}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name="chatbubble-ellipses-outline" size={20} color={DARK.accent} />
+                  </Pressable>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`More options for ${f.username}`}
