@@ -39,6 +39,10 @@ import * as reports from '@/app/api/v1/reports/route';
 import * as photos from '@/app/api/v1/photos/route';
 import * as voice from '@/app/api/v1/voice/route';
 import * as contact from '@/app/api/v1/contact/route';
+import * as messages from '@/app/api/v1/messages/route';
+import * as messageUnsend from '@/app/api/v1/messages/[id]/unsend/route';
+import * as messageHide from '@/app/api/v1/messages/[id]/hide/route';
+import * as chatHide from '@/app/api/v1/messages/conversations/[id]/hide/route';
 import * as placeChanges from '@/app/api/v1/places/changes/route';
 import * as placeVote from '@/app/api/v1/places/changes/vote/route';
 import * as placeRemoval from '@/app/api/v1/places/[id]/removal/route';
@@ -331,6 +335,43 @@ const ROWS: Row[] = [
     auth: true,
     id: null,
     location: false,
+  },
+  // D97: private messages (messages.test.ts has membership and friendship checks).
+  {
+    route: 'messages',
+    method: 'POST',
+    handler: h(messages, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at), to: 'other_w', body: 'hi' }),
+  },
+  {
+    route: 'messages/[id]/unsend',
+    method: 'POST',
+    handler: h(messageUnsend, 'POST'),
+    auth: true,
+    id: 'post',
+    location: false,
+    body: () => ({}),
+  },
+  {
+    route: 'messages/[id]/hide',
+    method: 'POST',
+    handler: h(messageHide, 'POST'),
+    auth: true,
+    id: 'post',
+    location: false,
+    body: () => ({}),
+  },
+  {
+    route: 'messages/conversations/[id]/hide',
+    method: 'POST',
+    handler: h(chatHide, 'POST'),
+    auth: true,
+    id: 'post',
+    location: false,
+    body: () => ({}),
   },
   // D94: community place voting (place-voting.test.ts has the behavior).
   {

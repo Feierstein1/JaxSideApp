@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { locationReadingSchema } from './location';
 
 /**
  * D76: friends and notifications. Friendships are mutual and by request; everything here
@@ -56,3 +57,51 @@ export interface FriendActivityItem {
   place: { id: string; name: string } | null;
   createdAt: string;
 }
+
+// ───────────── D97: private messages (mutual friends only) ─────────────
+
+export const MESSAGE_MAX = 1000;
+export const MESSAGE_PHOTOS_MAX = 4;
+/** You can unsend your own message for this long. */
+export const UNSEND_MINUTES = 15;
+
+export const sendMessageSchema = z
+  .strictObject({
+    reading: locationReadingSchema,
+    to: z.string().trim().regex(/^[A-Za-z0-9_]{3,20}$/, 'Not a username'),
+    body: z
+      .string()
+      .trim()
+      .max(MESSAGE_MAX, `Keep it under ${MESSAGE_MAX} characters`)
+      // eslint-disable-next-line no-control-regex
+      .refine((v) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(v), 'Invalid characters')
+      .default(''),
+    photoIds: z.array(z.uuid()).max(MESSAGE_PHOTOS_MAX).optional(),
+    confirmWarning: z.literal(true).optional(),
+  })
+  .refine((m) => m.body.length > 0 || !!m.photoIds?.length, {
+    message: 'Write something first',
+    path: ['body'],
+  });
+
+export interface ChatMessage {
+  id: string;
+  mine: boolean;
+  body: string;
+  photos: { id: string; url: string; width: number; height: number }[];
+  createdAt: string;
+  /** Still within the unsend window (your own messages only). */
+  canUnsend: boolean;
+}
+
+export interface ConversationSummary {
+  id: string;
+  with: FriendUser;
+  /** Short preview of the last message ("Photo" for a photo-only one). */
+  preview: string;
+  lastMessageAt: string;
+  unread: boolean;
+  /** Still friends and not blocked, so you can send. */
+  canSend: boolean;
+}
+

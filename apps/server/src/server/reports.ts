@@ -6,6 +6,7 @@ import { db } from './db';
 import { ApiError } from './http';
 import { autoSuspendConfig, maybeAutoSuspend } from './moderation/auto-suspend';
 import { getPublicProfile } from './profiles';
+import { messageReportEvidence } from './social/messages';
 
 /**
  * P5.1: user reports. Registered users can report what they can see (guests are
@@ -23,6 +24,9 @@ interface ResolvedTarget {
     photoId?: string;
     /** Profile reports only; content reports reach the author through the content. */
     reportedUserId?: string;
+    /** D97: a private message, with its snapshot (evidence). */
+    messageId?: string;
+    messageEvidence?: Prisma.InputJsonValue;
   };
   authorUserId: string | null;
   authorGuestId: string | null;
@@ -63,6 +67,18 @@ async function resolveTarget(target: ReportTarget, viewerUserId: string | null) 
       authorUserId: post.authorId,
       authorGuestId: null,
       business: target.type === 'business',
+    } satisfies ResolvedTarget;
+  }
+  if (target.type === 'message') {
+    // D97: only someone in the chat can report a message; the report keeps a snapshot.
+    if (!viewerUserId) throw NOT_FOUND();
+    const { authorUserId, evidence } = await messageReportEvidence(viewerUserId, target.id);
+    return {
+      key: `message:${target.id}`,
+      data: { messageId: target.id, messageEvidence: evidence },
+      authorUserId,
+      authorGuestId: null,
+      business: false,
     } satisfies ResolvedTarget;
   }
   if (target.type === 'photo') {
@@ -174,6 +190,7 @@ function targetWhere(t: ResolvedTarget) {
   if (t.data.businessPostId) return { businessPostId: t.data.businessPostId };
   if (t.data.commentId) return { commentId: t.data.commentId };
   if (t.data.photoId) return { photoId: t.data.photoId };
+  if (t.data.messageId) return { messageId: t.data.messageId };
   // A report has exactly one target column (DB check `Report_one_target`).
   return { reportedUserId: t.data.reportedUserId };
 }

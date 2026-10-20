@@ -216,6 +216,12 @@ model User {
   placeRemovalsDone PlaceRemoval[]    @relation("RemovalResolver")
   placeVotes        PlaceChangeVote[] @relation("PlaceVoter")
 
+  conversationsLow    Conversation[]       @relation("ConversationLow")
+  conversationsHigh   Conversation[]       @relation("ConversationHigh")
+  conversationMembers ConversationMember[] @relation("ConversationMembership")
+  messagesSent        Message[]            @relation("MessageSender")
+  messagesHidden      MessageHide[]        @relation("MessageHidden")
+
   @@index([status])
 }
 
@@ -645,12 +651,15 @@ model Photo {
   bytes          Int?
   generalPostId  String?       @db.Uuid
   businessPostId String?       @db.Uuid
+  /// D97: a photo sent in a private message.
+  messageId      String?       @db.Uuid
   createdAt      DateTime      @default(now()) @db.Timestamptz(3)
   processedAt    DateTime?     @db.Timestamptz(3)
   removedAt      DateTime?     @db.Timestamptz(3)
   uploader       User          @relation(fields: [uploaderId], references: [id])
   generalPost    GeneralPost?  @relation(fields: [generalPostId], references: [id], onDelete: SetNull)
   businessPost   BusinessPost? @relation(fields: [businessPostId], references: [id], onDelete: SetNull)
+  message        Message?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
   avatarOf       Profile?      @relation("Avatar")
 
   reports    Report[]
@@ -659,6 +668,7 @@ model Photo {
   @@index([uploaderId, createdAt])
   @@index([generalPostId])
   @@index([businessPostId])
+  @@index([messageId])
   @@index([status, createdAt])
 }
 
@@ -699,6 +709,10 @@ model Report {
   commentId       String?       @db.Uuid
   photoId         String?       @db.Uuid
   reportedUserId  String?       @db.Uuid
+  /// D97: a reported private message (null once it's unsent or its sender deleted).
+  messageId       String?       @db.Uuid
+  /// D97: snapshot of the reported message and the 10 around it, kept 1 year as evidence.
+  messageEvidence Json?
   reason          ReportReason
   details         String?       @db.VarChar(1000)
   status          ReportStatus  @default(OPEN)
@@ -711,6 +725,7 @@ model Report {
   businessPost    BusinessPost? @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
   comment         Comment?      @relation(fields: [commentId], references: [id], onDelete: Cascade)
   photo           Photo?        @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  message         Message?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
   reportedUser    User?         @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
   resolvedBy      User?         @relation("ReportResolver", fields: [resolvedById], references: [id])
 
@@ -798,6 +813,67 @@ model ContactMessage {
 
   @@index([status, createdAt])
   @@index([userId, createdAt])
+}
+
+/// D97: private messaging between two friends. One conversation per pair (ordered ids).
+model Conversation {
+  id            String               @id @default(uuid(7)) @db.Uuid
+  userLowId     String               @db.Uuid
+  userHighId    String               @db.Uuid
+  /// This chat's data key, wrapped by the master key (like a user's, D35). Destroying it
+  /// makes the chat unreadable.
+  dekWrapped    Bytes
+  createdAt     DateTime             @default(now()) @db.Timestamptz(3)
+  lastMessageAt DateTime             @default(now()) @db.Timestamptz(3)
+  userLow       User                 @relation("ConversationLow", fields: [userLowId], references: [id], onDelete: Cascade)
+  userHigh      User                 @relation("ConversationHigh", fields: [userHighId], references: [id], onDelete: Cascade)
+  members       ConversationMember[]
+  messages      Message[]
+
+  @@unique([userLowId, userHighId])
+  @@index([userHighId])
+}
+
+model ConversationMember {
+  conversationId String       @db.Uuid
+  userId         String       @db.Uuid
+  lastReadAt     DateTime?    @db.Timestamptz(3)
+  /// "Delete chat for me": messages up to this time are hidden from this person.
+  hiddenBefore   DateTime?    @db.Timestamptz(3)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation("ConversationMembership", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  conversationId String        @db.Uuid
+  senderId       String        @db.Uuid
+  /// Text, encrypted with the conversation's key (empty for a photo-only message).
+  bodyEnc        Bytes?
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  /// "Unsend" (within 15 minutes): gone for both.
+  unsentAt       DateTime?     @db.Timestamptz(3)
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User          @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  photos         Photo[]
+  hiddenFor      MessageHide[]
+  reports        Report[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+}
+
+/// "Delete for me" on one message.
+model MessageHide {
+  messageId String  @db.Uuid
+  userId    String  @db.Uuid
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User    @relation("MessageHidden", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
 }
 
 model UserBlock {

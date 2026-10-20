@@ -3,6 +3,7 @@
  * account deletion. Every action that changes credentials re-checks the current password,
  * and wrong guesses are rate-limited per account.
  */
+import { deleteMessagesFrom } from '../social/messages';
 import { normalizeUsername } from '@jax/shared';
 import type { Prisma, User } from '@/generated/prisma/client';
 import { getConfig } from '../config';
@@ -216,6 +217,8 @@ export async function deleteAccount(user: User, password: string, now = new Date
     });
     await tx.profile.updateMany({ where: { userId: user.id }, data: { bio: null } });
     await tx.favoritePlace.deleteMany({ where: { userId: user.id } });
+    // D97: every private message they sent goes (reports keep their snapshot).
+    await deleteMessagesFrom(tx, user.id);
     await tx.accountDeletion.create({
       data: {
         userId: user.id,

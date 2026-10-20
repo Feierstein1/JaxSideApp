@@ -1,4 +1,4 @@
-import type { ContentStatus, Prisma, ReportReason } from '@/generated/prisma/client';
+import { Prisma, type ContentStatus, type ReportReason } from '@/generated/prisma/client';
 import { db } from '../db';
 import { ApiError } from '../http';
 import { issueStrike, type StrikeOutcome } from '../moderation/enforcement';
@@ -13,14 +13,14 @@ import { audit } from './audit';
  * (P5.15) and an audit entry (P5.16), and can add a strike to the author (P5.6).
  */
 
-export type CaseType = 'general' | 'business' | 'comment' | 'photo' | 'user';
+export type CaseType = 'general' | 'business' | 'comment' | 'photo' | 'user' | 'message';
 export interface CaseRef {
   type: CaseType;
   id: string;
 }
 
 const COLUMN: Record<
-  Exclude<CaseType, 'user'>,
+  Exclude<CaseType, 'user' | 'message'>,
   'generalPostId' | 'businessPostId' | 'commentId' | 'photoId'
 > = {
   general: 'generalPostId',
@@ -35,7 +35,13 @@ function refOf(r: {
   commentId: string | null;
   photoId: string | null;
   reportedUserId: string | null;
+  messageId?: string | null;
+  messageEvidence?: unknown;
 }): CaseRef | null {
+  // D97: a reported message (its snapshot keeps the case even after it's unsent).
+  if (r.messageId) return { type: 'message', id: r.messageId };
+  const ev = r.messageEvidence as { messageId?: string } | null | undefined;
+  if (ev?.messageId) return { type: 'message', id: ev.messageId };
   if (r.generalPostId) return { type: 'general', id: r.generalPostId };
   if (r.businessPostId) return { type: 'business', id: r.businessPostId };
   if (r.commentId) return { type: 'comment', id: r.commentId };
@@ -45,15 +51,19 @@ function refOf(r: {
 }
 
 const reportWhere = (ref: CaseRef): Prisma.ReportWhereInput =>
-  ref.type === 'user'
+  ref.type === 'message'
     ? {
-        reportedUserId: ref.id,
-        generalPostId: null,
-        businessPostId: null,
-        commentId: null,
-        photoId: null,
+        OR: [{ messageId: ref.id }, { messageEvidence: { path: ['messageId'], equals: ref.id } }],
       }
-    : { [COLUMN[ref.type]]: ref.id };
+    : ref.type === 'user'
+      ? {
+          reportedUserId: ref.id,
+          generalPostId: null,
+          businessPostId: null,
+          commentId: null,
+          photoId: null,
+        }
+      : { [COLUMN[ref.type as Exclude<CaseType, 'user' | 'message'>]]: ref.id };
 
 const preview = (s: string, n = 140) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
@@ -73,6 +83,8 @@ export async function listCases(opts: { type?: CaseType } = {}) {
       commentId: true,
       photoId: true,
       reportedUserId: true,
+      messageId: true,
+      messageEvidence: true,
       reason: true,
       reporterUserId: true,
       reporterGuestId: true,
@@ -168,6 +180,27 @@ async function subject(
         author: ph.uploader,
       }
     );
+  }
+  if (ref.type === 'message') {
+    // D97: the snapshot taken when it was reported (the message may since be unsent).
+    const r = await db.report.findFirst({
+      where: { ...reportWhere(ref), messageEvidence: { not: Prisma.DbNull } },
+      orderBy: { createdAt: 'desc' },
+      select: { messageEvidence: true, message: { select: { unsentAt: true, senderId: true } } },
+    });
+    const ev = r?.messageEvidence as
+      { messages: { id: string; sender: string; body: string; reported: boolean }[] } | undefined;
+    const reported = ev?.messages.find((m) => m.reported);
+    if (!reported) return null;
+    const sender = await db.user.findUnique({
+      where: { usernameNormalized: reported.sender.toLowerCase() },
+      select: user.select,
+    });
+    return {
+      body: reported.body || '[photo]',
+      status: r?.message && !r.message.unsentAt ? 'VISIBLE' : 'REMOVED',
+      author: sender,
+    };
   }
   const u = await db.user.findUnique({ where: { id: ref.id }, include: { profile: true } });
   return (
@@ -296,6 +329,22 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
     photoUrl: ref.type === 'photo' ? `/api/v1/admin/photos/${ref.id}` : null,
     /** D75: a voice post's clip, playable by the moderator (any status). */
     voiceUrl: voice ? `/api/v1/admin/photos/${voice.id}` : null,
+    /** D97: the chat around a reported message, from the newest report's snapshot. */
+    messageContext:
+      ref.type === 'message'
+        ? ((
+            reports.find((r) => r.messageEvidence)?.messageEvidence as {
+              messages: {
+                id: string;
+                sender: string;
+                body: string;
+                photoIds: string[];
+                createdAt: string;
+                reported: boolean;
+              }[];
+            } | null
+          )?.messages ?? null)
+        : null,
     contentStatus: s.status,
     author: s.author,
     authorHistory: authorId ? await userHistory(authorId) : null,
@@ -376,6 +425,20 @@ async function setStatus(
   ref: { type: Exclude<CaseType, 'user'>; id: string },
   to: 'VISIBLE' | 'REMOVED',
 ) {
+  if (ref.type === 'message') {
+    // D97: removing a message unsends it for both people (the report keeps the snapshot).
+    if (to === 'REMOVED') {
+      await tx.message.updateMany({
+        where: { id: ref.id, unsentAt: null },
+        data: { unsentAt: new Date(), bodyEnc: null },
+      });
+      await tx.photo.updateMany({
+        where: { messageId: ref.id },
+        data: { status: 'REMOVED', removedAt: new Date() },
+      });
+    }
+    return true;
+  }
   if (ref.type === 'photo') {
     // The object stays in storage (evidence); a removed photo is never served (P6.4).
     await tx.photo.update({
@@ -483,7 +546,9 @@ export async function decideCase(input: {
         reason: input.reason,
         internalNote: input.internalNote ?? null,
         targetUserId: authorId,
-        ...(input.ref.type === 'user' ? {} : { [COLUMN[input.ref.type]]: input.ref.id }),
+        ...(input.ref.type === 'user' || input.ref.type === 'message'
+          ? {}
+          : { [COLUMN[input.ref.type]]: input.ref.id }),
         reportId: open[0]?.id ?? null,
         createdAt: now,
       },

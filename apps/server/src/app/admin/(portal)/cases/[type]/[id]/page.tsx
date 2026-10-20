@@ -45,6 +45,33 @@ export default async function CasePage(ctx: {
         {c.voiceUrl ? (
           <audio controls src={c.voiceUrl} style={{ display: 'block', margin: '8px 0' }} />
         ) : null}
+        {c.messageContext ? (
+          // D97: the conversation around the reported message (snapshot at report time).
+          <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
+            <p style={ui.muted}>Private message, with the messages around it:</p>
+            {c.messageContext.map((m) => (
+              <div
+                key={m.id}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 8,
+                  border: m.reported
+                    ? `2px solid ${COLORS.error}`
+                    : `1px solid ${COLORS.cardBorder}`,
+                }}
+              >
+                <strong>@{m.sender}</strong> · {when(m.createdAt)}
+                {m.reported ? ' · REPORTED' : ''}
+                <div style={{ whiteSpace: 'pre-wrap' }}>
+                  {m.body || ''}
+                  {m.photoIds.length
+                    ? ` [${m.photoIds.length} photo${m.photoIds.length === 1 ? '' : 's'}]`
+                    : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
         {c.photoUrl ? (
           <img src={c.photoUrl} alt="Reported photo" style={{ maxWidth: '100%', maxHeight: 480 }} />
         ) : (

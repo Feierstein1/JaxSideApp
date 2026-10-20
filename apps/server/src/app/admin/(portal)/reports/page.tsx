@@ -11,6 +11,7 @@ const KIND = {
   comment: 'Comment',
   photo: 'Photo',
   user: 'Profile',
+  message: 'Private message',
 };
 
 /** P5.14: open reports, one row per reported item, most urgent first. */

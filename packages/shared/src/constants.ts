@@ -188,6 +188,14 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.block.perMinute': 20,
   /** D90: Contact us messages per person per hour. */
   'rateLimit.contact.perHour': 5,
+  // D97 private messages
+  'rateLimit.message.perMinute': 30,
+  'rateLimit.message.perDay': 1000,
+  'rateLimit.messageNewChat.perDay': 10,
+  /** Reading chats and the unread count (a chat checks every 3 s while open). */
+  'rateLimit.messageRead.perMinute': 120,
+  /** Accounts younger than this can only reply, not start chats. */
+  'messages.newChatMinAccountDays': 3,
   // D76 friends and notifications
   'rateLimit.friendRequest.perHour': 30,
   'rateLimit.friends.perMinute': 60,

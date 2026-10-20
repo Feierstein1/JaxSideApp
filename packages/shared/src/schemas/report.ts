@@ -37,6 +37,8 @@ export const reportTargetSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('comment'), id: z.uuid() }),
   /** P6.5: a photo on a post or a profile photo. */
   z.strictObject({ type: z.literal('photo'), id: z.uuid() }),
+  /** D97: a private message (only someone in the chat can report it). */
+  z.strictObject({ type: z.literal('message'), id: z.uuid() }),
   z.strictObject({
     type: z.literal('user'),
     // Any existing name (old names can predate today's rules), so no reserved-word check.
