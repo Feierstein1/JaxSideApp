@@ -135,6 +135,26 @@ export function PostCard({
                 />
               ) : null}
               {'medals' in author ? <MedalIcons keys={author.medals} size={16} /> : null}
+              {/* D103: a verified owner of this place (its discussion only). */}
+              {'owner' in author && author.owner ? (
+                <View
+                  accessibilityLabel="Verified owner"
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 3,
+                    paddingHorizontal: 6,
+                    height: 20,
+                    borderRadius: 10,
+                    backgroundColor: DARK.accent,
+                  }}
+                >
+                  <Ionicons name="ribbon" size={11} color={DARK.onAccent} />
+                  <Text style={{ color: DARK.onAccent, fontSize: 11, fontWeight: '800' }}>
+                    Owner
+                  </Text>
+                </View>
+              ) : null}
             </View>
             <Text style={{ color: DARK.textMuted, fontSize: 13, fontWeight: '500', marginTop: 1 }}>
               {meta}

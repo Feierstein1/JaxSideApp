@@ -222,6 +222,9 @@ model User {
   messagesSent        Message[]            @relation("MessageSender")
   messagesHidden      MessageHide[]        @relation("MessageHidden")
 
+  ownerClaims        OwnerClaim[] @relation("OwnerClaimant")
+  ownerClaimsDecided OwnerClaim[] @relation("OwnerClaimDecider")
+
   @@index([status])
 }
 
@@ -397,6 +400,9 @@ model BusinessPlace {
   nameNormalized String                                 @db.VarChar(200)
   category       String                                 @db.VarChar(60)
   address        String?                                @db.VarChar(300)
+  /// D103: the business's public website and phone from the map data (owner verification).
+  website        String?                                @db.VarChar(300)
+  phone          String?                                @db.VarChar(40)
   latitude       Float
   longitude      Float
   /// Generated from latitude/longitude in raw SQL on write.
@@ -414,7 +420,8 @@ model BusinessPlace {
   favorites   FavoritePlace[]
   submissions BusinessSubmission[]
 
-  removals PlaceRemoval[]
+  removals    PlaceRemoval[]
+  ownerClaims OwnerClaim[]
 
   @@unique([sourceName, sourceId])
   @@index([location], type: Gist)
@@ -467,6 +474,52 @@ model PlaceChangeVote {
   @@unique([voterId, removalId])
   @@index([submissionId])
   @@index([removalId])
+}
+
+/// D103: verified business owners (D92). How a claim is checked, and where it stands.
+enum OwnerMethod {
+  EMAIL // a code to an address at the business's own web domain (automatic)
+  WEBSITE // a code the owner posts on the business's site or social page (admin checks)
+  PHONE // an admin calls the business's public number and reads a code
+}
+
+enum OwnerClaimStatus {
+  PENDING // waiting for the code or an admin
+  VERIFIED // the person is a verified owner of the place
+  REJECTED
+  REVOKED // the Owner tag was taken away (misuse)
+  CANCELLED // withdrawn by the person
+}
+
+model OwnerClaim {
+  id            String           @id @default(uuid(7)) @db.Uuid
+  placeId       String           @db.Uuid
+  userId        String           @db.Uuid
+  method        OwnerMethod
+  status        OwnerClaimStatus @default(PENDING)
+  /// EMAIL: only the domain is kept (the address is used once, to send the code).
+  emailDomain   String?          @db.VarChar(200)
+  /// EMAIL / PHONE: the code to enter, hashed; expires; limited tries.
+  codeHash      String?          @db.VarChar(100)
+  codeExpiresAt DateTime?        @db.Timestamptz(3)
+  attempts      Int              @default(0)
+  /// WEBSITE: the code to post publicly, and where the owner says they posted it.
+  publicCode    String?          @db.VarChar(20)
+  proofUrl      String?          @db.VarChar(500)
+  /// PHONE: the code an admin reads out (shown in the portal only).
+  phoneCode     String?          @db.VarChar(10)
+  note          String?          @db.VarChar(500)
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+  verifiedAt    DateTime?        @db.Timestamptz(3)
+  decidedAt     DateTime?        @db.Timestamptz(3)
+  decidedById   String?          @db.Uuid
+  place         BusinessPlace    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  user          User             @relation("OwnerClaimant", fields: [userId], references: [id], onDelete: Cascade)
+  decidedBy     User?            @relation("OwnerClaimDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([placeId, status])
+  @@index([userId, status])
+  @@index([status, createdAt])
 }
 
 model BusinessSubmission {

@@ -39,6 +39,10 @@ import * as reports from '@/app/api/v1/reports/route';
 import * as photos from '@/app/api/v1/photos/route';
 import * as voice from '@/app/api/v1/voice/route';
 import * as videos from '@/app/api/v1/videos/route';
+import * as ownerClaims from '@/app/api/v1/places/[id]/owner-claims/route';
+import * as ownerConfirm from '@/app/api/v1/owner-claims/[id]/confirm/route';
+import * as ownerProof from '@/app/api/v1/owner-claims/[id]/proof/route';
+import * as ownerCancel from '@/app/api/v1/owner-claims/[id]/cancel/route';
 import * as contact from '@/app/api/v1/contact/route';
 import * as clientLog from '@/app/api/v1/dev/client-log/route';
 import * as messages from '@/app/api/v1/messages/route';
@@ -429,6 +433,43 @@ const ROWS: Row[] = [
     id: null,
     location: false,
     body: () => ({ category: 'GENERAL', subject: 'Hello', body: 'Just saying hello to you.' }),
+  },
+  // D103: business owner claims (owners.test.ts has the behavior).
+  {
+    route: 'places/[id]/owner-claims',
+    method: 'POST',
+    handler: h(ownerClaims, 'POST'),
+    auth: true,
+    id: 'place',
+    location: false,
+    body: () => ({ method: 'WEBSITE' }),
+  },
+  {
+    route: 'owner-claims/[id]/confirm',
+    method: 'POST',
+    handler: h(ownerConfirm, 'POST'),
+    auth: true,
+    id: 'post',
+    location: false,
+    body: () => ({ code: '123456' }),
+  },
+  {
+    route: 'owner-claims/[id]/proof',
+    method: 'POST',
+    handler: h(ownerProof, 'POST'),
+    auth: true,
+    id: 'post',
+    location: false,
+    body: () => ({ proofUrl: 'https://example.com/code' }),
+  },
+  {
+    route: 'owner-claims/[id]/cancel',
+    method: 'POST',
+    handler: h(ownerCancel, 'POST'),
+    auth: true,
+    id: 'post',
+    location: false,
+    body: () => ({}),
   },
   // D102: the body is the video itself (video.test.ts).
   {

@@ -157,6 +157,9 @@ export interface PlaceCandidate {
   nameNormalized: string;
   category: string;
   address: string | null;
+  /** D103: public website and phone (owner verification). */
+  website: string | null;
+  phone: string | null;
   latitude: number;
   longitude: number;
 }
@@ -165,6 +168,24 @@ function address(t: Record<string, string>): string | null {
   const street = [t['addr:housenumber'], t['addr:street']].filter(Boolean).join(' ');
   const parts = [street, t['addr:city'], t['addr:postcode']].filter(Boolean);
   return parts.length ? parts.join(', ').slice(0, 300) : null;
+}
+
+/** D103: a usable http(s) website from the place's tags, or null. */
+function website(t: Record<string, string>): string | null {
+  const raw = (t.website ?? t['contact:website'] ?? t.url ?? '').trim().split(';')[0]!.trim();
+  if (!raw) return null;
+  const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const u = new URL(url);
+    return u.hostname.includes('.') ? u.toString().slice(0, 300) : null;
+  } catch {
+    return null;
+  }
+}
+
+function phone(t: Record<string, string>): string | null {
+  const raw = (t.phone ?? t['contact:phone'] ?? '').split(';')[0]!.trim();
+  return raw ? raw.slice(0, 40) : null;
 }
 
 /** Turns raw Overpass elements into importable places (named + allow-listed + located). */
@@ -188,6 +209,8 @@ export function toCandidates(elements: OsmElement[]): PlaceCandidate[] {
       nameNormalized: nameNormalized.slice(0, 200),
       category,
       address: address(tags),
+      website: website(tags),
+      phone: phone(tags),
       latitude: lat,
       longitude: lon,
     });
@@ -229,13 +252,14 @@ export async function importOsmPlaces(
       await tx.$executeRawUnsafe(`
         CREATE TEMP TABLE osm_stage (
           source_id text PRIMARY KEY, rank int, osm_id bigint, name text, name_norm text,
-          category text, address text, lat double precision, lng double precision,
+          category text, address text, website text, phone text,
+          lat double precision, lng double precision,
           geog geography(Point, 4326)
         ) ON COMMIT DROP`);
       for (let i = 0; i < candidates.length; i += 500) {
         const rows = candidates.slice(i, i + 500).map(
           (c) => Prisma.sql`(${c.sourceId}, ${c.rank}, ${c.osmId}, ${c.name}, ${c.nameNormalized},
-            ${c.category}, ${c.address}, ${c.latitude}, ${c.longitude},
+            ${c.category}, ${c.address}, ${c.website}, ${c.phone}, ${c.latitude}, ${c.longitude},
             ST_SetSRID(ST_MakePoint(${c.longitude}, ${c.latitude}), 4326)::geography)`,
         );
         await tx.$executeRaw`
@@ -261,15 +285,16 @@ export async function importOsmPlaces(
 
       const [counts] = await tx.$queryRaw<{ inserted: bigint; updated: bigint }[]>`
         WITH up AS (
-          INSERT INTO "BusinessPlace" (id, name, "nameNormalized", category, address, latitude,
+          INSERT INTO "BusinessPlace" (id, name, "nameNormalized", category, address, website, phone, latitude,
                                        longitude, location, status, "sourceName", "sourceId",
                                        attribution, "createdAt", "updatedAt")
-          SELECT gen_random_uuid(), name, name_norm, category, address, lat, lng, geog, 'ACTIVE',
+          SELECT gen_random_uuid(), name, name_norm, category, address, website, phone, lat, lng, geog, 'ACTIVE',
                  ${OSM_SOURCE}, source_id, ${OSM_ATTRIBUTION}, now(), now()
           FROM osm_stage
           ON CONFLICT ("sourceName", "sourceId") DO UPDATE SET
             name = EXCLUDED.name, "nameNormalized" = EXCLUDED."nameNormalized",
             category = EXCLUDED.category, address = EXCLUDED.address,
+            website = EXCLUDED.website, phone = EXCLUDED.phone,
             latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude,
             location = EXCLUDED.location, "updatedAt" = now(),
             -- D94: a place the community (or an admin) removed stays removed.
@@ -278,6 +303,8 @@ export async function importOsmPlaces(
           WHERE "BusinessPlace".name IS DISTINCT FROM EXCLUDED.name
              OR "BusinessPlace".category IS DISTINCT FROM EXCLUDED.category
              OR "BusinessPlace".address IS DISTINCT FROM EXCLUDED.address
+             OR "BusinessPlace".website IS DISTINCT FROM EXCLUDED.website
+             OR "BusinessPlace".phone IS DISTINCT FROM EXCLUDED.phone
              OR "BusinessPlace".latitude IS DISTINCT FROM EXCLUDED.latitude
              OR "BusinessPlace".longitude IS DISTINCT FROM EXCLUDED.longitude
              OR "BusinessPlace".status = 'INACTIVE'

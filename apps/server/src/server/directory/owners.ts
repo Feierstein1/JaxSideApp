@@ -1,0 +1,368 @@
+import { randomInt, timingSafeEqual } from 'node:crypto';
+import type { OwnerClaimStatus, OwnerMethod, User } from '@/generated/prisma/client';
+import { hashToken } from '../auth/crypto';
+import { db } from '../db';
+import { ApiError } from '../http';
+import { sendSafely } from '../mail/mailer';
+import { ownerCodeEmail } from '../mail/templates';
+
+/**
+ * D103 (Phase 12, decided in D92): verified business owners. An owner gets an **Owner** tag
+ * on their posts in that place's discussion only; everywhere else they stay pseudonymous.
+ * Three free ways to verify:
+ * - EMAIL: a 6-digit code to an address at the business's own web domain (the website we
+ *   have on file for the place); entering it verifies automatically.
+ * - WEBSITE: the app shows a short code; the owner posts it on the business's website or
+ *   official social page and gives the link; an admin checks it in the portal.
+ * - PHONE: an admin calls the business's public number and reads a code; the owner enters it.
+ * One open claim per person and place. A place with a verified owner already needs an admin
+ * to add another. Admins can remove the tag (audit-logged by the route).
+ */
+
+const CODE_MINUTES = 30;
+const PHONE_CODE_DAYS = 14;
+const MAX_ATTEMPTS = 5;
+
+/** Free email services: an address there proves nothing about owning a business. */
+const FREE_MAIL = new Set([
+  'gmail.com',
+  'googlemail.com',
+  'yahoo.com',
+  'ymail.com',
+  'outlook.com',
+  'hotmail.com',
+  'live.com',
+  'msn.com',
+  'aol.com',
+  'icloud.com',
+  'me.com',
+  'mac.com',
+  'proton.me',
+  'protonmail.com',
+  'gmx.com',
+  'mail.com',
+  'yandex.com',
+  'zoho.com',
+  'comcast.net',
+  'att.net',
+  'bellsouth.net',
+  'verizon.net',
+]);
+
+/** "www.boldbean.com" and "boldbean.com" are the same business domain. */
+const bare = (host: string) =>
+  host
+    .toLowerCase()
+    .replace(/^www\./, '')
+    .replace(/\.$/, '');
+
+/** Does this email address belong to the website's domain (or a subdomain of it)? */
+export function emailMatchesWebsite(email: string, website: string): boolean {
+  const at = email.lastIndexOf('@');
+  if (at < 1) return false;
+  const domain = bare(email.slice(at + 1));
+  if (FREE_MAIL.has(domain)) return false;
+  let host: string;
+  try {
+    host = bare(new URL(website).hostname);
+  } catch {
+    return false;
+  }
+  // Website on a free hosting/social platform (e.g. facebook.com/boldbean) proves nothing.
+  if (FREE_MAIL.has(host) || /(^|\.)(facebook|instagram|google|yelp|wixsite)\.com$/.test(host)) {
+    return false;
+  }
+  return domain === host || domain.endsWith(`.${host}`) || host.endsWith(`.${domain}`);
+}
+
+const sixDigits = () => String(randomInt(0, 1_000_000)).padStart(6, '0');
+const CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const publicCode = () =>
+  `JAX-${Array.from({ length: 6 }, () => CODE_LETTERS[randomInt(0, CODE_LETTERS.length)]).join('')}`;
+
+const NOT_FOUND = () => new ApiError(404, 'NOT_FOUND', 'Claim not found');
+
+export interface OwnerClaimView {
+  id: string;
+  method: OwnerMethod;
+  status: OwnerClaimStatus;
+  /** WEBSITE: the code to post publicly. */
+  publicCode: string | null;
+  proofUrl: string | null;
+  emailDomain: string | null;
+  createdAt: string;
+  verifiedAt: string | null;
+  note: string | null;
+}
+
+function view(c: {
+  id: string;
+  method: OwnerMethod;
+  status: OwnerClaimStatus;
+  publicCode: string | null;
+  proofUrl: string | null;
+  emailDomain: string | null;
+  createdAt: Date;
+  verifiedAt: Date | null;
+  note: string | null;
+}): OwnerClaimView {
+  return {
+    id: c.id,
+    method: c.method,
+    status: c.status,
+    publicCode: c.publicCode,
+    proofUrl: c.proofUrl,
+    emailDomain: c.emailDomain,
+    createdAt: c.createdAt.toISOString(),
+    verifiedAt: c.verifiedAt?.toISOString() ?? null,
+    note: c.note,
+  };
+}
+
+/** For the "I own this place" screen: your claims and which methods this place supports. */
+export async function myOwnerClaims(userId: string, placeId: string) {
+  const place = await db.businessPlace.findFirst({
+    where: { id: placeId, status: 'ACTIVE' },
+    select: { name: true, website: true, phone: true },
+  });
+  if (!place) throw new ApiError(404, 'NOT_FOUND', 'Place not found');
+  const claims = await db.ownerClaim.findMany({
+    where: { placeId, userId },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+  });
+  return {
+    place: { name: place.name, website: place.website, phone: place.phone },
+    claims: claims.map(view),
+  };
+}
+
+export async function startOwnerClaim(
+  user: Pick<User, 'id'>,
+  placeId: string,
+  input: { method: OwnerMethod; email?: string },
+  now = new Date(),
+) {
+  const place = await db.businessPlace.findFirst({ where: { id: placeId, status: 'ACTIVE' } });
+  if (!place) throw new ApiError(404, 'NOT_FOUND', 'Place not found');
+  const mine = await db.ownerClaim.findFirst({
+    where: { placeId, userId: user.id, status: { in: ['PENDING', 'VERIFIED'] } },
+  });
+  if (mine?.status === 'VERIFIED') {
+    throw new ApiError(409, 'ALREADY_OWNER', 'You’re already a verified owner of this place.');
+  }
+  if (mine) {
+    throw new ApiError(
+      409,
+      'CLAIM_OPEN',
+      'You already have a claim in progress. Cancel it to start over.',
+    );
+  }
+
+  if (input.method === 'EMAIL') {
+    if (!place.website) {
+      throw new ApiError(
+        409,
+        'NO_WEBSITE',
+        'We don’t have a website for this place, so email checks aren’t possible. Choose another way.',
+      );
+    }
+    const email = (input.email ?? '').trim();
+    if (!emailMatchesWebsite(email, place.website)) {
+      throw new ApiError(
+        422,
+        'EMAIL_NOT_BUSINESS',
+        `Use an address at the business’s own website (${bare(new URL(place.website).hostname)}), not Gmail, Yahoo or similar.`,
+      );
+    }
+    const code = sixDigits();
+    const claim = await db.ownerClaim.create({
+      data: {
+        placeId,
+        userId: user.id,
+        method: 'EMAIL',
+        emailDomain: bare(email.slice(email.lastIndexOf('@') + 1)),
+        codeHash: hashToken(code),
+        codeExpiresAt: new Date(now.getTime() + CODE_MINUTES * 60_000),
+        createdAt: now,
+      },
+    });
+    // The address is used once, here, and never stored.
+    await sendSafely(ownerCodeEmail(email, code, place.name), 'owner-code');
+    return view(claim);
+  }
+  if (input.method === 'PHONE') {
+    if (!place.phone) {
+      throw new ApiError(
+        409,
+        'NO_PHONE',
+        'We don’t have a phone number for this place. Choose another way.',
+      );
+    }
+    const code = sixDigits();
+    const claim = await db.ownerClaim.create({
+      data: {
+        placeId,
+        userId: user.id,
+        method: 'PHONE',
+        phoneCode: code,
+        codeHash: hashToken(code),
+        codeExpiresAt: new Date(now.getTime() + PHONE_CODE_DAYS * 86_400_000),
+        createdAt: now,
+      },
+    });
+    return view(claim);
+  }
+  const claim = await db.ownerClaim.create({
+    data: { placeId, userId: user.id, method: 'WEBSITE', publicCode: publicCode(), createdAt: now },
+  });
+  return view(claim);
+}
+
+async function myOpenClaim(userId: string, claimId: string) {
+  const c = await db.ownerClaim.findFirst({
+    where: { id: claimId, userId, status: 'PENDING' },
+  });
+  if (!c) throw NOT_FOUND();
+  return c;
+}
+
+/** EMAIL / PHONE: enter the code. Verifies, unless the place already has an owner. */
+export async function confirmOwnerCode(
+  userId: string,
+  claimId: string,
+  code: string,
+  now = new Date(),
+) {
+  const c = await myOpenClaim(userId, claimId);
+  if (c.method === 'WEBSITE' || !c.codeHash) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'This claim is checked by an admin.');
+  }
+  if (c.attempts >= MAX_ATTEMPTS) {
+    throw new ApiError(
+      429,
+      'TOO_MANY_TRIES',
+      'Too many wrong codes. Cancel this claim and start again.',
+    );
+  }
+  if (!c.codeExpiresAt || c.codeExpiresAt < now) {
+    throw new ApiError(
+      410,
+      'CODE_EXPIRED',
+      'That code has expired. Cancel this claim and start again.',
+    );
+  }
+  const a = Buffer.from(hashToken(code.trim()));
+  const b = Buffer.from(c.codeHash);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    await db.ownerClaim.update({ where: { id: c.id }, data: { attempts: { increment: 1 } } });
+    throw new ApiError(422, 'WRONG_CODE', 'That code isn’t right.');
+  }
+  const existingOwner = await db.ownerClaim.findFirst({
+    where: { placeId: c.placeId, status: 'VERIFIED', userId: { not: userId } },
+    select: { id: true },
+  });
+  if (existingOwner) {
+    // D92: one owner per place unless an admin adds more.
+    const updated = await db.ownerClaim.update({
+      where: { id: c.id },
+      data: {
+        codeHash: null,
+        note: 'Code confirmed; this place already has an owner, so an admin will decide.',
+      },
+    });
+    return view(updated);
+  }
+  const updated = await db.ownerClaim.update({
+    where: { id: c.id },
+    data: { status: 'VERIFIED', verifiedAt: now, codeHash: null, phoneCode: null },
+  });
+  return view(updated);
+}
+
+/** WEBSITE: where the code was posted (http(s) link). Then an admin checks it. */
+export async function submitOwnerProof(userId: string, claimId: string, proofUrl: string) {
+  const c = await myOpenClaim(userId, claimId);
+  if (c.method !== 'WEBSITE')
+    throw new ApiError(400, 'VALIDATION_ERROR', 'This claim uses a code.');
+  const updated = await db.ownerClaim.update({ where: { id: c.id }, data: { proofUrl } });
+  return view(updated);
+}
+
+export async function cancelOwnerClaim(userId: string, claimId: string, now = new Date()) {
+  const c = await myOpenClaim(userId, claimId);
+  await db.ownerClaim.update({
+    where: { id: c.id },
+    data: { status: 'CANCELLED', decidedAt: now, codeHash: null, phoneCode: null },
+  });
+}
+
+// ───────────────────────────── Admin ─────────────────────────────
+
+/** Claims an admin must act on: website proofs, phone calls, and second owners. */
+export async function listOwnerClaims(status: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'REVOKED') {
+  const rows = await db.ownerClaim.findMany({
+    where:
+      status === 'PENDING'
+        ? {
+            status: 'PENDING',
+            OR: [
+              { method: 'WEBSITE', proofUrl: { not: null } },
+              { method: 'PHONE' },
+              { method: 'EMAIL', codeHash: null }, // code confirmed, place already had an owner
+            ],
+          }
+        : { status },
+    orderBy: { createdAt: status === 'PENDING' ? 'asc' : 'desc' },
+    take: 200,
+    include: {
+      place: { select: { id: true, name: true, website: true, phone: true } },
+      user: { select: { id: true, username: true } },
+      decidedBy: { select: { username: true } },
+    },
+  });
+  return rows;
+}
+
+export async function decideOwnerClaim(
+  adminId: string,
+  claimId: string,
+  action: 'approve' | 'reject' | 'revoke',
+  note: string | undefined,
+  now = new Date(),
+) {
+  const c = await db.ownerClaim.findUnique({ where: { id: claimId } });
+  if (!c) throw NOT_FOUND();
+  if (action === 'revoke') {
+    if (c.status !== 'VERIFIED')
+      throw new ApiError(409, 'NOT_VERIFIED', 'Only verified owners can lose the tag.');
+    await db.ownerClaim.update({
+      where: { id: c.id },
+      data: { status: 'REVOKED', decidedAt: now, decidedById: adminId, note: note ?? null },
+    });
+    return;
+  }
+  if (c.status !== 'PENDING') throw new ApiError(409, 'ALREADY_DECIDED', 'Already decided');
+  await db.ownerClaim.update({
+    where: { id: c.id },
+    data:
+      action === 'approve'
+        ? {
+            status: 'VERIFIED',
+            verifiedAt: now,
+            decidedAt: now,
+            decidedById: adminId,
+            codeHash: null,
+            phoneCode: null,
+            note: note ?? null,
+          }
+        : {
+            status: 'REJECTED',
+            decidedAt: now,
+            decidedById: adminId,
+            codeHash: null,
+            phoneCode: null,
+            note: note ?? null,
+          },
+  });
+}

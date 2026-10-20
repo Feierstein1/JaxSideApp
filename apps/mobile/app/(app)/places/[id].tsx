@@ -161,25 +161,37 @@ export default function PlaceScreen() {
         favoriteBusy={busy}
         friendFans={friendFans}
       />
-      {place.withinRoomRadius ? (
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          columnGap: SPACE.lg,
+          marginHorizontal: SPACE.md,
+          marginTop: SPACE.sm,
+        }}
+      >
+        {/* D103: owners can get a verified Owner tag for their posts here. */}
         <Pressable
           accessibilityRole="button"
-          onPress={askRemoval}
+          onPress={() => router.push({ pathname: '/places/owner', params: { placeId: place.id } })}
           hitSlop={8}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            alignSelf: 'flex-start',
-            marginHorizontal: SPACE.md,
-            marginTop: SPACE.sm,
-            minHeight: 36,
-          }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 36 }}
         >
-          <Ionicons name="close-circle-outline" size={16} color={DARK.textMuted} />
-          <Text style={[TYPE.caption, { color: DARK.textMuted }]}>Closed or doesn’t exist?</Text>
+          <Ionicons name="ribbon-outline" size={16} color={DARK.textMuted} />
+          <Text style={[TYPE.caption, { color: DARK.textMuted }]}>I own this place</Text>
         </Pressable>
-      ) : null}
+        {place.withinRoomRadius ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={askRemoval}
+            hitSlop={8}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 36 }}
+          >
+            <Ionicons name="close-circle-outline" size={16} color={DARK.textMuted} />
+            <Text style={[TYPE.caption, { color: DARK.textMuted }]}>Closed or doesn’t exist?</Text>
+          </Pressable>
+        ) : null}
+      </View>
     </>
   );
 

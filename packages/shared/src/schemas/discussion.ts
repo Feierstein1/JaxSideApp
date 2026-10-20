@@ -106,7 +106,14 @@ export interface PostView {
   editedAt: string | null;
   /** `medals`: achievement keys earned (P6.9), shown as small icons by the name. */
   author:
-    | { username: string; medals: string[]; color: string; avatarUrl: string | null }
+    | {
+        username: string;
+        medals: string[];
+        color: string;
+        avatarUrl: string | null;
+        /** D103: a verified owner of this place (place discussions only). */
+        owner?: true;
+      }
     | { deleted: true };
   score: number;
   upCount: number;

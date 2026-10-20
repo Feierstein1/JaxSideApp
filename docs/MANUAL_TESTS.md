@@ -157,6 +157,19 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Tap a dot: that place opens. Back returns to the map.
 - [ ] The **list** button switches back. The "© OpenStreetMap contributors" credit is visible.
 
+## 7f. Business owners (D103)
+
+- [ ] On a place page, **I own this place** opens the owner screen. A place with a website offers
+      **Business email**; places with a phone offer **Phone call**; every place offers **Code on
+      your website or social page**.
+- [ ] Business email: a Gmail address is refused; an address at the place's website gets a code
+      (Mailpit); entering it shows "You're a verified owner".
+- [ ] Your posts in that place's discussion show a gold **Owner** tag; your area posts don't.
+- [ ] Website code: you get a `JAX-…` code; after sending a link it says the team will check.
+      In the portal → **Owners**, the claim shows the code and link; **Verify owner** or **Reject**.
+- [ ] Phone: the portal shows the number on file and a code; entering that code in the app
+      verifies. **Remove Owner tag** in the portal takes the tag away.
+
 ## 7b. Suggest a place
 
 - [ ] Places → the round gold **+** bottom-right (Add new place) opens the form, which says your

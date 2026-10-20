@@ -134,3 +134,20 @@ export function accountDeletedEmail(to: string, days: number): OutgoingMail {
     ].join('\n'),
   };
 }
+
+/** D103: owner verification by business email: the code proves the owner reads it. */
+export function ownerCodeEmail(to: string, code: string, placeName: string): OutgoingMail {
+  return {
+    to,
+    subject: `${spaced(code)} is your Jax owner code`,
+    text: [
+      `Someone asked to be verified on Jax as the owner of ${placeName}, using this address.`,
+      '',
+      'If it was you, enter this code in the app:',
+      '',
+      `    ${spaced(code)}`,
+      '',
+      "The code expires in 30 minutes. If this wasn't you, ignore this email; nothing changes.",
+    ].join('\n'),
+  };
+}

@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-114 endpoints.
+120 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -64,6 +64,14 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | GET    | `/api/v1/notifications`        | user |          | D76: your notifications, newest first.                              |
 | POST   | `/api/v1/notifications/read`   | user |          | D76: mark all your notifications read (opening the bell does this). |
 | GET    | `/api/v1/notifications/unread` | user |          | D76: the bell's badge. The app asks about every 30 s while open.    |
+
+## owner-claims
+
+| Method | Path                               | Who  | Location | What it does                                                                              |
+| ------ | ---------------------------------- | ---- | -------- | ----------------------------------------------------------------------------------------- |
+| POST   | `/api/v1/owner-claims/:id/cancel`  | user |          | D103: withdraw your own claim (to start over another way).                                |
+| POST   | `/api/v1/owner-claims/:id/confirm` | user |          | D103: enter the code from the business email or the admin's phone call (your claim only). |
+| POST   | `/api/v1/owner-claims/:id/proof`   | user |          | D103: where you posted the code (website or official social page); an admin checks it.    |
 
 ## videos
 
@@ -197,6 +205,8 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | PUT    | `/api/v1/places/:id/favorite`          | user                   |          |                                                                                                                                                                                |
 | DELETE | `/api/v1/places/:id/favorite`          | user                   |          |                                                                                                                                                                                |
 | GET    | `/api/v1/places/:id/friends-favorited` | user                   |          | D74/D76: which of your friends favorited this place (everyone else sees only the count).                                                                                       |
+| GET    | `/api/v1/places/:id/owner-claims`      | user (confirmed email) |          | D103: your owner claims for this place, and which ways to verify it supports.                                                                                                  |
+| POST   | `/api/v1/places/:id/owner-claims`      | user (confirmed email) |          | D103: "I own this place". EMAIL sends a code to an address at the business's own web domain; WEBSITE gives a code to post publicly; PHONE has an admin call the business.      |
 | POST   | `/api/v1/places/:id/posts`             | user (confirmed email) | yes      | P3.2: post in a place's room (within 0.3 mi, D19).                                                                                                                             |
 | POST   | `/api/v1/places/:id/posts/list`        | user                   | yes      | P3.2: a place's room, newest first (within 0.3 mi, D19).                                                                                                                       |
 | POST   | `/api/v1/places/:id/removal`           | user (confirmed email) | yes      | D94: "Closed or doesn't exist?" Opens a removal request (or joins the open one) with your "closed" vote. You must be within 528 yd of the place.                               |
@@ -246,6 +256,7 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | POST   | `/api/v1/admin/login`                   | public                |          | P5.11 step 1: password. Returns a short-lived challenge (and 2FA setup the first time).                                   |
 | POST   | `/api/v1/admin/login/verify`            | public                |          | P5.11 step 2: authenticator code. Starts the admin session (cookies).                                                     |
 | POST   | `/api/v1/admin/logout`                  | admin (cookie + CSRF) |          | P5.11: end the admin session.                                                                                             |
+| POST   | `/api/v1/admin/owner-claims/:id`        | admin (cookie + CSRF) |          | D103: approve or reject an owner claim, or take a verified owner's tag away. Audited.                                     |
 | GET    | `/api/v1/admin/photos/:id`              | admin (cookie + CSRF) |          | P6.5: moderators can see a reported photo, including after it's removed.                                                  |
 | POST   | `/api/v1/admin/removals/:id`            | admin (cookie + CSRF) |          | D94: overrule the community: keep (or restore) the place, or take it down now.                                            |
 | GET    | `/api/v1/admin/submissions`             | admin (cookie + CSRF) |          | P5.12: the submission queue with filters, duplicate candidates and submitter history.                                     |

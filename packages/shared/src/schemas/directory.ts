@@ -126,3 +126,28 @@ export interface PlaceChange {
   mine: boolean;
   createdAt: string;
 }
+
+// ───────────── D103: verified business owners ─────────────
+
+export const OWNER_METHODS = ['EMAIL', 'WEBSITE', 'PHONE'] as const;
+export const ownerClaimSchema = z.strictObject({
+  method: z.enum(OWNER_METHODS),
+  /** EMAIL only: an address at the business's own web domain. */
+  email: z.email().max(200).optional(),
+});
+export const ownerCodeSchema = z.strictObject({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, 'Enter the 6-digit code'),
+});
+export const ownerProofSchema = z.strictObject({
+  proofUrl: z
+    .url()
+    .max(500)
+    .refine((u) => /^https?:\/\//i.test(u), 'Enter a web link (http or https)'),
+});
+export const ownerDecisionSchema = z.strictObject({
+  action: z.enum(['approve', 'reject', 'revoke']),
+  note: z.string().trim().max(500).optional(),
+});

@@ -367,3 +367,56 @@ export function RemovalActions({ id, status }: { id: string; status: string }) {
     </div>
   );
 }
+
+/** D103: approve or reject an owner claim, or remove a verified owner's tag. */
+export function OwnerActions({ id, status }: { id: string; status: string }) {
+  const [note, setNote] = useState('');
+  const { busy, error, done, run } = useSubmit();
+  const act = (action: 'approve' | 'reject' | 'revoke') =>
+    run(async () => {
+      await adminFetch(`/api/v1/admin/owner-claims/${id}`, {
+        method: 'POST',
+        body: { action, ...(note.trim() ? { note: note.trim() } : {}) },
+      });
+      setTimeout(() => window.location.reload(), 500);
+      return action === 'approve'
+        ? 'Verified.'
+        : action === 'reject'
+          ? 'Rejected.'
+          : 'Tag removed.';
+    });
+  if (status !== 'PENDING' && status !== 'VERIFIED') return null;
+  return (
+    <div>
+      <label style={ui.label}>
+        Note (kept on the record)
+        <input
+          style={ui.input}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={500}
+        />
+      </label>
+      {status === 'PENDING' ? (
+        <>
+          <button style={ui.button} disabled={busy} onClick={() => act('approve')}>
+            Verify owner
+          </button>{' '}
+          <button style={ui.buttonSecondary} disabled={busy} onClick={() => act('reject')}>
+            Reject
+          </button>
+        </>
+      ) : (
+        <button style={ui.buttonSecondary} disabled={busy} onClick={() => act('revoke')}>
+          Remove Owner tag
+        </button>
+      )}
+      {error ? (
+        <p role="alert" style={ui.error}>
+          {error}
+        </p>
+      ) : null}
+      {done ? <p role="status">{done}</p> : null}
+    </div>
+  );
+}

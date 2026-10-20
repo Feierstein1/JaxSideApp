@@ -76,8 +76,8 @@ export const sendMessageSchema = z
       .string()
       .trim()
       .max(MESSAGE_MAX, `Keep it under ${MESSAGE_MAX} characters`)
-      // eslint-disable-next-line no-control-regex
       .refine(
+        // eslint-disable-next-line no-control-regex
         (v) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(v),
         'Invalid characters',
       )

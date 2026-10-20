@@ -46,6 +46,7 @@ interface PostRow {
   avatar_photo_id: string | null;
   photos: { id: string; width: number; height: number }[] | null;
   voice: { id: string; durationMs: number } | null;
+  is_owner: boolean;
   video: { id: string; durationMs: number; width: number | null; height: number | null } | null;
   my_vote: number | null;
   distance: number | null;
@@ -68,6 +69,8 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
             medals: r.medals,
             color: r.author_color,
             avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
+            // D103: a verified owner, in their own place's discussion only.
+            ...(r.is_owner ? { owner: true } : {}),
           },
     score: r.score,
     upCount: r.upCount,
@@ -117,8 +120,10 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
       : Prisma.sql`NULL::float8`;
   const place =
     kind === 'business'
-      ? Prisma.sql`pl.id AS place_id, pl.name AS place_name`
-      : Prisma.sql`NULL::uuid AS place_id, NULL::text AS place_name`;
+      ? Prisma.sql`pl.id AS place_id, pl.name AS place_name,
+          EXISTS (SELECT 1 FROM "OwnerClaim" oc WHERE oc."placeId" = pl.id
+                  AND oc."userId" = p."authorId" AND oc.status = 'VERIFIED') AS is_owner`
+      : Prisma.sql`NULL::uuid AS place_id, NULL::text AS place_name, false AS is_owner`;
   const join =
     kind === 'business' ? Prisma.sql`JOIN "BusinessPlace" pl ON pl.id = p."placeId"` : Prisma.empty;
   return Prisma.sql`

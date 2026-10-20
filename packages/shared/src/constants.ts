@@ -193,6 +193,9 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.block.perMinute': 20,
   /** D90: Contact us messages per person per hour. */
   'rateLimit.contact.perHour': 5,
+  /** D103: owner claims started per person per day, and code tries per minute. */
+  'rateLimit.ownerClaim.perDay': 3,
+  'rateLimit.ownerCode.perMinute': 10,
   /** D100: temporary phone error log (development only). */
   'rateLimit.clientLog.perMinute': 120,
   // D98 private messages

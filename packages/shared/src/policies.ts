@@ -86,6 +86,14 @@ export const POLICIES: Record<PolicyKey, Policy> = {
         body: 'The app gets a random installation ID from our server. It is not a hardware ID, it resets if you reinstall the app, and it is used only to prevent abuse and ban evasion.',
       },
       {
+        heading: 'Private messages',
+        body: 'Messages between friends are stored encrypted on our servers. They are not end-to-end encrypted, so that reports can be checked: moderators see a private message only if someone in the chat reports it, and then they see that message and the 10 around it. That copy is kept with the report for one year. Unsending a message removes it for both of you; deleting your account deletes every message you sent.',
+      },
+      {
+        heading: 'Business owners',
+        body: 'If you verify that you own a business, we use the business email address you give only once, to send a code (we keep just its domain); a website link or a phone call to the business’s listed number may be checked by our team. In a dispute we may ask for proof of ownership (for example ID or a Florida business record) outside the app; those documents are deleted once the question is settled. Your Owner tag shows only on your posts in that business’s discussion.',
+      },
+      {
         heading: 'Sharing',
         body: 'We don’t sell your information or show ads. We share information only when the law requires it, for example a valid legal request or a mandatory report of child sexual abuse material.',
       },
@@ -109,6 +117,10 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       {
         heading: 'Not allowed',
         body: '• Threats, or encouraging violence\n• Harassment, stalking, or targeting someone\n• Sharing someone’s private information (doxxing)\n• Sexual content involving minors, or intimate images shared without consent\n• Hate based on who someone is\n• Spam, scams, impersonation, or malicious links\n• Faking your location or getting around a ban\n• Anything else that is clearly illegal',
+      },
+      {
+        heading: 'Businesses',
+        body: 'Owners can verify their business and get an Owner tag on their posts in its discussion. If you own or work at a place, say so when you post about it. Repeated promotions or ads aren’t allowed, and a verified owner who misuses the tag loses it. Staff who aren’t owners just say “I work here”; there is no tag for staff.',
       },
       {
         heading: 'What happens',
