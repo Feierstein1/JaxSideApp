@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CATEGORY_COLORS, categoryColor } from './schemas/directory';
-import { BRAND, COLORS, DARK } from './theme';
+import { BRAND, COLORS, DARK, MEDAL } from './theme';
 
 /** WCAG 2 contrast ratio between two #RRGGBB colors. */
 function contrast(a: string, b: string): number {
@@ -115,5 +115,24 @@ describe('dark theme (D79)', () => {
     for (const hex of Object.values(CATEGORY_COLORS)) {
       expect(contrast(BRAND.white, hex)).toBeGreaterThanOrEqual(4.5);
     }
+  });
+});
+
+describe('medal artwork (D95)', () => {
+  // Medal symbols are graphics: WCAG asks 3:1 against what they sit on.
+  it.each([
+    ['white symbol on teal badge', MEDAL.onTeal, MEDAL.teal],
+    ['black symbol on gold badge', MEDAL.onGold, MEDAL.gold],
+    ['light symbol on the dark center', MEDAL.glyph, MEDAL.face],
+    ['gold symbol on the dark center', MEDAL.gold, MEDAL.face],
+    ['gold rim against the dark card', MEDAL.gold, DARK.card],
+  ])('%s passes 3:1', (_label, fg, bg) => {
+    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(3);
+  });
+
+  it('matches the dark theme it sits on', () => {
+    expect(MEDAL.face).toBe(DARK.card);
+    expect(MEDAL.glyph).toBe(DARK.text);
+    expect(MEDAL.tealLine).toBe(DARK.tealText);
   });
 });

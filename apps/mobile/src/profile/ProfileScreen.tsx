@@ -180,7 +180,7 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
                 {profile.username}
               </Text>
               {profile.medals.length ? (
-                <MedalIcons keys={profile.medals.map((m) => m.key)} color={DARK.accent} size={15} />
+                <MedalIcons keys={profile.medals.map((m) => m.key)} size={18} />
               ) : null}
             </View>
           </View>

@@ -133,9 +133,7 @@ export function PostCard({
                   accessibilityLabel="Your post"
                 />
               ) : null}
-              {'medals' in author ? (
-                <MedalIcons keys={author.medals} color={DARK.accent} size={13} />
-              ) : null}
+              {'medals' in author ? <MedalIcons keys={author.medals} size={16} /> : null}
             </View>
             <Text style={{ color: DARK.textMuted, fontSize: 13, fontWeight: '500', marginTop: 1 }}>
               {meta}

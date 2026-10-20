@@ -1,79 +1,68 @@
-import type { ComponentProps } from 'react';
 import { View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { type Medal, DARK } from '@jax/shared';
-import { styles } from '@/ui';
+import { DARK, type Medal } from '@jax/shared';
 import { Text } from '@/text';
+import { TYPE } from '@/tokens';
+import { MEDAL_NAMES, MedalArt, MedalBadge } from './MedalArt';
 
-/** P6.9: medal icons. Old gold is for medals and icons only (D33), never body text. */
-const ICON: Record<string, ComponentProps<typeof Ionicons>['name']> = {
-  first_contribution: 'sparkles',
-  approved_contributor: 'location',
-  well_received: 'thumbs-up',
-};
-const LABEL: Record<string, string> = {
-  first_contribution: 'First Contribution',
-  approved_contributor: 'Approved Contributor',
-  well_received: 'Well Received',
-};
-const iconFor = (key: string) => ICON[key] ?? 'ribbon';
-
-/** Small icons after a username on posts and comments. */
-export function MedalIcons({
-  keys,
-  size = 13,
-  color = DARK.accent,
-}: {
-  keys: string[];
-  size?: number;
-  /** On a colored post header, the header's text color (D69). */
-  color?: string;
-}) {
+/**
+ * P6.9 / D95: small medal badges after a username on posts, comments and profiles. Each
+ * medal has its own shape (coin, hexagon, rosette), so they read without color.
+ */
+export function MedalIcons({ keys, size = 16 }: { keys: string[]; size?: number }) {
   if (!keys.length) return null;
   return (
-    <Text accessibilityLabel={`Medals: ${keys.map((k) => LABEL[k] ?? k).join(', ')}`}>
+    <View
+      accessible
+      accessibilityLabel={`Medals: ${keys.map((k) => MEDAL_NAMES[k] ?? k).join(', ')}`}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 2 }}
+    >
       {keys.map((k) => (
-        <Text key={k}>
-          {' '}
-          <Ionicons name={iconFor(k)} size={size} color={color} />
-        </Text>
+        <MedalBadge key={k} medalKey={k} size={size} />
       ))}
-    </Text>
+    </View>
   );
 }
 
-/** The medals section of a profile. */
+/** D95: the medals section of a profile: the full medal, its name, what it's for, when. */
 export function MedalList({ medals }: { medals: Medal[] }) {
   if (!medals.length) {
     return (
-      <Text style={styles.muted}>
-        No medals yet. They come with your first post, approved place suggestions and well-received
-        posts.
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        <View style={{ opacity: 0.35 }}>
+          <MedalArt medalKey="first_contribution" size={44} />
+        </View>
+        <Text style={[TYPE.callout, { flex: 1, color: DARK.textMuted }]}>
+          No medals yet. Your first one comes a day after your first post or comment.
+        </Text>
+      </View>
     );
   }
   return (
-    <View style={{ gap: 14 }}>
-      {medals.map((m) => (
-        <View key={m.key} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-          <View
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              borderWidth: 2,
-              borderColor: DARK.accent,
-              backgroundColor: DARK.accentSoft,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {/* Gold icon on the gold-tinted dark circle (D79). */}
-            <Ionicons name={iconFor(m.key)} size={21} color={DARK.accent} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.label, { marginBottom: 2 }]}>{m.name}</Text>
-            <Text style={styles.muted}>{m.description}</Text>
+    <View>
+      {medals.map((m, i) => (
+        <View
+          key={m.key}
+          style={{
+            flexDirection: 'row',
+            gap: 14,
+            alignItems: 'center',
+            paddingVertical: 10,
+            borderTopWidth: i ? 1 : 0,
+            borderTopColor: DARK.hairline,
+          }}
+        >
+          <MedalArt medalKey={m.key} size={52} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontSize: 15.5, fontWeight: '800' }}>{m.name}</Text>
+            <Text style={[TYPE.caption, { color: DARK.textMuted }]}>{m.description}</Text>
+            <Text style={[TYPE.caption, { color: DARK.accent, fontWeight: '700' }]}>
+              Earned{' '}
+              {new Date(m.awardedAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </Text>
           </View>
         </View>
       ))}

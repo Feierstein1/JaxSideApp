@@ -109,6 +109,22 @@ magenta · Things to do `#BF360C` burnt orange · Services & auto `#0D47A1` blue
 `#00695C` teal-green · Other `#37474F` slate. Defined once as `CATEGORY_COLORS` in
 `@jax/shared`.
 
+## Medals (D95)
+
+Each medal has its own **shape and color**, so they can be told apart at 16 px and by people who
+can't tell colors apart:
+
+| Medal                | Earned by                                | Art                                                  |
+| -------------------- | ---------------------------------------- | ---------------------------------------------------- |
+| First Contribution   | First post or comment that stays up 24 h | Round **teal coin**: speech bubble with a gold spark |
+| Approved Contributor | A suggested place is approved            | Gold **hexagon** badge: map pin with a check mark    |
+| Well Received        | 5 different posts that each reach +3     | Gold **laurel rosette**: up arrow and five dots      |
+
+`src/profile/MedalArt.tsx`: `MedalArt` (full medal with ribbon tails, for profiles) and
+`MedalBadge` (simple badge next to names: 16 px on posts, 14 px on comments, 18 px on profiles).
+Colors come from `MEDAL` in `@jax/shared`; symbols are white on teal and black on gold. A new
+medal without artwork shows a plain old-gold star badge until it gets its own design.
+
 ## Components and tokens (D78, D79)
 
 **Tokens** (`apps/mobile/src/tokens.ts`): spacing `SPACE` 2 · 4 · 8 · 12 · 16 · 24 · 32,

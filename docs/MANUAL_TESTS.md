@@ -200,6 +200,14 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] **Block**: their posts and comments disappear for you, and they can't open your profile.
 - [ ] Account → Settings → **Blocked users** lists them; **Unblock** brings everything back.
 
+### Medals (D95)
+
+- [ ] On an account with medals: next to the name on its posts, small badges: a teal circle with a
+      speech bubble (First Contribution), a gold hexagon with a pin (Approved Contributor), a gold
+      scalloped rosette with an up arrow (Well Received). Smaller beside comment names.
+- [ ] Its profile (and Account → Medals): each medal drawn in full with ribbons, its name, what
+      it's for, and "Earned [date]". With no medals: a faded coin and "No medals yet…".
+
 ## 9. Account settings
 
 - [ ] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

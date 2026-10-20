@@ -97,3 +97,22 @@ export const DARK = {
   scrim: 'rgba(0,0,0,0.6)',
   shadow: BRAND.black,
 } as const;
+
+/**
+ * D95: medal artwork colors (mobile). Each medal has its own shape and color: First
+ * Contribution a teal coin, Approved Contributor a gold hexagon, Well Received a gold laurel
+ * rosette. The deep shades are only for the back ribbon tails. Symbols are white on teal
+ * and black on gold (tested in theme.test.ts).
+ */
+export const MEDAL = {
+  teal: BRAND.teal,
+  tealDeep: '#0E4F5C',
+  tealLine: '#6CC5D4',
+  gold: BRAND.gold,
+  oldGold: BRAND.oldGold,
+  goldDeep: '#7A5E22',
+  face: '#2B2D31', // the dark center, same as DARK.card
+  onTeal: BRAND.white,
+  onGold: BRAND.black,
+  glyph: '#F2F3F5', // symbol on the dark center, same as DARK.text
+} as const;
