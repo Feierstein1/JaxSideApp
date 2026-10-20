@@ -94,6 +94,17 @@ checks. Tick each box when it looks right; note anything odd next to it.
       shows that kind of post ("No voice posts nearby yet" when empty).
 - [ ] Report a voice post; in the portal its case page has an audio player.
 
+## 4d. Video posts (D102)
+
+- [ ] New post → **Video** → **Choose a video** (or **Record (30 s)**: asks for the camera once).
+      A video longer than 30 s is refused (on iPhone you can trim it first).
+- [ ] The preview plays; post with or without a caption. In the feed it shows a play tile with
+      the length; tapping it plays with the phone's controls.
+- [ ] The **Video** tab shows only video posts. A post can't mix photos, voice and video (the
+      warning says which part would be left out).
+- [ ] An iPhone video plays on an Android phone (if it doesn't, tell me: it may be the iPhone's
+      "High Efficiency" format).
+
 ## 5. Comments, votes, reports (two accounts)
 
 - [ ] Account B comments on A's post; A replies to B; replies are indented (max 3 levels).

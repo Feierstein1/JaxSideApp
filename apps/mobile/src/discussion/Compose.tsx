@@ -12,11 +12,13 @@ import { Banner, FormError, Segmented, KeyboardSafeView } from '@/ui';
 import { createPost, markFeedsDirty } from './api';
 import { pickPhoto, uploadPhoto, type Uploaded } from './photos';
 import { sendScreened } from './screening';
+import { VideoPlayer } from './VideoPlayer';
+import { pickVideo, uploadVideo, VIDEO_MAX_SECONDS, type UploadedVideo } from './videos';
 import { VoiceRecorder, type UploadedVoice } from './VoiceRecorder';
 import { Text, TextInput } from '@/text';
 import { showAlert } from '@/dialog';
 
-type Mode = 'text' | 'voice';
+type Mode = 'text' | 'voice' | 'video';
 
 /**
  * Write a post (P3.11). Area posts are placed at the author's (rounded) location by the
@@ -46,7 +48,9 @@ export function Compose({
   const [uploading, setUploading] = useState(false);
   /** D75: a voice post; its text is an optional caption. */
   const [voice, setVoice] = useState<UploadedVoice | null>(null);
-  const ready = mode === 'text' ? !!body.trim() : !!voice;
+  /** D102: a video post; its text is an optional caption. */
+  const [video, setVideo] = useState<(UploadedVideo & { localUri: string }) | null>(null);
+  const ready = mode === 'text' ? !!body.trim() : mode === 'voice' ? !!voice : !!video;
   const canPost = ready && !busy && !uploading;
   const nearLimit = body.length > POST_MAX * 0.9;
 
@@ -65,29 +69,45 @@ export function Compose({
     }
   }
 
+  async function addVideo(record: boolean) {
+    setError(undefined);
+    const asset = await pickVideo(record);
+    if (!asset) return;
+    setUploading(true);
+    try {
+      const up = await uploadVideo(asset);
+      setVideo({ ...up, localUri: asset.uri });
+    } catch (e) {
+      setError(e instanceof ApiRequestError ? e.message : 'Couldn’t add the video.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
   /**
-   * D87: a post carries photos or a voice clip, not both. If the other kind is also
+   * D87 / D102: a post carries photos, a voice clip or a video: one kind. If the other kind is also
    * attached, say so before posting and let the person choose, instead of quietly
    * leaving it out.
    */
   function submit() {
     if (!ready) return;
-    const leftOut =
-      mode === 'text' && voice
-        ? 'your voice recording'
-        : mode === 'voice' && photos.length
-          ? photos.length === 1
-            ? 'your photo'
-            : `your ${photos.length} photos`
-          : null;
-    if (!leftOut) return void send();
-    const other = mode === 'text' ? 'Voice' : 'Text & photos';
+    const others = [
+      mode !== 'text' && photos.length
+        ? photos.length === 1
+          ? 'your photo'
+          : `your ${photos.length} photos`
+        : null,
+      mode !== 'voice' && voice ? 'your voice recording' : null,
+      mode !== 'video' && video ? 'your video' : null,
+    ].filter((x): x is string => !!x);
+    if (!others.length) return void send();
+    const leftOut = others.join(' and ');
     showAlert(
-      'Photos or voice, not both',
-      `A post can have photos or a voice recording, not both. If you post now, ${leftOut} won’t be included. To post ${leftOut === 'your voice recording' ? 'it' : 'them'} instead, switch to ${other}.`,
+      'One kind of attachment per post',
+      `A post can have photos, a voice recording or a video, but only one kind. If you post now, ${leftOut} won’t be included.`,
       [
         { text: 'Go back', style: 'cancel' },
-        { text: `Post without ${leftOut.replace('your ', '')}`, onPress: () => void send() },
+        { text: 'Post anyway', onPress: () => void send() },
       ],
       { icon: 'images-outline', tone: 'warning' },
     );
@@ -104,6 +124,7 @@ export function Compose({
           ok,
           mode === 'text' ? photos.map((p) => p.id) : [],
           mode === 'voice' ? voice?.id : undefined,
+          mode === 'video' ? video?.id : undefined,
         ),
       );
       if (!sent) return; // chose to edit after a warning
@@ -129,7 +150,7 @@ export function Compose({
       <TextInput
         accessibilityLabel={mode === 'text' ? 'Post text' : 'Caption'}
         placeholder={
-          mode === 'voice'
+          mode !== 'text'
             ? 'Add a caption (optional)'
             : target.kind === 'general'
               ? 'What’s happening around here?'
@@ -266,6 +287,7 @@ export function Compose({
           options={[
             { key: 'text', label: 'Text & photos', icon: 'create-outline' },
             { key: 'voice', label: 'Voice', icon: 'mic-outline' },
+            { key: 'video', label: 'Video', icon: 'videocam-outline' },
           ]}
           value={mode}
           onChange={(m) => setMode(m as Mode)}
@@ -360,6 +382,76 @@ export function Compose({
               </Banner>
             ) : null}
           </>
+        ) : mode === 'video' ? (
+          <>
+            {/* D102: one video, up to 30 seconds, posted as recorded. */}
+            <View
+              style={{
+                borderRadius: RADIUS.lg,
+                backgroundColor: DARK.card,
+                padding: SPACE.md,
+                gap: SPACE.sm,
+              }}
+            >
+              <Text style={[TYPE.overline, { color: DARK.textMuted }]}>Video</Text>
+              {video ? (
+                <>
+                  <VideoPlayer video={video} localUri={video.localUri} />
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setVideo(null)}
+                    style={{ alignSelf: 'flex-start', minHeight: 36, justifyContent: 'center' }}
+                  >
+                    <Text style={{ color: DARK.accent, fontWeight: '800' }}>Remove video</Text>
+                  </Pressable>
+                </>
+              ) : uploading ? (
+                <View
+                  style={{ minHeight: 56, alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                >
+                  <ActivityIndicator color={DARK.accent} />
+                  <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
+                    Uploading the video…
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ flexDirection: 'row', gap: SPACE.sm }}>
+                  {[
+                    { record: false, icon: 'film-outline' as const, label: 'Choose a video' },
+                    {
+                      record: true,
+                      icon: 'videocam' as const,
+                      label: `Record (${VIDEO_MAX_SECONDS} s)`,
+                    },
+                  ].map((b) => (
+                    <Pressable
+                      key={b.label}
+                      accessibilityRole="button"
+                      onPress={() => void addVideo(b.record)}
+                      style={({ pressed }) => ({
+                        flex: 1,
+                        minHeight: 56,
+                        borderRadius: RADIUS.lg,
+                        borderWidth: 1.5,
+                        borderStyle: 'dashed',
+                        borderColor: DARK.accent,
+                        backgroundColor: pressed ? DARK.accentSoft : 'transparent',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                      })}
+                    >
+                      <Ionicons name={b.icon} size={22} color={DARK.accent} />
+                      <Text style={{ color: DARK.accent, fontWeight: '800', fontSize: 14 }}>
+                        {b.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+            {textBox}
+          </>
         ) : (
           <>
             <View
@@ -392,7 +484,9 @@ export function Compose({
               : `Posting in ${placeName ?? 'this place'}’s discussion.`}{' '}
             {mode === 'text'
               ? 'Photos are cleaned of location and camera details.'
-              : 'Recordings are cleaned of location and device details.'}
+              : mode === 'video'
+                ? 'Videos are cleaned of location and device details.'
+                : 'Recordings are cleaned of location and device details.'}
           </Text>
         </View>
       </ScrollView>

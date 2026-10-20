@@ -11,6 +11,7 @@ import { Text } from '@/text';
 import { RADIUS, SPACE } from '@/tokens';
 import { Bone, Pulse } from '@/ui';
 import { PhotoGrid } from './PhotoGrid';
+import { VideoPlayer } from './VideoPlayer';
 import { VoicePlayer } from './VoicePlayer';
 import { VoteControl } from './VoteControl';
 
@@ -196,6 +197,12 @@ export function PostCard({
             <VoicePlayer voice={post.voice} />
           </View>
         ) : null}
+        {/* D102: plays when tapped (nothing loads while scrolling). */}
+        {post.video ? (
+          <View style={{ marginTop: SPACE.md }}>
+            <VideoPlayer video={post.video} />
+          </View>
+        ) : null}
         <PhotoGrid
           photos={post.photos}
           onLongPress={onReportPhoto ? (p) => onReportPhoto(p.id) : undefined}
@@ -224,6 +231,7 @@ export function PostCard({
           </Pressable>
           <View style={{ flex: 1 }} />
           {post.voice ? <Kind icon="mic" label="Voice" /> : null}
+          {post.video ? <Kind icon="videocam" label="Video" /> : null}
           {post.photos.length ? (
             <Kind
               icon="images"
@@ -237,7 +245,7 @@ export function PostCard({
 }
 
 /** A small "what's in it" tag at the right of the action row. */
-function Kind({ icon, label }: { icon: 'mic' | 'images'; label: string }) {
+function Kind({ icon, label }: { icon: 'mic' | 'images' | 'videocam'; label: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
       <Ionicons name={icon} size={14} color={DARK.textMuted} />

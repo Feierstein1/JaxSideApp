@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-100 endpoints.
+114 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -18,6 +18,12 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | ------ | ----------------- | ------------- | -------- | --------------------------------------------------------------------------------- |
 | POST   | `/api/v1/contact` | user or guest |          | D90: Contact us: a support ticket or a general message, read in the admin portal. |
 
+## dev
+
+| Method | Path                     | Who    | Location | What it does |
+| ------ | ------------------------ | ------ | -------- | ------------ |
+| POST   | `/api/v1/dev/client-log` | public |          |              |
+
 ## friends
 
 | Method | Path                                   | Who                    | Location | What it does                                                                                                                                                   |
@@ -31,6 +37,26 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | POST   | `/api/v1/friends/requests/:id/accept`  | user                   |          | D76: accept a friend request sent to you. Only the person asked can answer it.                                                                                 |
 | POST   | `/api/v1/friends/requests/:id/decline` | user                   |          | D76: decline a friend request sent to you. Only the person asked can answer it.                                                                                |
 
+## map
+
+| Method | Path                | Who    | Location | What it does                                                                                                                             |
+| ------ | ------------------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/v1/map`       | user   |          | D99: where the app loads the Places map from (signed links, about a day).                                                                |
+| GET    | `/api/v1/map/page`  | public |          | D99: the map page for the app's WebView (signed link from GET /map).                                                                     |
+| GET    | `/api/v1/map/tiles` | public |          | D99: the Duval map tiles (one PMTiles file), read in byte ranges by the map page. Signed links only; the file never leaves in one piece. |
+
+## messages
+
+| Method | Path                                      | Who                    | Location | What it does                                                                                                                                  |
+| ------ | ----------------------------------------- | ---------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/v1/messages`                        | user (confirmed email) | yes      | D98: your chats, newest first.                                                                                                                |
+| POST   | `/api/v1/messages`                        | user (confirmed email) | yes      | D98: send a message to a friend (text and/or photos). Mutual friends only, inside Duval, screened like posts but never held: refused or sent. |
+| POST   | `/api/v1/messages/:id/hide`               | user                   |          | D98: "Delete for me": hide one message from your own view.                                                                                    |
+| POST   | `/api/v1/messages/:id/unsend`             | user                   |          | D98: unsend your own message within 15 minutes (gone for both).                                                                               |
+| POST   | `/api/v1/messages/conversations/:id/hide` | user                   |          | D98: "Delete chat for me": hides everything so far; new messages still arrive.                                                                |
+| GET    | `/api/v1/messages/unread`                 | user                   |          | D98: how many chats have a message you haven't seen (the top-bar badge).                                                                      |
+| GET    | `/api/v1/messages/with/:username`         | user                   |          | D98: your chat with someone (newest 50, or older with `before`). Opening it marks it read.                                                    |
+
 ## notifications
 
 | Method | Path                           | Who  | Location | What it does                                                        |
@@ -38,6 +64,12 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | GET    | `/api/v1/notifications`        | user |          | D76: your notifications, newest first.                              |
 | POST   | `/api/v1/notifications/read`   | user |          | D76: mark all your notifications read (opening the bell does this). |
 | GET    | `/api/v1/notifications/unread` | user |          | D76: the bell's badge. The app asks about every 30 s while open.    |
+
+## videos
+
+| Method | Path             | Who                    | Location | What it does                                                                                                                                                                                      |
+| ------ | ---------------- | ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/v1/videos` | user (confirmed email) |          | D102: upload one video (the MP4/MOV bytes as the body, up to 30 s and 25 MB). Confirmed users only; shares the daily upload limit; checked and cleaned before storing. Attach it to a post by ID. |
 
 ## voice
 
@@ -86,25 +118,27 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 
 ## me
 
-| Method | Path                        | Who  | Location | What it does                                                                                                                                                 |
-| ------ | --------------------------- | ---- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| GET    | `/api/v1/me`                | user |          | The caller's own account. Private view (includes their email), still via a serializer.                                                                       |
-| POST   | `/api/v1/me/appeals`        | user |          | P5.7: appeal a warning (or other strike) while signed in.                                                                                                    |
-| GET    | `/api/v1/me/blocks`         | user |          | P4.11: the people you've blocked (settings).                                                                                                                 |
-| PATCH  | `/api/v1/me/color`          | user |          | D69: change your account color (one of the palette in @jax/shared).                                                                                          |
-| POST   | `/api/v1/me/delete`         | user |          | P4.12: delete your account (password, plus typing DELETE).                                                                                                   |
-| POST   | `/api/v1/me/email`          | user |          | P4.10: start an email change (a code is sent to the new address).                                                                                            |
-| POST   | `/api/v1/me/email/confirm`  | user |          | P4.10: finish an email change with the code.                                                                                                                 |
-| GET    | `/api/v1/me/favorites`      | user |          | P2.14: the caller's saved places. Part of account settings, so no location needed (D16).                                                                     |
-| PATCH  | `/api/v1/me/friend-privacy` | user |          | D76: "Hide my recent posts from friends" (the friends feed leaves you out).                                                                                  |
-| GET    | `/api/v1/me/medals`         | user |          | P6.9: your own medals (Account → Profile).                                                                                                                   |
-| POST   | `/api/v1/me/password`       | user |          | P4.10: change password; other devices are signed out. Wrong guesses are rate-limited.                                                                        |
-| PATCH  | `/api/v1/me/preferences`    | user |          | P2.15 / D71: your radius (0.1, 0.2 or 0.3 mi). One setting for the feed, the Places list and business discussions; the server never allows more than 0.3 mi. |
-| PATCH  | `/api/v1/me/profile`        | user |          | P4.8 (early): edit your own public bio. Plain text (P3.10); empty clears it.                                                                                 |
-| GET    | `/api/v1/me/reports`        | user |          | P4.11 / P5.1: the reports you've sent and their status.                                                                                                      |
-| GET    | `/api/v1/me/standing`       | user |          | P5.6: your warnings and suspensions that still count, the reason given, and appeals (P5.7).                                                                  |
-| GET    | `/api/v1/me/submissions`    | user |          | P5.8: your suggested places and how they went.                                                                                                               |
-| PATCH  | `/api/v1/me/username`       | user |          | P4.9: change your username. Cooldown applies; your account ID and history stay the same.                                                                     |
+| Method | Path                        | Who                    | Location | What it does                                                                                                                                                 |
+| ------ | --------------------------- | ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | `/api/v1/me`                | user                   |          | The caller's own account. Private view (includes their email), still via a serializer.                                                                       |
+| POST   | `/api/v1/me/appeals`        | user                   |          | P5.7: appeal a warning (or other strike) while signed in.                                                                                                    |
+| PUT    | `/api/v1/me/avatar`         | user (confirmed email) |          | P6.5: set your profile photo to one you uploaded (same pipeline as post photos).                                                                             |
+| DELETE | `/api/v1/me/avatar`         | user (confirmed email) |          | Remove your profile photo.                                                                                                                                   |
+| GET    | `/api/v1/me/blocks`         | user                   |          | P4.11: the people you've blocked (settings).                                                                                                                 |
+| PATCH  | `/api/v1/me/color`          | user                   |          | D69: change your account color (one of the palette in @jax/shared).                                                                                          |
+| POST   | `/api/v1/me/delete`         | user                   |          | P4.12: delete your account (password, plus typing DELETE).                                                                                                   |
+| POST   | `/api/v1/me/email`          | user                   |          | P4.10: start an email change (a code is sent to the new address).                                                                                            |
+| POST   | `/api/v1/me/email/confirm`  | user                   |          | P4.10: finish an email change with the code.                                                                                                                 |
+| GET    | `/api/v1/me/favorites`      | user                   |          | P2.14: the caller's saved places. Part of account settings, so no location needed (D16).                                                                     |
+| PATCH  | `/api/v1/me/friend-privacy` | user                   |          | D76: "Hide my recent posts from friends" (the friends feed leaves you out).                                                                                  |
+| GET    | `/api/v1/me/medals`         | user                   |          | P6.9: your own medals (Account → Profile).                                                                                                                   |
+| POST   | `/api/v1/me/password`       | user                   |          | P4.10: change password; other devices are signed out. Wrong guesses are rate-limited.                                                                        |
+| PATCH  | `/api/v1/me/preferences`    | user                   |          | P2.15 / D71: your radius (0.1, 0.2 or 0.3 mi). One setting for the feed, the Places list and business discussions; the server never allows more than 0.3 mi. |
+| PATCH  | `/api/v1/me/profile`        | user                   |          | P4.8 (early): edit your own public bio. Plain text (P3.10); empty clears it.                                                                                 |
+| GET    | `/api/v1/me/reports`        | user                   |          | P4.11 / P5.1: the reports you've sent and their status.                                                                                                      |
+| GET    | `/api/v1/me/standing`       | user                   |          | P5.6: your warnings and suspensions that still count, the reason given, and appeals (P5.7).                                                                  |
+| GET    | `/api/v1/me/submissions`    | user                   |          | P5.8: your suggested places and how they went.                                                                                                               |
+| PATCH  | `/api/v1/me/username`       | user                   |          | P4.9: change your username. Cooldown applies; your account ID and history stay the same.                                                                     |
 
 ## users
 

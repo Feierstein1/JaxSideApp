@@ -203,13 +203,15 @@ export async function attachVoice(
   userId: string,
   voiceId: string | undefined,
   target: { generalPostId: string } | { businessPostId: string },
+  kind: 'AUDIO' | 'VIDEO' = 'AUDIO',
 ) {
   if (!voiceId) return;
   const res = await tx.photo.updateMany({
     where: {
       id: voiceId,
       uploaderId: userId,
-      kind: 'AUDIO',
+      kind,
+      messageId: null,
       status: 'ACTIVE',
       generalPostId: null,
       businessPostId: null,
@@ -217,9 +219,19 @@ export async function attachVoice(
     data: target,
   });
   if (res.count !== 1) {
-    throw new ApiError(400, 'INVALID_VOICE', 'That recording can’t be used. Try recording again.');
+    throw kind === 'VIDEO'
+      ? new ApiError(400, 'INVALID_VIDEO', 'That video can’t be used. Try adding it again.')
+      : new ApiError(400, 'INVALID_VOICE', 'That recording can’t be used. Try recording again.');
   }
 }
+
+/** D102: attaches the uploader's own unattached video to a new post. */
+export const attachVideo = (
+  tx: Prisma.TransactionClient,
+  userId: string,
+  videoId: string | undefined,
+  target: { generalPostId: string } | { businessPostId: string },
+) => attachVoice(tx, userId, videoId, target, 'VIDEO');
 
 // ───────────────────────────── Signed links ─────────────────────────────
 

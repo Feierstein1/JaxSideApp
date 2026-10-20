@@ -1,5 +1,5 @@
 import { medalKeysSql } from '../achievements';
-import { attachPhotos, attachVoice, signedPhotoUrl } from '../media/photos';
+import { attachPhotos, attachVideo, attachVoice, signedPhotoUrl } from '../media/photos';
 import {
   milesToMeters,
   type DiscussionKind,
@@ -46,6 +46,7 @@ interface PostRow {
   avatar_photo_id: string | null;
   photos: { id: string; width: number; height: number }[] | null;
   voice: { id: string; durationMs: number } | null;
+  video: { id: string; durationMs: number; width: number | null; height: number | null } | null;
   my_vote: number | null;
   distance: number | null;
   place_id: string | null;
@@ -79,7 +80,22 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
     place: r.place_id ? { id: r.place_id, name: r.place_name! } : null,
     photos: (r.photos ?? []).map((p) => ({ ...p, url: signedPhotoUrl(p.id) })),
     voice: r.voice ? { ...r.voice, url: signedPhotoUrl(r.voice.id) } : null,
-    type: r.voice ? ('voice' as const) : r.photos?.length ? ('media' as const) : ('text' as const),
+    video: r.video
+      ? {
+          id: r.video.id,
+          durationMs: r.video.durationMs,
+          width: r.video.width ?? 0,
+          height: r.video.height ?? 0,
+          url: signedPhotoUrl(r.video.id),
+        }
+      : null,
+    type: r.video
+      ? ('video' as const)
+      : r.voice
+        ? ('voice' as const)
+        : r.photos?.length
+          ? ('media' as const)
+          : ('text' as const),
   };
 }
 
@@ -118,6 +134,11 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
             FROM "Photo" vc
             WHERE vc.${VOTE_COLUMN[kind]} = p.id AND vc.status = 'ACTIVE' AND vc.kind = 'AUDIO'
             LIMIT 1) AS voice,
+           (SELECT json_build_object('id', vd.id, 'durationMs', vd."durationMs",
+                                     'width', vd.width, 'height', vd.height)
+            FROM "Photo" vd
+            WHERE vd.${VOTE_COLUMN[kind]} = p.id AND vd.status = 'ACTIVE' AND vd.kind = 'VIDEO'
+            LIMIT 1) AS video,
            v.value AS my_vote, ${distance} AS distance, ${place}
     FROM ${TABLE[kind]} p
     JOIN "User" u ON u.id = p."authorId"
@@ -281,6 +302,7 @@ export async function createGeneralPost(
   held = false,
   photoIds: string[] = [],
   voiceId?: string,
+  videoId?: string,
 ) {
   // P5.4: a held post is stored hidden until a moderator reviews it.
   const status = held ? 'HELD_FOR_REVIEW' : 'VISIBLE';
@@ -292,6 +314,7 @@ export async function createGeneralPost(
     RETURNING id`;
     await attachPhotos(tx, authorId, photoIds, { generalPostId: row!.id });
     await attachVoice(tx, authorId, voiceId, { generalPostId: row!.id });
+    await attachVideo(tx, authorId, videoId, { generalPostId: row!.id });
     return row!.id;
   });
 }
@@ -304,6 +327,7 @@ export async function createBusinessPost(
   held = false,
   photoIds: string[] = [],
   voiceId?: string,
+  videoId?: string,
 ) {
   return db.$transaction(async (tx) => {
     const post = await tx.businessPost.create({
@@ -312,6 +336,7 @@ export async function createBusinessPost(
     });
     await attachPhotos(tx, authorId, photoIds, { businessPostId: post.id });
     await attachVoice(tx, authorId, voiceId, { businessPostId: post.id });
+    await attachVideo(tx, authorId, videoId, { businessPostId: post.id });
     if (held) return post.id; // counted once a moderator approves it
     await tx.businessPlace.update({
       where: { id: placeId },

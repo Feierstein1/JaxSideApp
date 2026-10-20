@@ -263,6 +263,16 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
   }
 
   const authorId = s.author && 'id' in s.author ? s.author.id : null;
+  const video =
+    ref.type === 'general' || ref.type === 'business'
+      ? await db.photo.findFirst({
+          where: {
+            kind: 'VIDEO',
+            ...(ref.type === 'general' ? { generalPostId: ref.id } : { businessPostId: ref.id }),
+          },
+          select: { id: true },
+        })
+      : null;
   const voice =
     ref.type === 'general' || ref.type === 'business'
       ? await db.photo.findFirst({
@@ -329,6 +339,8 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
     photoUrl: ref.type === 'photo' ? `/api/v1/admin/photos/${ref.id}` : null,
     /** D75: a voice post's clip, playable by the moderator (any status). */
     voiceUrl: voice ? `/api/v1/admin/photos/${voice.id}` : null,
+    /** D102: a video post's clip, playable by the moderator. */
+    videoUrl: video ? `/api/v1/admin/photos/${video.id}` : null,
     /** D98: the chat around a reported message, from the newest report's snapshot. */
     messageContext:
       ref.type === 'message'

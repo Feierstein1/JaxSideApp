@@ -153,6 +153,9 @@ export const CONFIG_DEFAULTS = {
   // D75 voice posts (60 s of AAC is about 1 MB).
   'voice.maxUploadMB': 3,
   'voice.maxSeconds': 60,
+  // D102 video posts (as recorded, no processing).
+  'video.maxUploadMB': 25,
+  'video.maxSeconds': 30,
   'photos.maxPerPost': 4,
   // D28: reports are limited for everyone (guests can't report, D54).
   'rateLimit.report.perMinute': 3,

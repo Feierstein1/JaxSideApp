@@ -38,6 +38,7 @@ import * as userProfile from '@/app/api/v1/users/[username]/route';
 import * as reports from '@/app/api/v1/reports/route';
 import * as photos from '@/app/api/v1/photos/route';
 import * as voice from '@/app/api/v1/voice/route';
+import * as videos from '@/app/api/v1/videos/route';
 import * as contact from '@/app/api/v1/contact/route';
 import * as clientLog from '@/app/api/v1/dev/client-log/route';
 import * as messages from '@/app/api/v1/messages/route';
@@ -428,6 +429,15 @@ const ROWS: Row[] = [
     id: null,
     location: false,
     body: () => ({ category: 'GENERAL', subject: 'Hello', body: 'Just saying hello to you.' }),
+  },
+  // D102: the body is the video itself (video.test.ts).
+  {
+    route: 'videos',
+    method: 'POST',
+    handler: h(videos, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
   },
   // D76: friends and the bell (friends.test.ts has the behavior).
   {

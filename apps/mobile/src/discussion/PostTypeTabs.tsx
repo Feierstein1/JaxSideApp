@@ -15,6 +15,7 @@ const TABS: {
   { key: 'text', label: 'Text', icon: 'chatbox-outline' },
   { key: 'media', label: 'Media', icon: 'image-outline' },
   { key: 'voice', label: 'Voice', icon: 'mic-outline' },
+  { key: 'video', label: 'Video', icon: 'videocam-outline' }, // D102
 ];
 
 /**

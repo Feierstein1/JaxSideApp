@@ -65,12 +65,14 @@ export const createPostSchema = z
     confirmWarning,
     photoIds: z.array(z.uuid()).max(PHOTOS_MAX).optional(),
     voiceId: z.uuid().optional(),
+    /** D102: a video uploaded first (`POST /videos`), attached by ID. */
+    videoId: z.uuid().optional(),
   })
-  .refine((p) => !(p.voiceId && p.photoIds?.length), {
+  .refine((p) => [p.voiceId, p.videoId, p.photoIds?.length].filter(Boolean).length <= 1, {
     message: 'A post can have photos or a voice clip, not both',
     path: ['voiceId'],
   })
-  .refine((p) => p.body.length > 0 || !!p.voiceId, {
+  .refine((p) => p.body.length > 0 || !!p.voiceId || !!p.videoId, {
     message: 'Write something first',
     path: ['body'],
   });
@@ -119,8 +121,18 @@ export interface PostView {
   photos: PhotoView[];
   /** D75: a voice post's clip (signed link), or null. */
   voice: VoiceView | null;
+  /** D102: a video post's clip (signed link), or null. */
+  video: VideoView | null;
   /** D75: text, media (photos/GIFs), voice or video. */
   type: PostType;
+}
+
+export interface VideoView {
+  id: string;
+  url: string;
+  durationMs: number;
+  width: number;
+  height: number;
 }
 
 export interface VoiceView {

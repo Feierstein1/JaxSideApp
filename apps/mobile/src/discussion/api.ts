@@ -54,6 +54,7 @@ export async function createPost(
   confirmWarning?: true,
   photoIds: string[] = [],
   voiceId?: string,
+  videoId?: string,
 ) {
   const reading = await getFreshReading({ fresh: true });
   const path =
@@ -64,6 +65,7 @@ export async function createPost(
     confirmWarning,
     ...(photoIds.length ? { photoIds } : {}),
     ...(voiceId ? { voiceId } : {}), // D75
+    ...(videoId ? { videoId } : {}), // D102
   });
 }
 

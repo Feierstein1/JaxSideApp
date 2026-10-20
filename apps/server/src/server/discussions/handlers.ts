@@ -217,6 +217,7 @@ export async function createGeneral(req: Request) {
     !!hold,
     input.photoIds,
     input.voiceId,
+    input.videoId,
   );
   if (hold) return heldResponse(hold, { generalPostId: id });
   return NextResponse.json(
@@ -244,6 +245,7 @@ export async function createBusiness(req: Request, ctx: IdCtx) {
     !!hold,
     input.photoIds,
     input.voiceId,
+    input.videoId,
   );
   if (hold) return heldResponse(hold, { businessPostId: id });
   return NextResponse.json({ post: await getPostView('business', id, user.id) }, { status: 201 });
