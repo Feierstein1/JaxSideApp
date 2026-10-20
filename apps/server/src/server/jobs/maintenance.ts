@@ -1,4 +1,5 @@
 import { evaluateAchievements } from '../achievements';
+import { expirePlaceChanges } from '../directory/place-changes';
 import { purgeUnusedPhotos } from '../media/photos';
 import { purgeOldNotifications } from '../social/notifications';
 import { purgeDeletedAccounts } from '../auth/account';
@@ -23,6 +24,8 @@ export interface MaintenanceReport {
   suspensionsEnded: number;
   achievementsAwarded: number;
   unusedPhotosDeleted: number;
+  notificationsDeleted?: number;
+  placeChangesExpired?: number;
 }
 
 /**
@@ -149,6 +152,8 @@ export async function runMaintenance(now: Date = new Date()): Promise<Maintenanc
         unusedPhotosDeleted: await purgeUnusedPhotos(now),
         // D76: the bell keeps 90 days.
         notificationsDeleted: await purgeOldNotifications(now),
+        // D94: place suggestions and removal requests undecided after 60 days.
+        placeChangesExpired: await expirePlaceChanges(now),
       };
       logger.info({ report }, 'maintenance complete');
       return report;

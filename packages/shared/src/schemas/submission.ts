@@ -66,7 +66,7 @@ export interface MySubmission {
   id: string;
   name: string;
   category: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DUPLICATE' | 'MERGED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DUPLICATE' | 'MERGED' | 'EXPIRED';
   decisionReason: string | null;
   placeId: string | null;
   createdAt: string;

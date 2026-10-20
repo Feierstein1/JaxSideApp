@@ -8,6 +8,7 @@ import type { GeoPoint } from '../location/eligibility';
 import { screenText } from '../moderation/screening';
 import { enforce } from '../rate-limit';
 import { normalizeName } from './osm';
+import { castPlaceVote, changeVotes } from './place-changes';
 
 /**
  * P5.8–P5.13 community-suggested places (§9.3, D63).
@@ -132,6 +133,36 @@ export async function createSubmission(
     );
   }
 
+  // D94: someone else's suggestion for (almost) the same name a few yards away is the same
+  // place: count this as a vote for it instead of a second entry.
+  const mergeMeters = await getConfig('places.mergeMeters');
+  const [similar] = await db.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "BusinessSubmission"
+    WHERE status = 'PENDING' AND "submitterId" <> ${user.id}::uuid
+      AND ST_DWithin(location, ${point(at)}::geography, ${mergeMeters})
+      AND ("nameNormalized" = ${n} OR similarity("nameNormalized", ${n}::text) >= 0.6)
+    ORDER BY similarity("nameNormalized", ${n}::text) DESC
+    LIMIT 1`;
+  if (similar) {
+    try {
+      await castPlaceVote(user, { kind: 'add', id: similar.id }, true, at, now);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'ALREADY_VOTED') {
+        throw new ApiError(
+          409,
+          'ALREADY_SUGGESTED',
+          'Someone already suggested this place and your vote is counted.',
+        );
+      }
+      throw err;
+    }
+    return {
+      id: similar.id,
+      merged: true,
+      duplicates: await duplicateCandidates(at, input.name, similar.id),
+    };
+  }
+
   const [row] = await db.$queryRaw<{ id: string }[]>`
     INSERT INTO "BusinessSubmission"
       (id, "submitterId", name, "nameNormalized", category, address, latitude, longitude,
@@ -140,7 +171,21 @@ export async function createSubmission(
             ${input.address || null}, ${at.latitude}, ${at.longitude}, ${point(at)}::geography,
             ${input.notes || null}, ${now}, ${now})
     RETURNING id`;
-  return { id: row!.id, duplicates: await duplicateCandidates(at, input.name, row!.id) };
+  // D94: the suggester's own "It's here" is the first vote.
+  await db.placeChangeVote.create({
+    data: {
+      voterId: user.id,
+      submissionId: row!.id,
+      support: true,
+      distanceMeters: 0,
+      createdAt: now,
+    },
+  });
+  return {
+    id: row!.id,
+    merged: false,
+    duplicates: await duplicateCandidates(at, input.name, row!.id),
+  };
 }
 
 export async function listMySubmissions(userId: string): Promise<MySubmission[]> {
@@ -163,7 +208,7 @@ export async function listMySubmissions(userId: string): Promise<MySubmission[]>
 // ───────────────────────────── Admin queue ─────────────────────────────
 
 export async function listSubmissions(filter: {
-  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DUPLICATE' | 'MERGED';
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DUPLICATE' | 'MERGED' | 'EXPIRED';
   category?: string;
   submitter?: string;
   since?: Date;
@@ -198,6 +243,11 @@ export async function listSubmissions(filter: {
         s.status === 'PENDING'
           ? await duplicateCandidates(s, s.name, s.id)
           : { places: [], pending: [] },
+      // D94: the community's votes on it.
+      votes: (await changeVotes({ kind: 'add', id: s.id })).map((v) => ({
+        ...v,
+        createdAt: v.createdAt.toISOString(),
+      })),
     })),
   );
 }
@@ -218,6 +268,57 @@ type Decision =
   | { decision: 'approve'; name?: string; category?: string; address?: string }
   | { decision: 'reject'; reason: string }
   | { decision: 'merge'; placeId: string };
+
+/**
+ * Creates the place for an approved suggestion and gives the suggester the Approved
+ * Contributor medal (once). Used by an admin's decision and by community votes (D94).
+ */
+export async function approveSubmissionTx(
+  tx: Prisma.TransactionClient,
+  s: {
+    id: string;
+    name: string;
+    category: string;
+    address: string | null;
+    latitude: number;
+    longitude: number;
+    submitterId: string;
+  },
+  now: Date,
+  d: { name?: string; category?: string; address?: string } = {},
+): Promise<{ placeId: string; badge: boolean }> {
+  const name = d.name ?? s.name;
+  const [place] = await tx.$queryRaw<{ id: string }[]>`
+    INSERT INTO "BusinessPlace"
+      (id, name, "nameNormalized", category, address, latitude, longitude, location,
+       status, "sourceName", "sourceId", "createdAt", "updatedAt")
+    VALUES (gen_random_uuid(), ${name}, ${normalizeName(name).slice(0, 200)},
+            ${d.category ?? s.category}, ${d.address ?? s.address}, ${s.latitude}, ${s.longitude},
+            ${point(s)}::geography, 'ACTIVE', ${COMMUNITY}, ${s.id}, ${now}, ${now})
+    ON CONFLICT ("sourceName", "sourceId") DO NOTHING
+    RETURNING id`;
+  if (!place) throw new ApiError(409, 'ALREADY_DECIDED', 'Already decided');
+  await tx.businessSubmission.update({
+    where: { id: s.id },
+    data: {
+      placeId: place.id,
+      ...(d.name ? { name: d.name, nameNormalized: normalizeName(d.name).slice(0, 200) } : {}),
+      ...(d.category ? { category: d.category } : {}),
+      ...(d.address ? { address: d.address } : {}),
+    },
+  });
+  // §9.3: the badge comes only with approval, and only once (primary key).
+  const badge = await tx.achievement.findUnique({ where: { key: 'approved_contributor' } });
+  let awarded = false;
+  if (badge) {
+    const r = await tx.userAchievement.createMany({
+      data: [{ userId: s.submitterId, achievementId: badge.id, awardedAt: now }],
+      skipDuplicates: true,
+    });
+    awarded = r.count === 1;
+  }
+  return { placeId: place.id, badge: awarded };
+}
 
 /**
  * Decides one suggestion. The PENDING → decided claim happens first inside the
@@ -252,37 +353,8 @@ export async function decideSubmission(adminId: string, id: string, d: Decision,
       return { status, placeId: target.id, badge: false };
     }
 
-    const name = d.name ?? s.name;
-    const [place] = await tx.$queryRaw<{ id: string }[]>`
-      INSERT INTO "BusinessPlace"
-        (id, name, "nameNormalized", category, address, latitude, longitude, location,
-         status, "sourceName", "sourceId", "createdAt", "updatedAt")
-      VALUES (gen_random_uuid(), ${name}, ${normalizeName(name).slice(0, 200)},
-              ${d.category ?? s.category}, ${d.address ?? s.address}, ${s.latitude}, ${s.longitude},
-              ${point(s)}::geography, 'ACTIVE', ${COMMUNITY}, ${s.id}, ${now}, ${now})
-      ON CONFLICT ("sourceName", "sourceId") DO NOTHING
-      RETURNING id`;
-    if (!place) throw new ApiError(409, 'ALREADY_DECIDED', 'Already decided');
-    await tx.businessSubmission.update({
-      where: { id },
-      data: {
-        placeId: place.id,
-        ...(d.name ? { name: d.name, nameNormalized: normalizeName(d.name).slice(0, 200) } : {}),
-        ...(d.category ? { category: d.category } : {}),
-        ...(d.address ? { address: d.address } : {}),
-      },
-    });
-    // §9.3: the badge comes only with approval, and only once (primary key).
-    const badge = await tx.achievement.findUnique({ where: { key: 'approved_contributor' } });
-    let awarded = false;
-    if (badge) {
-      const r = await tx.userAchievement.createMany({
-        data: [{ userId: s.submitterId, achievementId: badge.id, awardedAt: now }],
-        skipDuplicates: true,
-      });
-      awarded = r.count === 1;
-    }
-    return { status, placeId: place.id, badge: awarded };
+    const { placeId, badge } = await approveSubmissionTx(tx, s, now, d);
+    return { status, placeId, badge };
   });
   await audit(adminId, `SUBMISSION_${result.status}`, { type: 'submission', id }, {
     placeId: result.placeId,

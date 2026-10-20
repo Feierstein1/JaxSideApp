@@ -59,6 +59,8 @@ enum ContentStatus {
 enum PlaceStatus {
   ACTIVE
   INACTIVE
+  /// D94: taken down by community vote (or an admin); the OSM import never brings it back.
+  REMOVED
 }
 
 enum SubmissionStatus {
@@ -67,6 +69,8 @@ enum SubmissionStatus {
   REJECTED
   DUPLICATE
   MERGED
+  /// D94: not enough votes within the voting window.
+  EXPIRED
 }
 
 enum PhotoStatus {
@@ -207,6 +211,10 @@ model User {
 
   contactMessages ContactMessage[] @relation("ContactFrom")
   contactResolved ContactMessage[] @relation("ContactResolvedBy")
+
+  placeRemovals     PlaceRemoval[]    @relation("RemovalRequester")
+  placeRemovalsDone PlaceRemoval[]    @relation("RemovalResolver")
+  placeVotes        PlaceChangeVote[] @relation("PlaceVoter")
 
   @@index([status])
 }
@@ -400,10 +408,59 @@ model BusinessPlace {
   favorites   FavoritePlace[]
   submissions BusinessSubmission[]
 
+  removals PlaceRemoval[]
+
   @@unique([sourceName, sourceId])
   @@index([location], type: Gist)
   @@index([nameNormalized(ops: raw("gin_trgm_ops"))], type: Gin)
   @@index([status, category])
+}
+
+/// D94: a community request to take a place down ("closed / doesn't exist").
+enum PlaceRemovalStatus {
+  OPEN
+  REMOVED // enough "closed" votes (or an admin)
+  KEPT // enough "still open" votes, or an admin restored the place
+  EXPIRED
+}
+
+model PlaceRemoval {
+  id           String             @id @default(uuid(7)) @db.Uuid
+  placeId      String             @db.Uuid
+  requesterId  String             @db.Uuid
+  status       PlaceRemovalStatus @default(OPEN)
+  createdAt    DateTime           @default(now()) @db.Timestamptz(3)
+  resolvedAt   DateTime?          @db.Timestamptz(3)
+  /// Set when an admin decided it (null for a community result).
+  resolvedById String?            @db.Uuid
+  place        BusinessPlace      @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  requester    User               @relation("RemovalRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  resolvedBy   User?              @relation("RemovalResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  votes        PlaceChangeVote[]
+
+  @@index([status, createdAt])
+  @@index([placeId])
+}
+
+/// D94: one vote per person per change, kept for the admin to review. `support` means
+/// "it's here" for a suggestion, or "it's closed" for a removal.
+model PlaceChangeVote {
+  id             String              @id @default(uuid(7)) @db.Uuid
+  voterId        String              @db.Uuid
+  submissionId   String?             @db.Uuid
+  removalId      String?             @db.Uuid
+  support        Boolean
+  /// How far the voter was from the spot when voting.
+  distanceMeters Int
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  voter          User                @relation("PlaceVoter", fields: [voterId], references: [id], onDelete: Cascade)
+  submission     BusinessSubmission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  removal        PlaceRemoval?       @relation(fields: [removalId], references: [id], onDelete: Cascade)
+
+  @@unique([voterId, submissionId])
+  @@unique([voterId, removalId])
+  @@index([submissionId])
+  @@index([removalId])
 }
 
 model BusinessSubmission {
@@ -430,6 +487,7 @@ model BusinessSubmission {
   place          BusinessPlace?                         @relation(fields: [placeId], references: [id])
 
   modActions ModerationAction[]
+  votes      PlaceChangeVote[]
 
   @@index([status, createdAt])
   @@index([submitterId, createdAt])

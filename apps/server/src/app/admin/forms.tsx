@@ -336,3 +336,34 @@ export function ContactActions({
     </div>
   );
 }
+
+/** D94: keep (restore) a place, or take it down now. */
+export function RemovalActions({ id, status }: { id: string; status: string }) {
+  const { busy, error, done, run } = useSubmit();
+  const act = (action: 'keep' | 'remove') =>
+    run(async () => {
+      await adminFetch(`/api/v1/admin/removals/${id}`, { method: 'POST', body: { action } });
+      setTimeout(() => window.location.reload(), 500);
+      return action === 'keep' ? 'Kept: the place is listed.' : 'Removed from Places.';
+    });
+  return (
+    <div>
+      {status !== 'KEPT' ? (
+        <button style={ui.button} disabled={busy} onClick={() => act('keep')}>
+          {status === 'REMOVED' ? 'Restore place' : 'Keep place'}
+        </button>
+      ) : null}{' '}
+      {status !== 'REMOVED' ? (
+        <button style={ui.buttonSecondary} disabled={busy} onClick={() => act('remove')}>
+          Remove now
+        </button>
+      ) : null}
+      {error ? (
+        <p role="alert" style={ui.error}>
+          {error}
+        </p>
+      ) : null}
+      {done ? <p role="status">{done}</p> : null}
+    </div>
+  );
+}

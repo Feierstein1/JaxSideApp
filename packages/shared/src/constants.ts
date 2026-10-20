@@ -166,6 +166,14 @@ export const CONFIG_DEFAULTS = {
   'submission.minAccountAgeHours': 24,
   /** At most this many of your suggestions waiting for review at once. */
   'submission.maxPending': 10,
+  // D94 community place voting: votes needed each way, how long a change stays open, who
+  // may vote, and how close two suggestions must be to count as the same place.
+  'places.votesToDecide': 10,
+  'places.changeDays': 60,
+  'places.voterMinAccountDays': 3,
+  'places.mergeMeters': 50,
+  'rateLimit.placeVote.perMinute': 20,
+  'rateLimit.placeRemoval.perDay': 5,
   /** Places within this distance with a similar name are shown as possible duplicates. */
   'submission.duplicateRadiusMeters': 300,
   'rateLimit.guestSession.perDayPerInstallation': 3,

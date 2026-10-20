@@ -82,7 +82,7 @@ const VOTE_RULES: [string, ConfigKey, number][] = [
   ['vote-day', 'rateLimit.vote.perDay', 86_400],
 ];
 
-async function activePlacePoint(placeId: string) {
+export async function activePlacePoint(placeId: string) {
   const p = await db.businessPlace.findFirst({
     where: { id: placeId, status: 'ACTIVE' },
     select: { latitude: true, longitude: true },

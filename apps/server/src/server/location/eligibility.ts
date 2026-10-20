@@ -34,6 +34,8 @@ export const LOCATION_ACTIONS = {
   'business.post': ['user'],
   'business.comment': ['user'],
   'business.vote': ['user'],
+  /** D94: voting on a place change: within the place radius of the spot. */
+  'directory.verify': ['user'],
 } as const satisfies Record<string, readonly LocationActor['kind'][]>;
 export type LocationAction = keyof typeof LOCATION_ACTIONS;
 

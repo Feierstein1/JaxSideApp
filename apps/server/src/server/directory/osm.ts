@@ -271,13 +271,16 @@ export async function importOsmPlaces(
             name = EXCLUDED.name, "nameNormalized" = EXCLUDED."nameNormalized",
             category = EXCLUDED.category, address = EXCLUDED.address,
             latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude,
-            location = EXCLUDED.location, status = 'ACTIVE', "updatedAt" = now()
+            location = EXCLUDED.location, "updatedAt" = now(),
+            -- D94: a place the community (or an admin) removed stays removed.
+            status = CASE WHEN "BusinessPlace".status = 'REMOVED' THEN 'REMOVED'::"PlaceStatus"
+                          ELSE 'ACTIVE'::"PlaceStatus" END
           WHERE "BusinessPlace".name IS DISTINCT FROM EXCLUDED.name
              OR "BusinessPlace".category IS DISTINCT FROM EXCLUDED.category
              OR "BusinessPlace".address IS DISTINCT FROM EXCLUDED.address
              OR "BusinessPlace".latitude IS DISTINCT FROM EXCLUDED.latitude
              OR "BusinessPlace".longitude IS DISTINCT FROM EXCLUDED.longitude
-             OR "BusinessPlace".status <> 'ACTIVE'
+             OR "BusinessPlace".status = 'INACTIVE'
           RETURNING (xmax = 0) AS inserted
         )
         SELECT count(*) FILTER (WHERE inserted) AS inserted,

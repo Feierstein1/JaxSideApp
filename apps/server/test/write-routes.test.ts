@@ -39,6 +39,9 @@ import * as reports from '@/app/api/v1/reports/route';
 import * as photos from '@/app/api/v1/photos/route';
 import * as voice from '@/app/api/v1/voice/route';
 import * as contact from '@/app/api/v1/contact/route';
+import * as placeChanges from '@/app/api/v1/places/changes/route';
+import * as placeVote from '@/app/api/v1/places/changes/vote/route';
+import * as placeRemoval from '@/app/api/v1/places/[id]/removal/route';
 import * as friendRequests from '@/app/api/v1/friends/requests/route';
 import * as friendRequest from '@/app/api/v1/friends/requests/[id]/route';
 import * as friendAccept from '@/app/api/v1/friends/requests/[id]/accept/route';
@@ -328,6 +331,41 @@ const ROWS: Row[] = [
     auth: true,
     id: null,
     location: false,
+  },
+  // D94: community place voting (place-voting.test.ts has the behavior).
+  {
+    route: 'places/changes',
+    method: 'POST',
+    handler: h(placeChanges, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at) }),
+  },
+  {
+    // The change is looked up before the location check, so location is tested there.
+    route: 'places/changes/vote',
+    method: 'POST',
+    handler: h(placeVote, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: (at) => ({
+      reading: r(at),
+      kind: 'add',
+      id: '00000000-0000-7000-8000-000000000000',
+      support: true,
+    }),
+  },
+  {
+    // Table accounts are brand new (refused before the location check); see place-voting.test.ts.
+    route: 'places/[id]/removal',
+    method: 'POST',
+    handler: h(placeRemoval, 'POST'),
+    auth: true,
+    id: 'place',
+    location: false,
+    body: (at) => ({ reading: r(at) }),
   },
   // D90: Contact us (contact.test.ts).
   {

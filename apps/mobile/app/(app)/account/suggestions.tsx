@@ -16,6 +16,7 @@ const STATUS: Record<MySubmission['status'], string> = {
   REJECTED: 'Not approved',
   DUPLICATE: 'Already listed',
   MERGED: 'Already listed',
+  EXPIRED: 'Not enough votes in 60 days', // D94
 };
 
 /** P5.8: places you suggested and how they went. */

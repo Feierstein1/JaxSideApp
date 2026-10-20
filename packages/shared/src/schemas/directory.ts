@@ -95,3 +95,34 @@ export interface PlaceSummary {
   /** D74: how many people have this place as a favorite (who they are is never shown here). */
   favoriteCount: number;
 }
+
+// ───────────── D94: community place voting ─────────────
+
+export const placeChangesSchema = z.strictObject({ reading: locationReadingSchema });
+export const placeVoteSchema = z.strictObject({
+  reading: locationReadingSchema,
+  kind: z.enum(['add', 'remove']),
+  id: z.uuid(),
+  /** add: "It's here" (true) / "Not here"; remove: "Closed" (true) / "Still open". */
+  support: z.boolean(),
+});
+export const placeRemovalSchema = z.strictObject({ reading: locationReadingSchema });
+
+/** A suggested place or a removal request waiting for votes near you. */
+export interface PlaceChange {
+  kind: 'add' | 'remove';
+  id: string;
+  name: string;
+  category: string;
+  distanceMeters: number;
+  /** Votes for the change ("It's here" / "Closed") and against it. */
+  yes: number;
+  no: number;
+  /** Votes needed on one side to decide. */
+  needed: number;
+  /** Your vote, or null if you haven't voted. */
+  myVote: boolean | null;
+  /** You suggested it / asked for the removal (your vote is already counted). */
+  mine: boolean;
+  createdAt: string;
+}

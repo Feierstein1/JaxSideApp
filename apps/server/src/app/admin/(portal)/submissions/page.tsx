@@ -6,7 +6,7 @@ import { SubmissionQueue } from '../../submission-queue';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['PENDING', 'APPROVED', 'REJECTED', 'MERGED'] as const;
+const TABS = ['PENDING', 'APPROVED', 'REJECTED', 'MERGED', 'EXPIRED'] as const;
 type Tab = (typeof TABS)[number];
 
 /** P5.12: suggested places: tabs, filters, map, duplicates, approve/reject/merge, bulk. */

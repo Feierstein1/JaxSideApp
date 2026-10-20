@@ -22,6 +22,13 @@ export interface QueueItem {
     places: { id: string; name: string; category: string; distanceMeters: number }[];
     pending: { id: string; name: string; category: string; distanceMeters: number }[];
   };
+  /** D94: community votes ("It's here" = support). */
+  votes: {
+    voter: { id: string; username: string };
+    support: boolean;
+    distanceMeters: number;
+    createdAt: string;
+  }[];
 }
 
 const label = (c: string) => c.replaceAll('_', ' ');
@@ -220,6 +227,22 @@ function Item({
         </div>
         {s.notes ? <p style={{ whiteSpace: 'pre-wrap' }}>“{s.notes}”</p> : null}
         {s.decisionReason ? <p style={ui.muted}>Reason: {s.decisionReason}</p> : null}
+        {/* D94: 10 votes one way decide it; every vote is listed. */}
+        <details style={{ margin: '6px 0' }}>
+          <summary>
+            Community: {s.votes.filter((v) => v.support).length} here ·{' '}
+            {s.votes.filter((v) => !v.support).length} not here
+          </summary>
+          <ul>
+            {s.votes.map((v) => (
+              <li key={v.voter.id}>
+                <a href={`/admin/users/${v.voter.id}`}>@{v.voter.username}</a>:{' '}
+                {v.support ? 'It’s here' : 'Not here'} · {v.distanceMeters} m away ·{' '}
+                {new Date(v.createdAt).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        </details>
         {dupes.length ? (
           <div
             style={{ background: COLORS.accentSoft, padding: 10, borderRadius: 8, margin: '8px 0' }}
