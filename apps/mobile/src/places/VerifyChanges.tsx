@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { categoryColor, DARK, type PlaceChange } from '@jax/shared';
 import { api } from '@/api';
@@ -10,6 +10,7 @@ import { haptic } from '@/motion';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { categoryIcon } from './PlaceHeader';
+import { showAlert } from '@/dialog';
 
 /**
  * D94: "Verify changes near you": a small sideways strip at the top of Places with places
@@ -110,7 +111,11 @@ function ChangeCard({
       });
       haptic.success();
       const decided = r.outcome !== 'open';
-      if (decided) Alert.alert('Thanks for verifying', OUTCOME[r.outcome] ?? 'Thanks!');
+      if (decided)
+        showAlert('Thanks for verifying', OUTCOME[r.outcome] ?? 'Thanks!', undefined, {
+          icon: 'checkmark-done-circle',
+          tone: 'success',
+        });
       onVoted(
         {
           ...c,
@@ -121,7 +126,12 @@ function ChangeCard({
         decided,
       );
     } catch (e) {
-      Alert.alert('Couldn’t vote', e instanceof ApiRequestError ? e.message : 'Try again.');
+      showAlert(
+        'Couldn’t vote',
+        e instanceof ApiRequestError ? e.message : 'Try again.',
+        undefined,
+        { icon: 'cloud-offline-outline', tone: 'danger' },
+      );
     } finally {
       setBusy(null);
     }

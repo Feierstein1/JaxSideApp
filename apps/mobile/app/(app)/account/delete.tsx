@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert } from 'react-native';
+
 import { router } from 'expo-router';
 import { accountDeleteSchema, CONFIG_DEFAULTS } from '@jax/shared';
 import { api } from '@/api';
@@ -7,6 +7,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { Button, Field, FormError, PageTitle, PasswordField, Screen, styles } from '@/ui';
 import { Text } from '@/text';
+import { showAlert } from '@/dialog';
 
 /** P4.12: delete your account (password, plus typing DELETE). */
 export default function DeleteAccount() {
@@ -24,9 +25,11 @@ export default function DeleteAccount() {
     setBusy(true);
     try {
       await api.post('/api/v1/me/delete', v.data);
-      Alert.alert(
+      showAlert(
         'Account deleted',
         'Your account has been deleted. Thanks for being part of Jax.',
+        undefined,
+        { icon: 'checkmark-circle', tone: 'success' },
       );
       await signOut(); // the server already signed out every device
     } catch (e) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import { router } from 'expo-router';
 import { categoryColor, DARK, SUBMIT_CATEGORIES, type PlaceCandidate } from '@jax/shared';
 import { api } from '@/api';
@@ -11,6 +11,7 @@ import { categoryIcon } from '@/places/PlaceHeader';
 import { serverErrors, type FieldErrors } from '@/forms';
 import { Banner, Button, Chip, Field, FormError, PageTitle, Screen, styles } from '@/ui';
 import { Text, TextInput } from '@/text';
+import { showAlert } from '@/dialog';
 
 /**
  * P5.8 (D63): suggest a place that's missing from the list. Stand at the place: your
@@ -66,11 +67,13 @@ export default function SuggestPlace() {
       });
       if (!sent) return;
       // D94: people nearby vote it in; a near-identical suggestion counts as a vote.
-      Alert.alert(
+      showAlert(
         'Thanks for the suggestion',
         sent.merged
           ? 'Someone nearby already suggested this place, so we counted your vote for it.'
           : 'People nearby can now vote on it under “Verify changes near you”. Ten “It’s here” votes add it to Places. Follow it in Account → My suggestions.',
+        undefined,
+        { icon: 'storefront-outline', tone: 'success' },
       );
       router.back();
     } catch (e) {

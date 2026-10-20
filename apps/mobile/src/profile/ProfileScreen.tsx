@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { profileColor, type PostView, type PublicProfile, DARK } from '@jax/shared';
@@ -17,6 +17,7 @@ import { ProfileAvatar } from './ProfileAvatar';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { Button, EmptyState, ErrorState, openMenu, SectionTitle, StatTile } from '@/ui';
 import { Text } from '@/text';
+import { showAlert } from '@/dialog';
 
 /** P4.8: someone's public profile and recent area posts, with Block (P5.2). */
 export function ProfileScreen({ username, postPath }: { username: string; postPath: string }) {
@@ -82,24 +83,30 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
   }
 
   function confirmUnfriend() {
-    Alert.alert(`Remove ${username} as a friend?`, 'You can send a new request later.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () => void friendAction(() => social.unfriend(username)),
-      },
-    ]);
+    showAlert(
+      `Remove ${username} as a friend?`,
+      'You can send a new request later.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => void friendAction(() => social.unfriend(username)),
+        },
+      ],
+      { icon: 'person-remove-outline' },
+    );
   }
 
   function confirmBlock() {
-    Alert.alert(
+    showAlert(
       `Block ${username}?`,
       'You won’t see their posts or comments, and they can’t see your profile. They aren’t told.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Block', style: 'destructive', onPress: () => void setBlocked(true) },
       ],
+      { icon: 'ban-outline' },
     );
   }
 
@@ -121,9 +128,14 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
   const menu = () =>
     openMenu(profile.username, [
       profile.blockedByMe
-        ? { label: 'Unblock', onPress: () => void setBlocked(false) }
-        : { label: 'Block', destructive: true, onPress: confirmBlock },
-      { label: 'Report profile', destructive: true, onPress: () => setReporting(true) },
+        ? { label: 'Unblock', icon: 'lock-open-outline', onPress: () => void setBlocked(false) }
+        : { label: 'Block', icon: 'ban-outline', destructive: true, onPress: confirmBlock },
+      {
+        label: 'Report profile',
+        icon: 'flag-outline',
+        destructive: true,
+        onPress: () => setReporting(true),
+      },
     ]);
 
   return (
@@ -291,7 +303,12 @@ function FriendButton({
           accessibilityLabel={`Friends with ${profile.username}. More options`}
           onPress={() =>
             openMenu(profile.username, [
-              { label: 'Remove friend', destructive: true, onPress: onRemove },
+              {
+                label: 'Remove friend',
+                icon: 'person-remove-outline',
+                destructive: true,
+                onPress: onRemove,
+              },
             ])
           }
           style={({ pressed }) => [

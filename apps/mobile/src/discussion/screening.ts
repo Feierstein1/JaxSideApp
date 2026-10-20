@@ -1,5 +1,5 @@
-import { Alert } from 'react-native';
 import { ApiRequestError } from '@/api/client';
+import { showAlert } from '@/dialog';
 
 /** P5.4: the server saved the content but a moderator reviews it before others see it. */
 export interface HeldResponse {
@@ -11,10 +11,15 @@ export const isHeld = (r: unknown): r is HeldResponse =>
 
 function confirm(message: string): Promise<boolean> {
   return new Promise((resolve) => {
-    Alert.alert('Before you post', `${message}\n\nPost anyway?`, [
-      { text: 'Edit it', style: 'cancel', onPress: () => resolve(false) },
-      { text: 'Post anyway', onPress: () => resolve(true) },
-    ]);
+    showAlert(
+      'Before you post',
+      `${message}\n\nPost anyway?`,
+      [
+        { text: 'Edit it', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Post anyway', onPress: () => resolve(true) },
+      ],
+      { icon: 'chatbubble-ellipses-outline', tone: 'warning' },
+    );
   });
 }
 
@@ -34,6 +39,7 @@ export async function sendScreened<T>(
     if (!(await confirm(e.message))) return null;
     result = await send(true);
   }
-  if (isHeld(result)) Alert.alert('Sent for review', result.message);
+  if (isHeld(result))
+    showAlert('Sent for review', result.message, undefined, { icon: 'eye-outline', tone: 'info' });
   return result;
 }

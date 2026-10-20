@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, ScrollView, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import {
   CATEGORY_COLORS,
@@ -29,6 +29,7 @@ import {
   SearchField,
   Sheet,
 } from '@/ui';
+import { showAlert } from '@/dialog';
 
 interface SearchResponse {
   places: PlaceSummary[];
@@ -137,7 +138,11 @@ export default function PlacesScreen() {
           <RefreshButton
             onPress={() => {
               const wait = refreshLimiter.tap(); // D74: 30 a minute
-              if (wait) Alert.alert('Slow down a little', `You can refresh again in ${wait} s.`);
+              if (wait)
+                showAlert('Slow down a little', `You can refresh again in ${wait} s.`, undefined, {
+                  icon: 'hourglass-outline',
+                  tone: 'warning',
+                });
               else void load(0, true);
             }}
             busy={loading && places.length > 0}

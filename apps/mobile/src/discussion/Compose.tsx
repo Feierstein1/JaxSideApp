@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack } from 'expo-router';
 import { PHOTOS_MAX, POST_MAX, profileColor, DARK } from '@jax/shared';
@@ -14,6 +14,7 @@ import { pickPhoto, uploadPhoto, type Uploaded } from './photos';
 import { sendScreened } from './screening';
 import { VoiceRecorder, type UploadedVoice } from './VoiceRecorder';
 import { Text, TextInput } from '@/text';
+import { showAlert } from '@/dialog';
 
 type Mode = 'text' | 'voice';
 
@@ -81,13 +82,14 @@ export function Compose({
           : null;
     if (!leftOut) return void send();
     const other = mode === 'text' ? 'Voice' : 'Text & photos';
-    Alert.alert(
+    showAlert(
       'Photos or voice, not both',
       `A post can have photos or a voice recording, not both. If you post now, ${leftOut} won’t be included. To post ${leftOut === 'your voice recording' ? 'it' : 'them'} instead, switch to ${other}.`,
       [
         { text: 'Go back', style: 'cancel' },
         { text: `Post without ${leftOut.replace('your ', '')}`, onPress: () => void send() },
       ],
+      { icon: 'images-outline', tone: 'warning' },
     );
   }
 

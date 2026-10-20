@@ -109,6 +109,19 @@ magenta · Things to do `#BF360C` burnt orange · Services & auto `#0D47A1` blue
 `#00695C` teal-green · Other `#37474F` slate. Defined once as `CATEGORY_COLORS` in
 `@jax/shared`.
 
+## Pop-ups (D97)
+
+Never use React Native's `Alert.alert` or `ActionSheetIOS`: they draw the phone's plain system
+dialogs. Use `src/dialog.tsx`:
+
+- `showAlert(title, message?, buttons?, { icon, tone })`: same arguments as `Alert.alert`. A dark
+  rounded card, a toned icon circle (`info` / `warning` gold, `success` teal, `danger` red; a
+  destructive button makes it `danger` automatically), the title, the message and buttons: the
+  action gold, a destructive one red, Cancel grey. Two short buttons sit side by side (Cancel left);
+  longer or more buttons stack (Cancel last). Back button or tapping outside = Cancel.
+- `showMenu(title, items)` (or `openMenu` in `ui.tsx`): the "•••" menu as a bottom sheet, each
+  action with an icon (destructive in red), Cancel as its own button below.
+
 ## Medals (D95)
 
 Each medal has its own **shape and color**, so they can be told apart at 16 px and by people who

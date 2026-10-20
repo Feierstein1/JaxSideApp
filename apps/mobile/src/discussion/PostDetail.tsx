@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
@@ -25,6 +25,7 @@ import { MedalIcons } from '@/profile/Medals';
 import { ReportSheet } from '@/report/ReportSheet';
 import { VoteControl } from './VoteControl';
 import { Text, TextInput } from '@/text';
+import { showAlert } from '@/dialog';
 
 const MAX_DEPTH = CONFIG_DEFAULTS['comments.maxDepth'];
 
@@ -81,22 +82,27 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
   }
 
   function confirmDeletePost() {
-    Alert.alert('Delete post?', 'This can’t be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deletePost(kind, id);
-            markFeedsDirty();
-            router.back();
-          } catch (e) {
-            setError(e instanceof ApiRequestError ? e.message : 'Couldn’t delete.');
-          }
+    showAlert(
+      'Delete post?',
+      'This can’t be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deletePost(kind, id);
+              markFeedsDirty();
+              router.back();
+            } catch (e) {
+              setError(e instanceof ApiRequestError ? e.message : 'Couldn’t delete.');
+            }
+          },
         },
-      },
-    ]);
+      ],
+      { icon: 'trash-outline' },
+    );
   }
 
   async function removeComment(c: CommentView) {
@@ -120,13 +126,19 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
   const postMenu = post.isMine
     ? () =>
         openMenu('Your post', [
-          { label: 'Delete post', destructive: true, onPress: confirmDeletePost },
+          {
+            label: 'Delete post',
+            icon: 'trash-outline',
+            destructive: true,
+            onPress: confirmDeletePost,
+          },
         ])
     : !isGuest
       ? () =>
           openMenu('Post', [
             {
               label: 'Report post',
+              icon: 'flag-outline',
               destructive: true,
               onPress: () => setReporting({ type: kind, id: post.id }),
             },
@@ -327,17 +339,25 @@ function CommentRow({
         openMenu('Your comment', [
           {
             label: 'Delete comment',
+            icon: 'trash-outline',
             destructive: true,
             onPress: () =>
-              Alert.alert('Delete comment?', 'This can’t be undone.', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Delete', style: 'destructive', onPress: onDelete },
-              ]),
+              showAlert(
+                'Delete comment?',
+                'This can’t be undone.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Delete', style: 'destructive', onPress: onDelete },
+                ],
+                { icon: 'trash-outline' },
+              ),
           },
         ])
     : onReport
       ? () =>
-          openMenu('Comment', [{ label: 'Report comment', destructive: true, onPress: onReport }])
+          openMenu('Comment', [
+            { label: 'Report comment', icon: 'flag-outline', destructive: true, onPress: onReport },
+          ])
       : undefined;
 
   return (

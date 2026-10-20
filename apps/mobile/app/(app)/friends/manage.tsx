@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK, type FriendRequestView, type FriendView } from '@jax/shared';
@@ -23,6 +23,7 @@ import {
   Pulse,
   Screen,
 } from '@/ui';
+import { showAlert } from '@/dialog';
 
 /**
  * D76: add a friend by username, answer requests, and see or remove friends.
@@ -85,14 +86,19 @@ export function FriendsManager({ embedded = false }: { embedded?: boolean }) {
   }
 
   function remove(f: FriendView) {
-    Alert.alert(`Remove ${f.username}?`, 'You can send a new request later.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () => void run(() => social.unfriend(f.username)),
-      },
-    ]);
+    showAlert(
+      `Remove ${f.username}?`,
+      'You can send a new request later.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => void run(() => social.unfriend(f.username)),
+        },
+      ],
+      { icon: 'person-remove-outline' },
+    );
   }
 
   const canSend = !!name.trim().replace(/^@/, '') && !busy;
@@ -244,7 +250,12 @@ export function FriendsManager({ embedded = false }: { embedded?: boolean }) {
                     accessibilityLabel={`More options for ${f.username}`}
                     onPress={() =>
                       openMenu(f.username, [
-                        { label: 'Remove friend', destructive: true, onPress: () => remove(f) },
+                        {
+                          label: 'Remove friend',
+                          icon: 'person-remove-outline',
+                          destructive: true,
+                          onPress: () => remove(f),
+                        },
                       ])
                     }
                     style={{

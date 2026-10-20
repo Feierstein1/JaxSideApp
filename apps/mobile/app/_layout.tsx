@@ -11,6 +11,7 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { DARK } from '@jax/shared';
 import { AuthProvider, useAuth } from '@/auth/AuthContext';
+import { DialogHost } from '@/dialog';
 import { BrandMark } from '@/ui';
 
 /** D79: navigation colors match the dark theme, so no white flashes between screens. */
@@ -76,6 +77,8 @@ export default function RootLayout() {
       {fontsLoaded || fontError ? (
         <AuthProvider>
           <RootStack />
+          {/* D97: the app's styled pop-ups (showAlert / showMenu). */}
+          <DialogHost />
         </AuthProvider>
       ) : (
         <View style={{ flex: 1, backgroundColor: DARK.bar }} />

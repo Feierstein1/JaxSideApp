@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
@@ -24,6 +24,7 @@ import { social } from '@/social/api';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { ErrorState, FloatingButton, SectionTitle, useToast } from '@/ui';
+import { showAlert } from '@/dialog';
 
 /**
  * A place: info card, favorite toggle, and its discussion room (P3.2). The room opens
@@ -92,13 +93,14 @@ export default function PlaceScreen() {
   function compose() {
     if (!place) return;
     if (!verified) {
-      Alert.alert(
+      showAlert(
         'Confirm your email first',
         'Enter the 6-digit code from your email in Account.',
         [
           { text: 'Not now', style: 'cancel' },
           { text: 'Go to Account', onPress: () => router.push('/account') },
         ],
+        { icon: 'mail-unread-outline', tone: 'info' },
       );
       return;
     }
@@ -119,7 +121,7 @@ export default function PlaceScreen() {
   /** D94: start (or join) a "closed / doesn't exist" vote. Needs you near the place. */
   function askRemoval() {
     if (!place) return;
-    Alert.alert(
+    showAlert(
       `Is ${place.name} closed?`,
       'Only if it has closed for good, moved, or was never here. People nearby will vote; 10 votes take it off Places. Your vote counts first and can’t be changed.',
       [
@@ -135,21 +137,19 @@ export default function PlaceScreen() {
                   `/api/v1/places/${place.id}/removal`,
                   { reading },
                 );
-                Alert.alert(
+                showAlert(
                   'Thanks',
                   r.outcome === 'removed'
                     ? 'That was the deciding vote: it’s off Places.'
                     : 'People nearby can now vote on it under “Verify changes near you” in Places.',
                 );
               } catch (e) {
-                Alert.alert(
-                  'Couldn’t send',
-                  e instanceof ApiRequestError ? e.message : 'Try again.',
-                );
+                showAlert('Couldn’t send', e instanceof ApiRequestError ? e.message : 'Try again.');
               }
             })(),
         },
       ],
+      { icon: 'close-circle-outline' },
     );
   }
 

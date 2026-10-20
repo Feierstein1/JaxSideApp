@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   RecordingPresets,
@@ -14,6 +14,7 @@ import { clock } from '@/format';
 import { Text } from '@/text';
 import { postRawFile } from './photos';
 import { VoicePlayer } from './VoicePlayer';
+import { showAlert } from '@/dialog';
 
 export interface UploadedVoice {
   id: string;
@@ -58,10 +59,15 @@ export function VoiceRecorder({
     setError(undefined);
     const perm = await requestRecordingPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Microphone needed', 'Allow microphone access to record a voice post.', [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'Open Settings', onPress: () => void Linking.openSettings() },
-      ]);
+      showAlert(
+        'Microphone needed',
+        'Allow microphone access to record a voice post.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => void Linking.openSettings() },
+        ],
+        { icon: 'mic-off-outline', tone: 'warning' },
+      );
       return;
     }
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });

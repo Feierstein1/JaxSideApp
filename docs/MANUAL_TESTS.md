@@ -200,6 +200,16 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] **Block**: their posts and comments disappear for you, and they can't open your profile.
 - [ ] Account → Settings → **Blocked users** lists them; **Unblock** brings everything back.
 
+### Pop-ups (D97)
+
+- [ ] Tap refresh many times fast: "Slow down a little" appears as a dark rounded card with a gold
+      hourglass and a gold **OK**, not a white system box. Tapping outside closes it.
+- [ ] Delete one of your posts: a red trash icon, grey **Cancel** on the left and a red **Delete**.
+      The Android back button acts as Cancel.
+- [ ] A post's **•••**: a dark sheet slides up from the bottom with icons (flag for Report, trash for
+      Delete) and a separate **Cancel**. On a friend's profile, every option shows (Android too).
+- [ ] As a guest, try to vote: "Create a free account" with a gold person icon.
+
 ### Medals (D95)
 
 - [ ] On an account with medals: next to the name on its posts, small badges: a teal circle with a

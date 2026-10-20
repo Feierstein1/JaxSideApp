@@ -8,9 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  ActionSheetIOS,
   ActivityIndicator,
-  Alert,
   Animated,
   Keyboard,
   LayoutAnimation,
@@ -31,6 +29,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK } from '@jax/shared';
 import { UserBadge } from './auth/UserBadge';
 import { Bell } from './social/Bell';
+import { showMenu, type MenuItem } from './dialog';
 import { haptic, useReducedMotion } from './motion';
 import { Text, TextInput } from './text';
 import { elevation, GUTTER, RADIUS, SPACE, TYPE } from './tokens';
@@ -1421,40 +1420,11 @@ export function StatTile({
 }
 
 /**
- * The "•••" menu: the native action sheet on iPhone, a dialog on Android. Keep it to two
- * actions (Android dialogs fit three buttons including Cancel).
+ * The "•••" menu (D97): the app's own bottom sheet (`showMenu` in `@/dialog`), on both
+ * platforms and with any number of actions.
  */
-export function openMenu(
-  title: string,
-  items: { label: string; destructive?: boolean; onPress: () => void }[],
-) {
-  if (Platform.OS === 'ios') {
-    const destructive = items.findIndex((i) => i.destructive);
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        title,
-        options: [...items.map((i) => i.label), 'Cancel'],
-        cancelButtonIndex: items.length,
-        destructiveButtonIndex: destructive >= 0 ? destructive : undefined,
-        userInterfaceStyle: 'dark',
-      },
-      (index) => items[index]?.onPress(),
-    );
-    return;
-  }
-  Alert.alert(
-    title,
-    undefined,
-    [
-      ...items.map((i) => ({
-        text: i.label,
-        style: i.destructive ? ('destructive' as const) : ('default' as const),
-        onPress: i.onPress,
-      })),
-      { text: 'Cancel', style: 'cancel' as const },
-    ],
-    { cancelable: true, userInterfaceStyle: 'dark' },
-  );
+export function openMenu(title: string, items: MenuItem[]) {
+  showMenu(title, items);
 }
 
 /** D79: a small status pill: `good` teal, `wait` gold, `neutral` grey. */

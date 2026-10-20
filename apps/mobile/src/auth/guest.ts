@@ -1,5 +1,5 @@
-import { Alert } from 'react-native';
 import { useAuth } from './AuthContext';
+import { showAlert } from '@/dialog';
 
 /**
  * Guests are view-only (D54): they browse area posts and comments. The server refuses
@@ -9,7 +9,7 @@ export function useGuest() {
   const { state, signOut } = useAuth();
   const isGuest = state.status === 'guest';
   function promptAccount(what: string) {
-    Alert.alert(
+    showAlert(
       'Create a free account',
       `Guests can browse posts in their area. To ${what}, sign up.`,
       [
@@ -17,6 +17,7 @@ export function useGuest() {
         // Leaves guest mode; the guest identity stays on this install for later.
         { text: 'Sign up or sign in', onPress: () => void signOut() },
       ],
+      { icon: 'person-add-outline', tone: 'info' },
     );
   }
   return { isGuest, promptAccount };

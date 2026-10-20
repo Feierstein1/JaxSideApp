@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import { router } from 'expo-router';
 import { DARK, type FeedSort, type PostTypeFilter } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
@@ -11,6 +11,7 @@ import { PostList } from '@/discussion/PostList';
 import { PostTypeTabs } from '@/discussion/PostTypeTabs';
 import { refreshLimiter } from '@/refresh-limit';
 import { Banner, FloatingButton, RefreshButton, SearchField, Segmented } from '@/ui';
+import { showAlert } from '@/dialog';
 
 /** P3.11: the default landing screen, the feed for the area around you. */
 export default function HomeFeed() {
@@ -26,7 +27,10 @@ export default function HomeFeed() {
   async function refresh() {
     const wait = refreshLimiter.tap(); // D74: 30 a minute
     if (wait) {
-      Alert.alert('Slow down a little', `You can refresh again in ${wait} s.`);
+      showAlert('Slow down a little', `You can refresh again in ${wait} s.`, undefined, {
+        icon: 'hourglass-outline',
+        tone: 'warning',
+      });
       return;
     }
     setRefreshing(true);
@@ -64,13 +68,14 @@ export default function HomeFeed() {
   function compose() {
     if (isGuest) return promptAccount('start a post'); // P4.2
     if (!verified) {
-      Alert.alert(
+      showAlert(
         'Confirm your email first',
         'Enter the 6-digit code from your email in Account.',
         [
           { text: 'Not now', style: 'cancel' },
           { text: 'Go to Account', onPress: () => router.push('/account') },
         ],
+        { icon: 'mail-unread-outline', tone: 'info' },
       );
       return;
     }
