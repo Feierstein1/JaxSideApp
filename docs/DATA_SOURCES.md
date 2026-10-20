@@ -56,6 +56,21 @@ listed one until we pin it.
 **Adding a missing neighborhood:** add `{ "name", "lat", "lon" }` (its rough center) to
 `additions.json`, then run `npm run fetch:neighborhoods -w @jax/server` and commit both files.
 
+## Places map tiles (D99)
+
+|               |                                                                                                                                                                                     |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **What**      | The background map on Places → Map: streets, parks, water and labels for the Duval area only (zoom 0–15)                                                                            |
+| **Source**    | A Protomaps daily build of OpenStreetMap (`https://build.protomaps.com/<date>.pmtiles`), cut to the Duval bounds                                                                    |
+| **License**   | OpenStreetMap data, **ODbL 1.0**; the map shows "© OpenStreetMap contributors · Protomaps". Fonts and icons from Protomaps' free asset site (`protomaps.github.io/basemaps-assets`) |
+| **Stored at** | `apps/server/data/map/duval.pmtiles` (~41 MB, git-ignored), served by the API in signed byte ranges. In production it would live in the media bucket                                |
+| **Viewer**    | MapLibre GL JS 5.24.0, pmtiles 4.5.0 and @protomaps/basemaps 5.7.2 (pinned versions from unpkg) in the app's WebView; no Google, no keys, no per-view fees                          |
+
+**Refreshing (a few times a year is plenty):** install the free `pmtiles` tool
+(https://github.com/protomaps/go-pmtiles/releases), then run
+`npm run fetch:map -w @jax/server` (or set `PMTILES_BIN` to the tool's path). It downloads only
+the Duval area (about 43 MB transferred) and replaces the file.
+
 ## Business directory: OpenStreetMap (P2.10–P2.12)
 
 |               |                                                                                                                                                                                                                                                                                                                      |

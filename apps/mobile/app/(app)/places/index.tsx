@@ -12,6 +12,7 @@ import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/device';
 import { VerifyChanges } from '@/places/VerifyChanges';
+import { PlacesMap } from '@/places/PlacesMap';
 import { AreaStrip } from '@/location/AreaLabel';
 import { OsmAttribution } from '@/places/Attribution';
 import { categoryIcon, PlaceRow, PlaceSkeleton } from '@/places/PlaceHeader';
@@ -57,6 +58,9 @@ export default function PlacesScreen() {
   const [sort, setSort] = useState<PlaceSort | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [places, setPlaces] = useState<PlaceSummary[]>([]);
+  // D99: list or map, and where you were when the places loaded (your dot on the map).
+  const [view, setView] = useState<'list' | 'map'>('list');
+  const [me, setMe] = useState<{ latitude: number; longitude: number } | null>(null);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
@@ -73,6 +77,7 @@ export default function PlacesScreen() {
       setError(undefined);
       try {
         const reading = await getFreshReading({ fresh });
+        setMe({ latitude: reading.latitude, longitude: reading.longitude });
         const categories = CATEGORY_GROUPS.find((g) => g.key === group)?.categories;
         const res = await api.post<SearchResponse>('/api/v1/places/search', {
           reading,
@@ -128,6 +133,12 @@ export default function PlacesScreen() {
             active={filtered}
             onPress={() => setFiltersOpen(true)}
           />
+          {/* D99: switch between the list and the map. */}
+          <IconButton
+            icon={view === 'list' ? 'map-outline' : 'list-outline'}
+            label={view === 'list' ? 'Show map' : 'Show list'}
+            onPress={() => setView(view === 'list' ? 'map' : 'list')}
+          />
           <SearchField
             label="Search places"
             placeholder="Search places nearby"
@@ -150,87 +161,91 @@ export default function PlacesScreen() {
         </View>
       </View>
 
-      <FlatList
-        data={places}
-        keyExtractor={(p) => p.id}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: 110, flexGrow: 1 }}
-        renderItem={({ item }) => (
-          <PlaceRow place={item} onPress={() => router.push(`/places/${item.id}`)} />
-        )}
-        onEndReached={() => {
-          if (!loading && nextOffset !== null) void load(nextOffset);
-        }}
-        ListHeaderComponent={
-          <>
-            {/* D94: places people asked to add or remove nearby, voted on here. */}
-            <VerifyChanges reloadKey={String(changesKey)} onDecided={() => void load(0)} />
-            {/* D78: what's applied, each removable with one tap. */}
-            {groupLabel || sortLabel ? (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  flexWrap: 'wrap',
-                  gap: 8,
-                  paddingHorizontal: 12,
-                  paddingTop: 6,
-                  paddingBottom: 4,
-                }}
-              >
-                {groupLabel ? (
-                  <Chip
-                    active
-                    label={groupLabel}
-                    onPress={() => setGroup(null)}
-                    onRemove={() => setGroup(null)}
-                  />
-                ) : null}
-                {sortLabel ? (
-                  <Chip
-                    active
-                    label={sortLabel}
-                    onPress={() => setSort(null)}
-                    onRemove={() => setSort(null)}
-                  />
-                ) : null}
+      {view === 'map' ? (
+        <PlacesMap places={places} me={me} />
+      ) : (
+        <FlatList
+          data={places}
+          keyExtractor={(p) => p.id}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: 110, flexGrow: 1 }}
+          renderItem={({ item }) => (
+            <PlaceRow place={item} onPress={() => router.push(`/places/${item.id}`)} />
+          )}
+          onEndReached={() => {
+            if (!loading && nextOffset !== null) void load(nextOffset);
+          }}
+          ListHeaderComponent={
+            <>
+              {/* D94: places people asked to add or remove nearby, voted on here. */}
+              <VerifyChanges reloadKey={String(changesKey)} onDecided={() => void load(0)} />
+              {/* D78: what's applied, each removable with one tap. */}
+              {groupLabel || sortLabel ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                    paddingHorizontal: 12,
+                    paddingTop: 6,
+                    paddingBottom: 4,
+                  }}
+                >
+                  {groupLabel ? (
+                    <Chip
+                      active
+                      label={groupLabel}
+                      onPress={() => setGroup(null)}
+                      onRemove={() => setGroup(null)}
+                    />
+                  ) : null}
+                  {sortLabel ? (
+                    <Chip
+                      active
+                      label={sortLabel}
+                      onPress={() => setSort(null)}
+                      onRemove={() => setSort(null)}
+                    />
+                  ) : null}
+                </View>
+              ) : null}
+              {error ? <ErrorState message={error} onRetry={() => void load(0)} /> : null}
+            </>
+          }
+          ListEmptyComponent={
+            loading && places.length === 0 ? (
+              <View>
+                <PlaceSkeleton />
+                <PlaceSkeleton />
+                <PlaceSkeleton />
+                <PlaceSkeleton />
               </View>
-            ) : null}
-            {error ? <ErrorState message={error} onRetry={() => void load(0)} /> : null}
-          </>
-        }
-        ListEmptyComponent={
-          loading && places.length === 0 ? (
-            <View>
-              <PlaceSkeleton />
-              <PlaceSkeleton />
-              <PlaceSkeleton />
-              <PlaceSkeleton />
-            </View>
-          ) : !error ? (
-            <EmptyState
-              icon={q || filtered ? 'search-outline' : 'storefront-outline'}
-              title={q || filtered ? 'No matching places nearby' : 'No places within your radius'}
-              body={
-                q || filtered
-                  ? 'Try another name or clear the filters.'
-                  : 'You can widen your radius in Account → Settings, or add a place that’s missing.'
-              }
-              action={{
-                label: 'Suggest a place',
-                icon: 'add',
-                onPress: () => router.push('/places/suggest'),
-              }}
-            />
-          ) : null
-        }
-        ListFooterComponent={
-          <>
-            {loading && places.length > 0 ? (
-              <ActivityIndicator style={{ margin: 16 }} color={DARK.accent} />
-            ) : null}
-            <OsmAttribution dark />
-          </>
-        }
-      />
+            ) : !error ? (
+              <EmptyState
+                icon={q || filtered ? 'search-outline' : 'storefront-outline'}
+                title={q || filtered ? 'No matching places nearby' : 'No places within your radius'}
+                body={
+                  q || filtered
+                    ? 'Try another name or clear the filters.'
+                    : 'You can widen your radius in Account → Settings, or add a place that’s missing.'
+                }
+                action={{
+                  label: 'Suggest a place',
+                  icon: 'add',
+                  onPress: () => router.push('/places/suggest'),
+                }}
+              />
+            ) : null
+          }
+          ListFooterComponent={
+            <>
+              {loading && places.length > 0 ? (
+                <ActivityIndicator style={{ margin: 16 }} color={DARK.accent} />
+              ) : null}
+              <OsmAttribution dark />
+            </>
+          }
+        />
+      )}
 
       {/* P5.8: suggest a missing place; same round button and spot as "new post". */}
       <FloatingButton label="Add new place" onPress={() => router.push('/places/suggest')} />

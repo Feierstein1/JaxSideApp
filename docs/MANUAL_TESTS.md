@@ -137,6 +137,15 @@ checks. Tick each box when it looks right; note anything odd next to it.
       the "get closer" message.
 - [ ] No place names longer than 30 characters appear.
 
+## 7a. Places map (D99)
+
+- [ ] Places → the **map** button next to the filter: a dark map of Jacksonville with your spot in
+      gold and nearby places as dots in their category colors. Pinch and drag work; it doesn't
+      go far outside Duval.
+- [ ] Zoom in: place names appear under the dots; street names show on the map.
+- [ ] Tap a dot: that place opens. Back returns to the map.
+- [ ] The **list** button switches back. The "© OpenStreetMap contributors" credit is visible.
+
 ## 7b. Suggest a place
 
 - [ ] Places → the round gold **+** bottom-right (Add new place) opens the form, which says your

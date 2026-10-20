@@ -47,3 +47,6 @@ Thumbs.db
 # Generated Prisma client (rebuilt by postinstall)
 apps/server/src/generated/
 apps/server/data/osm/
+
+# D99: the Duval map tiles (downloaded by npm run fetch:map, ~41 MB)
+apps/server/data/map/
