@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { categoryColor, DARK, type PlaceChange } from '@jax/shared';
@@ -14,8 +14,10 @@ import { showAlert } from '@/dialog';
 
 /**
  * D94: "Verify changes near you": a small sideways strip at the top of Places with places
- * people asked to add or remove within 528 yd. Tap a side once; the vote is final. Ten
- * votes one way decide it. Hidden when there's nothing to verify.
+ * people asked to add or remove within 528 yd. Tap a side, then you have a few seconds to
+ * undo before it's sent; after that it's final (D100). Once you vote, the card leaves your
+ * strip; your own requests never appear (they already count as your vote). Ten votes one
+ * way decide it. Hidden when there's nothing left to verify.
  */
 export function VerifyChanges({
   reloadKey,
@@ -65,12 +67,9 @@ export function VerifyChanges({
         renderItem={({ item }) => (
           <ChangeCard
             change={item}
-            onVoted={(updated, decided) => {
-              setItems((all) =>
-                decided
-                  ? all.filter((c) => c.id !== item.id)
-                  : all.map((c) => (c.id === item.id ? updated : c)),
-              );
+            onVoted={(decided) => {
+              // D100: voted cards leave the strip (it hides when nothing's left).
+              setItems((all) => all.filter((c) => c.id !== item.id));
               if (decided) onDecided?.();
             }}
           />
@@ -87,17 +86,36 @@ const OUTCOME: Record<string, string> = {
   kept: 'That did it: the place stays listed.',
 };
 
+/** D100: seconds to change your mind before a vote is sent (then it's final). */
+const UNDO_SECONDS = 5;
+
 function ChangeCard({
   change: c,
   onVoted,
 }: {
   change: PlaceChange;
-  onVoted: (updated: PlaceChange, decided: boolean) => void;
+  onVoted: (decided: boolean) => void;
 }) {
   const [busy, setBusy] = useState<boolean | null>(null);
+  const [pending, setPending] = useState<{ support: boolean; left: number } | null>(null);
+  const pendingRef = useRef(pending);
+  pendingRef.current = pending;
   const add = c.kind === 'add';
   const color = categoryColor(c.category);
-  const voted = c.myVote !== null;
+
+  // Count down; send when it reaches zero.
+  useEffect(() => {
+    if (!pending) return;
+    if (pending.left <= 0) {
+      setPending(null);
+      void vote(pending.support);
+      return;
+    }
+    const t = setTimeout(() => setPending({ ...pending, left: pending.left - 1 }), 1000);
+    return () => clearTimeout(t);
+  }, [pending]);
+  // Leaving the screen mid-countdown still sends the vote you picked.
+  useEffect(() => () => void (pendingRef.current && vote(pendingRef.current.support)), []);
 
   async function vote(support: boolean) {
     setBusy(support);
@@ -116,15 +134,7 @@ function ChangeCard({
           icon: 'checkmark-done-circle',
           tone: 'success',
         });
-      onVoted(
-        {
-          ...c,
-          myVote: support,
-          yes: c.yes + (support ? 1 : 0),
-          no: c.no + (support ? 0 : 1),
-        },
-        decided,
-      );
+      onVoted(decided);
     } catch (e) {
       showAlert(
         'Couldn’t vote',
@@ -183,16 +193,25 @@ function ChangeCard({
           {categoryLabel(c.category)} · {formatDistance(c.distanceMeters)} · {Math.max(c.yes, c.no)}
           /{c.needed} votes
         </Text>
-        {voted || c.mine ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 36 }}>
-            <Ionicons name="checkmark-circle" size={16} color={DARK.tealText} />
-            <Text style={[TYPE.caption, { color: DARK.text }]}>
-              {c.mine && !voted
-                ? 'You asked for this'
-                : `You voted “${c.myVote ? yesLabel : noLabel}”`}
-              {' · '}
-              {c.yes} {yesLabel.toLowerCase()} · {c.no} {noLabel.toLowerCase()}
+        {pending ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 36 }}>
+            <Text style={[TYPE.caption, { color: DARK.text, flex: 1 }]}>
+              You picked “{pending.support ? yesLabel : noLabel}” · sending in {pending.left}s
             </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Undo vote"
+              onPress={() => setPending(null)}
+              style={{
+                minHeight: 36,
+                paddingHorizontal: 12,
+                borderRadius: RADIUS.pill,
+                justifyContent: 'center',
+                backgroundColor: DARK.raised,
+              }}
+            >
+              <Text style={{ fontWeight: '800', fontSize: 13, color: DARK.accent }}>Undo</Text>
+            </Pressable>
           </View>
         ) : (
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -201,7 +220,7 @@ function ChangeCard({
               icon={add ? 'checkmark' : 'close-circle-outline'}
               busy={busy === true}
               disabled={busy !== null}
-              onPress={() => void vote(true)}
+              onPress={() => setPending({ support: true, left: UNDO_SECONDS })}
               strong
             />
             <VoteButton
@@ -209,7 +228,7 @@ function ChangeCard({
               icon={add ? 'close' : 'storefront-outline'}
               busy={busy === false}
               disabled={busy !== null}
-              onPress={() => void vote(false)}
+              onPress={() => setPending({ support: false, left: UNDO_SECONDS })}
             />
           </View>
         )}

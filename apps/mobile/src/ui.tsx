@@ -875,7 +875,15 @@ export function SearchField({
         autoCapitalize={autoCapitalize}
         returnKeyType="search"
         maxLength={maxLength}
-        style={{ flex: 1, fontSize: 15.5, paddingHorizontal: 8, paddingVertical: 0 }}
+        numberOfLines={1}
+        // D100: React Native can't size the placeholder on its own, so the box uses a smaller
+        // size while it's empty (the placeholder fits) and the normal size once you type.
+        style={{
+          flex: 1,
+          fontSize: value ? 15.5 : 13.5,
+          paddingHorizontal: 8,
+          paddingVertical: 0,
+        }}
       />
       {value ? (
         <Pressable

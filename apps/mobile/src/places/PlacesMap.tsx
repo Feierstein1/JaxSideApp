@@ -4,6 +4,7 @@ import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { router } from 'expo-router';
 import { categoryColor, DARK, type PlaceSummary } from '@jax/shared';
 import { API_BASE_URL, api } from '@/api';
+import { remoteLog } from '@/debug/remote-log';
 import { Text } from '@/text';
 import { SPACE, TYPE } from '@/tokens';
 
@@ -28,8 +29,14 @@ export function PlacesMap({
   useEffect(() => {
     api
       .get<{ available: boolean; pageUrl?: string }>('/api/v1/map')
-      .then((r) => setPageUrl(r.available && r.pageUrl ? `${API_BASE_URL}${r.pageUrl}` : null))
-      .catch(() => setError('Couldn’t load the map.'));
+      .then((r) => {
+        remoteLog('info', `map config: available=${r.available}`, 'PlacesMap');
+        setPageUrl(r.available && r.pageUrl ? `${API_BASE_URL}${r.pageUrl}` : null);
+      })
+      .catch((e: unknown) => {
+        remoteLog('error', 'map config request failed', 'PlacesMap', e);
+        setError('Couldn’t load the map.');
+      });
   }, []);
 
   // Send places and your location in whenever they change (fit the view the first time).
@@ -57,9 +64,18 @@ export function PlacesMap({
     } catch {
       return;
     }
-    if (msg.type === 'ready') setReady(true);
-    else if (msg.type === 'open' && typeof msg.id === 'string') router.push(`/places/${msg.id}`);
-    else if (msg.type === 'error' && !ready) setError('The map couldn’t start. Try the list.');
+    if (msg.type === 'ready') {
+      setReady(true);
+      remoteLog('info', 'map ready', 'PlacesMap');
+    } else if (msg.type === 'open' && typeof msg.id === 'string') {
+      router.push(`/places/${msg.id}`);
+    } else if (msg.type === 'log') {
+      remoteLog('info', String(msg.message), 'map page');
+    } else if (msg.type === 'error') {
+      // D100: every map error goes to the development log.
+      remoteLog('error', String(msg.message), 'map page');
+      if (!ready) setError('The map couldn’t start. Try the list.');
+    }
   }
 
   if (error || pageUrl === null) {
@@ -82,6 +98,23 @@ export function PlacesMap({
           javaScriptEnabled
           // Only our map page; links never open inside the map.
           onShouldStartLoadWithRequest={(r) => r.url.startsWith(API_BASE_URL)}
+          onError={(e) => {
+            remoteLog(
+              'error',
+              `WebView load error: ${e.nativeEvent.description}`,
+              'PlacesMap',
+              e.nativeEvent,
+            );
+            setError('The map couldn’t load. Try the list.');
+          }}
+          onHttpError={(e) =>
+            remoteLog(
+              'error',
+              `WebView HTTP ${e.nativeEvent.statusCode}`,
+              'PlacesMap',
+              e.nativeEvent.url,
+            )
+          }
           setSupportMultipleWindows={false}
           style={{ flex: 1, backgroundColor: DARK.page }}
           accessibilityLabel="Map of places near you"

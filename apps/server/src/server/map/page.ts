@@ -53,6 +53,14 @@ export function mapPage(tilesUrl: string): { html: string; csp: string } {
 (function () {
   var C = ${config};
   var post = function (m) { if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(m)); };
+  // D100: report each step to the app (which forwards it to the development log).
+  window.onerror = function (msg, src, line, col) { post({ type: 'error', message: msg + ' @ ' + src + ':' + line + ':' + col }); };
+  window.addEventListener('unhandledrejection', function (e) { post({ type: 'error', message: 'promise: ' + (e.reason && e.reason.message || e.reason) }); });
+  var gl = (function () { try { var c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
+  post({ type: 'log', message: 'scripts: maplibre=' + (typeof maplibregl) + ' pmtiles=' + (typeof pmtiles) + ' basemaps=' + (typeof basemaps) + ' webgl=' + gl + ' ua=' + navigator.userAgent });
+  fetch(C.tiles, { headers: { Range: 'bytes=0-126' } })
+    .then(function (r) { post({ type: 'log', message: 'tiles test: HTTP ' + r.status + ' ' + (r.headers.get('content-range') || '') }); })
+    .catch(function (e) { post({ type: 'error', message: 'tiles test failed: ' + e }); });
   try {
     var protocol = new pmtiles.Protocol();
     maplibregl.addProtocol('pmtiles', protocol.tile);

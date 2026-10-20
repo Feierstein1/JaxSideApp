@@ -30,7 +30,10 @@ export async function voterAllowed(user: Pick<User, 'createdAt'>, now = new Date
   }
 }
 
-/** Open suggestions and removal requests within the place radius of `here`. */
+/**
+ * Open suggestions and removal requests within the place radius of `here` that you haven't
+ * voted on and didn't ask for yourself (D100: your request already counts as your vote).
+ */
 export async function listNearbyChanges(userId: string, here: GeoPoint): Promise<PlaceChange[]> {
   const [days, radiusMiles, needed] = await Promise.all([
     getConfig('places.changeDays'),
@@ -63,6 +66,10 @@ export async function listNearbyChanges(userId: string, here: GeoPoint): Promise
     FROM "BusinessSubmission" s
     WHERE s.status = 'PENDING' AND s."createdAt" > ${since}
       AND ST_DWithin(s.location, ${me}::geography, ${meters})
+      -- D100: only what's still yours to vote on (you voted, or it's your own request).
+      AND s."submitterId" <> ${userId}::uuid
+      AND NOT EXISTS (SELECT 1 FROM "PlaceChangeVote" v
+                      WHERE v."submissionId" = s.id AND v."voterId" = ${userId}::uuid)
     UNION ALL
     SELECT 'remove', r.id, p.name, p.category, p.latitude, p.longitude, r."createdAt",
            (SELECT count(*)::int FROM "PlaceChangeVote" v WHERE v."removalId" = r.id AND v.support),
@@ -71,7 +78,10 @@ export async function listNearbyChanges(userId: string, here: GeoPoint): Promise
            (r."requesterId" = ${userId}::uuid)
     FROM "PlaceRemoval" r JOIN "BusinessPlace" p ON p.id = r."placeId"
     WHERE r.status = 'OPEN' AND p.status = 'ACTIVE' AND r."createdAt" > ${since}
-      AND ST_DWithin(p.location, ${me}::geography, ${meters})`;
+      AND ST_DWithin(p.location, ${me}::geography, ${meters})
+      AND r."requesterId" <> ${userId}::uuid
+      AND NOT EXISTS (SELECT 1 FROM "PlaceChangeVote" v
+                      WHERE v."removalId" = r.id AND v."voterId" = ${userId}::uuid)`;
   return rows
     .map((r) => ({
       kind: r.kind,

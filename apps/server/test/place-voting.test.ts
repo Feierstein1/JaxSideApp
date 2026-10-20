@@ -99,10 +99,13 @@ describe('adding a place by vote (D94)', () => {
     const [item] = await changes(others[0]!);
     expect(item).toMatchObject({ kind: 'add', name: 'Bold Bean', yes: 1, no: 0, needed: 10 });
     expect(item.myVote).toBeNull();
-    expect((await changes(sue!))[0]).toMatchObject({ mine: true, myVote: true });
+    // D100: your own request isn't on your strip (your vote is already counted)…
+    expect(await changes(sue!)).toEqual([]);
     for (const [i, p] of others.entries()) {
       const v = await vote(p, 'add', item.id, true);
       expect(v.body.outcome).toBe(i === 8 ? 'added' : 'open');
+      // …and once you vote, it leaves yours.
+      if (i < 8) expect(await changes(p)).toEqual([]);
     }
     expect(await searchNames(sue!)).toContain('Bold Bean');
     const s = await db.businessSubmission.findUniqueOrThrow({ where: { id: item.id } });
