@@ -39,6 +39,7 @@ import * as reports from '@/app/api/v1/reports/route';
 import * as photos from '@/app/api/v1/photos/route';
 import * as voice from '@/app/api/v1/voice/route';
 import * as videos from '@/app/api/v1/videos/route';
+import * as guides from '@/app/api/v1/me/guides/route';
 import * as ownerClaims from '@/app/api/v1/places/[id]/owner-claims/route';
 import * as ownerConfirm from '@/app/api/v1/owner-claims/[id]/confirm/route';
 import * as ownerProof from '@/app/api/v1/owner-claims/[id]/proof/route';
@@ -433,6 +434,16 @@ const ROWS: Row[] = [
     id: null,
     location: false,
     body: () => ({ category: 'GENERAL', subject: 'Hello', body: 'Just saying hello to you.' }),
+  },
+  // D104: first-time guides (guides.test.ts).
+  {
+    route: 'me/guides',
+    method: 'POST',
+    handler: h(guides, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ key: 'areaPost' }),
   },
   // D103: business owner claims (owners.test.ts has the behavior).
   {

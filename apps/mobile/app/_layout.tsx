@@ -13,6 +13,7 @@ import { DARK } from '@jax/shared';
 import { AuthProvider, useAuth } from '@/auth/AuthContext';
 import { installRemoteLogging } from '@/debug/remote-log';
 import { DialogHost } from '@/dialog';
+import { GuideHost } from '@/guides/guide';
 
 // D100 (temporary): send app errors to the development server's log.
 installRemoteLogging();
@@ -83,6 +84,8 @@ export default function RootLayout() {
           <RootStack />
           {/* D97: the app's styled pop-ups (showAlert / showMenu). */}
           <DialogHost />
+          {/* D104: first-time guides. */}
+          <GuideHost />
         </AuthProvider>
       ) : (
         <View style={{ flex: 1, backgroundColor: DARK.bar }} />

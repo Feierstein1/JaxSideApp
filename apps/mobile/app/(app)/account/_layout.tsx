@@ -21,6 +21,7 @@ export default function AccountLayout() {
       <Stack.Screen name="delete" options={{ title: 'Delete account' }} />
       <Stack.Screen name="legal/[key]" options={{ title: 'Policies' }} />
       <Stack.Screen name="contact" options={{ title: 'Contact us' }} />
+      <Stack.Screen name="rules" options={{ title: 'Community rules' }} />
     </Stack>
   );
 }

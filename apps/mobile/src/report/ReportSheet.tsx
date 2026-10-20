@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
@@ -15,6 +15,7 @@ import { getFreshReading } from '@/location/device';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { Banner, Button, Field, FormError, Sheet } from '@/ui';
 import { Text } from '@/text';
+import { ensureGuide } from '@/guides/guide';
 
 /**
  * P5.1: report a post, comment or profile. Pick a reason, optionally add details.
@@ -32,6 +33,22 @@ export function ReportSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [sent, setSent] = useState(false);
+  /** D104: the first report shows its guide before the sheet opens; closing it cancels. */
+  const [ready, setReady] = useState(false);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    if (!target) return setReady(false);
+    let live = true;
+    void ensureGuide('report').then((ok) => {
+      if (!live) return;
+      if (ok) setReady(true);
+      else closeRef.current();
+    });
+    return () => {
+      live = false;
+    };
+  }, [target]);
 
   function close() {
     setReason(undefined);
@@ -62,7 +79,7 @@ export function ReportSheet({
   }
 
   return (
-    <Sheet open={!!target} onClose={close} title={sent ? undefined : 'Report'}>
+    <Sheet open={!!target && ready} onClose={close} title={sent ? undefined : 'Report'}>
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: SPACE.sm, gap: 6 }}
         keyboardShouldPersistTaps="handled"
@@ -74,8 +91,8 @@ export function ReportSheet({
               Thanks for reporting
             </Text>
             <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
-              A moderator will review it. You can follow its status in Account → Settings → My
-              reports. You can also block this person from their profile.
+              A moderator will review it. You can follow its status in Account → My reports. You can
+              also block this person from their profile.
             </Text>
             <Button title="Done" onPress={close} style={{ alignSelf: 'stretch' }} />
           </View>

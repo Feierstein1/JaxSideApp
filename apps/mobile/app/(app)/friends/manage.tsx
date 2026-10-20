@@ -24,6 +24,7 @@ import {
   Screen,
 } from '@/ui';
 import { showAlert } from '@/dialog';
+import { ensureGuide } from '@/guides/guide';
 
 /**
  * D76: add a friend by username, answer requests, and see or remove friends.
@@ -70,7 +71,9 @@ export function FriendsManager({ embedded = false }: { embedded?: boolean }) {
   async function send() {
     const username = name.trim().replace(/^@/, '');
     if (!username) return;
+    if (!(await ensureGuide('friendRequest'))) return; // D104
     setBusy(true);
+
     setNote(undefined);
     await run(async () => {
       const r = await social.send(username);

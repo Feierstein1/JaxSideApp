@@ -18,6 +18,7 @@ import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { Button, EmptyState, ErrorState, openMenu, SectionTitle, StatTile } from '@/ui';
 import { Text } from '@/text';
 import { showAlert } from '@/dialog';
+import { ensureGuide } from '@/guides/guide';
 
 /** P4.8: someone's public profile and recent area posts, with Block (P5.2). */
 export function ProfileScreen({ username, postPath }: { username: string; postPath: string }) {
@@ -98,7 +99,8 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
     );
   }
 
-  function confirmBlock() {
+  async function confirmBlock() {
+    if (!(await ensureGuide('block'))) return; // D104
     showAlert(
       `Block ${username}?`,
       'You won’t see their posts or comments, and they can’t see your profile. They aren’t told.',
@@ -129,7 +131,13 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
     openMenu(profile.username, [
       profile.blockedByMe
         ? { label: 'Unblock', icon: 'lock-open-outline', onPress: () => void setBlocked(false) }
-        : { label: 'Block', icon: 'ban-outline', destructive: true, onPress: confirmBlock },
+        : {
+            label: 'Block',
+            icon: 'ban-outline',
+            destructive: true,
+            onPress: () => void confirmBlock(),
+          },
+
       {
         label: 'Report profile',
         icon: 'flag-outline',
@@ -218,7 +226,12 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
             <FriendButton
               profile={profile}
               busy={busy}
-              onAdd={() => void friendAction(() => social.send(profile.username))}
+              onAdd={() =>
+                void ensureGuide('friendRequest').then((ok) => {
+                  if (ok) void friendAction(() => social.send(profile.username));
+                })
+              }
+
               onCancel={() => void friendAction(() => social.cancel(profile.friendRequestId!))}
               onAccept={() => void friendAction(() => social.accept(profile.friendRequestId!))}
               onDecline={() => void friendAction(() => social.decline(profile.friendRequestId!))}

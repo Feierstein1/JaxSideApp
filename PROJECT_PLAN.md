@@ -23,7 +23,7 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 **Phase:** 7 — Verification & Release Readiness: work done 2026-10-16, waiting for sign-off. Phase 3 gate pending only the on-device vote/comment check
 **Next action:** Your sign-off on Phase 7: phone checklist (`docs/MANUAL_TESTS.md`), hosting approval (Q15, `docs/LAUNCH_SERVICES.md`), store accounts (`docs/STORE_PREP.md`).
-**Last updated:** 2026-10-18 (D78 experimental UI redesign awaiting your review)
+**Last updated:** 2026-10-20 (Phase 11 first-time guides built, D104; Phase 12 owners, D103; video posts, D102)
 
 ---
 
@@ -78,7 +78,7 @@ Questions marked **BLOCKING** must be answered before the phase listed. Each has
   Paid options (texting a code, mailed postcards) need your OK first (no paid services without approval).
   *Recommendation:* offer 1 and 2 in the app, with 3 as the admin fallback; skip 4 unless there's a dispute. A verified owner gets an **Owner** tag on their posts in that place's discussion only, one account per place (an admin can add more), and can lose it for misuse. Their account stays pseudonymous to everyone else. Admin review fits the existing portal queue (like place suggestions).
   *Also decide:* can unverified employees post with a plain "I work here" line, or should staff wait for verification too? *Recommendation:* allow it, with no Owner tag, since it's honest disclosure that verification can't check.
-- [ ] **Q18 — First-time guides: a few choices before building (Phase 11, `docs/FIRST_TIME_GUIDES.md`)**
+- [x] **Q18 — First-time guides: a few choices before building (Phase 11, `docs/FIRST_TIME_GUIDES.md`)** → **Answered 2026-10-20 (user: go with the recommendations) and built (D104)**
   1. *"Anonymous" wording:* posts show your username, photo and rough distance, so the app is **pseudonymous**, not anonymous. *Recommendation:* "People see your username and photo, never your email or exact location. It's your choice whether to tell anyone who you really are."
   2. *Skippable?* *Recommendation:* no Skip on the first showing; closing cancels the action and the guide shows again next time. Rereadable any time from Account → Community rules.
   3. ~~*Business owners posting about their own place*~~ → **Answered 2026-10-19:** yes, allowed (with disclosure, no repeated promotions) **once there's a working way to verify the owner's claim**. Verification is Q19.
@@ -240,6 +240,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D101 | **Accepted** 2026-10-20 | **A removed place's posts: archived 90 days, then deleted** (user agreed). While archived they're hidden and come back if an admin restores the place. After `places.removedPostDays` (90) the daily job deletes them with their comments, votes and photo files. Posts that were reported (or have a reported comment) are kept as moderation evidence; reports and the admin log are never deleted by this | User 2026-10-20 |
 | D102 | **Accepted** 2026-10-20 | **Video posts, the free way** (user: start the open items; paid processing needs approval, so not used). Pick from the library or record, **up to 30 s and 25 MB**, uploaded as recorded (`POST /videos`); one kind of attachment per post (photos, voice or video); caption optional; a **Video** tab joins the post-type bar. With no transcoder the server checks the file structurally (MP4/QuickTime brand, one `moov`, at least one video track, length) and cleans it in place: tracks other than video and audio (an iPhone's timed metadata, timecode…) have their samples zeroed and are removed, and `udta`/`meta`/`uuid` boxes and track references are blanked, so no location or device details survive. Videos play when tapped (nothing loads while scrolling) with the phone's controls; moderators can play a reported one. Trade-off: no re-encoding, so a recording in a format the viewer's phone can't decode (e.g. HEVC on some older Androids) won't play there; paid processing could fix that later. Served in byte ranges like voice clips | User 2026-10-20 |
 | D103 | **Accepted** 2026-10-20 | **Verified business owners built (Phase 12, as decided in D92).** Places now keep the business's public **website and phone** from the map data (1,268 / 1,011 of 3,742 active places). "I own this place" on a place page offers: **business email** (only if we have its website; the address must be at that domain, not Gmail/Yahoo/social hosts; a 6-digit code, 30 min, 5 tries; the address is used once and only its domain kept; verifies automatically), **code on the website or social page** (`JAX-XXXXXX`; the owner sends the link; an admin checks it), or **phone call** (only with a number on file; the portal shows the number and a code the admin reads out; the owner enters it). One open claim per person and place; a place that already has an owner needs an admin for another. Verified owners get a gold **Owner** tag on their posts in that place's discussion only (never in the area feed; the API adds only the tag, never how they verified). New portal page **Owners** (to check / owners / rejected / tag removed): verify, reject, remove the tag (audited). Community Guidelines and Privacy Policy updated (businesses, owner data, disputes; also private messages, D98) | User 2026-10-19/20 |
+| D104 | **Accepted** 2026-10-20 | **First-time guides built (Phase 11, Q18 recommendations accepted).** A short sheet (Do / Don't / Good to know, page dots, Back / Next, a last "Got it") shows the first time someone posts to the area or a place, comments, adds a photo, records voice or video, suggests a place, votes on a place change, reports, changes their profile (bio, photo, username), sends a friend request, blocks, messages, and once for guests. **No Skip on the first showing:** closing cancels that action and the guide shows again next time. Finished guides are kept **per account on the server** (`GuideSeen`, with a version per guide so an important rule change shows it once more; guests: on the phone); existing accounts see each guide once. Wording says **pseudonymous**, not anonymous ("People see your username and photo, never your email or exact location"); a passing business mention in an area post is fine. Text lives in `packages/shared/src/guides.ts`; every rule in it was added to the Community Guidelines (new sections: posts in the right place; photos, voice and video; places and voting; profiles, friends and messages; report misuse). Account → Help → **Community rules** rereads any guide; the composer has a **Posting rules** link | User 2026-10-20 |
 | D43 | **Accepted** 2026-10-15 | The signed-in username shows in the top bar on every screen, with an eye button that hides it **on that device's screen only** (stored on the device). Posts still show the username to others | User request. Screen-privacy toggle, not anonymous posting. **Confirmed by the user 2026-10-15** |
 
 ---
@@ -425,19 +426,19 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [x] P10.1 Design first (conversations, reporting and blocking from day one, retention): `docs/MESSAGING_DESIGN.md`, approved (D98)
 - [x] P10.2 🔒 Private messaging built (D98): mutual friends only; membership, friendship and block checks tested; encrypted at rest; reports with context; phone check pending
 
-## Phase 11 — First-time guides (user idea 2026-10-19, not started)
+## Phase 11 — First-time guides (user idea 2026-10-19, built 2026-10-20 as D104)
 
 A short swipeable guide (Do's ✅ / Don'ts ❌ / Good to know, page dots, Next, "Got it") shown the first time someone does each action, once per account. Drafted wording for every guide: `docs/FIRST_TIME_GUIDES.md`. Decisions pending in Q18; add a Decision Log entry before building (not in the spec).
 
-- [ ] P11.1 Guide sheet component: pages, dots, Next/Back, last-page "Got it"; closing cancels the action; screen reader "Page 1 of 3", reduce motion, large text
-- [ ] P11.2 🔒 "Guides seen" per account on the server, with a version per guide (so a new phone or reinstall doesn't show it again, and a big rule change can show it once more). Back-end item
-- [ ] P11.3 Guide text in one shared file, and the Community Guidelines updated so every rule a guide mentions is in them
-- [ ] P11.4 Guides: first area post, first place post, first comment, first photo, first voice post
-- [ ] P11.5 Guides: first place suggestion, first report, first profile change (bio / username / photo)
-- [ ] P11.6 Guides: first friend request, first block, guest welcome
-- [ ] P11.7 Guide: first "closed / doesn't exist" vote (place voting is built, D94; guide text updated)
-- [ ] P11.8 Guide: first private message (with Phase 10)
-- [ ] P11.9 Account → **Community rules** to reread any guide, plus a small "Rules" link in each composer
+- [x] P11.1 Guide sheet component: pages, dots, Next/Back, last-page "Got it"; closing cancels the action; screen reader "Page 1 of 3", reduce motion, large text
+- [x] P11.2 🔒 "Guides seen" per account on the server, with a version per guide (so a new phone or reinstall doesn't show it again, and a big rule change can show it once more). Back-end item
+- [x] P11.3 Guide text in one shared file, and the Community Guidelines updated so every rule a guide mentions is in them
+- [x] P11.4 Guides: first area post, first place post, first comment, first photo, first voice post
+- [x] P11.5 Guides: first place suggestion, first report, first profile change (bio / username / photo)
+- [x] P11.6 Guides: first friend request, first block, guest welcome
+- [x] P11.7 Guide: first "closed / doesn't exist" vote (place voting is built, D94; guide text updated)
+- [x] P11.8 Guide: first private message (with Phase 10)
+- [x] P11.9 Account → **Community rules** to reread any guide, plus a small "Rules" link in each composer
 
 
 ## Phase 12 — Verified business owners (D92, built 2026-10-20 as D103; phone check pending)
@@ -630,3 +631,4 @@ Events/meetups/RSVPs · sponsored content / ads / subscriptions · phone push no
 | 2026-10-20 | D100 | Map didn't show on the user's phone with no error: added a temporary development error log (app → server log file) with step-by-step map diagnostics. Smaller search placeholder. Voting: own requests and voted cards leave your strip, empty strip hides, 5 s undo. 703 server + 135 shared + 41 app tests, Android bundle |
 | 2026-10-20 | D101, D102 | Removed places' posts archived 90 days then deleted (unless reported). Video posts: upload/record up to 30 s, structural check + metadata/track scrubbing (shared MP4 reader now also used by voice), Video tab, tap-to-play player, moderator playback. 713 server + 135 shared + 41 app tests, Android bundle |
 | 2026-10-20 | Phase 12, D103 | Verified business owners: website/phone imported from OSM (re-imported the dev directory from the saved download), owner claims by business email / website code / phone call, Owner tag in place discussions, portal Owners page, policy text. 734 server + 135 shared + 41 app tests, Android bundle |
+| 2026-10-20 | Phase 11, D104 | First-time guides: shared guide text (14 guides), `GuideSeen` table + `GET/POST /api/v1/me/guides`, guide sheet and host in the app, hooked into every first-of-kind action, Account → Community rules, composer "Posting rules" link, Community Guidelines extended to cover every guide rule. 739 server tests, typecheck, lint, Android bundle |

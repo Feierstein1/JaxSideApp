@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack } from 'expo-router';
@@ -17,6 +17,7 @@ import { pickVideo, uploadVideo, VIDEO_MAX_SECONDS, type UploadedVideo } from '.
 import { VoiceRecorder, type UploadedVoice } from './VoiceRecorder';
 import { Text, TextInput } from '@/text';
 import { showAlert } from '@/dialog';
+import { ensureGuide, reviewGuide } from '@/guides/guide';
 
 type Mode = 'text' | 'voice' | 'video';
 
@@ -53,9 +54,18 @@ export function Compose({
   const ready = mode === 'text' ? !!body.trim() : mode === 'voice' ? !!voice : !!video;
   const canPost = ready && !busy && !uploading;
   const nearLimit = body.length > POST_MAX * 0.9;
+  const guideKey = target.kind === 'general' ? 'areaPost' : 'placePost';
+
+  // D104: the first post of each kind shows its guide; closing it leaves Compose.
+  useEffect(() => {
+    void ensureGuide(guideKey).then((ok) => {
+      if (!ok) router.back();
+    });
+  }, [guideKey]);
 
   async function addPhoto() {
     setError(undefined);
+    if (!(await ensureGuide('photo'))) return;
     const asset = await pickPhoto();
     if (!asset) return;
     setUploading(true);
@@ -71,6 +81,7 @@ export function Compose({
 
   async function addVideo(record: boolean) {
     setError(undefined);
+    if (!(await ensureGuide('video'))) return;
     const asset = await pickVideo(record);
     if (!asset) return;
     setUploading(true);
@@ -489,6 +500,14 @@ export function Compose({
                 : 'Recordings are cleaned of location and device details.'}
           </Text>
         </View>
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => reviewGuide(guideKey)}
+          hitSlop={8}
+          style={{ alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center' }}
+        >
+          <Text style={{ color: DARK.accent, fontWeight: '700', fontSize: 13 }}>Posting rules</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardSafeView>
   );

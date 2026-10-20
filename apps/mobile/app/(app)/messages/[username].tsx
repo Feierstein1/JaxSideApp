@@ -14,6 +14,7 @@ import { photoUri, pickPhoto, uploadPhoto, type Uploaded } from '@/discussion/ph
 import { sendScreened } from '@/discussion/screening';
 import { postTime } from '@/format';
 import { haptic } from '@/motion';
+import { ensureGuide } from '@/guides/guide';
 import { ReportSheet } from '@/report/ReportSheet';
 import { messagesApi } from '@/social/messages-api';
 import { refreshUnreadMessages } from '@/social/messages-unread';
@@ -102,7 +103,9 @@ export default function Chat() {
   async function send() {
     const body = text.trim();
     if (!body && !photos.length) return;
+    if (!(await ensureGuide('message'))) return; // D104
     setSending(true);
+
     try {
       const sent = await sendScreened((ok) =>
         messagesApi.send(

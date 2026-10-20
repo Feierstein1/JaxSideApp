@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { ActivityIndicator, Pressable, View, type ColorValue } from 'react-native';
 import { router, Tabs } from 'expo-router';
 import * as Location from 'expo-location';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK } from '@jax/shared';
 import { useGuest } from '@/auth/guest';
+import { ensureGuide } from '@/guides/guide';
 import { LocationGate } from '@/location/LocationGate';
 import { haptic } from '@/motion';
 import { FONT } from '@/text';
@@ -41,6 +43,11 @@ function tabIcon(name: string) {
 export default function AppLayout() {
   const [permission, request] = Location.useForegroundPermissions();
   const { isGuest } = useGuest();
+  const granted = !!permission?.granted;
+  // D104: once, the first time a guest gets in.
+  useEffect(() => {
+    if (isGuest && granted) void ensureGuide('guestWelcome');
+  }, [isGuest, granted]);
 
   if (!permission) {
     return (

@@ -23,7 +23,7 @@ const DRAFT: PolicySection = {
   heading: 'Beta',
   body: 'Jax is in beta. These policies may change as the app grows; we’ll update the date above when they do.',
 };
-const UPDATED = '2026-10-15';
+const UPDATED = '2026-10-20';
 
 export const POLICIES: Record<PolicyKey, Policy> = {
   terms: {
@@ -119,6 +119,22 @@ export const POLICIES: Record<PolicyKey, Policy> = {
         body: '• Threats, or encouraging violence\n• Harassment, stalking, or targeting someone\n• Sharing someone’s private information (doxxing)\n• Sexual content involving minors, or intimate images shared without consent\n• Hate based on who someone is\n• Spam, scams, impersonation, or malicious links\n• Faking your location or getting around a ban\n• Anything else that is clearly illegal',
       },
       {
+        heading: 'Posts in the right place',
+        body: '• Area posts should matter to people nearby. A post mostly about one business belongs in that place’s discussion; a passing mention is fine.\n• Place discussions are for that place. Only review places you’ve actually been to, and never post fake reviews.\n• Don’t single out staff or customers by name, description or photo.\n• Don’t repeat the same post or comment across the app, and don’t pile on or reply just to provoke.\n• No sexual, explicit or graphic violent content anywhere. If someone is in danger, call 911 first.',
+      },
+      {
+        heading: 'Photos, voice and video',
+        body: '• Post only what you took or have the right to share: no copyrighted images, videos or music you don’t own.\n• Don’t post close-ups or video of people who didn’t agree to it, especially children.\n• Don’t show license plates, house numbers, the inside of someone’s home, or screenshots of private messages.\n• Don’t record other people’s conversations without them knowing.',
+      },
+      {
+        heading: 'Places and voting',
+        body: '• Suggest only real public places, never private homes or addresses, and no joke entries or duplicates. Keep ads and contact details out of names and notes.\n• Vote only on what you can see for yourself. Don’t vote to remove a place because of a bad experience or against a competitor, and don’t ask others to mass-vote.',
+      },
+      {
+        heading: 'Profiles, friends and messages',
+        body: '• No phone numbers, addresses, emails or social handles in your username or bio, and no pretending to be someone else, a business, the city or the police.\n• No offensive, hateful or explicit usernames, bios or photos.\n• Send friend requests only to people you know or have talked with; repeated unwanted requests are harassment.\n• In messages: no unwanted explicit images or messages, no scams, and no asking for money, passwords or personal details. Stop if someone doesn’t reply.',
+      },
+      {
         heading: 'Businesses',
         body: 'Owners can verify their business and get an Owner tag on their posts in its discussion. If you own or work at a place, say so when you post about it. Repeated promotions or ads aren’t allowed, and a verified owner who misuses the tag loses it. Staff who aren’t owners just say “I work here”; there is no tag for staff.',
       },
@@ -128,7 +144,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       },
       {
         heading: 'Help keep it good',
-        body: 'Use Report on anything that breaks these rules, and Block anyone you don’t want to see. Reports are reviewed by people, not just software.',
+        body: 'Use Report on anything that breaks these rules, and Block anyone you don’t want to see. Reports are reviewed by people, not just software. Don’t report just because you disagree, organize group reports, or report from several accounts: misusing reports is against the rules.',
       },
     ],
   },

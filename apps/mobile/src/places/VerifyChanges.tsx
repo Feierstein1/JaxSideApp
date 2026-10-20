@@ -11,6 +11,7 @@ import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { categoryIcon } from './PlaceHeader';
 import { showAlert } from '@/dialog';
+import { ensureGuide } from '@/guides/guide';
 
 /**
  * D94: "Verify changes near you": a small sideways strip at the top of Places with places
@@ -101,6 +102,12 @@ function ChangeCard({
   const pendingRef = useRef(pending);
   pendingRef.current = pending;
   const add = c.kind === 'add';
+  /** D104: the first vote of each kind shows its guide. */
+  async function pick(support: boolean) {
+    if (!(await ensureGuide(add ? 'placeSuggestion' : 'placeRemoval'))) return;
+    setPending({ support, left: UNDO_SECONDS });
+  }
+
   const color = categoryColor(c.category);
 
   // Count down; send when it reaches zero.
@@ -220,7 +227,7 @@ function ChangeCard({
               icon={add ? 'checkmark' : 'close-circle-outline'}
               busy={busy === true}
               disabled={busy !== null}
-              onPress={() => setPending({ support: true, left: UNDO_SECONDS })}
+              onPress={() => void pick(true)}
               strong
             />
             <VoteButton
@@ -228,7 +235,7 @@ function ChangeCard({
               icon={add ? 'close' : 'storefront-outline'}
               busy={busy === false}
               disabled={busy !== null}
-              onPress={() => setPending({ support: false, left: UNDO_SECONDS })}
+              onPress={() => void pick(false)}
             />
           </View>
         )}

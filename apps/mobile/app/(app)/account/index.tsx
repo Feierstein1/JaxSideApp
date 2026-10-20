@@ -23,6 +23,7 @@ import { MedalList } from '@/profile/Medals';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { pickPhoto, uploadPhoto } from '@/discussion/photos';
 import { categoryLabel } from '@/format';
+import { ensureGuide } from '@/guides/guide';
 import { haptic } from '@/motion';
 import { categoryIcon } from '@/places/PlaceHeader';
 import { social } from '@/social/api';
@@ -136,6 +137,7 @@ function ProfileSection() {
   const [picking, setPicking] = useState(false);
   /** P6.5: pick, upload (cleaned on the server), then set as the profile photo. */
   async function changePhoto() {
+    if (!(await ensureGuide('profile'))) return; // D104
     const asset = await pickPhoto({ square: true });
     if (!asset) return;
     setPhotoBusy(true);
@@ -236,7 +238,11 @@ function ProfileSection() {
             <QuickAction
               icon="create-outline"
               label={user.bio ? 'Edit bio' : 'Add bio'}
-              onPress={() => setEditing(true)}
+              onPress={() =>
+                void ensureGuide('profile').then((ok) => {
+                  if (ok) setEditing(true);
+                })
+              }
             />
             <QuickAction
               icon="color-palette-outline"
@@ -607,6 +613,7 @@ function GuestAccount() {
 function Help() {
   return (
     <ListGroup title="Help">
+      <ListRow icon="school-outline" label="Community rules" href="/account/rules" />
       <ListRow icon="chatbubbles-outline" label="Contact us" href="/account/contact" />
     </ListGroup>
   );

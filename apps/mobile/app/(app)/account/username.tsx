@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
 import { router } from 'expo-router';
 import { CONFIG_DEFAULTS, usernameChangeSchema } from '@jax/shared';
 import { api } from '@/api';
@@ -6,6 +7,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { Button, Field, FormError, PageTitle, Screen, styles } from '@/ui';
 import { Text } from '@/text';
+import { ensureGuide } from '@/guides/guide';
 
 /** P4.9: change your username. Your account ID never changes; there's a cooldown. */
 export default function ChangeUsername() {
@@ -14,6 +16,13 @@ export default function ChangeUsername() {
   const [username, setUsername] = useState(current);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
+
+  // D104: the profile guide first; closing it leaves this screen.
+  useEffect(() => {
+    void ensureGuide('profile').then((ok) => {
+      if (!ok) router.back();
+    });
+  }, []);
 
   async function submit() {
     const v = validate(usernameChangeSchema, { username: username.trim() });

@@ -25,6 +25,7 @@ import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { ErrorState, FloatingButton, SectionTitle, useToast } from '@/ui';
 import { showAlert } from '@/dialog';
+import { ensureGuide } from '@/guides/guide';
 
 /**
  * A place: info card, favorite toggle, and its discussion room (P3.2). The room opens
@@ -119,8 +120,9 @@ export default function PlaceScreen() {
   }
 
   /** D94: start (or join) a "closed / doesn't exist" vote. Needs you near the place. */
-  function askRemoval() {
+  async function askRemoval() {
     if (!place) return;
+    if (!(await ensureGuide('placeRemoval'))) return; // D104
     showAlert(
       `Is ${place.name} closed?`,
       'Only if it has closed for good, moved, or was never here. People nearby will vote; 10 votes take it off Places. Your vote counts first and can’t be changed.',
@@ -183,7 +185,8 @@ export default function PlaceScreen() {
         {place.withinRoomRadius ? (
           <Pressable
             accessibilityRole="button"
-            onPress={askRemoval}
+            onPress={() => void askRemoval()}
+
             hitSlop={8}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 36 }}
           >

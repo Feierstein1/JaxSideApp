@@ -12,6 +12,7 @@ import { serverErrors, type FieldErrors } from '@/forms';
 import { Banner, Button, Chip, Field, FormError, PageTitle, Screen, styles } from '@/ui';
 import { Text, TextInput } from '@/text';
 import { showAlert } from '@/dialog';
+import { ensureGuide } from '@/guides/guide';
 
 /**
  * P5.8 (D63): suggest a place that's missing from the list. Stand at the place: your
@@ -26,6 +27,13 @@ export default function SuggestPlace() {
   const [similar, setSimilar] = useState<PlaceCandidate[]>([]);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
+
+  // D104: the first suggestion shows its guide; closing it leaves this screen.
+  useEffect(() => {
+    void ensureGuide('placeSuggestion').then((ok) => {
+      if (!ok) router.back();
+    });
+  }, []);
 
   // P5.9: show listed places that might be the same one while typing.
   useEffect(() => {

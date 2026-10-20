@@ -26,6 +26,7 @@ import { ReportSheet } from '@/report/ReportSheet';
 import { VoteControl } from './VoteControl';
 import { Text, TextInput } from '@/text';
 import { showAlert } from '@/dialog';
+import { ensureGuide } from '@/guides/guide';
 
 const MAX_DEPTH = CONFIG_DEFAULTS['comments.maxDepth'];
 
@@ -62,7 +63,9 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
 
   async function send() {
     if (!text.trim() || sending) return;
+    if (!(await ensureGuide('comment'))) return; // D104
     setSending(true);
+
     setError(undefined);
     try {
       const sent = await sendScreened((ok) =>

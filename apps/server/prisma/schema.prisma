@@ -225,6 +225,8 @@ model User {
   ownerClaims        OwnerClaim[] @relation("OwnerClaimant")
   ownerClaimsDecided OwnerClaim[] @relation("OwnerClaimDecider")
 
+  guidesSeen GuideSeen[] @relation("GuidesSeen")
+
   @@index([status])
 }
 
@@ -927,6 +929,17 @@ model MessageHide {
   user      User    @relation("MessageHidden", fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([messageId, userId])
+}
+
+/// D104: first-time guides an account has finished ("Got it"), and which version.
+model GuideSeen {
+  userId   String   @db.Uuid
+  guideKey String   @db.VarChar(40)
+  version  Int
+  seenAt   DateTime @default(now()) @db.Timestamptz(3)
+  user     User     @relation("GuidesSeen", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, guideKey])
 }
 
 model UserBlock {

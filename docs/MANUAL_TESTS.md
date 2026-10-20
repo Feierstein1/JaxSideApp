@@ -242,6 +242,21 @@ checks. Tick each box when it looks right; note anything odd next to it.
       something new.
 - [ ] Unfriend or block: you can't send any more (old messages stay readable until deleted).
 
+## 7g. First-time guides (D104)
+
+- [ ] First area post: tapping **+** shows "Posting to your area" (Do / Don't / Good to know, dots,
+      Next / Back). Closing it with × returns to the feed; the next **+** shows it again. **Got it,
+      let's post** opens the composer, and it doesn't show again.
+- [ ] The first place post, comment, photo, voice recording, video, place suggestion, "closed?"
+      vote, report, bio / photo / username change, friend request, block and message each show
+      their own guide once; closing cancels just that action.
+- [ ] Sign in to the same account on another phone (or reinstall): guides already finished don't
+      show again. A guest sees "Welcome, guest" once.
+- [ ] Account → Help → **Community rules** lists every guide; tapping one shows it with **Done**.
+      The composer's **Posting rules** link opens the matching guide.
+- [ ] TalkBack / VoiceOver reads "Page 1 of 3: Do"; with reduce motion on, the guide appears
+      without sliding.
+
 ## 8. Profiles and blocking
 
 - [ ] Tap a username on a post or comment: profile shows bio, join date, post count, recent posts.

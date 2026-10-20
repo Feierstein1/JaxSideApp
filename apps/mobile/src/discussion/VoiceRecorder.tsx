@@ -15,6 +15,7 @@ import { Text } from '@/text';
 import { postRawFile } from './photos';
 import { VoicePlayer } from './VoicePlayer';
 import { showAlert } from '@/dialog';
+import { ensureGuide } from '@/guides/guide';
 
 export interface UploadedVoice {
   id: string;
@@ -57,6 +58,7 @@ export function VoiceRecorder({
 
   async function start() {
     setError(undefined);
+    if (!(await ensureGuide('voice'))) return; // D104
     const perm = await requestRecordingPermissionsAsync();
     if (!perm.granted) {
       showAlert(
