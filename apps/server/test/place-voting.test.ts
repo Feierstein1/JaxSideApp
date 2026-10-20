@@ -8,7 +8,9 @@ import { POST as submitPOST } from '@/app/api/v1/submissions/route';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
-import { expirePlaceChanges } from '@/server/directory/place-changes';
+import { expirePlaceChanges, purgeRemovedPlacePosts } from '@/server/directory/place-changes';
+import { createBusinessPost } from '@/server/discussions/posts';
+import { MemoryStore, setObjectStore } from '@/server/media/store';
 import { importOsmPlaces, type OsmElement } from '@/server/directory/osm';
 import { readBoundaryFile } from '@/server/location/boundary-file';
 import { importServiceArea } from '@/server/location/service-area';
@@ -249,5 +251,41 @@ describe('expiry (D94)', () => {
     expect(await expirePlaceChanges()).toBe(2);
     expect(await changes(ann!)).toEqual([]);
     expect((await db.businessSubmission.findFirstOrThrow()).status).toBe('EXPIRED');
+  });
+});
+
+describe('removed places: archive 90 days, then delete (D101)', () => {
+  it('keeps posts while archived, then deletes unreported ones and their photo files', async () => {
+    const store = new MemoryStore();
+    setObjectStore(store);
+    const [ann, bob] = await people(2);
+    const keep = await createBusinessPost(ann!.id, cafeId, 'this one was reported');
+    const goes = await createBusinessPost(ann!.id, cafeId, 'ordinary post');
+    await store.put('photos/x.jpg', Buffer.from('jpg'), 'image/jpeg');
+    await db.photo.create({
+      data: {
+        uploaderId: ann!.id,
+        storageKey: 'photos/x.jpg',
+        status: 'ACTIVE',
+        businessPostId: goes,
+      },
+    });
+    await db.report.create({
+      data: { reporterUserId: bob!.id, businessPostId: keep, reason: 'SPAM' },
+    });
+    const r = await db.placeRemoval.create({
+      data: { placeId: cafeId, requesterId: ann!.id, status: 'REMOVED', resolvedAt: new Date() },
+    });
+    await db.businessPlace.update({ where: { id: cafeId }, data: { status: 'REMOVED' } });
+    expect(await purgeRemovedPlacePosts()).toBe(0); // archived, not yet 90 days
+    await db.placeRemoval.update({
+      where: { id: r.id },
+      data: { resolvedAt: new Date(Date.now() - 91 * DAY) },
+    });
+    expect(await purgeRemovedPlacePosts()).toBe(1);
+    expect(await db.businessPost.findUnique({ where: { id: goes } })).toBeNull();
+    expect(await db.businessPost.findUnique({ where: { id: keep } })).not.toBeNull();
+    expect(store.objects.has('photos/x.jpg')).toBe(false);
+    expect(await db.report.count()).toBe(1);
   });
 });

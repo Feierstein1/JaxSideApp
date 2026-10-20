@@ -1,5 +1,5 @@
 import { evaluateAchievements } from '../achievements';
-import { expirePlaceChanges } from '../directory/place-changes';
+import { expirePlaceChanges, purgeRemovedPlacePosts } from '../directory/place-changes';
 import { purgeUnusedPhotos } from '../media/photos';
 import { purgeOldMessageEvidence } from '../social/messages';
 import { purgeOldNotifications } from '../social/notifications';
@@ -27,6 +27,7 @@ export interface MaintenanceReport {
   unusedPhotosDeleted: number;
   notificationsDeleted?: number;
   placeChangesExpired?: number;
+  removedPlacePostsDeleted?: number;
   messageEvidencePurged?: number;
 }
 
@@ -156,6 +157,8 @@ export async function runMaintenance(now: Date = new Date()): Promise<Maintenanc
         notificationsDeleted: await purgeOldNotifications(now),
         // D94: place suggestions and removal requests undecided after 60 days.
         placeChangesExpired: await expirePlaceChanges(now),
+        // D101: posts of places removed more than 90 days ago.
+        removedPlacePostsDeleted: await purgeRemovedPlacePosts(now),
         // D98: message snapshots on reports are kept for a year.
         messageEvidencePurged: await purgeOldMessageEvidence(now),
       };

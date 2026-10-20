@@ -6,6 +6,7 @@ import { db } from '../db';
 import { ApiError } from '../http';
 import type { GeoPoint } from '../location/eligibility';
 import { metersBetween } from '../location/neighborhood';
+import { objectStore } from '../media/store';
 import { approveSubmissionTx } from './submissions';
 
 /**
@@ -336,4 +337,46 @@ export async function adminRemovePlace(adminId: string, removalId: string, now =
     });
     await tx.businessPlace.update({ where: { id: r.placeId }, data: { status: 'REMOVED' } });
   });
+}
+
+/**
+ * D101 daily job: a removed place's posts are archived (hidden, and restored with the
+ * place) for `places.removedPostDays` (90). After that they're deleted for good, with their
+ * comments, votes and photo files, to save storage. Posts that were reported (the post or
+ * any comment on it) are kept as moderation evidence; reports and the admin log are never
+ * deleted here.
+ */
+export async function purgeRemovedPlacePosts(now = new Date()) {
+  const days = await getConfig('places.removedPostDays');
+  const before = new Date(now.getTime() - days * DAY_MS);
+  const places = await db.businessPlace.findMany({
+    where: {
+      status: 'REMOVED',
+      removals: { some: { status: 'REMOVED', resolvedAt: { lt: before } } },
+      // Not if it was removed again more recently (the newest removal decides).
+      NOT: { removals: { some: { status: 'REMOVED', resolvedAt: { gte: before } } } },
+    },
+    select: { id: true },
+    take: 200,
+  });
+  if (!places.length) return 0;
+  const posts = await db.businessPost.findMany({
+    where: {
+      placeId: { in: places.map((p) => p.id) },
+      reports: { none: {} },
+      comments: { none: { reports: { some: {} } } },
+    },
+    select: { id: true, photos: { select: { id: true, storageKey: true } } },
+    take: 2000,
+  });
+  for (const post of posts) {
+    for (const ph of post.photos) {
+      if (ph.storageKey) await objectStore().delete(ph.storageKey).catch(() => undefined);
+    }
+    await db.$transaction([
+      db.photo.deleteMany({ where: { id: { in: post.photos.map((p) => p.id) } } }),
+      db.businessPost.delete({ where: { id: post.id } }),
+    ]);
+  }
+  return posts.length;
 }
