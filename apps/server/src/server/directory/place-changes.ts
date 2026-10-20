@@ -371,7 +371,10 @@ export async function purgeRemovedPlacePosts(now = new Date()) {
   });
   for (const post of posts) {
     for (const ph of post.photos) {
-      if (ph.storageKey) await objectStore().delete(ph.storageKey).catch(() => undefined);
+      if (ph.storageKey)
+        await objectStore()
+          .delete(ph.storageKey)
+          .catch(() => undefined);
     }
     await db.$transaction([
       db.photo.deleteMany({ where: { id: { in: post.photos.map((p) => p.id) } } }),

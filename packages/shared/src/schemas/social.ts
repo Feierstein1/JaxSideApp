@@ -68,13 +68,19 @@ export const UNSEND_MINUTES = 15;
 export const sendMessageSchema = z
   .strictObject({
     reading: locationReadingSchema,
-    to: z.string().trim().regex(/^[A-Za-z0-9_]{3,20}$/, 'Not a username'),
+    to: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9_]{3,20}$/, 'Not a username'),
     body: z
       .string()
       .trim()
       .max(MESSAGE_MAX, `Keep it under ${MESSAGE_MAX} characters`)
       // eslint-disable-next-line no-control-regex
-      .refine((v) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(v), 'Invalid characters')
+      .refine(
+        (v) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(v),
+        'Invalid characters',
+      )
       .default(''),
     photoIds: z.array(z.uuid()).max(MESSAGE_PHOTOS_MAX).optional(),
     confirmWarning: z.literal(true).optional(),
@@ -104,4 +110,3 @@ export interface ConversationSummary {
   /** Still friends and not blocked, so you can send. */
   canSend: boolean;
 }
-
