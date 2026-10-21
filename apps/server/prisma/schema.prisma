@@ -5,8 +5,10 @@
 // - Timestamps are timestamptz.
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  /// P13.1 / D109: partial indexes in the schema, so migrations never see them as drift.
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -368,6 +370,8 @@ model LocationCheck {
   @@index([userId, receivedAt])
   @@index([guestSessionId, receivedAt])
   @@index([receivedAt])
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([installationId])
 }
 
 /// P2.6: suspicious location patterns for admin review (no coordinates stored here).
@@ -392,6 +396,8 @@ model LocationFlag {
   @@index([userId, createdAt])
   @@index([guestSessionId, createdAt])
   @@index([reviewedAt, createdAt])
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([reviewedById])
 }
 
 // ──────────────────────────── Directory ────────────────────────────
@@ -453,8 +459,13 @@ model PlaceRemoval {
   resolvedBy   User?              @relation("RemovalResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
   votes        PlaceChangeVote[]
 
+  /// One open removal vote per place (was raw SQL; D109).
+  @@unique([placeId], map: "PlaceRemoval_one_open_per_place", where: raw("status = 'OPEN'"))
   @@index([status, createdAt])
   @@index([placeId])
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([requesterId])
+  @@index([resolvedById])
 }
 
 /// D94: one vote per person per change, kept for the admin to review. `support` means
@@ -519,9 +530,13 @@ model OwnerClaim {
   user          User             @relation("OwnerClaimant", fields: [userId], references: [id], onDelete: Cascade)
   decidedBy     User?            @relation("OwnerClaimDecider", fields: [decidedById], references: [id], onDelete: SetNull)
 
+  /// One open claim per person and place (was raw SQL; D109).
+  @@unique([placeId, userId], map: "OwnerClaim_one_open", where: raw("status = 'PENDING'"))
   @@index([placeId, status])
   @@index([userId, status])
   @@index([status, createdAt])
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([decidedById])
 }
 
 model BusinessSubmission {
@@ -553,6 +568,9 @@ model BusinessSubmission {
   @@index([status, createdAt])
   @@index([submitterId, createdAt])
   @@index([location], type: Gist)
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([placeId])
+  @@index([reviewerId])
 }
 
 model FavoritePlace {
@@ -658,7 +676,8 @@ model Comment {
   @@index([parentCommentId])
   @@index([authorUserId, createdAt(sort: Desc)])
   @@index([authorGuestId])
-  @@index([authorKind, createdAt])
+  // P13.1: the guest-comment purge only
+  @@index([createdAt], where: raw("\"authorKind\" = 'GUEST'"))
 }
 
 /// One vote per (voter, target) regardless of direction (D6). Value is +1 or -1 (CHECK).
@@ -679,6 +698,10 @@ model Vote {
   @@unique([voterId, generalPostId])
   @@unique([voterId, businessPostId])
   @@unique([voterId, commentId])
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([generalPostId])
+  @@index([businessPostId])
+  @@index([commentId])
 }
 
 /// Image record. Bytes live in object storage only (§12).
@@ -750,6 +773,8 @@ model UserAchievement {
   achievement   Achievement @relation(fields: [achievementId], references: [id])
 
   @@id([userId, achievementId])
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([achievementId])
 }
 
 // ──────────────────────── Safety & moderation ────────────────────────
@@ -792,6 +817,11 @@ model Report {
   @@index([commentId])
   @@index([photoId])
   @@index([reportedUserId])
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([messageId])
+  @@index([reporterUserId, createdAt])
+  @@index([reporterGuestId])
+  @@index([resolvedById])
 }
 
 /// D76: friendships are mutual and by request. One row per pair (low id, high id), so
@@ -835,7 +865,11 @@ model Notification {
   actor     User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
-  @@index([userId, readAt])
+  // P13.1: the unread bell count; createdAt for the purge
+  @@index([userId], where: raw("\"readAt\" IS NULL"))
+  @@index([createdAt])
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([actorId])
 }
 
 /// D90: Contact us. A support ticket or a general message, read in the admin portal.
@@ -868,6 +902,9 @@ model ContactMessage {
 
   @@index([status, createdAt])
   @@index([userId, createdAt])
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([guestSessionId])
+  @@index([resolvedById])
 }
 
 /// D98: private messaging between two friends. One conversation per pair (ordered ids).
@@ -917,8 +954,9 @@ model Message {
   hiddenFor      MessageHide[]
   reports        Report[]
 
-  @@index([conversationId, createdAt])
   @@index([senderId, createdAt])
+  // P13.1: chat paging, matching its ORDER BY
+  @@index([conversationId, createdAt(sort: Desc), id(sort: Desc)])
 }
 
 /// "Delete for me" on one message.
@@ -929,6 +967,8 @@ model MessageHide {
   user      User    @relation("MessageHidden", fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([messageId, userId])
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([userId])
 }
 
 /// D104: first-time guides an account has finished ("Got it"), and which version.
@@ -1015,6 +1055,13 @@ model ModerationAction {
   @@index([targetGuestId])
   @@index([targetInstallationId])
   @@index([adminId, createdAt])
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([generalPostId])
+  @@index([businessPostId])
+  @@index([commentId])
+  @@index([photoId])
+  @@index([reportId])
+  @@index([submissionId])
 }
 
 model AdminAuditLog {
@@ -1071,6 +1118,8 @@ model Appeal {
   user         User             @relation("Appellant", fields: [userId], references: [id], onDelete: Cascade)
   action       ModerationAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
 
+  /// One open appeal per action (was raw SQL; D109).
+  @@unique([actionId], map: "Appeal_one_open_per_action", where: raw("status = 'OPEN'"))
   @@index([status, createdAt])
   @@index([userId, createdAt])
   @@index([actionId])
@@ -1122,6 +1171,9 @@ model AppConfiguration {
   updatedAt   DateTime @updatedAt @db.Timestamptz(3)
   updatedById String?  @db.Uuid
   updatedBy   User?    @relation(fields: [updatedById], references: [id])
+
+  // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
+  @@index([updatedById])
 }
 
 /// Fixed-window rate-limit counters (D8).

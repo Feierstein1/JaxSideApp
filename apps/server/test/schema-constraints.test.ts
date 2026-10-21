@@ -167,3 +167,46 @@ describe('database constraints (D5, D6)', () => {
     await expectConstraintViolation(makeUser('riverrat'), 'usernameNormalized');
   });
 });
+
+describe('indexes (P13.1, DB review A1 / A4)', () => {
+  /** Foreign keys that may stay unindexed on purpose (none today). */
+  const ALLOWED: string[] = [];
+
+  // Postgres doesn't index foreign keys itself; without one, deleting the parent row reads the
+  // whole child table. Any new unindexed foreign key fails here.
+  it('every foreign key has an index that starts with its columns', async () => {
+    const rows = await db.$queryRaw<{ tbl: string; cols: string }[]>`
+      SELECT c.conrelid::regclass::text AS tbl, string_agg(a.attname, ',') AS cols
+      FROM pg_constraint c
+      CROSS JOIN LATERAL unnest(c.conkey) x(attnum)
+      JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = x.attnum
+      WHERE c.contype = 'f' AND NOT EXISTS (
+        SELECT 1 FROM pg_index i WHERE i.indrelid = c.conrelid
+          AND (i.indkey::int2[])[0:array_length(c.conkey, 1) - 1] @> c.conkey
+          AND (i.indkey::int2[])[0:array_length(c.conkey, 1) - 1] <@ c.conkey)
+      GROUP BY c.conrelid, c.conname`;
+    expect(rows.map((r) => `${r.tbl}.${r.cols}`).filter((k) => !ALLOWED.includes(k))).toEqual([]);
+  });
+
+  it('"@name" prefix search can use the username index (byte-order collation)', async () => {
+    const [col] = await db.$queryRaw<{ collation_name: string }[]>`
+      SELECT collation_name FROM information_schema.columns
+      WHERE table_name = 'User' AND column_name = 'usernameNormalized'`;
+    expect(col!.collation_name).toBe('C');
+    const plan = await db.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe('SET LOCAL enable_seqscan = off');
+      return tx.$queryRawUnsafe<{ 'QUERY PLAN': string }[]>(
+        `EXPLAIN SELECT id FROM "User" WHERE "usernameNormalized" LIKE 'riv%'`,
+      );
+    });
+    expect(plan.map((r) => r['QUERY PLAN']).join('\n')).toContain('User_usernameNormalized_key');
+  });
+
+  it('the "one open …" rules are still unique indexes', async () => {
+    const rows = await db.$queryRaw<{ indexname: string; indexdef: string }[]>`
+      SELECT indexname, indexdef FROM pg_indexes
+      WHERE indexname IN ('Appeal_one_open_per_action', 'PlaceRemoval_one_open_per_place', 'OwnerClaim_one_open')`;
+    expect(rows).toHaveLength(3);
+    for (const r of rows) expect(r.indexdef).toMatch(/^CREATE UNIQUE INDEX .* WHERE /);
+  });
+});
