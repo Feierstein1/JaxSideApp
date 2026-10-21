@@ -1,6 +1,9 @@
 import type { ConfigKey } from '@jax/shared';
+import { Prisma } from '@/generated/prisma/client';
 import { getConfig } from './config';
 import { db } from './db';
+import { deleteInBatches } from './jobs/batch';
+
 import { ApiError } from './http';
 
 /**
@@ -98,8 +101,7 @@ export async function assertUnder(rule: LimitRule, now = new Date()): Promise<vo
   }
 }
 
-/** Removes expired counters. Call from a scheduled job. */
+/** Removes expired counters, in batches (P13.3). Run by jobs/counters.ts every 10 minutes. */
 export async function purgeExpiredCounters(now = new Date()): Promise<number> {
-  const res = await db.rateLimitCounter.deleteMany({ where: { expiresAt: { lt: now } } });
-  return res.count;
+  return deleteInBatches('RateLimitCounter', Prisma.sql`"expiresAt" < ${now}`);
 }

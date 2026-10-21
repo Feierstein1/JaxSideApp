@@ -1,16 +1,22 @@
+import { Prisma } from '@/generated/prisma/client';
 import { evaluateAchievements } from '../achievements';
 import { expirePlaceChanges, purgeRemovedPlacePosts } from '../directory/place-changes';
 import { purgeUnusedPhotos } from '../media/photos';
+import { purgeExpiredCounters } from '../rate-limit';
 import { purgeOldMessageEvidence } from '../social/messages';
 import { purgeOldNotifications } from '../social/notifications';
 import { purgeDeletedAccounts } from '../auth/account';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { logger } from '../logger';
+import { deleteInBatches } from './batch';
+import { withJobLock } from './lock';
 
 const DAY_MS = 86_400_000;
 /** Arbitrary constant identifying this job's Postgres advisory lock. */
-const LOCK_KEY = 4_810_001;
+export const MAINTENANCE_LOCK_KEY = 4_810_001;
+/** Multi-statement steps get their own transaction with this much time. */
+const STEP_TIMEOUT_MS = 60_000;
 
 export interface MaintenanceReport {
   locationChecks: number;
@@ -36,135 +42,146 @@ export interface MaintenanceReport {
  * runs are prevented with a Postgres advisory lock. Later phases add guest expiry,
  * guest-comment deletion (D17) and account crypto-shredding (D37) here.
  *
+ * P13.3: each step runs on its own (single statement, or its own short transaction), and
+ * the big tables are deleted in batches, so a large backlog never becomes one long
+ * transaction that times out or holds back vacuum.
+ *
  * Returns null when another run holds the lock.
  */
 export async function runMaintenance(now: Date = new Date()): Promise<MaintenanceReport | null> {
-  return db.$transaction(
-    async (tx) => {
-      const lock = await tx.$queryRaw<{ locked: boolean }[]>`
-        SELECT pg_try_advisory_xact_lock(${LOCK_KEY}) AS locked`;
-      if (!lock[0]?.locked) return null;
+  return withJobLock(MAINTENANCE_LOCK_KEY, () => maintain(now));
+}
 
-      const [locationDays, sessionDays, tokenDays] = await Promise.all([
-        getConfig('retention.locationCheckDays'),
-        getConfig('retention.expiredSessionDays'),
-        getConfig('retention.usedEmailTokenDays'),
-      ]);
-      const ago = (days: number) => new Date(now.getTime() - days * DAY_MS);
+async function maintain(now: Date): Promise<MaintenanceReport> {
+  const [locationDays, sessionDays, tokenDays] = await Promise.all([
+    getConfig('retention.locationCheckDays'),
+    getConfig('retention.expiredSessionDays'),
+    getConfig('retention.usedEmailTokenDays'),
+  ]);
+  const ago = (days: number) => new Date(now.getTime() - days * DAY_MS);
 
-      // Precise location history (D7): kept only for abuse review.
-      const locationChecks = await tx.locationCheck.deleteMany({
-        where: { receivedAt: { lt: ago(locationDays) } },
-      });
-      // Sessions that ended (expired or signed out) more than N days ago.
-      const sessions = await tx.session.deleteMany({
-        where: {
-          OR: [{ expiresAt: { lt: ago(sessionDays) } }, { revokedAt: { lt: ago(sessionDays) } }],
-        },
-      });
-      // Email links/codes that were used, replaced or expired more than N days ago.
-      const emailTokens = await tx.emailToken.deleteMany({
-        where: {
-          OR: [{ usedAt: { lt: ago(tokenDays) } }, { expiresAt: { lt: ago(tokenDays) } }],
-        },
-      });
-      const rateLimitCounters = await tx.rateLimitCounter.deleteMany({
-        where: { expiresAt: { lt: now } },
-      });
-
-      // P4.4: guests expire after N days without activity (server-side clock).
-      const guestsExpired = await tx.guestSession.updateMany({
-        where: { status: 'ACTIVE', expiresAt: { lt: now } },
-        data: { status: 'EXPIRED' },
-      });
-      // D14: expired guests' session data is deleted after N days. Banned guests (and
-      // guests on banned installations) are kept so the ban keeps working (P4.6).
-      const guestDataDays = await getConfig('retention.guestDataDays');
-      const guestsPurged = await tx.guestSession.deleteMany({
-        where: {
-          status: 'EXPIRED',
-          bannedAt: null,
-          expiresAt: { lt: ago(guestDataDays) },
-          installation: { bannedAt: null },
-        },
-      });
-
-      // P4.5 / D17: guest comments are shown for a year, then removed. Skipped while a
-      // report on them is still open. A comment with replies is blanked (kept as a
-      // "[deleted]" placeholder) so others' replies survive; once it has no replies, a
-      // later run deletes it.
-      const visibleDays = await getConfig('guest.commentVisibleDays');
-      const cutoff = ago(visibleDays);
-      const old = await tx.$queryRaw<
-        {
-          id: string;
-          status: string;
-          generalPostId: string | null;
-          businessPostId: string | null;
-          has_replies: boolean;
-        }[]
-      >`
-        SELECT c.id, c.status::text, c."generalPostId", c."businessPostId",
-               EXISTS (SELECT 1 FROM "Comment" r WHERE r."parentCommentId" = c.id) AS has_replies
-        FROM "Comment" c
-        WHERE c."authorKind" = 'GUEST' AND c."createdAt" < ${cutoff}
-          AND NOT EXISTS (SELECT 1 FROM "Report" rp WHERE rp."commentId" = c.id AND rp.status = 'OPEN')`;
-      for (const c of old.filter((x) => x.status === 'VISIBLE')) {
-        if (c.generalPostId) {
-          await tx.$executeRaw`UPDATE "GeneralPost" SET "commentCount" = GREATEST("commentCount" - 1, 0) WHERE id = ${c.generalPostId}::uuid`;
-        } else if (c.businessPostId) {
-          await tx.$executeRaw`UPDATE "BusinessPost" SET "commentCount" = GREATEST("commentCount" - 1, 0) WHERE id = ${c.businessPostId}::uuid`;
-        }
-      }
-      const blank = old.filter((c) => c.has_replies).map((c) => c.id);
-      const remove = old.filter((c) => !c.has_replies).map((c) => c.id);
-      const guestCommentsBlanked = blank.length
-        ? (
-            await tx.comment.updateMany({
-              where: { id: { in: blank } },
-              data: { body: '', status: 'DELETED', authorGuestId: null },
-            })
-          ).count
-        : 0;
-      const guestCommentsDeleted = remove.length
-        ? (await tx.comment.deleteMany({ where: { id: { in: remove } } })).count
-        : 0;
-
-      // P5.6: suspensions that have run out go back to ACTIVE (they already stopped
-      // blocking at suspendedUntil; this tidies the status).
-      const suspensionsEnded = await tx.user.updateMany({
-        where: { status: 'SUSPENDED', suspendedUntil: { lte: now } },
-        data: { status: 'ACTIVE', suspendedUntil: null },
-      });
-
-      const report = {
-        locationChecks: locationChecks.count,
-        sessions: sessions.count,
-        emailTokens: emailTokens.count,
-        rateLimitCounters: rateLimitCounters.count,
-        guestsExpired: guestsExpired.count,
-        guestsPurged: guestsPurged.count,
-        guestCommentsDeleted,
-        guestCommentsBlanked,
-        // D37: crypto-shred deleted accounts past retention (skipping legal holds).
-        accountsPurged: await purgeDeletedAccounts(now, tx),
-        suspensionsEnded: suspensionsEnded.count,
-        // P6.8: medals that depend on time (First Contribution after 24 h).
-        achievementsAwarded: await evaluateAchievements(now, undefined, tx),
-        // P6.2: uploads never attached to a post or profile within a day.
-        unusedPhotosDeleted: await purgeUnusedPhotos(now),
-        // D76: the bell keeps 90 days.
-        notificationsDeleted: await purgeOldNotifications(now),
-        // D94: place suggestions and removal requests undecided after 60 days.
-        placeChangesExpired: await expirePlaceChanges(now),
-        // D101: posts of places removed more than 90 days ago.
-        removedPlacePostsDeleted: await purgeRemovedPlacePosts(now),
-        // D98: message snapshots on reports are kept for a year.
-        messageEvidencePurged: await purgeOldMessageEvidence(now),
-      };
-      logger.info({ report }, 'maintenance complete');
-      return report;
-    },
-    { timeout: 120_000 },
+  // Precise location history (D7): kept only for abuse review.
+  const locationChecks = await deleteInBatches(
+    'LocationCheck',
+    Prisma.sql`"receivedAt" < ${ago(locationDays)}`,
   );
+  // Sessions that ended (expired or signed out) more than N days ago.
+  const sessions = await deleteInBatches(
+    'Session',
+    Prisma.sql`("expiresAt" < ${ago(sessionDays)} OR "revokedAt" < ${ago(sessionDays)})`,
+  );
+  // Email links/codes that were used, replaced or expired more than N days ago.
+  const emailTokens = await deleteInBatches(
+    'EmailToken',
+    Prisma.sql`("usedAt" < ${ago(tokenDays)} OR "expiresAt" < ${ago(tokenDays)})`,
+  );
+  // P13.3: also every 10 minutes (jobs/counters.ts); kept here as a backstop.
+  const rateLimitCounters = await purgeExpiredCounters(now);
+
+  // P4.4: guests expire after N days without activity (server-side clock).
+  const guestsExpired = await db.guestSession.updateMany({
+    where: { status: 'ACTIVE', expiresAt: { lt: now } },
+    data: { status: 'EXPIRED' },
+  });
+  // D14: expired guests' session data is deleted after N days. Banned guests (and
+  // guests on banned installations) are kept so the ban keeps working (P4.6).
+  const guestDataDays = await getConfig('retention.guestDataDays');
+  const guestsPurged = await db.guestSession.deleteMany({
+    where: {
+      status: 'EXPIRED',
+      bannedAt: null,
+      expiresAt: { lt: ago(guestDataDays) },
+      installation: { bannedAt: null },
+    },
+  });
+
+  const { guestCommentsBlanked, guestCommentsDeleted } = await db.$transaction(
+    (tx) => purgeGuestComments(tx, ago),
+    { timeout: STEP_TIMEOUT_MS },
+  );
+
+  // P5.6: suspensions that have run out go back to ACTIVE (they already stopped
+  // blocking at suspendedUntil; this tidies the status).
+  const suspensionsEnded = await db.user.updateMany({
+    where: { status: 'SUSPENDED', suspendedUntil: { lte: now } },
+    data: { status: 'ACTIVE', suspendedUntil: null },
+  });
+
+  const report = {
+    locationChecks,
+    sessions,
+    emailTokens,
+    rateLimitCounters,
+    guestsExpired: guestsExpired.count,
+    guestsPurged: guestsPurged.count,
+    guestCommentsDeleted,
+    guestCommentsBlanked,
+    // D37: crypto-shred deleted accounts past retention (skipping legal holds).
+    accountsPurged: await db.$transaction((tx) => purgeDeletedAccounts(now, tx), {
+      timeout: STEP_TIMEOUT_MS,
+    }),
+    suspensionsEnded: suspensionsEnded.count,
+    // P6.8: medals that depend on time (First Contribution after 24 h).
+    achievementsAwarded: await db.$transaction((tx) => evaluateAchievements(now, undefined, tx), {
+      timeout: STEP_TIMEOUT_MS,
+    }),
+    // P6.2: uploads never attached to a post or profile within a day.
+    unusedPhotosDeleted: await purgeUnusedPhotos(now),
+    // D76: the bell keeps 90 days.
+    notificationsDeleted: await purgeOldNotifications(now),
+    // D94: place suggestions and removal requests undecided after 60 days.
+    placeChangesExpired: await expirePlaceChanges(now),
+    // D101: posts of places removed more than 90 days ago.
+    removedPlacePostsDeleted: await purgeRemovedPlacePosts(now),
+    // D98: message snapshots on reports are kept for a year.
+    messageEvidencePurged: await purgeOldMessageEvidence(now),
+  };
+  logger.info({ report }, 'maintenance complete');
+  return report;
+}
+
+/**
+ * P4.5 / D17: guest comments are shown for a year, then removed. Skipped while a
+ * report on them is still open. A comment with replies is blanked (kept as a
+ * "[deleted]" placeholder) so others' replies survive; once it has no replies, a
+ * later run deletes it. One transaction, so the post comment counts stay right.
+ */
+async function purgeGuestComments(tx: Prisma.TransactionClient, ago: (days: number) => Date) {
+  const visibleDays = await getConfig('guest.commentVisibleDays');
+  const cutoff = ago(visibleDays);
+  const old = await tx.$queryRaw<
+    {
+      id: string;
+      status: string;
+      generalPostId: string | null;
+      businessPostId: string | null;
+      has_replies: boolean;
+    }[]
+  >`
+    SELECT c.id, c.status::text, c."generalPostId", c."businessPostId",
+           EXISTS (SELECT 1 FROM "Comment" r WHERE r."parentCommentId" = c.id) AS has_replies
+    FROM "Comment" c
+    WHERE c."authorKind" = 'GUEST' AND c."createdAt" < ${cutoff}
+      AND NOT EXISTS (SELECT 1 FROM "Report" rp WHERE rp."commentId" = c.id AND rp.status = 'OPEN')`;
+  for (const c of old.filter((x) => x.status === 'VISIBLE')) {
+    if (c.generalPostId) {
+      await tx.$executeRaw`UPDATE "GeneralPost" SET "commentCount" = GREATEST("commentCount" - 1, 0) WHERE id = ${c.generalPostId}::uuid`;
+    } else if (c.businessPostId) {
+      await tx.$executeRaw`UPDATE "BusinessPost" SET "commentCount" = GREATEST("commentCount" - 1, 0) WHERE id = ${c.businessPostId}::uuid`;
+    }
+  }
+  const blank = old.filter((c) => c.has_replies).map((c) => c.id);
+  const remove = old.filter((c) => !c.has_replies).map((c) => c.id);
+  const guestCommentsBlanked = blank.length
+    ? (
+        await tx.comment.updateMany({
+          where: { id: { in: blank } },
+          data: { body: '', status: 'DELETED', authorGuestId: null },
+        })
+      ).count
+    : 0;
+  const guestCommentsDeleted = remove.length
+    ? (await tx.comment.deleteMany({ where: { id: { in: remove } } })).count
+    : 0;
+  return { guestCommentsBlanked, guestCommentsDeleted };
 }

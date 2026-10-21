@@ -1,6 +1,8 @@
 import type { NotificationView } from '@jax/shared';
-import type { NotificationType, Prisma } from '@/generated/prisma/client';
+import { Prisma, type NotificationType } from '@/generated/prisma/client';
 import { db } from '../db';
+import { deleteInBatches } from '../jobs/batch';
+
 import { signedPhotoUrl } from '../media/photos';
 
 /**
@@ -85,8 +87,9 @@ export async function markAllRead(userId: string) {
 
 /** Daily job: old notifications are deleted. */
 export async function purgeOldNotifications(now = new Date()) {
-  const res = await db.notification.deleteMany({
-    where: { createdAt: { lt: new Date(now.getTime() - KEEP_DAYS * 86_400_000) } },
-  });
-  return res.count;
+  // P13.3: in batches, like the other big purges.
+  return deleteInBatches(
+    'Notification',
+    Prisma.sql`"createdAt" < ${new Date(now.getTime() - KEEP_DAYS * 86_400_000)}`,
+  );
 }

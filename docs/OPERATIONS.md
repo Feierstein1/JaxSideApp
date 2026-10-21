@@ -63,18 +63,28 @@ matched, and a PostGIS distance query returned the same 200 places.
 **RDS point-in-time restore** creates a _new_ database instance; switch `DATABASE_URL` to it,
 then delete the old one once you're happy.
 
-## 4. Daily jobs
+## 4. Scheduled jobs
 
-Run once a day (e.g. 4 am Eastern) from cron on the server:
+Two jobs, run from cron on the server:
 
 ```sh
+# Daily, e.g. 4 am Eastern:            0 4 * * *
 npm run jobs:maintenance -w @jax/server
+# Every 10 minutes (P13.3):             0,10,20,30,40,50 * * * *
+npm run jobs:counters -w @jax/server
 ```
 
-It deletes old location readings, sessions, email codes and rate-limit counters; expires and
-purges guests; removes year-old guest comments; crypto-shreds deleted accounts after 30 days
-(skipping legal holds); ends finished suspensions; awards time-based medals; deletes unused
-photo uploads. Safe to run twice (a database lock prevents overlap).
+**Maintenance** deletes old location readings, sessions, email codes and rate-limit counters;
+expires and purges guests; removes year-old guest comments; crypto-shreds deleted accounts after
+30 days (skipping legal holds); ends finished suspensions; awards time-based medals; deletes unused
+photo uploads, old notifications and expired place changes. Big tables are deleted 5,000 rows at a
+time, and each step runs on its own, so a large backlog never becomes one long transaction.
+
+**Counters** removes expired rate-limit counters, which every limited request writes.
+
+Each job holds its own database lock, so a job never overlaps with itself (a second run just
+prints that one is in progress), but the two can run at the same time. If a job crashes, the lock
+is released automatically.
 
 ## 5. Admin portal on a public server
 

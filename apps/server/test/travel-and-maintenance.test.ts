@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { LocationReading } from '@jax/shared';
 import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
-import { runMaintenance } from '@/server/jobs/maintenance';
+import { Prisma } from '@/generated/prisma/client';
+import { deleteInBatches } from '@/server/jobs/batch';
+import { COUNTERS_LOCK_KEY, runCounterCleanup } from '@/server/jobs/counters';
+import { MAINTENANCE_LOCK_KEY, runMaintenance } from '@/server/jobs/maintenance';
+
 import { assertLocationEligible, type LocationActor } from '@/server/location/eligibility';
 import { readBoundaryFile } from '@/server/location/boundary-file';
 import { importServiceArea } from '@/server/location/service-area';
@@ -191,5 +195,47 @@ describe('daily maintenance (P2.5, D14)', () => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(4810001)`;
       expect(await runMaintenance(NOW)).toBeNull();
     });
+  });
+});
+
+// P13.3 (DB review A6 / A7): batched deletes and the 10-minute counter cleanup.
+describe('cleanup jobs at volume (P13.3)', () => {
+  const T = new Date('2026-10-15T15:00:00Z');
+  const counters = (n: number, expired: boolean) =>
+    Array.from({ length: n }, (_, i) => ({
+      key: `${expired ? 'old' : 'live'}-${i}`,
+      windowStart: T,
+      expiresAt: new Date(T.getTime() + (expired ? -60_000 : 60_000)),
+      count: 1,
+    }));
+
+  it('deletes in batches until nothing matching is left, and nothing else', async () => {
+    await db.rateLimitCounter.createMany({ data: [...counters(12, true), ...counters(3, false)] });
+    const n = await deleteInBatches('RateLimitCounter', Prisma.sql`"expiresAt" < ${T}`, 5);
+    expect(n).toBe(12); // batches of 5, 5, 2
+    expect(await db.rateLimitCounter.count()).toBe(3);
+  });
+
+  it('the counter job removes expired counters and keeps live ones', async () => {
+    await db.rateLimitCounter.createMany({ data: [...counters(4, true), ...counters(2, false)] });
+    expect(await runCounterCleanup(T)).toBe(4);
+    expect(await db.rateLimitCounter.count()).toBe(2);
+    expect(await runCounterCleanup(T)).toBe(0);
+  });
+
+  it('each job has its own lock: one run at a time, but the two jobs don’t block each other', async () => {
+    await db.rateLimitCounter.createMany({ data: counters(1, true) });
+    await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${COUNTERS_LOCK_KEY})`;
+      expect(await runCounterCleanup(T)).toBeNull();
+      expect(await runMaintenance(T)).not.toBeNull(); // maintenance isn't held up
+    });
+    await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${MAINTENANCE_LOCK_KEY})`;
+      expect(await runCounterCleanup(T)).toBe(0);
+    });
+    // The locks are released after each run.
+    expect(await runMaintenance(T)).not.toBeNull();
+    expect(await runCounterCleanup(T)).toBe(0);
   });
 });
