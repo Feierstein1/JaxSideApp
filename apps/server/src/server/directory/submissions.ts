@@ -167,7 +167,7 @@ export async function createSubmission(
     INSERT INTO "BusinessSubmission"
       (id, "submitterId", name, "nameNormalized", category, address, latitude, longitude,
        location, notes, "createdAt", "updatedAt")
-    VALUES (gen_random_uuid(), ${user.id}::uuid, ${input.name}, ${n.slice(0, 200)}, ${input.category},
+    VALUES (uuid_v7(), ${user.id}::uuid, ${input.name}, ${n.slice(0, 200)}, ${input.category},
             ${input.address || null}, ${at.latitude}, ${at.longitude}, ${point(at)}::geography,
             ${input.notes || null}, ${now}, ${now})
     RETURNING id`;
@@ -292,7 +292,7 @@ export async function approveSubmissionTx(
     INSERT INTO "BusinessPlace"
       (id, name, "nameNormalized", category, address, latitude, longitude, location,
        status, "sourceName", "sourceId", "createdAt", "updatedAt")
-    VALUES (gen_random_uuid(), ${name}, ${normalizeName(name).slice(0, 200)},
+    VALUES (uuid_v7(), ${name}, ${normalizeName(name).slice(0, 200)},
             ${d.category ?? s.category}, ${d.address ?? s.address}, ${s.latitude}, ${s.longitude},
             ${point(s)}::geography, 'ACTIVE', ${COMMUNITY}, ${s.id}, ${now}, ${now})
     ON CONFLICT ("sourceName", "sourceId") DO NOTHING

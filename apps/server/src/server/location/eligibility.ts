@@ -309,7 +309,7 @@ async function audit(
     INSERT INTO "LocationCheck"
       (id, "userId", "guestSessionId", "installationId", action, point, "accuracyMeters",
        "readingAt", "receivedAt", result, reason)
-    VALUES (gen_random_uuid(), ${userId}::uuid, ${guestId}::uuid, ${installationId}::uuid, ${action},
+    VALUES (uuid_v7(), ${userId}::uuid, ${guestId}::uuid, ${installationId}::uuid, ${action},
             ST_SetSRID(ST_MakePoint(${reading.longitude}, ${reading.latitude}), 4326)::geography,
             ${reading.accuracyMeters}, ${new Date(reading.timestamp)}, ${now},
             ${reason === null ? 'ALLOWED' : 'DENIED'}::"LocationCheckResult", ${reason})`;

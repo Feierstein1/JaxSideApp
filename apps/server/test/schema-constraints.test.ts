@@ -168,6 +168,27 @@ describe('database constraints (D5, D6)', () => {
   });
 });
 
+describe('uuid_v7() (P13.2)', () => {
+  it('makes version-7 IDs that start with the current time and sort by creation', async () => {
+    const before = Date.now();
+    const rows = await db.$queryRaw<{ id: string }[]>`
+      SELECT uuid_v7()::text AS id FROM generate_series(1, 3)`;
+    const after = Date.now();
+    for (const { id } of rows) {
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      const ms = parseInt(id.replace(/-/g, '').slice(0, 12), 16);
+      expect(ms).toBeGreaterThanOrEqual(before - 1000); // clocks may differ slightly
+      expect(ms).toBeLessThanOrEqual(after + 1000);
+    }
+    expect(new Set(rows.map((r) => r.id)).size).toBe(3);
+    // A later one sorts after an earlier one (millisecond resolution).
+    const [a] = await db.$queryRaw<{ id: string }[]>`SELECT uuid_v7()::text AS id`;
+    await new Promise((r) => setTimeout(r, 5));
+    const [b] = await db.$queryRaw<{ id: string }[]>`SELECT uuid_v7()::text AS id`;
+    expect(a!.id < b!.id).toBe(true);
+  });
+});
+
 describe('indexes (P13.1, DB review A1 / A4)', () => {
   /** Foreign keys that may stay unindexed on purpose (none today). */
   const ALLOWED: string[] = [];

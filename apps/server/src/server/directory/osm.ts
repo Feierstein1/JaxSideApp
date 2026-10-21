@@ -300,7 +300,7 @@ export async function importOsmPlaces(
           INSERT INTO "BusinessPlace" (id, name, "nameNormalized", category, address, website, phone, latitude,
                                        longitude, location, status, "sourceName", "sourceId",
                                        attribution, "createdAt", "updatedAt")
-          SELECT gen_random_uuid(), name, name_norm, category, address, website, phone, lat, lng, geog, 'ACTIVE',
+          SELECT uuid_v7(), name, name_norm, category, address, website, phone, lat, lng, geog, 'ACTIVE',
                  ${OSM_SOURCE}, source_id, ${OSM_ATTRIBUTION}, now(), now()
           FROM osm_stage
           ON CONFLICT ("sourceName", "sourceId") DO UPDATE SET

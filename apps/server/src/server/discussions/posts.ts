@@ -314,7 +314,7 @@ export async function createGeneralPost(
   return db.$transaction(async (tx) => {
     const [row] = await tx.$queryRaw<{ id: string }[]>`
     INSERT INTO "GeneralPost" (id, "authorId", body, location, status, "updatedAt")
-    VALUES (gen_random_uuid(), ${authorId}::uuid, ${body}, ${point(at)},
+    VALUES (uuid_v7(), ${authorId}::uuid, ${body}, ${point(at)},
             ${status}::"ContentStatus", now())
     RETURNING id`;
     await attachPhotos(tx, authorId, photoIds, { generalPostId: row!.id });

@@ -13,7 +13,7 @@ export async function importServiceArea(db: PrismaClient, feature: BoundaryFeatu
   const geojson = JSON.stringify(feature.geometry);
   await db.$executeRaw`
     INSERT INTO "ServiceArea" (id, key, name, "sourceUrl", "sourceVersion", license, active, geom, "importedAt")
-    VALUES (gen_random_uuid(), ${p.key}, ${p.name}, ${p.sourceUrl}, ${p.sourceVersion}, ${p.license}, true,
+    VALUES (uuid_v7(), ${p.key}, ${p.name}, ${p.sourceUrl}, ${p.sourceVersion}, ${p.license}, true,
             ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(${geojson}), 4326)), 3))::geography,
             now())
     ON CONFLICT (key) DO UPDATE SET

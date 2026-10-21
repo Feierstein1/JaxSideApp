@@ -103,7 +103,19 @@ describe('general posts and feed (P3.1, P3.1a)', () => {
     expect([p!.lat, p!.lng]).toEqual([30.315, -81.685]);
   });
 
+  // P13.2: rows inserted with raw SQL get time-ordered UUIDv7 IDs, like Prisma's (version digit 7).
+  it('raw-SQL inserts use UUIDv7 IDs (post, location check, place, service area)', async () => {
+    const id = (await post(alice, 'v7?')).body.post.id as string;
+    const check = await db.locationCheck.findFirstOrThrow({ orderBy: { receivedAt: 'desc' } });
+    const area = await db.serviceArea.findFirstOrThrow();
+    for (const x of [id, check.id, cafeId, area.id]) {
+      expect(x[14]).toBe('7');
+      expect('89ab').toContain(x[19]!);
+    }
+  });
+
   // 🔒 Writes need a verified email (D11), a valid location, and a strict body.
+
   it('rejects unverified authors, outside locations and smuggled fields', async () => {
     expect((await post(carol, 'hi')).body.error.code).toBe('EMAIL_NOT_VERIFIED');
     expect((await post(alice, 'hi', ORANGE_PARK)).body.error.code).toBe('LOCATION_OUTSIDE_AREA');
