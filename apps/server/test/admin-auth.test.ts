@@ -98,7 +98,8 @@ describe('admin sign-in (P5.11, D4, ✅D8)', () => {
     expect(r1.body.enroll.qrSvg).toMatch(/^<svg/);
     const { set, secret } = await signIn();
     expect(set.find((c) => c.startsWith(`${ADMIN_COOKIE}=`))).toMatch(/HttpOnly; SameSite=Strict/);
-    const u = await db.user.findUniqueOrThrow({ where: { id: adminId } });
+    // D108: 2FA lives in AdminCredential, not on the User row.
+    const u = await db.adminCredential.findUniqueOrThrow({ where: { userId: adminId } });
     expect(u.totpEnabledAt).not.toBeNull();
     expect(u.totpSecretEnc).not.toContain(secret); // stored encrypted
     // Later sign-ins don't show the secret again.

@@ -123,18 +123,19 @@ export async function startAdminLogin(
   assertAccountUsable(user, now);
   if (user.role !== 'ADMIN') throw notAdmin();
   const challenge = makeChallenge(user.id, now);
-  if (user.totpEnabledAt) return { challenge, enroll: null };
+  // D108: 2FA lives in AdminCredential, not on the User row.
+  const cred = await db.adminCredential.findUnique({ where: { userId: user.id } });
+  if (cred?.totpEnabledAt) return { challenge, enroll: null };
 
   // First sign-in: a new secret, stored encrypted until the first code confirms it.
   const secret = generateTotpSecret();
-  await db.user.update({
-    where: { id: user.id },
-    data: {
-      totpSecretEnc: Buffer.from(
-        encryptField(user.id, 'totpSecret', userKey(user), secret),
-      ).toString('base64'),
-      totpLastStep: null,
-    },
+  const totpSecretEnc = Buffer.from(
+    encryptField(user.id, 'totpSecret', userKey(user), secret),
+  ).toString('base64');
+  await db.adminCredential.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, totpSecretEnc },
+    update: { totpSecretEnc, totpLastStep: null },
   });
   const url = otpauthUrl(secret, user.username);
   return {
@@ -170,25 +171,26 @@ export async function completeAdminLogin(
   const user = await db.user.findUnique({ where: { id: userId } });
   if (!user || user.role !== 'ADMIN') throw notAdmin();
   assertAccountUsable(user, now);
-  if (!user.totpSecretEnc) throw new ApiError(401, 'CHALLENGE_EXPIRED', 'Please sign in again.');
+  const cred = await db.adminCredential.findUnique({ where: { userId: user.id } });
+  if (!cred?.totpSecretEnc) throw new ApiError(401, 'CHALLENGE_EXPIRED', 'Please sign in again.');
 
   const secret = decryptField(
     user.id,
     'totpSecret',
     userKey(user),
-    Buffer.from(user.totpSecretEnc, 'base64'),
+    Buffer.from(cred.totpSecretEnc, 'base64'),
   );
   const step = matchTotp(secret, input.code, now);
   // Replay protection: each 30-second code works once.
-  if (step === null || (user.totpLastStep !== null && step <= user.totpLastStep)) {
+  if (step === null || (cred.totpLastStep !== null && step <= cred.totpLastStep)) {
     throw new ApiError(401, 'INVALID_CODE', 'That code didn’t work. Check your authenticator app.');
   }
-  const claimed = await db.user.updateMany({
+  const claimed = await db.adminCredential.updateMany({
     where: {
-      id: user.id,
+      userId: user.id,
       OR: [{ totpLastStep: null }, { totpLastStep: { lt: step } }],
     },
-    data: { totpLastStep: step, ...(user.totpEnabledAt ? {} : { totpEnabledAt: now }) },
+    data: { totpLastStep: step, ...(cred.totpEnabledAt ? {} : { totpEnabledAt: now }) },
   });
   if (claimed.count !== 1) {
     throw new ApiError(401, 'INVALID_CODE', 'That code didn’t work. Check your authenticator app.');
@@ -212,7 +214,7 @@ export async function completeAdminLogin(
   await db.adminAuditLog.create({
     data: {
       adminId: user.id,
-      action: user.totpEnabledAt ? 'ADMIN_SIGN_IN' : 'ADMIN_2FA_ENROLLED',
+      action: cred.totpEnabledAt ? 'ADMIN_SIGN_IN' : 'ADMIN_2FA_ENROLLED',
       targetType: 'user',
       targetId: user.id,
       createdAt: now,
@@ -250,7 +252,9 @@ export async function adminFromToken(
   if (!token) throw signedOut();
   const session = await db.session.findUnique({
     where: { tokenHash: hashToken(token) },
-    include: { user: true },
+    include: {
+      user: { include: { adminCredential: { select: { totpEnabledAt: true } } } },
+    },
   });
   if (!session || session.kind !== 'ADMIN' || session.revokedAt || session.expiresAt <= now) {
     throw signedOut();
@@ -261,7 +265,8 @@ export async function adminFromToken(
     throw signedOut();
   }
   const user = session.user;
-  if (user.role !== 'ADMIN' || !user.totpEnabledAt) throw notAdmin();
+  if (user.role !== 'ADMIN' || !user.adminCredential?.totpEnabledAt) throw notAdmin();
+
   assertAccountUsable(user, now);
   if (opts.mutation) {
     const given = opts.csrf ? Buffer.from(hashToken(opts.csrf)) : null;

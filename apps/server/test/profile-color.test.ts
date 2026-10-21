@@ -27,10 +27,8 @@ beforeEach(async () => {
   await resetDb();
   invalidateConfigCache();
   await importServiceArea(db, readBoundaryFile());
-  const u = await createTestUser('painter_c', {
-    emailVerifiedAt: new Date(),
-    profileColor: 'navy',
-  });
+  const u = await createTestUser('painter_c', { emailVerifiedAt: new Date() });
+  await db.profile.create({ data: { userId: u.id, color: 'navy' } }); // D108: on the profile
   me = { id: u.id, token: (await createSession(u.id, 'MOBILE')).token };
   const o = await createTestUser('viewer_c', { emailVerifiedAt: new Date() });
   other = { id: o.id, token: (await createSession(o.id, 'MOBILE')).token };
@@ -48,8 +46,11 @@ describe('account color (D69)', () => {
         confirmAdult: true,
       },
     });
-    const u = await db.user.findFirstOrThrow({ where: { username: 'fresh_c' } });
-    expect(PROFILE_COLOR_KEYS).toContain(u.profileColor);
+    const u = await db.user.findFirstOrThrow({
+      where: { username: 'fresh_c' },
+      include: { profile: true },
+    });
+    expect(PROFILE_COLOR_KEYS).toContain(u.profile?.color);
   });
 
   it('can be changed; only palette colors are accepted', async () => {

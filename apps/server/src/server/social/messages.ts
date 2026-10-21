@@ -52,8 +52,7 @@ const userSelect = {
   id: true,
   username: true,
   status: true,
-  profileColor: true,
-  profile: { select: { avatarPhotoId: true } },
+  profile: { select: { avatarPhotoId: true, color: true } }, // D108: color is on the profile
 } as const;
 
 /** Friends, both active, and no block either way: the only way to send (design #1, #8). */
@@ -314,7 +313,7 @@ interface ChatRow {
   other_id: string;
   other_status: AccountStatus;
   username: string;
-  profileColor: string;
+  color: string | null;
   avatarPhotoId: string | null;
   msg_id: string;
   bodyEnc: Uint8Array | null;
@@ -334,7 +333,7 @@ interface ChatRow {
 export async function listConversations(meId: string): Promise<ConversationSummary[]> {
   const rows = await db.$queryRaw<ChatRow[]>`
     SELECT c.id, c."dekWrapped", cm."lastReadAt",
-           o.id AS other_id, o.status AS other_status, o.username, o."profileColor", p."avatarPhotoId",
+           o.id AS other_id, o.status AS other_status, o.username, p.color, p."avatarPhotoId",
            l.id AS msg_id, l."bodyEnc", l."senderId", l."createdAt",
            (o.status = 'ACTIVE'
             AND EXISTS (SELECT 1 FROM "Friendship" f
@@ -374,8 +373,7 @@ export async function listConversations(meId: string): Promise<ConversationSumma
         status: r.other_status,
         username: r.username,
 
-        profileColor: r.profileColor,
-        profile: { avatarPhotoId: r.avatarPhotoId },
+        profile: { avatarPhotoId: r.avatarPhotoId, color: r.color ?? 'teal' },
       }),
       preview: `${r.senderId === meId ? 'You: ' : ''}${text ? text.slice(0, 80) : 'Photo'}`,
       lastMessageAt: r.createdAt.toISOString(),

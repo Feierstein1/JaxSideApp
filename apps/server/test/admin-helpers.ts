@@ -7,7 +7,11 @@ import { db } from '@/server/db';
  * `admin-auth.test.ts` covers). Returns headers for `callRoute`.
  */
 export async function adminHeaders(adminId: string) {
-  await db.user.update({ where: { id: adminId }, data: { totpEnabledAt: new Date() } });
+  await db.adminCredential.upsert({
+    where: { userId: adminId },
+    create: { userId: adminId, totpEnabledAt: new Date() },
+    update: { totpEnabledAt: new Date() },
+  });
   const token = generateToken();
   const csrf = generateToken();
   await db.session.create({

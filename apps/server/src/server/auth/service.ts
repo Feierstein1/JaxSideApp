@@ -20,7 +20,7 @@ import { passwordResetEmail, registrationAttemptEmail, verificationEmail } from 
 import { decryptUserEmail, emailIndex, encryptedEmailFields } from '../crypto/field-encryption';
 import { uuidv7 } from '../crypto/uuid';
 import { assertUnder, enforce, hit } from '../rate-limit';
-import { toMe } from '../serializers';
+import { meView } from '../profiles';
 import {
   burnPasswordCheck,
   generateEmailCode,
@@ -277,8 +277,7 @@ export async function register(input: RegisterRequest, ctx: RequestContext) {
         tosAcceptedAt: now,
         tosVersion: TOS_VERSION,
         adultConfirmedAt: now,
-        profileColor: randomProfileColor(), // D69
-        profile: { create: {} },
+        profile: { create: { color: randomProfileColor() } }, // D69, on the profile (D108)
       },
       select: { id: true },
     });
@@ -368,7 +367,7 @@ export async function login(input: LoginRequest, ctx: RequestContext) {
   return {
     token,
     expiresAt: expiresAt.toISOString(),
-    user: toMe({ ...user, email: decryptUserEmail(user) }),
+    user: await meView(user),
   };
 }
 

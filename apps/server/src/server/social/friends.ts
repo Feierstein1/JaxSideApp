@@ -32,8 +32,7 @@ const userSelect = {
   id: true,
   username: true,
   status: true,
-  profileColor: true,
-  profile: { select: { avatarPhotoId: true } },
+  profile: { select: { avatarPhotoId: true, color: true } }, // D108: color is on the profile
 } as const;
 
 type SelectedUser = Prisma.UserGetPayload<{ select: typeof userSelect }>;
@@ -41,7 +40,7 @@ type SelectedUser = Prisma.UserGetPayload<{ select: typeof userSelect }>;
 export function friendUser(u: SelectedUser): FriendUser {
   return {
     username: u.username,
-    color: u.profileColor,
+    color: u.profile?.color ?? 'teal',
     avatarUrl: u.profile?.avatarPhotoId ? signedPhotoUrl(u.profile.avatarPhotoId) : null,
   };
 }
@@ -286,7 +285,9 @@ export async function friendActivity(
   }
   const authors = Prisma.sql`(SELECT u.id FROM "User" u
       WHERE u.id IN (${Prisma.join(ids.map((i) => Prisma.sql`${i}::uuid`))})
-        AND u.status = 'ACTIVE' AND u."hidePostsFromFriends" = false
+        AND u.status = 'ACTIVE'
+        AND NOT EXISTS (SELECT 1 FROM "UserSettings" s
+                        WHERE s."userId" = u.id AND s."hidePostsFromFriends")
         ${q ? Prisma.sql`AND u."usernameNormalized" LIKE ${q.toLowerCase() + '%'}` : Prisma.empty}
         AND NOT EXISTS (SELECT 1 FROM "UserBlock" b
           WHERE (b."blockerId" = u.id AND b."blockedId" = ${me}::uuid)

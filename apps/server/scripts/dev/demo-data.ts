@@ -263,12 +263,13 @@ async function createDemo() {
         tosAcceptedAt: new Date(),
         tosVersion: 'demo',
         adultConfirmedAt: new Date(),
-        profileColor: p.color,
         createdAt: new Date(Date.now() - 20 * 24 * HOUR),
       },
     });
     const pic = await uploadPhoto(user, await avatar(p.username, profileColor(p.color).hex));
-    await db.profile.create({ data: { userId: id, bio: p.bio, avatarPhotoId: pic.id } });
+    await db.profile.create({
+      data: { userId: id, bio: p.bio, avatarPhotoId: pic.id, color: p.color },
+    });
     people.push(user);
   }
 

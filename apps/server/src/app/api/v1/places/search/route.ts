@@ -4,6 +4,7 @@ import { requireUser } from '@/server/auth/require-actor';
 import { searchPlaces } from '@/server/directory/places';
 import { OSM_ATTRIBUTION } from '@/server/directory/osm';
 import { route } from '@/server/http';
+import { radiusPreference } from '@/server/profiles';
 import { assertLocationEligible } from '@/server/location/eligibility';
 import { nearestNeighborhood } from '@/server/location/neighborhood';
 import { enforce } from '@/server/rate-limit';
@@ -34,7 +35,7 @@ export const POST = route(async (req) => {
     sort: input.sort,
     limit: input.limit,
     offset: input.offset,
-    radiusMiles: user.generalRadiusMiles,
+    radiusMiles: await radiusPreference(user.id), // D108
   });
   // ODbL: data shown in the app must carry the attribution (P2.12).
   // D72: "Near Avondale" above the list, for the searcher's own location only.

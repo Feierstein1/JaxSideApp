@@ -257,7 +257,6 @@ export async function purgeDeletedAccounts(
         dekWrapped: null,
         emailIndex: null,
         passwordHash: '!',
-        totpSecretEnc: null,
         username: placeholder,
         usernameNormalized: placeholder,
       },
@@ -266,7 +265,10 @@ export async function purgeDeletedAccounts(
       where: { userId: d.userId },
       data: { bio: null, avatarPhotoId: null },
     });
+    await client.adminCredential.deleteMany({ where: { userId: d.userId } }); // D108
+    await client.userSettings.deleteMany({ where: { userId: d.userId } });
     await client.locationCheck.deleteMany({ where: { userId: d.userId } });
+
     await client.emailToken.deleteMany({ where: { userId: d.userId } });
     await client.accountDeletion.update({
       where: { id: d.id },

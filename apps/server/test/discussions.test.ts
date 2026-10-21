@@ -134,10 +134,17 @@ describe('general posts and feed (P3.1, P3.1a)', () => {
     expect(bodies(await feed(bob, NEAR))).toEqual(['Five Points post']); // 250 m
     expect(bodies(await feed(bob, MEMORIAL))).toEqual([]); // 740 m > 0.3 mi (483 m)
     // A reader who narrowed their radius to 0.1 mi (161 m) no longer sees it from 250 m.
-    await db.user.updateMany({ where: { username: 'bob_p' }, data: { generalRadiusMiles: 0.1 } });
+    const bobId = (await db.user.findFirstOrThrow({ where: { username: 'bob_p' } })).id;
+    const setRadius = (generalRadiusMiles: number) =>
+      db.userSettings.upsert({
+        where: { userId: bobId },
+        create: { userId: bobId, generalRadiusMiles },
+        update: { generalRadiusMiles },
+      });
+    await setRadius(0.1);
     expect(bodies(await feed(bob, NEAR))).toEqual([]);
     // A stored radius larger than the maximum is still capped at 0.3 mi.
-    await db.user.updateMany({ where: { username: 'bob_p' }, data: { generalRadiusMiles: 5 } });
+    await setRadius(5);
     expect(bodies(await feed(bob, MEMORIAL))).toEqual([]);
   });
 

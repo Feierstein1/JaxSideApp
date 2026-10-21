@@ -12,11 +12,10 @@ interface UserLike {
   createdAt: Date;
   email?: string;
   emailVerifiedAt?: Date | null;
-  generalRadiusMiles?: number | null;
-  businessRadiusMiles?: number | null;
-  hidePostsFromFriends?: boolean;
-  profile?: { bio: string | null; avatarPhotoId: string | null } | null;
-  profileColor?: string;
+  /** D108: bio, photo and account color. */
+  profile?: { bio: string | null; avatarPhotoId: string | null; color?: string } | null;
+  /** D108: private preferences (no row = defaults). */
+  settings?: { generalRadiusMiles: number | null; hidePostsFromFriends: boolean } | null;
 }
 
 /** Anything other users can see. */
@@ -38,7 +37,7 @@ export function toPublicUser(u: UserLike): PublicUser {
     bio: u.profile?.bio ?? null,
     joinedAt: u.createdAt.toISOString(),
     avatarUrl: u.profile?.avatarPhotoId ? signedPhotoUrl(u.profile.avatarPhotoId) : null,
-    color: u.profileColor ?? 'teal',
+    color: u.profile?.color ?? 'teal',
   };
 }
 
@@ -57,8 +56,8 @@ export function toMe(u: UserLike & { email: string; emailVerifiedAt: Date | null
     ...toPublicUser(u),
     email: u.email,
     emailVerified: u.emailVerifiedAt !== null,
-    radiusMiles: u.generalRadiusMiles ?? null,
-    hidePostsFromFriends: u.hidePostsFromFriends ?? false,
+    radiusMiles: u.settings?.generalRadiusMiles ?? null,
+    hidePostsFromFriends: u.settings?.hidePostsFromFriends ?? false,
   };
 }
 

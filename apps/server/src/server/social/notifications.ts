@@ -46,7 +46,7 @@ export async function listNotifications(userId: string): Promise<NotificationVie
     take: LIST_SIZE,
     include: {
       actor: {
-        select: { id: true, username: true, profileColor: true, profile: true },
+        select: { id: true, username: true, profile: true },
       },
     },
   });
@@ -66,7 +66,7 @@ export async function listNotifications(userId: string): Promise<NotificationVie
     actor: r.actor
       ? {
           username: r.actor.username,
-          color: r.actor.profileColor,
+          color: r.actor.profile?.color ?? 'teal',
           avatarUrl: r.actor.profile?.avatarPhotoId
             ? signedPhotoUrl(r.actor.profile.avatarPhotoId)
             : null,

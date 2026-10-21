@@ -129,7 +129,7 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
   return Prisma.sql`
     SELECT p.id, p.body, p."createdAt", p."editedAt", p.score, p."upCount", p."downCount",
            p."commentCount", p."authorId", u.username, u.status::text AS author_status,
-           u."profileColor" AS author_color, pr."avatarPhotoId" AS avatar_photo_id,
+           coalesce(pr.color, 'teal') AS author_color, pr."avatarPhotoId" AS avatar_photo_id,
            ${medalKeysSql(Prisma.sql`p."authorId"`)} AS medals,
            (SELECT json_agg(json_build_object('id', ph.id, 'width', ph.width, 'height', ph.height)
                             ORDER BY ph."createdAt")

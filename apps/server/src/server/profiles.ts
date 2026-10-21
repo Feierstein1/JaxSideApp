@@ -1,11 +1,35 @@
 import { endFriendship, friendshipState } from './social/friends';
 import { normalizeUsername, type PublicProfile } from '@jax/shared';
 import { medalsFor } from './achievements';
+import type { User } from '@/generated/prisma/client';
+import { decryptUserEmail } from './crypto/field-encryption';
 import { signedPhotoUrl } from './media/photos';
 import { db } from './db';
 import { ApiError } from './http';
+import { toMe, type MeUser } from './serializers';
 
 const NOT_FOUND = () => new ApiError(404, 'NOT_FOUND', 'No one by that name');
+
+/**
+ * The signed-in user's own account view (D108): the User row plus their profile (bio, photo,
+ * color) and private settings, which live in their own tables. Built by the `toMe` serializer.
+ */
+export async function meView(user: User): Promise<MeUser> {
+  const [profile, settings] = await Promise.all([
+    db.profile.findUnique({ where: { userId: user.id } }),
+    db.userSettings.findUnique({ where: { userId: user.id } }),
+  ]);
+  return toMe({ ...user, profile, settings, email: decryptUserEmail(user) });
+}
+
+/** D108: your radius preference (null = the default), for the feed and Places. */
+export async function radiusPreference(userId: string): Promise<number | null> {
+  const s = await db.userSettings.findUnique({
+    where: { userId },
+    select: { generalRadiusMiles: true },
+  });
+  return s?.generalRadiusMiles ?? null;
+}
 
 /**
  * P4.8: someone's public profile, as other people see it. Deleted and banned accounts
@@ -43,7 +67,8 @@ export async function getPublicProfile(username: string, viewerUserId: string | 
     blockedByMe,
     medals: await medalsFor(user.id),
     avatarUrl: user.profile?.avatarPhotoId ? signedPhotoUrl(user.profile.avatarPhotoId) : null,
-    color: user.profileColor,
+    color: user.profile?.color ?? 'teal',
+
     // D76: your relationship with them (none for guests or your own profile).
     ...(viewerUserId
       ? await friendshipState(viewerUserId, user.id).then((f) => ({

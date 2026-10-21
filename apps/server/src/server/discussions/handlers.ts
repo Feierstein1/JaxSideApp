@@ -22,6 +22,7 @@ import { requireActor, requireUser, type Actor } from '../auth/require-actor';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { ApiError } from '../http';
+import { radiusPreference } from '../profiles';
 import {
   assertLocationEligible,
   coarsenPoint,
@@ -136,7 +137,7 @@ export async function feed(req: Request) {
   const at = await assertLocationEligible(locationActor(actor), input.reading, 'general.read');
   const viewer =
     actor.kind === 'user'
-      ? { id: actor.user.id, generalRadiusMiles: actor.user.generalRadiusMiles }
+      ? { id: actor.user.id, generalRadiusMiles: await radiusPreference(actor.user.id) }
       : { id: NO_USER, generalRadiusMiles: null };
   const page = await listFeed({
     viewer,

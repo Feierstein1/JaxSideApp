@@ -269,7 +269,6 @@ describe('spoofed and replayed locations (D7, D16, D38)', () => {
     expect(r.body.error.code).toBe('LOCATION_IMPOSSIBLE_TRAVEL');
   });
 
-
   it('posting puts the post at the server’s rounded point, not one the client chose', async () => {
     const [row] = await db.$queryRaw<{ lat: number; lon: number }[]>`
       SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lon FROM "GeneralPost" WHERE id = ${postId}::uuid`;

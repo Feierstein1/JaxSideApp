@@ -26,10 +26,8 @@ async function main() {
     process.exit(1);
   }
   if (flag === '--remove') {
-    await db.user.update({
-      where: { id: user.id },
-      data: { role: 'USER', totpSecretEnc: null, totpEnabledAt: null, totpLastStep: null },
-    });
+    await db.user.update({ where: { id: user.id }, data: { role: 'USER' } });
+    await db.adminCredential.deleteMany({ where: { userId: user.id } }); // D108
     await db.session.updateMany({
       where: { userId: user.id, kind: 'ADMIN', revokedAt: null },
       data: { revokedAt: new Date() },
@@ -41,10 +39,10 @@ async function main() {
     console.error(`${user.username} hasn't confirmed their email yet.`);
     process.exit(1);
   }
-  await db.user.update({
-    where: { id: user.id },
-    data: { role: 'ADMIN', totpSecretEnc: null, totpEnabledAt: null, totpLastStep: null },
-  });
+  await db.user.update({ where: { id: user.id }, data: { role: 'ADMIN' } });
+  // A fresh authenticator setup on the first admin sign-in (D108).
+  await db.adminCredential.deleteMany({ where: { userId: user.id } });
+
   console.log(
     `${user.username} is now an admin. Sign in at /admin/login and set up the authenticator app.`,
   );

@@ -17,6 +17,10 @@ export const PATCH = route(async (req) => {
       windowSeconds: 60,
     },
   ]);
-  await db.user.update({ where: { id: user.id }, data: { hidePostsFromFriends } });
+  await db.userSettings.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, hidePostsFromFriends },
+    update: { hidePostsFromFriends },
+  });
   return NextResponse.json({ hidePostsFromFriends });
 });

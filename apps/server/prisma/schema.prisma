@@ -135,45 +135,38 @@ enum LocationCheckResult {
 // ──────────────────────── Identity & sessions ────────────────────────
 
 model User {
-  id                  String        @id @default(uuid(7)) @db.Uuid
-  username            String        @db.VarChar(20)
-  usernameNormalized  String        @unique @db.VarChar(20)
-  usernameChangedAt   DateTime?     @db.Timestamptz(3)
-  emailVerifiedAt     DateTime?     @db.Timestamptz(3)
+  id                 String        @id @default(uuid(7)) @db.Uuid
+  username           String        @db.VarChar(20)
+  usernameNormalized String        @unique @db.VarChar(20)
+  usernameChangedAt  DateTime?     @db.Timestamptz(3)
+  emailVerifiedAt    DateTime?     @db.Timestamptz(3)
   /// argon2id hash. Never in any response.
-  passwordHash        String
-  role                Role          @default(USER)
-  status              AccountStatus @default(ACTIVE)
-  suspendedUntil      DateTime?     @db.Timestamptz(3)
-  deletedAt           DateTime?     @db.Timestamptz(3)
-  tosAcceptedAt       DateTime      @db.Timestamptz(3)
-  tosVersion          String        @db.VarChar(20)
-  adultConfirmedAt    DateTime      @db.Timestamptz(3)
+  passwordHash       String
+  role               Role          @default(USER)
+  status             AccountStatus @default(ACTIVE)
+  suspendedUntil     DateTime?     @db.Timestamptz(3)
+  deletedAt          DateTime?     @db.Timestamptz(3)
+  tosAcceptedAt      DateTime      @db.Timestamptz(3)
+  tosVersion         String        @db.VarChar(20)
+  adultConfirmedAt   DateTime      @db.Timestamptz(3)
   /// D36: the user attested being born in or before this year (policy record; birth year itself is not stored).
-  ageCutoffYear       Int           @db.SmallInt
+  ageCutoffYear      Int           @db.SmallInt
   /// D35: keyed hash of the normalized email, for lookup and uniqueness. Kept for banned accounts after shredding (D37).
-  emailIndex          String?       @unique @db.Char(64)
+  emailIndex         String?       @unique @db.Char(64)
   /// D35: email encrypted with the user's data key (AES-256-GCM). Null after crypto-shredding (D37).
-  emailEnc            Bytes?
+  emailEnc           Bytes?
   /// D35: the user's random data key, wrapped by a master key. Destroying it makes emailEnc unreadable (D37).
-  dekWrapped          Bytes?
+  dekWrapped         Bytes?
   /// D37: legal hold. While set, the account's encrypted data is never shredded.
-  legalHoldAt         DateTime?     @db.Timestamptz(3)
-  legalHoldNote       String?       @db.VarChar(500)
-  /// Admin TOTP secret, encrypted at rest (D4).
-  totpSecretEnc       String?
-  totpEnabledAt       DateTime?     @db.Timestamptz(3)
-  /// P5.11: the last 30-second step whose code was accepted, so a code can't be reused.
-  totpLastStep        Int?
-  /// User-chosen radii in miles; null = config default. Clamped server-side (P2.15).
-  /// D69: account color key (palette in @jax/shared). Random at sign-up; changeable.
-  profileColor        String        @default("teal") @db.VarChar(20)
-  generalRadiusMiles  Float?
-  businessRadiusMiles Float?
-  createdAt           DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime      @updatedAt @db.Timestamptz(3)
+  legalHoldAt        DateTime?     @db.Timestamptz(3)
+  legalHoldNote      String?       @db.VarChar(500)
+  createdAt          DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime      @updatedAt @db.Timestamptz(3)
 
   profile         Profile?
+  /// D108: preferences and admin 2FA live in their own tables.
+  settings        UserSettings?
+  adminCredential AdminCredential?
   sessions        Session[]
   emailTokens     EmailToken[]
   usernameHistory UsernameHistory[]
@@ -203,13 +196,11 @@ model User {
 
   autoSuspensions AutoSuspension[]
 
-  /// D76: hide my recent posts from the friends feed.
-  hidePostsFromFriends Boolean        @default(false)
-  friendshipsLow       Friendship[]   @relation("FriendLow")
-  friendshipsHigh      Friendship[]   @relation("FriendHigh")
-  friendRequestsSent   Friendship[]   @relation("FriendRequester")
-  notifications        Notification[] @relation("NotificationFor")
-  notificationsCaused  Notification[] @relation("NotificationActor")
+  friendshipsLow      Friendship[]   @relation("FriendLow")
+  friendshipsHigh     Friendship[]   @relation("FriendHigh")
+  friendRequestsSent  Friendship[]   @relation("FriendRequester")
+  notifications       Notification[] @relation("NotificationFor")
+  notificationsCaused Notification[] @relation("NotificationActor")
 
   contactMessages ContactMessage[] @relation("ContactFrom")
   contactResolved ContactMessage[] @relation("ContactResolvedBy")
@@ -326,11 +317,37 @@ model GuestSession {
 
 model Profile {
   userId        String   @id @db.Uuid
+  /// D69 / D108: account color key (palette in @jax/shared). Random at sign-up; changeable.
+  color         String   @default("teal") @db.VarChar(20)
   bio           String?  @db.VarChar(300)
   avatarPhotoId String?  @unique @db.Uuid
   updatedAt     DateTime @updatedAt @db.Timestamptz(3)
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   avatarPhoto   Photo?   @relation("Avatar", fields: [avatarPhotoId], references: [id], onDelete: SetNull)
+}
+
+/// D108: a person's private preferences. No row = all defaults.
+model UserSettings {
+  userId               String   @id @db.Uuid
+  /// User-chosen radii in miles; null = config default. Clamped server-side (P2.15).
+  generalRadiusMiles   Float?
+  businessRadiusMiles  Float?
+  /// D76: left out of the friends feed.
+  hidePostsFromFriends Boolean  @default(false)
+  updatedAt            DateTime @updatedAt @db.Timestamptz(3)
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// D108: an admin's 2FA, apart from the User row that every request reads. Only admins have one.
+model AdminCredential {
+  userId        String    @id @db.Uuid
+  /// Admin TOTP secret, encrypted at rest (D4).
+  totpSecretEnc String?
+  totpEnabledAt DateTime? @db.Timestamptz(3)
+  /// P5.11: the last 30-second step whose code was accepted, so a code can't be reused.
+  totpLastStep  Int?
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ───────────────────────────── Location ─────────────────────────────
