@@ -250,14 +250,23 @@ describe('assertLocationEligible', () => {
       ).toBe('ACTION_NOT_ALLOWED');
     });
 
-    it('guests can read the area feed, and the check is audited to the guest', async () => {
+    // D106: reads are checked but leave no record; refused write attempts are recorded.
+    it('guests can read the area feed (no record); a refused write is recorded to the guest', async () => {
       const guest = await realGuest();
       await expect(
         assertLocationEligible(guest, reading(P.downtown), 'general.read', undefined, NOW),
       ).resolves.toBeDefined();
+      expect(await db.locationCheck.count()).toBe(0);
+      await assertLocationEligible(
+        guest,
+        reading(P.downtown),
+        'general.post',
+        undefined,
+        NOW,
+      ).catch(() => undefined);
       const row = await db.locationCheck.findFirstOrThrow();
+      expect(row).toMatchObject({ action: 'general.post', result: 'DENIED', userId: null });
       expect(row.guestSessionId).toBe((guest as { guest: { id: string } }).guest.id);
-      expect(row.userId).toBeNull();
     });
 
     it('if auditing fails, a denial still reports its real reason', async () => {

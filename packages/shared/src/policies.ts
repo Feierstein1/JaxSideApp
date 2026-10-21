@@ -23,7 +23,7 @@ const DRAFT: PolicySection = {
   heading: 'Beta',
   body: 'Jax is in beta. These policies may change as the app grows; we’ll update the date above when they do.',
 };
-const UPDATED = '2026-10-20';
+const UPDATED = '2026-10-21';
 
 export const POLICIES: Record<PolicyKey, Policy> = {
   terms: {
@@ -79,7 +79,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       },
       {
         heading: 'Your location',
-        body: 'Jax uses your location only while you are using the app, never in the background. Each time you read or post, your phone sends its current location so we can check you’re in Duval County and close enough to the conversation. Posts are stored with a rounded location (about 100 meters), never your exact spot. The exact readings are kept for 30 days for abuse review, are visible only to administrators, and are then deleted.',
+        body: 'Jax uses your location only while you are using the app, never in the background. Each time you read or post, your phone sends its current location so we can check you’re in Duval County and close enough to the conversation. Posts are stored with a rounded location (about 100 meters), never your exact spot. Readings used only to show you content are not saved. When you post, comment, vote, report, suggest or verify a place, or send a message (or try to and are refused), that exact reading is kept for 30 days for abuse review, is visible only to administrators, and is then deleted.',
       },
       {
         heading: 'Your device',
@@ -157,7 +157,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       DRAFT,
       {
         heading: 'Location readings',
-        body: 'Exact location readings from your phone are deleted after 30 days.',
+        body: 'Exact location readings are saved only for actions that add or change something, and are deleted after 30 days. Readings used only to show you content are never saved.',
       },
       {
         heading: 'Guest mode',

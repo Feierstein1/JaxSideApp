@@ -47,6 +47,63 @@ beforeEach(async () => {
 const check = (p: { latitude: number; longitude: number }, when: Date, acc?: number) =>
   code(assertLocationEligible(actor, reading(p, when, acc), 'general.post', undefined, when));
 
+// D106: reads are checked but not recorded, and only writes feed the travel check.
+describe('reads leave no location record (D106)', () => {
+  const read = (p: { latitude: number; longitude: number }, when: Date, mocked = false) =>
+    code(
+      assertLocationEligible(
+        actor,
+        { ...reading(p, when), ...(mocked ? { mocked: true } : {}) },
+        'general.read',
+        undefined,
+        when,
+      ),
+    );
+
+  it('allowed and refused reads write no row; writes (allowed or refused) do', async () => {
+    expect(await read(DOWNTOWN, at(0))).toBe('ALLOWED');
+    expect(await read(ATLANTA, at(1 * MIN))).toBe('LOCATION_OUTSIDE_AREA'); // still refused
+    expect(await db.locationCheck.count()).toBe(0);
+    expect(await check(DOWNTOWN, at(2 * MIN))).toBe('ALLOWED');
+    expect(await check(ATLANTA, at(3 * MIN))).not.toBe('ALLOWED');
+    expect(
+      (await db.locationCheck.findMany({ orderBy: { receivedAt: 'asc' } })).map((r) => r.result),
+    ).toEqual(['ALLOWED', 'DENIED']);
+  });
+
+  it('reads never raise travel flags; the check compares a write with the previous write', async () => {
+    expect(await read(DOWNTOWN, at(0))).toBe('ALLOWED');
+    expect(await read(JAX_BEACH, at(1 * MIN))).toBe('ALLOWED'); // a jump, but only reading
+    expect(await check(DOWNTOWN, at(2 * MIN))).toBe('ALLOWED'); // no earlier write to compare
+    expect(await db.locationFlag.count()).toBe(0);
+    expect(await check(JAX_BEACH, at(3 * MIN))).toBe('LOCATION_IMPOSSIBLE_TRAVEL');
+  });
+
+  it('a mocked location is refused for reads too, but only a write creates a flag', async () => {
+    expect(await read(DOWNTOWN, at(0), true)).toBe('LOCATION_MOCKED');
+    expect(await db.locationFlag.count()).toBe(0);
+    expect(
+      await code(
+        assertLocationEligible(
+          actor,
+          { ...reading(DOWNTOWN, at(MIN)), mocked: true },
+          'general.post',
+          undefined,
+          at(MIN),
+        ),
+      ),
+    ).toBe('LOCATION_MOCKED');
+    expect(await db.locationFlag.count()).toBe(1);
+  });
+
+  it('a travel pause blocks writes, not reading', async () => {
+    await check(DOWNTOWN, at(0));
+    expect(await check(JAX_BEACH, at(1 * MIN))).toBe('LOCATION_IMPOSSIBLE_TRAVEL');
+    expect(await check(JAX_BEACH, at(5 * MIN))).toBe('LOCATION_RESTRICTED');
+    expect(await read(JAX_BEACH, at(5 * MIN))).toBe('ALLOWED');
+  });
+});
+
 describe('impossible travel (P2.6, D38)', () => {
   // 🔒 Downtown, then the beach 60 seconds later, is ~1,500 km/h.
   it('blocks an impossible jump, flags it, and pauses location features for 15 minutes', async () => {
@@ -135,7 +192,8 @@ describe('daily maintenance (P2.5, D14)', () => {
       await assertLocationEligible(
         userActor,
         reading(DOWNTOWN, when),
-        'general.read',
+        'general.post',
+
         undefined,
         when,
       );

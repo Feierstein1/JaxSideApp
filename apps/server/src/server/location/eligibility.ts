@@ -41,6 +41,18 @@ export const LOCATION_ACTIONS = {
 } as const satisfies Record<string, readonly LocationActor['kind'][]>;
 export type LocationAction = keyof typeof LOCATION_ACTIONS;
 
+/**
+ * D106: reading public content. Reads still need a good reading inside Duval (D16), but they
+ * leave no LocationCheck row and never feed the travel check: what we watch is data being
+ * added or changed, where a fake location matters.
+ */
+const READ_ACTIONS: ReadonlySet<LocationAction> = new Set([
+  'general.read',
+  'business.read',
+  'directory.read',
+]);
+export const isReadAction = (action: LocationAction) => READ_ACTIONS.has(action);
+
 export interface GeoPoint {
   latitude: number;
   longitude: number;
@@ -79,8 +91,9 @@ const deny = (reason: LocationDenialCode, message: string, details?: unknown) =>
  * AFTER auth, schema validation and rate limiting, and BEFORE ownership/business logic.
  *
  * Order: action permission → account standing → mock flag → freshness → accuracy →
- * inside the service area → within the target's radius. Every decision (allowed or
- * denied) is written to LocationCheck for abuse review (purged after 30 days, D14).
+ * inside the service area → within the target's radius. Every decision on a write
+ * (allowed or denied) is written to LocationCheck for abuse review (purged after 30 days,
+ * D14); reads are checked the same way but not recorded (D106).
  * Throws 403 with a specific code; returns the validated point on success.
  */
 export async function assertLocationEligible(
@@ -90,9 +103,11 @@ export async function assertLocationEligible(
   target?: LocationTarget,
   now: Date = new Date(),
 ): Promise<EligibilityResult> {
+  const read = isReadAction(action);
   try {
     await check(actor, reading, action, target, now);
   } catch (err) {
+    if (read) throw err; // D106: reads leave no record
     const reason =
       err instanceof LocationDenied ? err.reason : err instanceof ApiError ? err.code : 'ERROR';
     // A failed audit must not hide the real reason the user was denied.
@@ -101,8 +116,8 @@ export async function assertLocationEligible(
     );
     throw err;
   }
-  // Fail closed: an allowed check that can't be audited does not go through.
-  await audit(actor, reading, action, null, now);
+  // Fail closed: an allowed write that can't be audited does not go through.
+  if (!read) await audit(actor, reading, action, null, now);
   return {
     latitude: reading.latitude,
     longitude: reading.longitude,
@@ -129,8 +144,11 @@ async function check(
   //    so this function is safe on its own.
   if (actor.kind === 'user') assertAccountUsable(actor.user, now);
 
-  // 2b. A temporary restriction from an earlier impossible-travel flag (P2.6).
-  const restriction = await activeRestriction(actor, now);
+  const read = isReadAction(action);
+
+  // 2b. A temporary restriction from an earlier impossible-travel flag (P2.6). It pauses
+  //     writes only (D106).
+  const restriction = read ? null : await activeRestriction(actor, now);
   if (restriction) {
     throw deny(
       'LOCATION_RESTRICTED',
@@ -139,9 +157,9 @@ async function check(
     );
   }
 
-  // 3. Mock-location apps (Android reports this). Flagged for admin review.
+  // 3. Mock-location apps (Android reports this). Refused; on a write, flagged for review.
   if (reading.mocked) {
-    await recordFlag(actor, action, { kind: 'MOCKED_LOCATION' });
+    if (!read) await recordFlag(actor, action, { kind: 'MOCKED_LOCATION' });
     throw deny('LOCATION_MOCKED', 'Turn off mock location apps to use this feature.');
   }
 
@@ -173,8 +191,8 @@ async function check(
     );
   }
 
-  // 5b. Impossible travel since the previous reading (P2.6, D38).
-  await checkTravel(actor, reading, action, now);
+  // 5b. Impossible travel since the previous write (P2.6, D38). Not on reads (D106).
+  if (!read) await checkTravel(actor, reading, action, now);
 
   // 6. Inside the service area (Duval County, D15).
   if (!(await isInServiceArea(db, reading.latitude, reading.longitude))) {

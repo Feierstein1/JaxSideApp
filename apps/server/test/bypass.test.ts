@@ -253,18 +253,22 @@ describe('spoofed and replayed locations (D7, D16, D38)', () => {
     expect(r.body.error.code).toBe(code);
   });
 
+  // D106: the travel check guards writes (reads aren't recorded).
   it('refuses a jump that would need a plane faster than any plane', async () => {
-    await feed(mallory.token, fresh());
+    const post = (body: string) =>
+      call(postsPOST as H, 'POST', { token: mallory.token, body: { reading: fresh(), body } });
+    expect((await post('first post')).status).toBe(201);
     // Pretend the last good reading was in Atlanta 10 minutes ago.
     await db.locationCheck.updateMany({
       where: { userId: mallory.id },
       data: { receivedAt: new Date(Date.now() - 600_000) },
     });
     await db.$executeRaw`UPDATE "LocationCheck" SET point = ST_SetSRID(ST_MakePoint(${ATLANTA.longitude}, ${ATLANTA.latitude}), 4326)::geography, result = 'ALLOWED' WHERE "userId" = ${mallory.id}::uuid`;
-    const r = await feed(mallory.token, fresh());
+    const r = await post('second post');
     expect(r.status).toBe(403);
     expect(r.body.error.code).toBe('LOCATION_IMPOSSIBLE_TRAVEL');
   });
+
 
   it('posting puts the post at the server’s rounded point, not one the client chose', async () => {
     const [row] = await db.$queryRaw<{ lat: number; lon: number }[]>`
