@@ -4,13 +4,14 @@ import { expirePlaceChanges, purgeRemovedPlacePosts } from '../directory/place-c
 import { purgeUnusedPhotos } from '../media/photos';
 import { purgeExpiredCounters } from '../rate-limit';
 import { purgeOldMessageEvidence } from '../social/messages';
-import { purgeOldNotifications } from '../social/notifications';
+
 import { purgeDeletedAccounts } from '../auth/account';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { logger } from '../logger';
 import { deleteInBatches } from './batch';
 import { withJobLock } from './lock';
+import { runRetention, type RetentionReport } from './retention';
 
 const DAY_MS = 86_400_000;
 /** Arbitrary constant identifying this job's Postgres advisory lock. */
@@ -20,7 +21,7 @@ const STEP_TIMEOUT_MS = 60_000;
 /** P13.6: daily LocationCheck pieces are created this many days ahead. */
 const PARTITION_DAYS_AHEAD = 8;
 
-export interface MaintenanceReport {
+export interface MaintenanceReport extends Partial<Omit<RetentionReport, 'notificationsDeleted'>> {
   locationChecks: number;
   sessions: number;
   emailTokens: number;
@@ -128,8 +129,10 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
     }),
     // P6.2: uploads never attached to a post or profile within a day.
     unusedPhotosDeleted: await purgeUnusedPhotos(now),
-    // D76: the bell keeps 90 days.
-    notificationsDeleted: await purgeOldNotifications(now),
+    // D107 (P13.7): notifications, deleted/removed content, unsent messages, removed media,
+    // location flags, old installations, resolved tickets. Never while a report is open.
+    ...(await runRetention(now)),
+
     // D94: place suggestions and removal requests undecided after 60 days.
     placeChangesExpired: await expirePlaceChanges(now),
     // D101: posts of places removed more than 90 days ago.

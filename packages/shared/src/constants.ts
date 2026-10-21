@@ -51,6 +51,26 @@ export const CONFIG_DEFAULTS = {
   'retention.guestDataDays': 180,
   /** D37: deleted-account email kept this long before crypto-shredding (unless on legal hold). */
   'retention.deletedAccountDays': 30,
+  // D107 retention (P13.7). Nothing with an open report is deleted.
+  /** Notifications: read ones this many days after being read… */
+  'retention.notificationReadDays': 7,
+  /** …unread ones this many days after they were sent (also how far back the bell shows). */
+  'retention.notificationUnreadDays': 30,
+  /** Posts and comments their author deleted: removed for good after this many days. */
+  'retention.deletedContentDays': 30,
+  /** Posts and comments a moderator removed: kept this long as evidence. */
+  'retention.removedContentDays': 365,
+  /** Unsent messages: the row is deleted after this many days. */
+  'retention.unsentMessageDays': 1,
+  /** Removed or rejected photos, voice clips and videos: row and file deleted after this. */
+  'retention.removedMediaDays': 30,
+  /** Location flags (impossible / suspicious travel, mocked location). */
+  'retention.locationFlagDays': 90,
+  /** App installations not seen for this long (never banned ones). */
+  'retention.installationUnseenDays': 365,
+  /** Resolved Contact-us tickets. */
+  'retention.resolvedContactDays': 730,
+
 
   // P2.13 / P2.14 directory
   'directory.pageSize': 20,

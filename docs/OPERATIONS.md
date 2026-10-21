@@ -77,7 +77,10 @@ npm run jobs:counters -w @jax/server
 **Maintenance** deletes old location readings, sessions, email codes and rate-limit counters;
 expires and purges guests; removes year-old guest comments; crypto-shreds deleted accounts after
 30 days (skipping legal holds); ends finished suspensions; awards time-based medals; deletes unused
-photo uploads, old notifications and expired place changes. Big tables are deleted 5,000 rows at a
+photo uploads and expired place changes; and applies the retention rules (D107): notifications,
+deleted and removed posts and comments, unsent messages, removed media, location flags, old
+installations and resolved contact tickets, never anything with an open report.
+Big tables are deleted 5,000 rows at a
 time, and each step runs on its own, so a large backlog never becomes one long transaction.
 
 **Counters** removes expired rate-limit counters, which every limited request writes.

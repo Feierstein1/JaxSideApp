@@ -1,8 +1,7 @@
 import type { NotificationView } from '@jax/shared';
-import { Prisma, type NotificationType } from '@/generated/prisma/client';
+import type { NotificationType, Prisma } from '@/generated/prisma/client';
+import { getConfig } from '../config';
 import { db } from '../db';
-import { deleteInBatches } from '../jobs/batch';
-
 import { signedPhotoUrl } from '../media/photos';
 
 /**
@@ -11,8 +10,10 @@ import { signedPhotoUrl } from '../media/photos';
  * phone push can be added on top later without changing this table.
  */
 
-const KEEP_DAYS = 90;
 const LIST_SIZE = 50;
+/** D107: the bell shows what retention keeps (old ones are deleted by jobs/retention.ts). */
+const windowStart = async () =>
+  new Date(Date.now() - (await getConfig('retention.notificationUnreadDays')) * 86_400_000);
 
 export async function notify(
   tx: Prisma.TransactionClient,
@@ -29,7 +30,7 @@ export async function unreadCount(userId: string): Promise<number> {
       userId,
       readAt: null,
       actor: { status: 'ACTIVE' },
-      createdAt: { gt: new Date(Date.now() - KEEP_DAYS * 86_400_000) },
+      createdAt: { gt: await windowStart() },
     },
   });
 }
@@ -39,7 +40,7 @@ export async function listNotifications(userId: string): Promise<NotificationVie
     where: {
       userId,
       actor: { status: 'ACTIVE' },
-      createdAt: { gt: new Date(Date.now() - KEEP_DAYS * 86_400_000) },
+      createdAt: { gt: await windowStart() },
     },
     orderBy: { createdAt: 'desc' },
     take: LIST_SIZE,
@@ -83,13 +84,4 @@ export async function markAllRead(userId: string) {
     where: { userId, readAt: null },
     data: { readAt: new Date() },
   });
-}
-
-/** Daily job: old notifications are deleted. */
-export async function purgeOldNotifications(now = new Date()) {
-  // P13.3: in batches, like the other big purges.
-  return deleteInBatches(
-    'Notification',
-    Prisma.sql`"createdAt" < ${new Date(now.getTime() - KEEP_DAYS * 86_400_000)}`,
-  );
 }

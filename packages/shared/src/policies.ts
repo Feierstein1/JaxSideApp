@@ -169,11 +169,23 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       },
       {
         heading: 'Moderation records',
-        body: 'Reports and moderation decisions are kept for up to 2 years to keep enforcement consistent.',
+        body: 'Moderation decisions and the admin activity log are kept for 3 years to keep enforcement consistent. Location flags (for example a location that changed impossibly fast) are deleted after 3 months.',
       },
       {
         heading: 'Posts and comments',
-        body: 'Your posts and comments stay until you delete them, or they are removed for breaking the rules.',
+        body: 'Your posts and comments stay until you delete them. 30 days after you delete one, it is permanently erased, with its votes. Content removed by a moderator for breaking the rules is kept for 1 year as evidence, then erased. Nothing is erased while a report about it is still being reviewed. A deleted comment that others replied to stays as an empty “deleted” placeholder so the replies still make sense.',
+      },
+      {
+        heading: 'Photos, voice and video',
+        body: 'Uploads that never end up in a post or message are deleted after a day. Media removed by a moderator or rejected by our checks is deleted, file included, after 30 days.',
+      },
+      {
+        heading: 'Messages and notifications',
+        body: 'Private messages stay until you or the other person delete them. An unsent message is erased a day after it was unsent. Notifications are deleted 7 days after you read them, and after 30 days if you never do.',
+      },
+      {
+        heading: 'Devices and support',
+        body: 'The random ID the app gets when it is installed is deleted after a year without use (except on a banned device). Contact-us messages are deleted 2 years after they are resolved.',
       },
     ],
   },

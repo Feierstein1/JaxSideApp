@@ -591,20 +591,22 @@ model FavoritePlace {
 
 /// General feed post (§7.1). Registered users only, so the author is always a User.
 model GeneralPost {
-  id           String                                 @id @default(uuid(7)) @db.Uuid
-  authorId     String                                 @db.Uuid
-  body         String                                 @db.VarChar(2000)
+  id              String                                 @id @default(uuid(7)) @db.Uuid
+  authorId        String                                 @db.Uuid
+  body            String                                 @db.VarChar(2000)
   /// Coarsened (~100 m grid) point assigned by the server (D7). Never the raw reading.
-  location     Unsupported("geography(Point, 4326)")?
-  status       ContentStatus                          @default(VISIBLE)
-  score        Int                                    @default(0)
-  upCount      Int                                    @default(0)
-  downCount    Int                                    @default(0)
-  commentCount Int                                    @default(0)
-  createdAt    DateTime                               @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime                               @updatedAt @db.Timestamptz(3)
-  editedAt     DateTime?                              @db.Timestamptz(3)
-  author       User                                   @relation(fields: [authorId], references: [id])
+  location        Unsupported("geography(Point, 4326)")?
+  status          ContentStatus                          @default(VISIBLE)
+  score           Int                                    @default(0)
+  upCount         Int                                    @default(0)
+  downCount       Int                                    @default(0)
+  commentCount    Int                                    @default(0)
+  createdAt       DateTime                               @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                               @updatedAt @db.Timestamptz(3)
+  editedAt        DateTime?                              @db.Timestamptz(3)
+  /// D107: when the status last changed (set by a database trigger); retention counts from it.
+  statusChangedAt DateTime?                              @db.Timestamptz(3)
+  author          User                                   @relation(fields: [authorId], references: [id])
 
   comments   Comment[]
   votes      Vote[]
@@ -615,24 +617,28 @@ model GeneralPost {
   @@index([location], type: Gist)
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([authorId, createdAt(sort: Desc)])
+  // P13.7: the retention purge of deleted / removed content
+  @@index([statusChangedAt], where: raw("\"statusChangedAt\" IS NOT NULL"))
 }
 
 /// Business room post (§7.2). Always tied to one canonical place.
 model BusinessPost {
-  id           String        @id @default(uuid(7)) @db.Uuid
-  placeId      String        @db.Uuid
-  authorId     String        @db.Uuid
-  body         String        @db.VarChar(2000)
-  status       ContentStatus @default(VISIBLE)
-  score        Int           @default(0)
-  upCount      Int           @default(0)
-  downCount    Int           @default(0)
-  commentCount Int           @default(0)
-  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
-  editedAt     DateTime?     @db.Timestamptz(3)
-  place        BusinessPlace @relation(fields: [placeId], references: [id])
-  author       User          @relation(fields: [authorId], references: [id])
+  id              String        @id @default(uuid(7)) @db.Uuid
+  placeId         String        @db.Uuid
+  authorId        String        @db.Uuid
+  body            String        @db.VarChar(2000)
+  status          ContentStatus @default(VISIBLE)
+  score           Int           @default(0)
+  upCount         Int           @default(0)
+  downCount       Int           @default(0)
+  commentCount    Int           @default(0)
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+  editedAt        DateTime?     @db.Timestamptz(3)
+  /// D107: when the status last changed (set by a database trigger); retention counts from it.
+  statusChangedAt DateTime?     @db.Timestamptz(3)
+  place           BusinessPlace @relation(fields: [placeId], references: [id])
+  author          User          @relation(fields: [authorId], references: [id])
 
   comments   Comment[]
   votes      Vote[]
@@ -642,6 +648,8 @@ model BusinessPost {
 
   @@index([placeId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([authorId, createdAt(sort: Desc)])
+  // P13.7: the retention purge of deleted / removed content
+  @@index([statusChangedAt], where: raw("\"statusChangedAt\" IS NOT NULL"))
 }
 
 /// Comment on exactly one post (CHECK). Author is a User or a Guest (authorKind).
@@ -663,6 +671,8 @@ model Comment {
   createdAt       DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
   editedAt        DateTime?     @db.Timestamptz(3)
+  /// D107: when the status last changed (set by a database trigger); retention counts from it.
+  statusChangedAt DateTime?     @db.Timestamptz(3)
   generalPost     GeneralPost?  @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
   businessPost    BusinessPost? @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
   parent          Comment?      @relation("Thread", fields: [parentCommentId], references: [id], onDelete: Cascade)
@@ -681,6 +691,8 @@ model Comment {
   @@index([authorGuestId])
   // P13.1: the guest-comment purge only
   @@index([createdAt], where: raw("\"authorKind\" = 'GUEST'"))
+  // P13.7: the retention purge of deleted / removed content
+  @@index([statusChangedAt], where: raw("\"statusChangedAt\" IS NOT NULL"))
 }
 
 /// One vote per (voter, target) regardless of direction (D6). Value is +1 or -1 (CHECK).
@@ -873,6 +885,8 @@ model Notification {
   @@index([createdAt])
   // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
   @@index([actorId])
+  // P13.7: purge of read notifications
+  @@index([readAt], where: raw("\"readAt\" IS NOT NULL"))
 }
 
 /// D90: Contact us. A support ticket or a general message, read in the admin portal.
