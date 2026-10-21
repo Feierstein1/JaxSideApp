@@ -92,6 +92,50 @@ describe('messaging friends (D98)', () => {
     ]);
   });
 
+  // P13.4: the chat list comes from one query; same results as before.
+  it('the chat list: newest first, latest visible message, unread and can-send per chat', async () => {
+    const dan = await person('dan_m');
+    await befriend(ann, cat);
+    await befriend(ann, dan);
+    await send(ann, 'bob_m', 'one');
+    await send(cat, 'ann_m', 'two');
+    const oops = (await send(cat, 'ann_m', 'oops')).body.message;
+    await call(unsendPOST as H, 'POST', { token: cat.token, id: oops.id }); // gone for both
+    await send(ann, 'dan_m', 'three');
+    await send(bob, 'ann_m', 'four');
+    const list = async () =>
+      (await call(listGET as H, 'GET', { token: ann.token })).body.conversations as {
+        id: string;
+        with: { username: string };
+        preview: string;
+        unread: boolean;
+        canSend: boolean;
+      }[];
+    const rows = (l: Awaited<ReturnType<typeof list>>) =>
+      l.map((c) => [c.with.username, c.preview, c.unread, c.canSend]);
+    expect(rows(await list())).toEqual([
+      ['bob_m', 'four', true, true],
+      ['dan_m', 'You: three', false, true],
+      ['cat_m', 'two', true, true], // the unsent "oops" doesn't count
+    ]);
+    // Reading a chat clears its unread flag; "delete chat for me" hides it until something new.
+    await chat(ann, 'bob_m');
+    const danChat = (await list()).find((c) => c.with.username === 'dan_m')!;
+    await call(hideChatPOST as H, 'POST', { token: ann.token, id: danChat.id });
+    // A block (either way) means you can't send any more.
+    await db.userBlock.create({ data: { blockerId: cat.id, blockedId: ann.id } });
+    expect(rows(await list())).toEqual([
+      ['bob_m', 'four', false, true],
+      ['cat_m', 'two', true, false],
+    ]);
+    await send(dan, 'ann_m', 'back again');
+    expect((await list())[0]).toMatchObject({ with: { username: 'dan_m' }, preview: 'back again' });
+    // Bob's side: his own view of the same chat.
+    expect(
+      rows((await call(listGET as H, 'GET', { token: bob.token })).body.conversations),
+    ).toEqual([['ann_m', 'You: four', false, true]]);
+  });
+
   // 🔒 Mutual friends only; blocks stop it.
   it('strangers, blocked people and ex-friends can’t send', async () => {
     expect((await send(ann, 'cat_m', 'hello?')).body.error.code).toBe('NOT_FRIENDS');

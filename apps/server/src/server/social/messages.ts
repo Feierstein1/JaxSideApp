@@ -4,7 +4,7 @@ import {
   type ChatMessage,
   type ConversationSummary,
 } from '@jax/shared';
-import type { Prisma, User } from '@/generated/prisma/client';
+import type { AccountStatus, Prisma, User } from '@/generated/prisma/client';
 import { getConfig } from '../config';
 import {
   createUserKey,
@@ -307,38 +307,82 @@ export async function chatWith(meId: string, username: string, before?: string) 
   };
 }
 
-/** Your chats, newest first, with a short preview and an unread flag. */
+interface ChatRow {
+  id: string;
+  dekWrapped: Uint8Array;
+  lastReadAt: Date | null;
+  other_id: string;
+  other_status: AccountStatus;
+  username: string;
+  profileColor: string;
+  avatarPhotoId: string | null;
+  msg_id: string;
+  bodyEnc: Uint8Array | null;
+  senderId: string;
+  createdAt: Date;
+  can_send: boolean;
+}
+
+/**
+ * Your chats, newest first, with a short preview and an unread flag. P13.4: one query (the
+ * app polls this), not two per chat: each chat's newest message you can still see (same rules
+ * as `visibleTo`: not unsent, after "delete chat for me", not deleted for you) via a lateral
+ * join, and whether you can still send (same rules as `canMessage`: friends, no block either
+ * way, they're active). Chats with nothing visible, or with a deleted account, are left out.
+ * Only the decryption happens here in Node.
+ */
 export async function listConversations(meId: string): Promise<ConversationSummary[]> {
-  const members = await db.conversationMember.findMany({
-    where: { userId: meId },
-    include: {
-      conversation: {
-        include: { userLow: { select: userSelect }, userHigh: { select: userSelect } },
-      },
-    },
+  const rows = await db.$queryRaw<ChatRow[]>`
+    SELECT c.id, c."dekWrapped", cm."lastReadAt",
+           o.id AS other_id, o.status AS other_status, o.username, o."profileColor", p."avatarPhotoId",
+           l.id AS msg_id, l."bodyEnc", l."senderId", l."createdAt",
+           (o.status = 'ACTIVE'
+            AND EXISTS (SELECT 1 FROM "Friendship" f
+                        WHERE f."userLowId" = c."userLowId" AND f."userHighId" = c."userHighId"
+                          AND f.status = 'ACCEPTED')
+            AND NOT EXISTS (SELECT 1 FROM "UserBlock" b
+                            WHERE (b."blockerId" = ${meId}::uuid AND b."blockedId" = o.id)
+                               OR (b."blockerId" = o.id AND b."blockedId" = ${meId}::uuid))
+           ) AS can_send
+    FROM "ConversationMember" cm
+    JOIN "Conversation" c ON c.id = cm."conversationId"
+    JOIN "User" o ON o.id = CASE WHEN c."userLowId" = ${meId}::uuid
+                                 THEN c."userHighId" ELSE c."userLowId" END
+    LEFT JOIN "Profile" p ON p."userId" = o.id
+    JOIN LATERAL (
+      SELECT m.id, m."bodyEnc", m."senderId", m."createdAt"
+      FROM "Message" m
+      WHERE m."conversationId" = c.id
+        AND m."unsentAt" IS NULL
+        AND (cm."hiddenBefore" IS NULL OR m."createdAt" > cm."hiddenBefore")
+        AND NOT EXISTS (SELECT 1 FROM "MessageHide" h
+                        WHERE h."messageId" = m.id AND h."userId" = ${meId}::uuid)
+      ORDER BY m."createdAt" DESC, m.id DESC
+      LIMIT 1
+    ) l ON true
+    WHERE cm."userId" = ${meId}::uuid AND o.status <> 'DELETED'
+    ORDER BY l."createdAt" DESC, l.id DESC`;
+  return rows.map((r) => {
+    const text = decryptBody(
+      { id: r.id, dekWrapped: r.dekWrapped },
+      { id: r.msg_id, bodyEnc: r.bodyEnc },
+    );
+    return {
+      id: r.id,
+      with: friendUser({
+        id: r.other_id,
+        status: r.other_status,
+        username: r.username,
+
+        profileColor: r.profileColor,
+        profile: { avatarPhotoId: r.avatarPhotoId },
+      }),
+      preview: `${r.senderId === meId ? 'You: ' : ''}${text ? text.slice(0, 80) : 'Photo'}`,
+      lastMessageAt: r.createdAt.toISOString(),
+      unread: r.senderId !== meId && (!r.lastReadAt || r.createdAt > r.lastReadAt),
+      canSend: r.can_send,
+    };
   });
-  const out: ConversationSummary[] = [];
-  for (const m of members) {
-    const c = m.conversation;
-    const last = await db.message.findFirst({
-      where: { conversationId: c.id, ...visibleTo(meId, m.hiddenBefore) },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      include: { photos: { select: { id: true } } },
-    });
-    if (!last) continue; // empty, or deleted for me with nothing new since
-    const other = c.userLowId === meId ? c.userHigh : c.userLow;
-    if (other.status === 'DELETED') continue;
-    const text = decryptBody(c, last);
-    out.push({
-      id: c.id,
-      with: friendUser(other),
-      preview: `${last.senderId === meId ? 'You: ' : ''}${text ? text.slice(0, 80) : 'Photo'}`,
-      lastMessageAt: last.createdAt.toISOString(),
-      unread: last.senderId !== meId && (!m.lastReadAt || last.createdAt > m.lastReadAt),
-      canSend: await canMessage(meId, other.id),
-    });
-  }
-  return out.sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
 }
 
 /** Chats with a message from the other person you haven't seen (the top-bar badge). */
