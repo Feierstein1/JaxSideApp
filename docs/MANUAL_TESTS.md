@@ -107,7 +107,13 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ## 5. Comments, votes, reports (two accounts)
 
-- [ ] Account B comments on A's post; A replies to B; replies are indented (max 3 levels).
+- [ ] Account B comments on A's post; A replies to B; replies are indented one level (D105).
+- [ ] B taps **Reply** on A's reply: the box starts with "@A ", and the new reply lines up with
+      A's reply under the same comment (never deeper). "@A" shows in gold and opens A's profile.
+      A gets no notification for it.
+- [ ] A post with 100 comments (replies included) shows "Comments are closed…" and no reply box;
+      **Reply** buttons are gone (D105).
+
 - [ ] Up/down votes change color and score; tapping your vote again clears it.
 - [ ] On an opened post, "N up · N down" shows beside the score and updates when you vote (D83).
 - [ ] Delete your own comment: it shows "[deleted]" if it had replies.
@@ -156,6 +162,21 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Zoom in: place names appear under the dots; street names show on the map.
 - [ ] Tap a dot: that place opens. Back returns to the map.
 - [ ] The **list** button switches back. The "© OpenStreetMap contributors" credit is visible.
+
+## 7h. Your own posts, anywhere (D105)
+
+- [ ] Account → **View profile**: the profile lists **Your posts**, area and place posts both,
+      and the Posts number matches the list. Tapping a place post opens it.
+- [ ] Away from a post (across town, or outside Jacksonville): your own post still opens, with
+      "Comments show when you're near this post" and no reply box. ••• → **Edit post** saves new
+      text; **Delete post** works.
+- [ ] Near the post, its comments show again.
+- [ ] Someone else's post away from it still says you need to be nearby.
+
+## 7i. Places of worship (D105)
+
+- [ ] Places filter has **Places of worship**; churches, mosques and synagogues show with the
+      heart icon in dark ochre.
 
 ## 7f. Business owners (D103)
 

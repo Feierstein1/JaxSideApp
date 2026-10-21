@@ -18,6 +18,7 @@ const GROUP_ICONS: Record<string, IconName> = {
   services: 'car',
   lodging: 'bed',
   fitness: 'barbell', // D89
+  faith: 'heart', // D105: churches, mosques, synagogues
 };
 
 export function categoryIcon(category: string): IconName {

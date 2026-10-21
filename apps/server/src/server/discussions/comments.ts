@@ -1,5 +1,5 @@
 import { medalKeysSql } from '../achievements';
-import type { CommentView, DiscussionKind } from '@jax/shared';
+import { COMMENT_MAX, type CommentView, type DiscussionKind } from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
 import { getConfig } from '../config';
 import { db } from '../db';
@@ -101,9 +101,18 @@ export async function listComments(kind: DiscussionKind, postId: string, viewer:
   return rows.map((r) => toView(r, viewer));
 }
 
+/** D105: does the text already start by tagging this person? */
+function startsWithTag(body: string, username: string) {
+  const m = /^@([A-Za-z0-9_]+)/.exec(body);
+  return !!m && m[1]!.toLowerCase() === username.toLowerCase();
+}
+
 /**
  * Adds a comment (or reply) and bumps the post's comment count in one transaction.
- * A reply's parent must be a visible comment on the same post, and nesting is capped.
+ * A reply's parent must be a visible comment on the same post. D105: replies go one level
+ * deep (post → comment → reply); a reply to a reply goes under the same comment, starting
+ * with "@name" for the person answered (a tag only: nobody is notified). A post takes at
+ * most `comments.limitPerPost` comments, replies included.
  */
 export async function createComment(opts: {
   kind: DiscussionKind;
@@ -115,34 +124,88 @@ export async function createComment(opts: {
   /** P5.4: stored hidden (and not counted) until a moderator reviews it. */
   held?: boolean;
 }): Promise<string> {
-  const maxDepth = await getConfig('comments.maxDepth');
+  const [maxDepth, limit] = await Promise.all([
+    getConfig('comments.maxDepth'),
+    getConfig('comments.limitPerPost'),
+  ]);
   return db.$transaction(async (tx) => {
+    // Lock the post row so two people can't both add the last allowed comment.
+    const [post] = await tx.$queryRaw<{ commentCount: number }[]>`
+      SELECT "commentCount" FROM ${TABLE[opts.kind]}
+      WHERE id = ${opts.postId}::uuid AND status = 'VISIBLE' FOR UPDATE`;
+    if (!post) throw new ApiError(404, 'NOT_FOUND', 'Post not found');
+    if (post.commentCount >= limit) {
+      throw new ApiError(
+        409,
+        'COMMENTS_LOCKED',
+        `This post has reached ${limit} comments, so it’s closed to new ones.`,
+      );
+    }
     let depth = 0;
+    let parentId: string | null = null;
+    let body = opts.body;
     if (opts.parentCommentId) {
-      const parent = await tx.comment.findUnique({
-        where: { id: opts.parentCommentId },
-        select: { generalPostId: true, businessPostId: true, depth: true, status: true },
-      });
+      const select = {
+        generalPostId: true,
+        businessPostId: true,
+        parentCommentId: true,
+        depth: true,
+        status: true,
+        authorUserId: true,
+        authorUser: { select: { username: true, status: true } },
+      } as const;
+      const parent = await tx.comment.findUnique({ where: { id: opts.parentCommentId }, select });
       const parentPost = opts.kind === 'general' ? parent?.generalPostId : parent?.businessPostId;
       if (!parent || parentPost !== opts.postId || parent.status !== 'VISIBLE') {
         throw new ApiError(400, 'INVALID_PARENT', 'You can only reply to a comment on this post');
       }
-      depth = parent.depth + 1;
-      if (depth > maxDepth) {
-        throw new ApiError(400, 'MAX_DEPTH', 'This thread is too deep to reply to');
+      // Answering a reply: attach to the comment it hangs under (older threads may be deeper).
+      let anchor: { id: string; depth: number } = { id: opts.parentCommentId, depth: parent.depth };
+      let up = parent.parentCommentId;
+      while (anchor.depth >= Math.max(maxDepth, 1) && up) {
+        const p = await tx.comment.findUnique({
+          where: { id: up },
+          select: { id: true, depth: true, parentCommentId: true },
+        });
+        if (!p) break;
+        anchor = { id: p.id, depth: p.depth };
+        up = p.parentCommentId;
       }
+      if (anchor.depth + 1 > maxDepth) {
+        throw new ApiError(400, 'MAX_DEPTH', 'Replies can’t go any deeper here');
+      }
+      const answered = parent.authorUser;
+      const self = opts.author.kind === 'USER' && parent.authorUserId === opts.author.userId;
+      if (
+        anchor.id !== opts.parentCommentId &&
+        answered &&
+        answered.status !== 'DELETED' &&
+        !self &&
+        !startsWithTag(body, answered.username)
+      ) {
+        body = `@${answered.username} ${body}`;
+        if (body.length > COMMENT_MAX) {
+          throw new ApiError(
+            400,
+            'VALIDATION_ERROR',
+            `Keep it under ${COMMENT_MAX} characters (the @name counts)`,
+          );
+        }
+      }
+      parentId = anchor.id;
+      depth = anchor.depth + 1;
     }
     const c = await tx.comment.create({
       data: {
         ...(opts.kind === 'general'
           ? { generalPostId: opts.postId }
           : { businessPostId: opts.postId }),
-        parentCommentId: opts.parentCommentId ?? null,
+        parentCommentId: parentId,
         depth,
         ...(opts.author.kind === 'USER'
           ? { authorKind: 'USER' as const, authorUserId: opts.author.userId }
           : { authorKind: 'GUEST' as const, authorGuestId: opts.author.guestId }),
-        body: opts.body,
+        body,
         status: opts.held ? 'HELD_FOR_REVIEW' : 'VISIBLE',
       },
       select: { id: true },

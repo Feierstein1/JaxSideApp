@@ -53,6 +53,11 @@ describe('Places map (D99)', () => {
     const csp = res.headers.get('content-security-policy')!;
     expect(csp).toContain("default-src 'none'");
     expect(csp).toMatch(/script-src 'nonce-[^']+' https:\/\/unpkg\.com/);
+    // Fonts and icons: the whole folder (a source without a trailing slash matches only that
+    // exact address, which blocked every file on phones).
+    expect(csp).toContain("connect-src 'self' https://protomaps.github.io/basemaps-assets/;");
+    expect(csp).toContain('img-src data: blob: https://protomaps.github.io/basemaps-assets/;');
+
     const html = await res.text();
     expect(html).toContain('maplibre-gl@5.24.0');
     expect(html).toMatch(/\/api\/v1\/map\/tiles\?exp=\d+&sig=/);

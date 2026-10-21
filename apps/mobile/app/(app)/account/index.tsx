@@ -224,7 +224,8 @@ function ProfileSection() {
                 />
               </View>
             </Pressable>
-            <View style={{ flex: 1, paddingBottom: 6 }}>
+            {/* Sits a little low so the name starts clearly below the color band. */}
+            <View style={{ flex: 1, marginBottom: -6 }}>
               <Text
                 numberOfLines={1}
                 style={{ fontSize: 24, fontWeight: '800', letterSpacing: -0.5 }}

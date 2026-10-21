@@ -20,8 +20,11 @@ export function mapPage(tilesUrl: string): { html: string; csp: string } {
     "default-src 'none'",
     `script-src 'nonce-${nonce}' https://unpkg.com`,
     "style-src 'unsafe-inline' https://unpkg.com",
-    `img-src data: blob: ${ASSETS}`,
-    `connect-src 'self' ${ASSETS}`,
+    // A trailing slash so it covers everything under the folder (without it, only that exact
+    // address is allowed and every font and icon file is blocked).
+    `img-src data: blob: ${ASSETS}/`,
+    `connect-src 'self' ${ASSETS}/`,
+
     'worker-src blob:',
     'child-src blob:',
   ].join('; ');

@@ -267,13 +267,26 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
           </View>
         </>
       ) : null}
-      <SectionTitle>Recent posts nearby</SectionTitle>
+      {/* D105: your own profile lists all your posts (area and place), from anywhere. */}
+      <SectionTitle>{profile.isMe ? 'Your posts' : 'Recent posts nearby'}</SectionTitle>
       {posts.length === 0 ? (
-        <EmptyState icon="newspaper-outline" title="Nothing in your area yet" />
+        <EmptyState
+          icon="newspaper-outline"
+          title={profile.isMe ? 'You haven’t posted yet' : 'Nothing in your area yet'}
+        />
       ) : null}
       {posts.map((p) => (
-        <PostCard key={p.id} post={p} onOpen={() => router.push(`${postPath}/${p.id}` as never)} />
+        <PostCard
+          key={p.id}
+          post={p}
+          onOpen={() =>
+            router.push(
+              (p.kind === 'business' ? `/places/post/${p.id}` : `${postPath}/${p.id}`) as never,
+            )
+          }
+        />
       ))}
+
       <ReportSheet
         target={reporting ? { type: 'user', username: profile.username } : undefined}
         onClose={() => setReporting(false)}

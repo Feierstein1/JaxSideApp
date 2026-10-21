@@ -28,6 +28,8 @@ export const CATEGORY_GROUPS = [
     categories: ['car_dealer', 'automotive', 'gas_station', 'bank', 'pharmacy', 'post_office'],
   },
   { key: 'lodging', label: 'Hotels', categories: ['lodging'] },
+  // D105: churches, mosques and synagogues (OSM places of worship, by religion).
+  { key: 'faith', label: 'Places of worship', categories: ['church', 'mosque', 'synagogue'] },
 ] as const;
 
 /**
@@ -44,6 +46,8 @@ export const CATEGORY_COLORS: Record<(typeof CATEGORY_GROUPS)[number]['key'] | '
   services: '#0D47A1', // blue
   lodging: '#00695C', // teal-green
   fitness: '#283593', // indigo (D89)
+  faith: '#7A5C00', // dark ochre (D105)
+
   other: '#37474F', // slate
 };
 

@@ -376,7 +376,27 @@ export async function deletePost(kind: DiscussionKind, id: string, userId: strin
   });
 }
 
+/**
+ * D105: your own profile lists all your posts, area and place ones, wherever you are (you
+ * can always open, edit or delete your own post). Newest first.
+ */
+export async function listMyPosts(userId: string, at: GeoPoint | undefined, limit = 50) {
+  const [general, business] = await Promise.all(
+    (['general', 'business'] as const).map((kind) =>
+      db.$queryRaw<PostRow[]>`${selectPosts(kind, userId, kind === 'general' ? at : undefined)}
+        WHERE p.status = 'VISIBLE' AND p."authorId" = ${userId}::uuid
+        ORDER BY p."createdAt" DESC, p.id DESC LIMIT ${limit}`.then((rows) =>
+        rows.map((r) => toView(r, kind, userId)),
+      ),
+    ),
+  );
+  return [...general!, ...business!]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, limit);
+}
+
 /** P4.8: an author's recent area-feed posts (business-room posts stay behind D19). */
+
 export async function listAuthorPosts(
   authorId: string,
   viewerId: string,

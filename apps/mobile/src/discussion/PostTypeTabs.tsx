@@ -53,13 +53,17 @@ export function PostTypeTabs({
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            {/* Five tabs: a little smaller so they don't crowd each other. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Ionicons
                 name={active ? (t.icon.replace('-outline', '') as typeof t.icon) : t.icon}
-                size={16}
+                size={14}
                 color={color}
               />
-              <Text style={{ color, fontWeight: active ? '800' : '600', fontSize: 14 }}>
+              <Text
+                numberOfLines={1}
+                style={{ color, fontWeight: active ? '800' : '600', fontSize: 12.5 }}
+              >
                 {t.label}
               </Text>
             </View>

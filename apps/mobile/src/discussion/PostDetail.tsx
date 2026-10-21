@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   COMMENT_MAX,
   CONFIG_DEFAULTS,
+  POST_MAX,
   type CommentView,
   type DiscussionKind,
   type PostView,
@@ -16,8 +17,15 @@ import { timeAgo } from '@/format';
 import { haptic } from '@/motion';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
-import { Button, ErrorState, openMenu, SectionTitle, KeyboardSafeView } from '@/ui';
-import { createComment, deleteComment, deletePost, fetchPost, markFeedsDirty } from './api';
+import { Banner, Button, ErrorState, openMenu, SectionTitle, KeyboardSafeView, Sheet } from '@/ui';
+import {
+  createComment,
+  deleteComment,
+  deletePost,
+  editPost,
+  fetchPost,
+  markFeedsDirty,
+} from './api';
 import { sendScreened } from './screening';
 import { authorName, openAuthor, PostCard, PostSkeleton } from './PostCard';
 import { useGuest } from '@/auth/guest';
@@ -29,6 +37,7 @@ import { showAlert } from '@/dialog';
 import { ensureGuide } from '@/guides/guide';
 
 const MAX_DEPTH = CONFIG_DEFAULTS['comments.maxDepth'];
+const COMMENT_LIMIT = CONFIG_DEFAULTS['comments.limitPerPost'];
 
 /**
  * P3.3 / P3.11: one post with its comment thread and a reply box. D78: the post's actions
@@ -45,6 +54,12 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
   const { isGuest, promptAccount } = useGuest();
   const canComment = !isGuest;
   const [reporting, setReporting] = useState<ReportTarget>();
+  /** D105: your own post opened away from it (comments left out), or a full thread. */
+  const [commentsHidden, setCommentsHidden] = useState(false);
+  const [commentsLocked, setCommentsLocked] = useState(false);
+  /** P3.8 / D105: the text being edited (your own post). */
+  const [editing, setEditing] = useState<string>();
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setError(undefined);
@@ -52,6 +67,8 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
       const res = await fetchPost(kind, id);
       setPost(res.post);
       setComments(res.comments);
+      setCommentsHidden(res.commentsHidden);
+      setCommentsLocked(res.commentsLocked);
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t get your location.');
     }
@@ -81,6 +98,40 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t post your comment.');
     } finally {
       setSending(false);
+    }
+  }
+
+  /** D105: answering a reply keeps it at the reply level and starts with "@name". */
+  function startReply(c: CommentView) {
+    setReplyTo(c);
+    if (c.depth >= MAX_DEPTH && 'username' in c.author && !c.isMine) {
+      const tag = `@${c.author.username} `;
+      setText((t) => (t.startsWith(tag) ? t : tag + t));
+    }
+  }
+
+  async function saveEdit() {
+    if (!editing?.trim() || saving) return;
+    setSaving(true);
+    try {
+      const sent = await sendScreened((ok) => editPost(kind, id, editing.trim(), ok));
+      if (!sent) return;
+      haptic.success();
+      setEditing(undefined);
+      markFeedsDirty();
+      await load();
+    } catch (e) {
+      showAlert(
+        'Couldn’t save',
+        e instanceof ApiRequestError ? e.message : 'Try again.',
+        undefined,
+        {
+          icon: 'alert-circle-outline',
+          tone: 'warning',
+        },
+      );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -130,6 +181,11 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
     ? () =>
         openMenu('Your post', [
           {
+            label: 'Edit post',
+            icon: 'create-outline',
+            onPress: () => setEditing(post.body),
+          },
+          {
             label: 'Delete post',
             icon: 'trash-outline',
             destructive: true,
@@ -166,8 +222,19 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
         />
 
         <SectionTitle dark>
-          {comments.length === 0 ? 'Comments' : `Comments · ${comments.length}`}
+          {commentsHidden
+            ? `Comments · ${post.commentCount}`
+            : comments.length === 0
+              ? 'Comments'
+              : `Comments · ${comments.length}`}
         </SectionTitle>
+        {commentsLocked ? (
+          <View style={{ marginHorizontal: SPACE.md, marginBottom: SPACE.sm }}>
+            <Banner icon="lock-closed-outline">
+              {`Comments are closed: this post reached ${COMMENT_LIMIT} comments.`}
+            </Banner>
+          </View>
+        ) : null}
         <View
           style={{
             marginHorizontal: SPACE.md,
@@ -176,7 +243,17 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
             overflow: 'hidden',
           }}
         >
-          {comments.length === 0 ? (
+          {commentsHidden ? (
+            <View style={{ alignItems: 'center', padding: SPACE.xl, gap: 6 }}>
+              <Ionicons name="location-outline" size={30} color={DARK.accent} />
+              <Text style={[TYPE.headline, { color: DARK.text, textAlign: 'center' }]}>
+                Comments show when you’re near this post
+              </Text>
+              <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
+                You can still read, edit or delete your post from anywhere.
+              </Text>
+            </View>
+          ) : comments.length === 0 ? (
             <View style={{ alignItems: 'center', padding: SPACE.xl, gap: 6 }}>
               <Ionicons name="chatbubble-ellipses-outline" size={30} color={DARK.accent} />
               <Text style={[TYPE.headline, { color: DARK.text }]}>No comments yet</Text>
@@ -191,8 +268,8 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
                 c={c}
                 first={i === 0}
                 onReply={
-                  canComment && c.depth < MAX_DEPTH && c.status === 'visible'
-                    ? () => setReplyTo(c)
+                  canComment && !commentsLocked && c.status === 'visible'
+                    ? () => startReply(c)
                     : undefined
                 }
                 onDelete={
@@ -232,7 +309,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
       ) : null}
       <View
         style={{
-          display: canComment ? 'flex' : 'none',
+          display: canComment && !commentsLocked && !commentsHidden ? 'flex' : 'none',
           borderTopWidth: 1,
           borderTopColor: DARK.hairline,
           backgroundColor: DARK.card,
@@ -316,7 +393,55 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
         </View>
       </View>
       <ReportSheet target={reporting} onClose={() => setReporting(undefined)} />
+      <Sheet open={editing !== undefined} onClose={() => setEditing(undefined)} title="Edit post">
+        <View style={{ paddingHorizontal: 20, paddingBottom: SPACE.sm, gap: SPACE.sm }}>
+          <TextInput
+            accessibilityLabel="Post text"
+            value={editing ?? ''}
+            onChangeText={setEditing}
+            maxLength={POST_MAX}
+            multiline
+            autoFocus
+            textAlignVertical="top"
+            style={{
+              minHeight: 120,
+              maxHeight: 260,
+              borderRadius: RADIUS.md,
+              borderWidth: 1,
+              borderColor: DARK.border,
+              padding: SPACE.md,
+              fontSize: 16,
+              backgroundColor: DARK.raised,
+            }}
+          />
+          <Button
+            title="Save"
+            busy={saving}
+            disabled={!editing?.trim()}
+            onPress={() => void saveEdit()}
+          />
+        </View>
+      </Sheet>
     </KeyboardSafeView>
+  );
+}
+
+/** D105: a reply that answers someone starts with their @name, shown as a link to them. */
+function CommentBody({ body }: { body: string }) {
+  const m = /^@([A-Za-z0-9_]{3,20})(?![A-Za-z0-9_])/.exec(body);
+  if (!m) return <>{body}</>;
+  const name = m[1]!;
+  return (
+    <>
+      <Text
+        accessibilityRole="link"
+        onPress={() => router.push(`/user/${encodeURIComponent(name)}`)}
+        style={{ color: DARK.accent, fontWeight: '700' }}
+      >
+        {m[0]}
+      </Text>
+      {body.slice(m[0].length)}
+    </>
   );
 }
 
@@ -368,7 +493,8 @@ function CommentRow({
       style={{
         borderTopWidth: first || c.depth > 0 ? 0 : 1,
         borderTopColor: DARK.hairline,
-        paddingLeft: SPACE.md + c.depth * 20,
+        // D105: one reply level (older, deeper threads line up with it).
+        paddingLeft: SPACE.md + Math.min(c.depth, 1) * 20,
         paddingRight: SPACE.xs,
       }}
     >
@@ -426,11 +552,13 @@ function CommentRow({
               },
             ]}
           >
-            {visible
-              ? c.body
-              : c.status === 'deleted'
-                ? 'This comment was deleted.'
-                : 'This comment was removed.'}
+            {visible ? (
+              <CommentBody body={c.body ?? ''} />
+            ) : c.status === 'deleted' ? (
+              'This comment was deleted.'
+            ) : (
+              'This comment was removed.'
+            )}
           </Text>
           {visible ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: -8 }}>

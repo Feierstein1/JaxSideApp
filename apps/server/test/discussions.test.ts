@@ -16,6 +16,8 @@ import { PUT as bizVotePUT } from '@/app/api/v1/business-posts/[id]/vote/route';
 import { PUT as commentVotePUT } from '@/app/api/v1/comments/[id]/vote/route';
 import { DELETE as commentDELETE } from '@/app/api/v1/comments/[id]/route';
 import { POST as searchPOST } from '@/app/api/v1/places/search/route';
+import { POST as profilePOST } from '@/app/api/v1/users/[username]/route';
+
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
@@ -266,15 +268,53 @@ describe('comments (P3.3, D20)', () => {
     expect(far.body.error.message).toBe('Get within 528 yd of this post to take part.');
   });
 
-  it('caps nesting at 3 levels and rejects a parent from another post', async () => {
+  // D105: post → comment → reply, nothing deeper.
+  it('a reply to a reply goes under the same comment and tags the person (no deeper)', async () => {
     await liftLimits('rateLimit.comment.perMinute');
     const p = (await post(alice, 'Q')).body.post.id;
     const other = (await post(alice, 'other')).body.post.id;
-    let parent = (await comment(bob, p, 'd0')).body.id;
-    for (const d of ['d1', 'd2', 'd3']) parent = (await comment(bob, p, d, parent)).body.id;
-    expect((await comment(bob, p, 'd4', parent)).body.error.code).toBe('MAX_DEPTH');
+    const top = (await comment(bob, p, 'top')).body.id;
+    const r1 = (await comment(alice, p, 'reply', top)).body.id;
+    await comment(bob, p, 'answering alice', r1); // tagged by the server
+    await comment(bob, p, '@ALICE_P already tagged', r1); // not tagged twice
+    await comment(alice, p, 'my own follow-up', r1); // answering yourself: no tag
+    const rows = await db.comment.findMany({
+      where: { generalPostId: p },
+      orderBy: { createdAt: 'asc' },
+      select: { body: true, depth: true, parentCommentId: true },
+    });
+    expect(rows.map((c) => [c.body, c.depth, c.parentCommentId])).toEqual([
+      ['top', 0, null],
+      ['reply', 1, top],
+      ['@alice_p answering alice', 1, top],
+      ['@ALICE_P already tagged', 1, top],
+      ['my own follow-up', 1, top],
+    ]);
+    expect(await db.notification.count()).toBe(0); // tags never notify
     const foreign = (await comment(bob, other, 'elsewhere')).body.id;
     expect((await comment(bob, p, 'x', foreign)).body.error.code).toBe('INVALID_PARENT');
+  });
+
+  // 🔒 D105: the server closes a post at the comment limit, replies included.
+  it('locks a post once it reaches the comment limit', async () => {
+    await liftLimits('rateLimit.comment.perMinute');
+    await db.appConfiguration.create({ data: { key: 'comments.limitPerPost', value: 3 } });
+    invalidateConfigCache();
+    const p = (await post(alice, 'Q')).body.post.id;
+    const c = (await comment(bob, p, 'one')).body.id;
+    await comment(alice, p, 'two', c);
+    expect((await detail(bob, p)).body.commentsLocked).toBe(false);
+    const last = (await comment(bob, p, 'three')).body.id;
+    const locked = await comment(alice, p, 'four', c);
+    expect(locked.status).toBe(409);
+    expect(locked.body.error.code).toBe('COMMENTS_LOCKED');
+    expect((await detail(bob, p)).body).toMatchObject({
+      commentsLocked: true,
+      post: { commentCount: 3 },
+    });
+    // A deleted (or removed) comment frees its place.
+    await call(commentDELETE as H, 'DELETE', { token: bob, id: last });
+    expect((await comment(alice, p, 'four', c)).status).toBe(201);
   });
 
   it('a deleted comment stays as a placeholder so replies keep their context', async () => {
@@ -444,5 +484,83 @@ describe('blocking (P3.9)', () => {
     await db.userBlock.create({ data: { blockerId: aliceId, blockedId: bobUser.id } });
     expect(bodies(await feed(alice))).toEqual(['from alice']);
     expect(bodies(await feed(bob))).toEqual(['from bob']);
+  });
+});
+
+// D105: your own posts open from anywhere; their comments follow the normal reading rule.
+describe('your own posts, from anywhere (D105)', () => {
+  const detail = (route: unknown, token: string, id: string, at: typeof FIVE_POINTS) =>
+    call(route as H, 'POST', { token, id, body: { reading: reading(at) } });
+  const roomPost = (token: string, body: string) =>
+    call(roomPostPOST as H, 'POST', {
+      token,
+      id: cafeId,
+      body: { reading: reading(FIVE_POINTS), body },
+    });
+
+  it('the author reads, edits and deletes their post far away, without its comments', async () => {
+    const area = (await post(alice, 'area post')).body.post.id;
+    const room = (await roomPost(alice, 'room post')).body.post.id;
+    await call(commentPOST as H, 'POST', {
+      token: bob,
+      id: area,
+      body: { reading: reading(FIVE_POINTS), body: 'a comment' },
+    });
+    // Near it, comments show as usual.
+    expect((await detail(postDetailPOST, alice, area, FIVE_POINTS)).body).toMatchObject({
+      commentsHidden: false,
+      comments: [{ body: 'a comment' }],
+    });
+    // Outside Duval (area post) and across town (place post).
+    const a = await detail(postDetailPOST, alice, area, ORANGE_PARK);
+    expect(a.status).toBe(200);
+    expect(a.body).toMatchObject({
+      post: { body: 'area post' },
+      comments: [],
+      commentsHidden: true,
+    });
+    const b = await detail(bizDetailPOST, alice, room, DOWNTOWN);
+    expect(b.body).toMatchObject({ post: { body: 'room post' }, commentsHidden: true });
+    const edited = await call(postPATCH as H, 'PATCH', {
+      token: alice,
+      id: area,
+      body: { body: 'area post, edited' },
+    });
+    expect(edited.status).toBe(200);
+    expect((await call(bizDELETE as H, 'DELETE', { token: alice, id: room })).status).toBe(200);
+  });
+
+  // 🔒 Only the author: everyone else still needs to be in range.
+  it('other people still need the usual location', async () => {
+    const area = (await post(alice, 'area post')).body.post.id;
+    const room = (await roomPost(alice, 'room post')).body.post.id;
+    expect((await detail(bizDetailPOST, bob, room, DOWNTOWN)).body.error.code).toBe(
+      'LOCATION_TOO_FAR',
+    );
+    const far = await detail(postDetailPOST, bob, area, ORANGE_PARK);
+    expect(far.status).not.toBe(200);
+    expect(far.body.error.code).toMatch(/^LOCATION_/);
+  });
+
+  it('your own profile lists area and place posts from anywhere; others’ profiles don’t', async () => {
+    await post(alice, 'area post');
+    await roomPost(alice, 'room post');
+    const profile = (token: string, at: typeof FIVE_POINTS) =>
+      call(profilePOST as H, 'POST', {
+        token,
+        params: { username: 'alice_p' },
+        body: { reading: reading(at) },
+      });
+    const mine = await profile(alice, ORANGE_PARK);
+    expect(mine.status).toBe(200);
+    expect(mine.body.profile.postCount).toBe(2);
+    expect(mine.body.posts.map((p: { body: string }) => p.body).sort()).toEqual([
+      'area post',
+      'room post',
+    ]);
+    expect(
+      (await profile(bob, FIVE_POINTS)).body.posts.map((p: { body: string }) => p.body),
+    ).toEqual(['area post']);
+    expect((await profile(bob, ORANGE_PARK)).body.error.code).toMatch(/^LOCATION_/);
   });
 });

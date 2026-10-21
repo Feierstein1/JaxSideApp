@@ -89,14 +89,22 @@ const SHOP_GROUPS: Record<string, string> = {
 };
 const SHOP_EXCLUDED = new Set(['vacant', 'no', 'yes_but_closed']);
 
+/** D105: places of worship (`amenity=place_of_worship`), by their `religion` tag. */
+const WORSHIP: Record<string, string> = {
+  christian: 'church',
+  muslim: 'mosque',
+  jewish: 'synagogue',
+};
+
 /** Every category the importer can assign (used to check the app's filter groups). */
 export function allCategories(): Set<string> {
-  const out = new Set<string>(['shop', ...Object.values(SHOP_GROUPS)]);
+  const out = new Set<string>(['shop', ...Object.values(SHOP_GROUPS), ...Object.values(WORSHIP)]);
   for (const r of RULES) if (r.values !== '*') Object.values(r.values).forEach((c) => out.add(c));
   return out;
 }
 
 export function categorize(tags: Record<string, string>): string | null {
+  if (tags.amenity === 'place_of_worship') return WORSHIP[tags.religion ?? ''] ?? null;
   for (const rule of RULES) {
     const v = tags[rule.key];
     if (!v) continue;
@@ -121,6 +129,10 @@ export function buildOverpassQuery(
       ? `nwr["${r.key}"]["${r.key}"!~"^(${[...SHOP_EXCLUDED].join('|')})$"]["name"](${b});`
       : `nwr["${r.key}"~"^(${Object.keys(r.values).join('|')})$"]["name"](${b});`,
   );
+  parts.push(
+    `nwr["amenity"="place_of_worship"]["religion"~"^(${Object.keys(WORSHIP).join('|')})$"]["name"](${b});`,
+  );
+
   return `[out:json][timeout:${timeoutSeconds}];\n(\n  ${parts.join('\n  ')}\n);\nout center tags;`;
 }
 

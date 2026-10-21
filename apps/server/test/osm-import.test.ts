@@ -83,6 +83,10 @@ describe('tag allow-list (P2.10)', () => {
     [{ leisure: 'park' }, 'park'],
     [{ tourism: 'museum' }, 'museum'],
     [{ natural: 'beach' }, 'beach'],
+    // D105: places of worship by religion.
+    [{ amenity: 'place_of_worship', religion: 'christian' }, 'church'],
+    [{ amenity: 'place_of_worship', religion: 'muslim' }, 'mosque'],
+    [{ amenity: 'place_of_worship', religion: 'jewish' }, 'synagogue'],
   ])('%j → %s', (tags, cat) => {
     expect(categorize(tags as Record<string, string>)).toBe(cat);
   });
@@ -93,6 +97,7 @@ describe('tag allow-list (P2.10)', () => {
     [{ building: 'house' }],
     [{ amenity: 'parking' }],
     [{ amenity: 'bench' }],
+    [{ amenity: 'place_of_worship' }], // no religion tag: not listed (D105)
   ])('excludes %j', (tags) => {
     expect(categorize(tags as Record<string, string>)).toBeNull();
   });
@@ -103,6 +108,7 @@ describe('tag allow-list (P2.10)', () => {
     expect(q).toContain('"amenity"~"^(restaurant|');
     expect(q).not.toContain('nwr["office"'); // the office tag is never requested
     expect(q).toContain('out center tags;');
+    expect(q).toContain('"religion"~"^(christian|muslim|jewish)$"');
   });
 });
 

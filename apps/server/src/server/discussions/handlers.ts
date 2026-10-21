@@ -19,11 +19,13 @@ import {
 } from '@jax/shared';
 import type { User } from '@/generated/prisma/client';
 import { requireActor, requireUser, type Actor } from '../auth/require-actor';
+import { getConfig } from '../config';
 import { db } from '../db';
 import { ApiError } from '../http';
 import {
   assertLocationEligible,
   coarsenPoint,
+  type GeoPoint,
   type LocationAction,
   type LocationActor,
   type LocationTarget,
@@ -264,13 +266,33 @@ export function postDetail(kind: DiscussionKind) {
     const id = await idFrom(ctx);
     const { reading } = await parseBody(req, listCommentsSchema);
     await limitsFor(actorKey(actor), READ);
-    const at = await checkPostAccess(locationActor(actor), reading, kind, id, 'read');
+    // D105: your own post opens from anywhere (to read, edit or delete it); its comments
+    // still follow the normal reading rule, so away from it they're left out.
+    let at: GeoPoint | undefined;
+    let commentsHidden = false;
+    try {
+      at = await checkPostAccess(locationActor(actor), reading, kind, id, 'read');
+    } catch (e) {
+      const mine =
+        actor.kind === 'user' &&
+        e instanceof ApiError &&
+        e.status !== 404 &&
+        (await postAnchor(kind, id)).authorId === actor.user.id;
+      if (!mine) throw e;
+      commentsHidden = true;
+    }
     const viewer = viewerOf(actor);
-    const [post, comments] = await Promise.all([
+    const [post, comments, limit] = await Promise.all([
       getPostView(kind, id, viewer.userId ?? NO_USER, kind === 'general' ? at : undefined),
-      listComments(kind, id, viewer),
+      commentsHidden ? [] : listComments(kind, id, viewer),
+      getConfig('comments.limitPerPost'),
     ]);
-    return NextResponse.json({ post, comments });
+    return NextResponse.json({
+      post,
+      comments,
+      commentsHidden,
+      commentsLocked: post.commentCount >= limit,
+    });
   };
 }
 

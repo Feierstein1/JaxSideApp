@@ -70,9 +70,11 @@ describe('category colors (D70)', () => {
     expect(contrast('#FFFFFF', hex)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it('9 distinct colors, every category maps to one', () => {
-    expect(new Set(Object.values(CATEGORY_COLORS)).size).toBe(10);
+  it('distinct colors (one per group and other), every category maps to one', () => {
+    expect(new Set(Object.values(CATEGORY_COLORS)).size).toBe(Object.keys(CATEGORY_COLORS).length);
     expect(categoryColor('cafe')).toBe(CATEGORY_COLORS.coffee);
+    expect(categoryColor('mosque')).toBe(CATEGORY_COLORS.faith); // D105
+
     expect(categoryColor('somethingnew')).toBe(CATEGORY_COLORS.other);
   });
 

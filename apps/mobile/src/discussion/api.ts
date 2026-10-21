@@ -43,9 +43,31 @@ export async function fetchRoom(placeId: string, cursor?: string, type: PostType
   });
 }
 
+export interface PostDetailResponse {
+  post: PostView;
+  comments: CommentView[];
+  /** D105: your own post opened away from it: comments are left out. */
+  commentsHidden: boolean;
+  /** D105: the post reached its comment limit. */
+  commentsLocked: boolean;
+}
+
 export async function fetchPost(kind: DiscussionKind, id: string) {
   const reading = await getFreshReading();
-  return api.post<{ post: PostView; comments: CommentView[] }>(`${base(kind)}/${id}`, { reading });
+  return api.post<PostDetailResponse>(`${base(kind)}/${id}`, { reading });
+}
+
+/** P3.8 / D105: edit your own post's text (works from anywhere). */
+export async function editPost(
+  kind: DiscussionKind,
+  id: string,
+  body: string,
+  confirmWarning?: true,
+) {
+  return api.patch<{ post: PostView } | HeldResponse>(`${base(kind)}/${id}`, {
+    body,
+    confirmWarning,
+  });
 }
 
 export async function createPost(

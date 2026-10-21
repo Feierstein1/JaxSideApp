@@ -71,8 +71,14 @@ export const CONFIG_DEFAULTS = {
   'feed.pageSize': 15,
   /** "Top" sort looks back this many days. */
   'feed.topWindowDays': 7,
-  /** Replies nest at most this deep (0 = top-level comment). */
-  'comments.maxDepth': 3,
+  /**
+   * Replies nest at most this deep (0 = top-level comment). D105: 1 = post → comment → reply;
+   * a reply to a reply goes under the same comment and tags the person.
+   */
+  'comments.maxDepth': 1,
+  /** D105: a post with this many comments (replies included) takes no more. */
+  'comments.limitPerPost': 100,
+
   /** Comments returned per post (MVP: one page, oldest thread first). */
   'comments.maxPerPost': 300,
 
