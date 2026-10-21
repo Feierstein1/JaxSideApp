@@ -352,7 +352,7 @@ model ServiceArea {
 
 /// Precise location audit (D7). Restricted access; purged after location retention (D14).
 model LocationCheck {
-  id             String                                 @id @default(uuid(7)) @db.Uuid
+  id             String                                 @default(uuid(7)) @db.Uuid
   userId         String?                                @db.Uuid
   guestSessionId String?                                @db.Uuid
   installationId String?                                @db.Uuid
@@ -367,6 +367,9 @@ model LocationCheck {
   guestSession   GuestSession?                          @relation(fields: [guestSessionId], references: [id], onDelete: Cascade)
   installation   Installation?                          @relation(fields: [installationId], references: [id], onDelete: SetNull)
 
+  /// P13.6 (D106): partitioned by day on receivedAt (raw SQL; pieces in schema jax_partitions,
+  /// which Prisma doesn't see). The partition key must be part of the primary key.
+  @@id([id, receivedAt])
   @@index([userId, receivedAt])
   @@index([guestSessionId, receivedAt])
   @@index([receivedAt])

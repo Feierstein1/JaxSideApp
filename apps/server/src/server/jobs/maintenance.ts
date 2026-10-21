@@ -17,6 +17,8 @@ const DAY_MS = 86_400_000;
 export const MAINTENANCE_LOCK_KEY = 4_810_001;
 /** Multi-statement steps get their own transaction with this much time. */
 const STEP_TIMEOUT_MS = 60_000;
+/** P13.6: daily LocationCheck pieces are created this many days ahead. */
+const PARTITION_DAYS_AHEAD = 8;
 
 export interface MaintenanceReport {
   locationChecks: number;
@@ -60,11 +62,10 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
   ]);
   const ago = (days: number) => new Date(now.getTime() - days * DAY_MS);
 
-  // Precise location history (D7): kept only for abuse review.
-  const locationChecks = await deleteInBatches(
-    'LocationCheck',
-    Prisma.sql`"receivedAt" < ${ago(locationDays)}`,
-  );
+  // Precise location history (D7): kept only for abuse review. P13.6: the table is split by
+  // day, so whole days past retention are dropped instead of deleted row by row; days ahead
+  // are created first.
+  const locationChecks = await rollLocationCheckPartitions(now, ago(locationDays));
   // Sessions that ended (expired or signed out) more than N days ago.
   const sessions = await deleteInBatches(
     'Session',
@@ -141,7 +142,21 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
 }
 
 /**
- * P4.5 / D17: guest comments are shown for a year, then removed. Skipped while a
+ * P13.6 (D106): makes sure the next PARTITION_DAYS_AHEAD days have a LocationCheck piece, and
+ * drops the days that are entirely older than `cutoff` (plus older rows in the catch-all).
+ * Returns the number of rows removed.
+ */
+export async function rollLocationCheckPartitions(now: Date, cutoff: Date): Promise<number> {
+  const today = now.toISOString().slice(0, 10); // UTC day, like the pieces
+  await db.$queryRaw`SELECT location_check_ensure_partitions(${today}::date, ${PARTITION_DAYS_AHEAD}::int)`;
+  const [row] = await db.$queryRaw<{ n: bigint }[]>`
+    SELECT location_check_drop_partitions(${cutoff}::timestamptz) AS n`;
+  return Number(row?.n ?? 0);
+}
+
+/**
+ * P4.5 / D17: guest comments
+ are shown for a year, then removed. Skipped while a
  * report on them is still open. A comment with replies is blanked (kept as a
  * "[deleted]" placeholder) so others' replies survive; once it has no replies, a
  * later run deletes it. One transaction, so the post comment counts stay right.

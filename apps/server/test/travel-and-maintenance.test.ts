@@ -6,7 +6,11 @@ import { db } from '@/server/db';
 import { Prisma } from '@/generated/prisma/client';
 import { deleteInBatches } from '@/server/jobs/batch';
 import { COUNTERS_LOCK_KEY, runCounterCleanup } from '@/server/jobs/counters';
-import { MAINTENANCE_LOCK_KEY, runMaintenance } from '@/server/jobs/maintenance';
+import {
+  MAINTENANCE_LOCK_KEY,
+  rollLocationCheckPartitions,
+  runMaintenance,
+} from '@/server/jobs/maintenance';
 
 import { assertLocationEligible, type LocationActor } from '@/server/location/eligibility';
 import { readBoundaryFile } from '@/server/location/boundary-file';
@@ -295,5 +299,74 @@ describe('cleanup jobs at volume (P13.3)', () => {
     // The locks are released after each run.
     expect(await runMaintenance(T)).not.toBeNull();
     expect(await runCounterCleanup(T)).toBe(0);
+  });
+});
+
+// 🔒 P13.6 (D106): LocationCheck is split by UTC day; old days are dropped whole.
+describe('location history split by day (P13.6)', () => {
+  const D = 86_400_000;
+  const BASE = new Date('2027-03-10T12:00:00Z'); // far from the pieces the migration made
+  const write = (when: Date) =>
+    assertLocationEligible(actor, reading(DOWNTOWN, when), 'general.post', undefined, when);
+  const pieceOf = async () =>
+    (
+      await db.$queryRaw<{ piece: string }[]>`
+        SELECT tableoid::regclass::text AS piece FROM "LocationCheck" ORDER BY "receivedAt"`
+    ).map((r) => r.piece.replace('jax_partitions.', '').replace(/"/g, ''));
+  const pieces = async () =>
+    (
+      await db.$queryRaw<{ relname: string }[]>`
+        SELECT c.relname FROM pg_inherits i JOIN pg_class c ON c.oid = i.inhrelid
+        WHERE i.inhparent = '"LocationCheck"'::regclass AND c.relname ~ '^LocationCheck_p2027'
+        ORDER BY 1`
+    ).map((r) => r.relname);
+
+  // Emptying tables (resetDb) leaves pieces in place: start each test without the test's own.
+  beforeEach(async () => {
+    for (const p of await pieces()) await db.$executeRawUnsafe(`DROP TABLE jax_partitions."${p}"`);
+  });
+
+  it('a day without a piece goes to the catch-all; creating the piece moves it in', async () => {
+    await write(BASE);
+    expect(await pieceOf()).toEqual(['LocationCheck_default']);
+    expect(await rollLocationCheckPartitions(BASE, new Date(BASE.getTime() - 30 * D))).toBe(0);
+    expect(await pieceOf()).toEqual(['LocationCheck_p20270310']);
+    expect(await pieces()).toEqual([
+      'LocationCheck_p20270310',
+      'LocationCheck_p20270311',
+      'LocationCheck_p20270312',
+      'LocationCheck_p20270313',
+      'LocationCheck_p20270314',
+      'LocationCheck_p20270315',
+      'LocationCheck_p20270316',
+      'LocationCheck_p20270317',
+    ]);
+    await write(new Date(BASE.getTime() + 2 * D)); // lands straight in its own day
+    expect(await pieceOf()).toEqual(['LocationCheck_p20270310', 'LocationCheck_p20270312']);
+  });
+
+  it('the job drops whole days past 30 days and keeps the rest', async () => {
+    await rollLocationCheckPartitions(BASE, new Date(0)); // pieces for Mar 10–17
+    await write(BASE); // Mar 10
+    await write(new Date(BASE.getTime() + 2 * D)); // Mar 12
+    // 31.5 days after Mar 10 noon: Mar 10's whole day is past 30 days, Mar 12's isn't.
+    const later = new Date(BASE.getTime() + 31.5 * D);
+    const report = await runMaintenance(later);
+    expect(report?.locationChecks).toBe(1);
+    expect(await pieceOf()).toEqual(['LocationCheck_p20270312']);
+    const left = await pieces();
+    expect(left).not.toContain('LocationCheck_p20270310');
+    expect(left).toContain('LocationCheck_p20270412'); // the days ahead of `later` exist
+    expect(await db.locationCheck.count()).toBe(1);
+  });
+
+  it('constraints still hold on every piece', async () => {
+    await rollLocationCheckPartitions(BASE, new Date(0));
+    await expect(
+      db.$executeRaw`
+        INSERT INTO "LocationCheck" (id, action, point, "accuracyMeters", "readingAt", "receivedAt", result)
+        VALUES (uuid_v7(), 'general.post',
+                ST_SetSRID(ST_MakePoint(-81.65, 30.33), 4326)::geography, 10, ${BASE}, ${BASE}, 'ALLOWED')`,
+    ).rejects.toThrow(/one_actor/); // no user and no guest
   });
 });

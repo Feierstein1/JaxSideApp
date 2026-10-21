@@ -82,6 +82,11 @@ time, and each step runs on its own, so a large backlog never becomes one long t
 
 **Counters** removes expired rate-limit counters, which every limited request writes.
 
+**Location history** (`LocationCheck`) is split into one piece per UTC day (P13.6), in the
+`jax_partitions` schema. Maintenance creates the next 8 days' pieces and drops whole days older
+than 30 days. If maintenance stops running, new readings land in the catch-all piece
+`LocationCheck_default` (nothing fails); the next run moves them into their days.
+
 Each job holds its own database lock, so a job never overlaps with itself (a second run just
 prints that one is in progress), but the two can run at the same time. If a job crashes, the lock
 is released automatically.
