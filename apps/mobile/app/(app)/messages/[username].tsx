@@ -17,13 +17,11 @@ import { haptic } from '@/motion';
 import { ensureGuide } from '@/guides/guide';
 import { ReportSheet } from '@/report/ReportSheet';
 import { messagesApi } from '@/social/messages-api';
+import { ACTIVE_POLL_MS, shouldPoll } from '@/social/chat-pace';
 import { refreshUnreadMessages } from '@/social/messages-unread';
 import { Text, TextInput } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { ErrorState, KeyboardSafeView, openMenu } from '@/ui';
-
-/** D98 / design #12: while a chat is open it checks for new messages this often. */
-const POLL_MS = 3_000;
 
 /**
  * D98: a chat with one friend. Newest at the bottom; scroll up for older. Long-press a
@@ -41,10 +39,24 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   const [reporting, setReporting] = useState<ReportTarget>();
   const focused = useRef(false);
+  /**
+   * D114: an open chat checks every 3 s while the conversation is active and slows to every
+   * 30 s after 2 quiet minutes. Sending, a new message arriving, typing and scrolling count.
+   */
+  const lastActivity = useRef(Date.now());
+  const lastPoll = useRef(0);
+  const newestId = useRef<string | null>(null);
+  const active = () => {
+    lastActivity.current = Date.now();
+  };
 
   const load = useCallback(async () => {
+    lastPoll.current = Date.now();
     try {
       const r = await messagesApi.chat(username);
+      const newest = r.messages[r.messages.length - 1]?.id ?? null;
+      if (newestId.current !== null && newest !== newestId.current) active(); // something new
+      newestId.current = newest;
       // Keep any older pages already loaded; replace the newest page.
       setMessages((prev) => {
         const keep = (prev ?? []).filter(
@@ -64,10 +76,12 @@ export default function Chat() {
   useFocusEffect(
     useCallback(() => {
       focused.current = true;
+      active(); // opening the chat counts
       void load();
       const t = setInterval(() => {
-        if (focused.current && AppState.currentState === 'active') void load();
-      }, POLL_MS);
+        if (!focused.current || AppState.currentState !== 'active') return;
+        if (shouldPoll(Date.now(), lastActivity.current, lastPoll.current)) void load();
+      }, ACTIVE_POLL_MS);
       return () => {
         focused.current = false;
         clearInterval(t);
@@ -104,6 +118,7 @@ export default function Chat() {
     const body = text.trim();
     if (!body && !photos.length) return;
     if (!(await ensureGuide('message'))) return; // D104
+    active();
     setSending(true);
 
     try {
@@ -172,6 +187,7 @@ export default function Chat() {
           data={ordered}
           keyExtractor={(m) => m.id}
           onEndReached={() => void loadOlder()}
+          onScrollBeginDrag={active}
           ListFooterComponent={
             messages.length === 0 ? (
               <Text
@@ -224,7 +240,11 @@ export default function Chat() {
               placeholder="Message"
               placeholderTextColor={DARK.textMuted}
               value={text}
-              onChangeText={setText}
+              onChangeText={(v) => {
+                active();
+                setText(v);
+              }}
+
               maxLength={MESSAGE_MAX}
               multiline
               style={{

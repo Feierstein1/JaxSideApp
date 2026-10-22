@@ -263,6 +263,9 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ## 7e. Private messages (D98, two accounts that are friends)
 
+- [ ] (D114) Leave a chat open without touching it for over 2 minutes: a new message from the
+      friend can take up to 30 s to appear. Type, scroll or send: new messages show within ~3 s again.
+
 - [ ] The top bar has a chat-bubble **Messages** button next to the bell.
 - [ ] On a friend's profile, **Message** opens a chat; so does the chat icon in Friends → Your
       friends. A non-friend's profile has no Message button.
