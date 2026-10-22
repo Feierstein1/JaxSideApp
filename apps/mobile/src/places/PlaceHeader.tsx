@@ -1,29 +1,15 @@
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { CATEGORY_GROUPS, categoryColor, DARK, type PlaceSummary } from '@jax/shared';
+import { CATEGORY_ICONS, categoryColor, categoryGroup, DARK, type PlaceSummary } from '@jax/shared';
 import { categoryLabel, formatDistance, plural } from '@/format';
 import { haptic } from '@/motion';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { Bone, PressableScale, Pulse, StatTile, type IconName } from '@/ui';
 
-/** D78: an icon per category group (pill, tile, favorites list, filter chips). */
-const GROUP_ICONS: Record<string, IconName> = {
-  food: 'restaurant',
-  coffee: 'cafe',
-  bars: 'beer',
-  outdoors: 'leaf',
-  shopping: 'bag-handle',
-  fun: 'ticket',
-  services: 'car',
-  lodging: 'bed',
-  fitness: 'barbell', // D89
-  faith: 'heart', // D105: churches, mosques, synagogues
-};
-
+/** D78: an icon per category group (pill, tile, favorites list, filter chips, D113 the map). */
 export function categoryIcon(category: string): IconName {
-  const group = CATEGORY_GROUPS.find((g) => (g.categories as readonly string[]).includes(category));
-  return GROUP_ICONS[group?.key ?? ''] ?? 'location';
+  return CATEGORY_ICONS[categoryGroup(category)] as IconName;
 }
 
 /** The category color as a thick stripe down the card's left edge (D79). */

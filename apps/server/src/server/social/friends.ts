@@ -98,13 +98,8 @@ export async function sendFriendRequest(me: string, username: string) {
     return { state: 'friends' as const };
   }
 
-  const [maxFriends, maxPending] = await Promise.all([
-    getConfig('friends.max'),
-    getConfig('friends.maxPendingOut'),
-  ]);
-  if ((await friendCount(me)) >= maxFriends || (await friendCount(target.id)) >= maxFriends) {
-    throw new ApiError(409, 'FRIENDS_FULL', `People can have up to ${maxFriends} friends.`);
-  }
+  await assertRoomForFriend(me, target.id);
+  const maxPending = await getConfig('friends.maxPendingOut');
   const pending = await db.friendship.count({ where: { requesterId: me, status: 'PENDING' } });
   if (pending >= maxPending) {
     throw new ApiError(
@@ -133,7 +128,22 @@ const friendCount = (id: string) =>
     where: { status: 'ACCEPTED', OR: [{ userLowId: id }, { userHighId: id }] },
   });
 
+/** D111: both people must be under the friend limit (30) to become friends. */
+async function assertRoomForFriend(a: string, b: string) {
+  const max = await getConfig('friends.max');
+  const [na, nb] = await Promise.all([friendCount(a), friendCount(b)]);
+  if (na >= max) {
+    throw new ApiError(409, 'FRIENDS_FULL', `You can have up to ${max} friends. Remove one first.`);
+  }
+  if (nb >= max) {
+    throw new ApiError(409, 'FRIENDS_FULL', `They already have ${max} friends, the most allowed.`);
+  }
+}
+
 async function acceptRow(id: string, me: string) {
+  // D111: accepting counts toward the limit too (it used to be checked only on sending).
+  const pending = await db.friendship.findUnique({ where: { id }, select: { requesterId: true } });
+  if (pending) await assertRoomForFriend(me, pending.requesterId);
   await db.$transaction(async (tx) => {
     const res = await tx.friendship.updateMany({
       where: { id, status: 'PENDING', requesterId: { not: me } },

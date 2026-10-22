@@ -186,6 +186,22 @@ describe('friend requests (D76)', () => {
     expect(await friends(ann)).toEqual(['cat_f']);
   });
 
+  // 🔒 D111: at most 30 friends (1 here), checked when sending and when accepting.
+  it('the friend limit applies to sending and to accepting', async () => {
+    await request(cat, 'ann_f'); // waiting before ann fills up
+    await db.appConfiguration.create({ data: { key: 'friends.max', value: 1 } });
+    invalidateConfigCache();
+    await befriend(ann, bob);
+    await person('dan_f');
+    expect((await request(ann, 'dan_f')).body.error.code).toBe('FRIENDS_FULL');
+
+    // Accepting cat's earlier request would take ann past the limit.
+    const r = await accept(ann, (await requests(ann)).incoming[0]!.id);
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe('FRIENDS_FULL');
+    expect(await friends(ann)).toEqual(['bob_f']);
+  });
+
   it('limits requests waiting at once', async () => {
     await db.appConfiguration.create({ data: { key: 'friends.maxPendingOut', value: 1 } });
     invalidateConfigCache();

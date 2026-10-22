@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { router } from 'expo-router';
-import { categoryColor, DARK, type PlaceSummary } from '@jax/shared';
+import { categoryGroup, DARK, type PlaceSummary } from '@jax/shared';
 import { API_BASE_URL, api } from '@/api';
 import { remoteLog } from '@/debug/remote-log';
 import { Text } from '@/text';
@@ -10,8 +10,10 @@ import { SPACE, TYPE } from '@/tokens';
 
 /**
  * D99: the Places map. A free MapLibre map of Duval (Protomaps / OpenStreetMap tiles from
- * our own server) in a WebView, with your places as dots in their category colors and
- * your location in gold. Tap a dot to open the place. No Google, no keys, no fees.
+ * our own server) in a WebView, with your places as their category icons in the category
+ * colors (D113) and your location in teal. Tap a place for a pop-up with its posts and
+ * favorites; tap again to open it. No Google, no keys, no fees. Map tiles are kept on the
+ * phone for a week (D113).
  */
 export function PlacesMap({
   places,
@@ -48,7 +50,9 @@ export function PlacesMap({
         name: p.name,
         latitude: p.latitude,
         longitude: p.longitude,
-        color: categoryColor(p.category),
+        icon: categoryGroup(p.category),
+        posts: p.postCount,
+        favorites: p.favoriteCount,
       })),
       me,
       fit: !fitted.current,

@@ -65,9 +65,10 @@ export const COLORS = {
 
 /**
  * D79: the mobile app's dark theme, used on every screen. Layers go from black bars to a
- * dark-grey page to lighter cards and raised controls. Brand colors stay: gold for
- * actions and highlights (black text on it), teal for selected states (white text on it).
- * Teal is too dark to read as text on these greys, so `tealText` is a light tint of it.
+ * dark-grey page to lighter cards and raised controls. D110: actions and highlights are a
+ * bright teal (black text on it); gold read too much like adult sites with the black. Medals
+ * keep their gold. Brand teal is too dark to read as text on these greys, so the accent and
+ * `tealText` are lighter tints of it; selected states keep the deep brand teal.
  * Every text pairing is tested in theme.test.ts. The admin portal keeps `COLORS`.
  */
 export const DARK = {
@@ -82,9 +83,9 @@ export const DARK = {
   placeholder: '#A3A9B1',
   border: '#878C94', // input outlines (≥ 3:1 on raised, card and page)
 
-  accent: BRAND.gold, // main actions, links, active tab, focus
-  onAccent: BRAND.black,
-  accentSoft: '#3A3020', // gold-tinted notice background
+  accent: '#3DB8C9', // D110: main actions, links, active tab, focus (teal; ≥ 4.8:1 on every layer)
+  onAccent: BRAND.black, // 8.9:1 on the accent
+  accentSoft: '#173A42', // teal-tinted notice background
 
   teal: BRAND.teal, // selected fills, switches (white text on it)
   onTeal: BRAND.white,

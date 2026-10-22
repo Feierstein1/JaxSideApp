@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { locationStatusRequestSchema, normalizeUsername } from '@jax/shared';
+import { normalizeUsername, profileRequestSchema } from '@jax/shared';
 import { requireActor } from '@/server/auth/require-actor';
 import { NO_USER } from '@/server/discussions/comments';
 import { listAuthorPosts, listMyPosts } from '@/server/discussions/posts';
@@ -17,7 +17,7 @@ import { parseBody } from '@/server/validate';
 export const POST = route<UsernameCtx>(async (req, ctx) => {
   const actor = await requireActor(req);
   const username = await usernameFrom(ctx);
-  const { reading } = await parseBody(req, locationStatusRequestSchema);
+  const { reading, cursor } = await parseBody(req, profileRequestSchema);
   const subject = actor.kind === 'user' ? `user:${actor.user.id}` : `guest:${actor.guest.id}`;
   await enforce([
     { key: `feed:${subject}`, limitKey: 'rateLimit.feed.perMinute', windowSeconds: 60 },
@@ -38,9 +38,10 @@ export const POST = route<UsernameCtx>(async (req, ctx) => {
   }
   const viewerUserId = actor.kind === 'user' ? actor.user.id : null;
   const { id, profile } = await getPublicProfile(username, viewerUserId);
-  const posts =
+  // D112: a page of posts (10) and a bookmark for "Load more posts".
+  const page =
     me && viewerUserId
-      ? await listMyPosts(viewerUserId, at)
-      : await listAuthorPosts(id, viewerUserId ?? NO_USER, at!);
-  return NextResponse.json({ profile, posts });
+      ? await listMyPosts(viewerUserId, at, cursor)
+      : await listAuthorPosts(id, viewerUserId ?? NO_USER, at!, cursor);
+  return NextResponse.json({ profile, ...page });
 });

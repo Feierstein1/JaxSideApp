@@ -195,8 +195,20 @@ describe('general posts and feed (P3.1, P3.1a)', () => {
   });
 
   // ✅ DV6: cursor paging has no duplicates or skips, even when new posts arrive mid-scroll.
+  // D112: 30 per page by default ("Load more posts" in the app).
+  it('the feed loads 30 posts at a time', async () => {
+    await liftLimits('rateLimit.post.perMinute', 'rateLimit.post.perDay');
+    for (let i = 1; i <= 31; i++) await post(alice, `post ${i}`);
+    const p1 = await feed(bob);
+    expect(bodies(p1)).toHaveLength(30);
+    expect(p1.body.nextCursor).toEqual(expect.any(String));
+  });
+
   it('pages newest-first without duplicates or skips while posts are added', async () => {
     await liftLimits('rateLimit.post.perMinute', 'rateLimit.post.perDay');
+    await db.appConfiguration.create({ data: { key: 'feed.pageSize', value: 15 } });
+    invalidateConfigCache();
+
     for (let i = 1; i <= 20; i++) await post(alice, `post ${i}`);
     const p1 = await feed(bob);
     expect(bodies(p1)).toHaveLength(15);
@@ -581,5 +593,35 @@ describe('your own posts, from anywhere (D105)', () => {
       (await profile(bob, FIVE_POINTS)).body.posts.map((p: { body: string }) => p.body),
     ).toEqual(['area post']);
     expect((await profile(bob, ORANGE_PARK)).body.error.code).toMatch(/^LOCATION_/);
+  });
+});
+
+// D112: profiles show 10 posts at a time with "Load more posts".
+describe('profile pages (D112)', () => {
+  it('10 posts at a time, newest first, with a bookmark for the next 10', async () => {
+    for (let i = 1; i <= 12; i++) {
+      await db.$executeRaw`
+        INSERT INTO "GeneralPost" (id, "authorId", body, location, "createdAt", "updatedAt")
+        VALUES (uuid_v7(), ${aliceId}::uuid, ${`post ${i}`},
+                ST_SetSRID(ST_MakePoint(-81.6853, 30.3149), 4326)::geography,
+                ${new Date(Date.now() - (13 - i) * 60_000)}, now())`;
+    }
+    const page = (token: string, cursor?: string) =>
+      call(profilePOST as H, 'POST', {
+        token,
+        params: { username: 'alice_p' },
+        body: { reading: reading(FIVE_POINTS), ...(cursor ? { cursor } : {}) },
+      });
+    for (const token of [alice, bob]) {
+      const first = await page(token);
+      expect(first.body.posts.map((p: { body: string }) => p.body)).toEqual(
+        Array.from({ length: 10 }, (_, i) => `post ${12 - i}`),
+      );
+      expect(first.body.nextCursor).toEqual(expect.any(String));
+      const second = await page(token, first.body.nextCursor);
+      expect(second.body.posts.map((p: { body: string }) => p.body)).toEqual(['post 2', 'post 1']);
+      expect(second.body.nextCursor).toBeNull();
+    }
+    expect((await page(alice, 'not-a-bookmark')).status).toBe(400);
   });
 });

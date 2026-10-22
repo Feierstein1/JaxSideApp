@@ -71,7 +71,6 @@ export const CONFIG_DEFAULTS = {
   /** Resolved Contact-us tickets. */
   'retention.resolvedContactDays': 730,
 
-
   // P2.13 / P2.14 directory
   'directory.pageSize': 20,
   /** D69: the Places list only shows places within this distance. */
@@ -82,13 +81,18 @@ export const CONFIG_DEFAULTS = {
   'directory.favoriteDistanceFactor': 0.25,
   'favorites.maxPerUser': 200,
   /** D76: friends per person, and requests waiting on others at once. */
-  'friends.max': 1000,
-  'friends.maxPendingOut': 100,
+  'friends.max': 30, // D111 (was 1000)
+  'friends.maxPendingOut': 30, // D111 (was 100): never more waiting than friends allowed
+
   /** D76 / D89: the friends feed covers posts from this many days. */
   'friends.activityDays': 3,
 
   // Phase 3 discussions (D41)
-  'feed.pageSize': 15,
+  /** D112: posts per page; the app shows a "Load more posts" button for the next 30. */
+  'feed.pageSize': 30,
+  /** D112: posts per page on a profile ("Load more posts" for the next 10). */
+  'profile.pageSize': 10,
+
   /** "Top" sort looks back this many days. */
   'feed.topWindowDays': 7,
   /**

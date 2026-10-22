@@ -376,36 +376,62 @@ export async function deletePost(kind: DiscussionKind, id: string, userId: strin
   });
 }
 
+/** "Before this post" for profile pages (D112), from a bookmark of the last post shown. */
+function profileAfter(cursor: string | undefined) {
+  const c = decodeCursor(cursor);
+  if (c && !('t' in c)) throw new ApiError(400, 'INVALID_CURSOR', 'Invalid page bookmark');
+  return c
+    ? Prisma.sql`AND (p."createdAt", p.id) < (${new Date(c.t)}::timestamptz, ${c.id}::uuid)`
+    : Prisma.empty;
+}
+
+/** Newest first, then by id: the same order the SQL pages in. */
+const newestFirst = (a: PostView, b: PostView) =>
+  b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id);
+
+function profilePage(posts: PostView[], size: number) {
+  const items = posts.slice(0, size);
+  const last = items[items.length - 1];
+  return {
+    posts: items,
+    nextCursor:
+      posts.length > size && last ? encodeCursor({ t: last.createdAt, id: last.id }) : null,
+  };
+}
+
 /**
  * D105: your own profile lists all your posts, area and place ones, wherever you are (you
- * can always open, edit or delete your own post). Newest first.
+ * can always open, edit or delete your own post). Newest first, D112: 10 at a time.
  */
-export async function listMyPosts(userId: string, at: GeoPoint | undefined, limit = 50) {
+export async function listMyPosts(userId: string, at: GeoPoint | undefined, cursor?: string) {
+  const size = await getConfig('profile.pageSize');
+  const after = profileAfter(cursor);
   const [general, business] = await Promise.all(
     (['general', 'business'] as const).map((kind) =>
       db.$queryRaw<PostRow[]>`${selectPosts(kind, userId, kind === 'general' ? at : undefined)}
-        WHERE p.status = 'VISIBLE' AND p."authorId" = ${userId}::uuid
-        ORDER BY p."createdAt" DESC, p.id DESC LIMIT ${limit}`.then((rows) =>
+        WHERE p.status = 'VISIBLE' AND p."authorId" = ${userId}::uuid ${after}
+        ORDER BY p."createdAt" DESC, p.id DESC LIMIT ${size + 1}`.then((rows) =>
         rows.map((r) => toView(r, kind, userId)),
       ),
     ),
   );
-  return [...general!, ...business!]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, limit);
+  return profilePage([...general!, ...business!].sort(newestFirst), size);
 }
 
-/** P4.8: an author's recent area-feed posts (business-room posts stay behind D19). */
-
+/** P4.8: an author's recent area-feed posts (business-room posts stay behind D19). D112: 10 at a time. */
 export async function listAuthorPosts(
   authorId: string,
   viewerId: string,
   at: GeoPoint,
-  limit = 10,
+  cursor?: string,
 ) {
+  const size = await getConfig('profile.pageSize');
   const rows = await db.$queryRaw<PostRow[]>`${selectPosts('general', viewerId, at)}
-    WHERE p.status = 'VISIBLE' AND p."authorId" = ${authorId}::uuid
+    WHERE p.status = 'VISIBLE' AND p."authorId" = ${authorId}::uuid ${profileAfter(cursor)}
       ${notBlocked(viewerId, Prisma.sql`p."authorId"`)}
-    ORDER BY p."createdAt" DESC, p.id DESC LIMIT ${limit}`;
-  return rows.map((r) => toView(r, 'general', viewerId));
+    ORDER BY p."createdAt" DESC, p.id DESC LIMIT ${size + 1}`;
+  return profilePage(
+    rows.map((r) => toView(r, 'general', viewerId)),
+    size,
+  );
 }

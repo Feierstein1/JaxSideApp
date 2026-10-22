@@ -47,18 +47,18 @@ sheets, policy pages. The admin portal keeps the light `COLORS`.
 
 **In mobile code use `DARK` from `@jax/shared`, never `COLORS`.** Layers, darkest first:
 
-| Token                                   | Hex       | Use                                                         |
-| --------------------------------------- | --------- | ----------------------------------------------------------- |
-| `bar`                                   | `#000000` | Header, tab bar, and the control block under the header     |
-| `page`                                  | `#1E1F22` | Every screen's background                                   |
-| `card`                                  | `#2B2D31` | Posts, places, grouped lists, sheets                        |
-| `raised`                                | `#383A40` | Inputs, pills, chips, icon buttons                          |
-| `text`                                  | `#F2F3F5` | Main text                                                   |
-| `textMuted`                             | `#B5BAC1` | Secondary text                                              |
-| `accent`                                | gold      | Main buttons (black text), links, active tab, focus, stars  |
-| `teal`                                  | teal      | Switches, selected fills (white text)                       |
-| `tealText`                              | `#6CC5D4` | Teal for text and icons ("Confirmed", upvotes, post counts) |
-| `accentSoft` / `tealSoft` / `errorSoft` | tints     | Notice and status backgrounds                               |
+| Token                                   | Hex       | Use                                                                        |
+| --------------------------------------- | --------- | -------------------------------------------------------------------------- |
+| `bar`                                   | `#000000` | Header, tab bar, and the control block under the header                    |
+| `page`                                  | `#1E1F22` | Every screen's background                                                  |
+| `card`                                  | `#2B2D31` | Posts, places, grouped lists, sheets                                       |
+| `raised`                                | `#383A40` | Inputs, pills, chips, icon buttons                                         |
+| `text`                                  | `#F2F3F5` | Main text                                                                  |
+| `textMuted`                             | `#B5BAC1` | Secondary text                                                             |
+| `accent`                                | `#3DB8C9` | Main buttons (black text), links, active tab, focus (D110: teal, was gold) |
+| `teal`                                  | teal      | Switches, selected fills (white text)                                      |
+| `tealText`                              | `#6CC5D4` | Teal for text and icons ("Confirmed", upvotes, post counts)                |
+| `accentSoft` / `tealSoft` / `errorSoft` | tints     | Notice and status backgrounds                                              |
 
 Brand teal is too dark to read as text on these greys (2.1:1), so `tealText` is a light tint of
 it. Every text color is tested at 4.5:1 on `page`, `card` and `raised`, and input outlines

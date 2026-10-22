@@ -156,12 +156,25 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ## 7a. Places map (D99)
 
+- [ ] (D113) Places show as their category icons in their colors. Tap one: a small card shows
+      its name, posts and favorites. Tap the card or the place again: the place opens. Tap
+      elsewhere on the map: the card closes.
+- [ ] (D113) Open the map, leave, and open it again (even with weak signal): the streets appear
+      right away (kept on the phone for a week).
+
 - [ ] Places → the **map** button next to the filter: a dark map of Jacksonville with your spot in
       gold and nearby places as dots in their category colors. Pinch and drag work; it doesn't
       go far outside Duval.
 - [ ] Zoom in: place names appear under the dots; street names show on the map.
 - [ ] Tap a dot: that place opens. Back returns to the map.
 - [ ] The **list** button switches back. The "© OpenStreetMap contributors" credit is visible.
+
+## 7j. Colors, limits and paging (D110–D112)
+
+- [ ] Buttons, links and the active tab are teal (no gold except medals).
+- [ ] Home and a place's discussion show 30 posts, then a **Load more posts** button.
+- [ ] A profile shows 10 posts, then **Load more posts** for 10 more.
+- [ ] With 30 friends, sending or accepting another request says the limit is 30.
 
 ## 7h. Your own posts, anywhere (D105)
 

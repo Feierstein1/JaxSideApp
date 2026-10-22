@@ -51,7 +51,32 @@ export const CATEGORY_COLORS: Record<(typeof CATEGORY_GROUPS)[number]['key'] | '
   other: '#37474F', // slate
 };
 
+/**
+ * D78: the icon (an Ionicons name) for each category group: the list's pill and tile, the
+ * filter chips and, D113, the map's markers.
+ */
+export const CATEGORY_ICONS: Record<(typeof CATEGORY_GROUPS)[number]['key'] | 'other', string> = {
+  food: 'restaurant',
+  coffee: 'cafe',
+  bars: 'beer',
+  outdoors: 'leaf',
+  shopping: 'bag-handle',
+  fun: 'ticket',
+  services: 'car',
+  lodging: 'bed',
+  fitness: 'barbell', // D89
+  faith: 'heart', // D105
+  other: 'location',
+};
+
+/** The group key of a category ("other" if it's in none). */
+export function categoryGroup(category: string): keyof typeof CATEGORY_ICONS {
+  const group = CATEGORY_GROUPS.find((g) => (g.categories as readonly string[]).includes(category));
+  return group?.key ?? 'other';
+}
+
 /** The color for a place's category (via its group; anything ungrouped is "other"). */
+
 export function categoryColor(category: string): string {
   const group = CATEGORY_GROUPS.find((g) => (g.categories as readonly string[]).includes(category));
   return CATEGORY_COLORS[group?.key ?? 'other'];

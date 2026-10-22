@@ -34,7 +34,8 @@ export const GET = route(async (req) => {
       ...common,
       'Content-Type': 'application/octet-stream',
       'Content-Range': `bytes ${r.start}-${r.end}/${r.size}`,
-      'Cache-Control': 'private, max-age=86400',
+      // D113: the phone keeps map tiles for a week (the link changes if the map does).
+      'Cache-Control': 'private, max-age=604800, immutable',
     },
   });
 });

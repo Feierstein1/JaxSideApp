@@ -25,6 +25,9 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
   const { isGuest } = useGuest();
   const [profile, setProfile] = useState<PublicProfile>();
   const [posts, setPosts] = useState<PostView[]>([]);
+  /** D112: bookmark for "Load more posts" (10 at a time). */
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -33,12 +36,14 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
     setError(undefined);
     try {
       const reading = await getFreshReading();
-      const res = await api.post<{ profile: PublicProfile; posts: PostView[] }>(
-        `/api/v1/users/${encodeURIComponent(username)}`,
-        { reading },
-      );
+      const res = await api.post<{
+        profile: PublicProfile;
+        posts: PostView[];
+        nextCursor: string | null;
+      }>(`/api/v1/users/${encodeURIComponent(username)}`, { reading });
       setProfile(res.profile);
       setPosts(res.posts);
+      setNextCursor(res.nextCursor);
     } catch (e) {
       setError(
         e instanceof ApiRequestError && e.status === 404
@@ -53,6 +58,24 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const reading = await getFreshReading();
+      const res = await api.post<{ posts: PostView[]; nextCursor: string | null }>(
+        `/api/v1/users/${encodeURIComponent(username)}`,
+        { reading, cursor: nextCursor },
+      );
+      setPosts((prev) => [...prev, ...res.posts.filter((p) => !prev.some((x) => x.id === p.id))]);
+      setNextCursor(res.nextCursor);
+    } catch (e) {
+      setError(e instanceof ApiRequestError ? e.message : 'Couldn’t load more posts.');
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   async function setBlocked(blocked: boolean) {
     setBusy(true);
@@ -286,6 +309,16 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
           }
         />
       ))}
+      {nextCursor ? (
+        <Button
+          variant="secondary"
+          title="Load more posts"
+          icon="chevron-down"
+          busy={loadingMore}
+          onPress={() => void loadMore()}
+          style={{ marginHorizontal: 16, marginVertical: 12 }}
+        />
+      ) : null}
 
       <ReportSheet
         target={reporting ? { type: 'user', username: profile.username } : undefined}

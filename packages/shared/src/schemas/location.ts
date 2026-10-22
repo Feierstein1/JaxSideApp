@@ -21,6 +21,12 @@ export const locationStatusRequestSchema = z.strictObject({
   reading: locationReadingSchema,
 });
 
+/** D112: a profile and a page of its posts ("Load more posts" sends the bookmark back). */
+export const profileRequestSchema = z.strictObject({
+  reading: locationReadingSchema,
+  cursor: z.string().max(200).optional(),
+});
+
 /** Why a location check failed. The app maps each to a helpful message. */
 export const LOCATION_DENIAL_CODES = [
   'LOCATION_STALE',

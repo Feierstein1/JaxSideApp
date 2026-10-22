@@ -5,13 +5,13 @@ import { DARK, type PostView } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Text } from '@/text';
-import { EmptyState, ErrorState, type IconName } from '@/ui';
+import { Button, EmptyState, ErrorState, type IconName } from '@/ui';
 import { takeFeedsDirty, type PostPage } from './api';
 import { PostCard, PostSkeleton } from './PostCard';
 
 /**
- * A paginated list of posts (P3.5, P3.11): loads one page, then the next as you scroll
- * near the bottom; pull down to refresh. Shared by the area feed and place rooms.
+ * A paginated list of posts (P3.5, P3.11): one page (30, D112), then a "Load more posts"
+ * button for the next; pull down to refresh. Shared by the area feed and place rooms.
  */
 export function PostList({
   load,
@@ -129,6 +129,15 @@ export function PostList({
         ListFooterComponent={
           state === 'more' ? (
             <ActivityIndicator style={{ margin: 16 }} color={DARK.accent} />
+          ) : cursor && state === 'idle' ? (
+            // D112: more only when asked for, so the list stays a sensible length.
+            <Button
+              variant="secondary"
+              title="Load more posts"
+              icon="chevron-down"
+              onPress={() => void fetchPage('more', cursor)}
+              style={{ marginHorizontal: 16, marginVertical: 12 }}
+            />
           ) : posts.length > 2 && !cursor && state === 'idle' ? (
             // D78: the end of the list says so, instead of just stopping.
             <View
@@ -140,10 +149,7 @@ export function PostList({
             </View>
           ) : null
         }
-        onEndReachedThreshold={0.5}
-        onEndReached={() => {
-          if (state === 'idle' && cursor) void fetchPage('more', cursor);
-        }}
+
         refreshControl={
           <RefreshControl
             refreshing={state === 'refreshing'}

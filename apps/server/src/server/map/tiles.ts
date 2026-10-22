@@ -15,6 +15,7 @@ import { findRepoRoot } from '../repo-root';
 export const MAP_BOUNDS: [number, number, number, number] = [-82.06, 30.09, -81.3, 30.6];
 export const MAP_ATTRIBUTION = '© OpenStreetMap contributors · Protomaps';
 const LINK_TTL_SECONDS = 86_400;
+const WEEK_SECONDS = 7 * 86_400;
 
 export function tilesFile(): string {
   return (
@@ -36,10 +37,26 @@ function sig(kind: string, exp: number) {
     .digest('base64url');
 }
 
-/** A link valid for about a day (rounded so the phone can cache the map). */
-export function signedMapUrl(kind: 'tiles' | 'page', now = new Date()) {
-  const exp = Math.ceil(now.getTime() / 1000 / 3600) * 3600 + LINK_TTL_SECONDS;
-  return `/api/v1/map/${kind}?exp=${exp}&sig=${sig(kind, exp)}`;
+/**
+ * A signed link. The page's lasts about a day. D113: the tiles' link stays the same for a
+ * whole week (and is valid for another), so the phone's web cache keeps the downloaded map
+ * for a week instead of fetching it again each hour; `v` changes when the map file does, so
+ * a refreshed map isn't stuck behind the cache.
+ */
+export function signedMapUrl(kind: 'tiles' | 'page', now = new Date(), version?: string) {
+  const secs = now.getTime() / 1000;
+  const exp =
+    kind === 'tiles'
+      ? Math.ceil(secs / WEEK_SECONDS) * WEEK_SECONDS + WEEK_SECONDS
+      : Math.ceil(secs / 3600) * 3600 + LINK_TTL_SECONDS;
+  const v = version ? `&v=${encodeURIComponent(version)}` : '';
+  return `/api/v1/map/${kind}?exp=${exp}&sig=${sig(kind, exp)}${v}`;
+}
+
+/** D113: changes whenever the map file is replaced (size and modified time). */
+export async function tilesVersion(): Promise<string> {
+  const info = await stat(tilesFile()).catch(() => null);
+  return info ? `${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}` : 'none';
 }
 
 export function checkMapSignature(
