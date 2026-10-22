@@ -3,7 +3,9 @@ import { PrismaClient } from '@/generated/prisma/client';
 import { getEnv } from './env';
 
 function createClient() {
-  const adapter = new PrismaPg({ connectionString: getEnv().DATABASE_URL });
+  const env = getEnv();
+  // P13.9: an explicit pool size (docs/PRODUCTION_DATABASE.md).
+  const adapter = new PrismaPg({ connectionString: env.DATABASE_URL, max: env.DATABASE_POOL_MAX });
   return new PrismaClient({ adapter });
 }
 

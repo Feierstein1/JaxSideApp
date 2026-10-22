@@ -73,7 +73,9 @@ plus $25 once for Google and ~$15/year for the domain.
    behind an IP allow-list later.
 2. Production secrets in Parameter Store; master keys backed up offline (`docs/KEY_MANAGEMENT.md`).
 3. SES out of the sandbox, with SPF/DKIM/DMARC on the domain.
-4. RDS backups on; one restore drill done (P7.4).
+4. RDS backups on; one restore drill done (P7.4). Database role, timeouts, extensions,
+   `pg_stat_statements` and connection limits as in `docs/PRODUCTION_DATABASE.md` (P13.9).
+
 5. The app built with the production API address (EAS), App Store / Play listings (P7.10).
 
 Sources checked 2026-10-16:

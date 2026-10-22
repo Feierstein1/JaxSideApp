@@ -41,6 +41,8 @@ export const envSchema = z
       .transform((v) => v === 'true'),
 
     DATABASE_URL: postgresUrl,
+    /** P13.9: connections each server process keeps open (behind a pooler, keep it small). */
+    DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
     TEST_DATABASE_URL: postgresUrl.optional(),
 
     SESSION_SECRET: secret(32),
