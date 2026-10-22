@@ -2,6 +2,17 @@
 
 External data used by the app: where it comes from, its license, and how to refresh it.
 
+## ZIP code areas (D116)
+
+|               |                                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **What**      | 2020 Census ZIP Code Tabulation Areas (ZCTAs) intersecting the Duval map area: 52 areas                                          |
+| **Source**    | US Census Bureau TIGERweb, layer "2020 Census ZIP Code Tabulation Areas", queried by bounding box (-82.06, 30.09, -81.30, 30.60) |
+| **File**      | `apps/server/data/boundaries/duval-zcta-2020.geojson`, loaded into `ZipArea` by the seed                                         |
+| **Retrieved** | 2026-10-22                                                                                                                       |
+| **License**   | Public domain (US Government work)                                                                                               |
+| **Note**      | ZCTAs approximate USPS ZIP codes; used only for the anonymous area counts                                                        |
+
 ## Service area boundary: Duval County (D15)
 
 |                |                                                                                                                                                          |

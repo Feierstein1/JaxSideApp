@@ -60,6 +60,7 @@ import * as friendDecline from '@/app/api/v1/friends/requests/[id]/decline/route
 import * as friend from '@/app/api/v1/friends/[username]/route';
 import * as notificationsRead from '@/app/api/v1/notifications/read/route';
 import * as friendPrivacy from '@/app/api/v1/me/friend-privacy/route';
+import * as areaStats from '@/app/api/v1/me/area-stats/route';
 import * as meAvatar from '@/app/api/v1/me/avatar/route';
 import * as meColor from '@/app/api/v1/me/color/route';
 import * as submissions from '@/app/api/v1/submissions/route';
@@ -552,6 +553,15 @@ const ROWS: Row[] = [
     id: null,
     location: false,
     body: () => ({ hidePostsFromFriends: true }),
+  },
+  {
+    route: 'me/area-stats',
+    method: 'PATCH',
+    handler: h(areaStats, 'PATCH'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ optOut: true }),
   },
   // D75: likewise the body is the recording itself (voice.test.ts).
   {

@@ -12,6 +12,7 @@ import { logger } from '../logger';
 import { deleteInBatches } from './batch';
 import { withJobLock } from './lock';
 import { runRetention, type RetentionReport } from './retention';
+import { runAreaStats, type AreaStatsReport } from '../stats/rollup';
 
 const DAY_MS = 86_400_000;
 /** Arbitrary constant identifying this job's Postgres advisory lock. */
@@ -38,6 +39,8 @@ export interface MaintenanceReport extends Partial<Omit<RetentionReport, 'notifi
   placeChangesExpired?: number;
   removedPlacePostsDeleted?: number;
   messageEvidencePurged?: number;
+  /** D116: the anonymous area statistics counted tonight. */
+  areaStats?: AreaStatsReport;
 }
 
 /**
@@ -139,6 +142,7 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
     removedPlacePostsDeleted: await purgeRemovedPlacePosts(now),
     // D98: message snapshots on reports are kept for a year.
     messageEvidencePurged: await purgeOldMessageEvidence(now),
+    areaStats: await runAreaStats(now),
   };
   logger.info({ report }, 'maintenance complete');
   return report;

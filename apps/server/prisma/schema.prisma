@@ -334,6 +334,8 @@ model UserSettings {
   businessRadiusMiles  Float?
   /// D76: left out of the friends feed.
   hidePostsFromFriends Boolean  @default(false)
+  /// D116: left out of the anonymous area statistics (Account → Settings).
+  areaStatsOptOut      Boolean  @default(false)
   updatedAt            DateTime @updatedAt @db.Timestamptz(3)
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -450,6 +452,7 @@ model BusinessPlace {
 
   removals    PlaceRemoval[]
   ownerClaims OwnerClaim[]
+  placeStats  PlaceStatsDaily[]
 
   @@unique([sourceName, sourceId])
   @@index([location], type: Gist)
@@ -1219,4 +1222,107 @@ model RateLimitCounter {
 
   @@id([key, windowStart])
   @@index([expiresAt])
+}
+
+// ───────────────────── D116: anonymous area statistics ─────────────────────
+// "Count, don't record": per-person rows exist only until their week and month are counted,
+// carry no account ID and no coordinates, and become unlinkable when the period's key is
+// destroyed. Everything kept long-term is a count.
+
+/// Census 2020 ZIP Code Tabulation Areas around Duval (public domain), for area counts.
+model ZipArea {
+  zip  String                                        @id @db.Char(5)
+  geom Unsupported("geography(MultiPolygon, 4326)")?
+
+  @@index([geom], type: Gist)
+}
+
+/// The secret key for one week ("week:2026-10-19") or month ("month:2026-10"), wrapped by the
+/// master key. Deleted (destroyed) once that period is counted.
+model VisitKey {
+  period     String   @id @db.VarChar(20)
+  keyWrapped Bytes
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+}
+
+/// One person seen in one ZIP on one local day (scratch, deleted after counting). The visitor
+/// codes are keyed hashes of the account ID (16 bytes), never the ID.
+model AreaVisit {
+  day          DateTime @db.Date
+  zip          String   @db.Char(5)
+  visitorMonth Bytes
+  visitorWeek  Bytes
+  /// Parts of the day seen: 1 morning (6–12), 2 afternoon (12–17), 4 evening (17–22), 8 night.
+  dayparts     Int      @db.SmallInt
+
+  @@id([day, zip, visitorMonth])
+}
+
+/// Distinct people per ZIP per local day, and per part of the day.
+model AreaStatsDaily {
+  day          DateTime @db.Date
+  zip          String   @db.Char(5)
+  visitors     Int
+  morning      Int
+  afternoon    Int
+  evening      Int
+  night        Int
+  /// Seen in this ZIP for the first time this month.
+  newThisMonth Int
+
+  @@id([day, zip])
+}
+
+/// Distinct people per ZIP per week (Monday start).
+model AreaStatsWeekly {
+  weekStart DateTime @db.Date
+  zip       String   @db.Char(5)
+  visitors  Int
+
+  @@id([weekStart, zip])
+}
+
+/// Distinct people per ZIP per month, and their visit-days (visitDays / visitors = average days).
+model AreaStatsMonthly {
+  month     DateTime @db.Date
+  zip       String   @db.Char(5)
+  visitors  Int
+  visitDays Int
+
+  @@id([month, zip])
+}
+
+/// People seen in both ZIPs on the same day ("also visited"), zipA < zipB.
+model AreaFlowDaily {
+  day      DateTime @db.Date
+  zipA     String   @db.Char(5)
+  zipB     String   @db.Char(5)
+  visitors Int
+
+  @@id([day, zipA, zipB])
+}
+
+/// Activity at a place per local day, from location-verified posts and comments, favorites and
+/// votes. Places of worship are never included.
+model PlaceStatsDaily {
+  day       DateTime      @db.Date
+  placeId   String        @db.Uuid
+  posts     Int
+  comments  Int
+  /// Distinct people who posted or commented there (both need you within 528 yd).
+  people    Int
+  favorites Int
+  votes     Int
+  place     BusinessPlace @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@id([day, placeId])
+  @@index([placeId])
+}
+
+/// Which days, weeks and months have been counted (so the job never counts twice).
+model StatsRollup {
+  kind   String   @db.VarChar(10)
+  period DateTime @db.Date
+
+  @@id([kind, period])
 }

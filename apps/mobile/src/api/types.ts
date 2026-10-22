@@ -14,6 +14,8 @@ export interface MeUser {
   radiusMiles: number | null;
   /** D76: left out of the friends feed. */
   hidePostsFromFriends: boolean;
+  /** D116: left out of the anonymous area statistics. */
+  areaStatsOptOut: boolean;
 }
 
 export interface LoginResponse {

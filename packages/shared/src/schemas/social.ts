@@ -16,6 +16,8 @@ export const friendRequestSchema = z.strictObject({
 export const markNotificationsReadSchema = z.strictObject({});
 /** D76: "Hide my recent posts from friends". */
 export const friendPrivacySchema = z.strictObject({ hidePostsFromFriends: z.boolean() });
+/** D116: leave me out of the anonymous area statistics. */
+export const areaStatsPreferenceSchema = z.strictObject({ optOut: z.boolean() });
 
 /** Your relationship with someone, as their profile shows it. */
 export type FriendshipState = 'none' | 'requested' | 'incoming' | 'friends';

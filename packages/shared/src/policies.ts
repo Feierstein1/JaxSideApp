@@ -23,7 +23,7 @@ const DRAFT: PolicySection = {
   heading: 'Beta',
   body: 'Jax is in beta. These policies may change as the app grows; we’ll update the date above when they do.',
 };
-const UPDATED = '2026-10-21';
+const UPDATED = '2026-10-22';
 
 export const POLICIES: Record<PolicyKey, Policy> = {
   terms: {
@@ -94,6 +94,10 @@ export const POLICIES: Record<PolicyKey, Policy> = {
         body: 'If you verify that you own a business, we use the business email address you give only once, to send a code (we keep just its domain); a website link or a phone call to the business’s listed number may be checked by our team. In a dispute we may ask for proof of ownership (for example ID or a Florida business record) outside the app; those documents are deleted once the question is settled. Your Owner tag shows only on your posts in that business’s discussion.',
       },
       {
+        heading: 'Area statistics',
+        body: 'When you open Jax, we count that someone used the app in your ZIP code that day, and in which part of the day (morning, afternoon, evening or night), to see which parts of Jacksonville are busy. We also count activity in place discussions. Only totals are kept. Your exact location and your account are never part of them: a coded entry that can’t be traced back to you is kept for the rest of the month so you count once, then deleted, and the code’s key is destroyed. Small groups (fewer than 10 people) are never shown. You can turn this off in Account → Settings.',
+      },
+      {
         heading: 'Sharing',
         body: 'We don’t sell your information or show ads. We share information only when the law requires it, for example a valid legal request or a mandatory report of child sexual abuse material.',
       },
@@ -157,7 +161,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       DRAFT,
       {
         heading: 'Location readings',
-        body: 'Exact location readings are saved only for actions that add or change something, and are deleted after 30 days. Readings used only to show you content are never saved.',
+        body: 'Exact location readings are saved only for actions that add or change something, and are deleted after 30 days. Readings used only to show you content are never saved. For area statistics, only your ZIP code and the part of the day are noted, under a code that can’t be traced back to you; these entries are deleted after the month (sooner for weekly counts), and only totals are kept.',
       },
       {
         heading: 'Guest mode',

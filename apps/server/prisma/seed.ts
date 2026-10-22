@@ -13,6 +13,7 @@ import { encryptedEmailFields } from '../src/server/crypto/field-encryption';
 import { uuidv7 } from '../src/server/crypto/uuid';
 import { readBoundaryFile } from '../src/server/location/boundary-file';
 import { importServiceArea } from '../src/server/location/service-area';
+import { importZipAreas } from '../src/server/stats/zip-areas';
 import {
   ACHIEVEMENTS,
   CONFIG_DESCRIPTIONS,
@@ -37,6 +38,7 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
   }
 
   await importServiceArea(db, readBoundaryFile());
+  await importZipAreas(db); // D116
 
   for (const r of STARTER_SCREENING_RULES) {
     await db.screeningRule.upsert({

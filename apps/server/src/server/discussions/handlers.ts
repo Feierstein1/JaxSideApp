@@ -53,6 +53,8 @@ import {
   postAnchor,
 } from './posts';
 import { nearestNeighborhood } from '../location/neighborhood';
+import { logger } from '../logger';
+import { recordAreaVisit } from '../stats/area-visits';
 import { holdFor, holdReport, screenText, type Hold } from '../moderation/screening';
 import { checkEdit, checkNewContent } from '../moderation/spam';
 import { castVote } from './votes';
@@ -149,6 +151,13 @@ export async function feed(req: Request) {
   const input = await parseBody(req, feedRequestSchema);
   await limitsFor(actorKey(actor), READ);
   const at = await assertLocationEligible(locationActor(actor), input.reading, 'general.read');
+  // D116: opening the feed (its first page) counts toward the anonymous area statistics.
+  // Never holds up or fails the feed.
+  if (actor.kind === 'user' && !input.cursor) {
+    await recordAreaVisit(actor.user.id, at).catch((err: unknown) =>
+      logger.warn({ err }, 'area visit not recorded'),
+    );
+  }
   const viewer =
     actor.kind === 'user'
       ? { id: actor.user.id, generalRadiusMiles: await radiusPreference(actor.user.id) }

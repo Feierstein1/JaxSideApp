@@ -300,6 +300,11 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] TalkBack / VoiceOver reads "Page 1 of 3: Do"; with reduce motion on, the guide appears
       without sliding.
 
+## 7k. Area statistics (D116)
+
+- [ ] Account shows "Include me in area statistics" (on), with an explanation. Turning it off and on saves.
+- [ ] Privacy Policy has the "Area statistics" section.
+
 ## 8. Profiles and blocking
 
 - [ ] Tap a username on a post or comment: profile shows bio, join date, post count, recent posts.

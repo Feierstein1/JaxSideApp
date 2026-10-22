@@ -415,6 +415,15 @@ function Settings() {
     }
   }
 
+  async function setAreaStats(optOut: boolean) {
+    try {
+      await api.patch('/api/v1/me/area-stats', { optOut });
+      await refresh();
+    } catch (e) {
+      setError(e instanceof ApiRequestError ? e.message : 'Couldn’t save.');
+    }
+  }
+
   async function setRadius(miles: number) {
     try {
       await api.patch('/api/v1/me/preferences', { radiusMiles: miles });
@@ -496,6 +505,26 @@ function Settings() {
               accessibilityLabel="Hide my recent posts from friends"
               value={user.hidePostsFromFriends}
               onValueChange={(v) => void setHidePosts(v)}
+              {...switchColors}
+            />
+          }
+        />
+      </ListGroup>
+
+      {/* D116: the anonymous area statistics, on unless you turn them off. */}
+      <ListGroup
+        title="Area statistics"
+        footer="Jax counts how many people use the app in each ZIP code, by day and part of the day, to show which parts of Jacksonville are busy. Only totals are kept: never who you are or your exact location, and nothing about you is kept after the month."
+      >
+        <ListRow
+          icon="stats-chart-outline"
+          label="Include me in area statistics"
+          detail={user.areaStatsOptOut ? 'Off: you aren’t counted' : 'On'}
+          right={
+            <Switch
+              accessibilityLabel="Include me in the anonymous area statistics"
+              value={!user.areaStatsOptOut}
+              onValueChange={(v) => void setAreaStats(!v)}
               {...switchColors}
             />
           }

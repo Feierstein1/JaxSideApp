@@ -15,7 +15,11 @@ interface UserLike {
   /** D108: bio, photo and account color. */
   profile?: { bio: string | null; avatarPhotoId: string | null; color?: string } | null;
   /** D108: private preferences (no row = defaults). */
-  settings?: { generalRadiusMiles: number | null; hidePostsFromFriends: boolean } | null;
+  settings?: {
+    generalRadiusMiles: number | null;
+    hidePostsFromFriends: boolean;
+    areaStatsOptOut?: boolean;
+  } | null;
 }
 
 /** Anything other users can see. */
@@ -49,6 +53,8 @@ export interface MeUser extends PublicUser {
   radiusMiles: number | null;
   /** D76: left out of the friends feed. */
   hidePostsFromFriends: boolean;
+  /** D116: left out of the anonymous area statistics. */
+  areaStatsOptOut: boolean;
 }
 
 export function toMe(u: UserLike & { email: string; emailVerifiedAt: Date | null }): MeUser {
@@ -58,6 +64,7 @@ export function toMe(u: UserLike & { email: string; emailVerifiedAt: Date | null
     emailVerified: u.emailVerifiedAt !== null,
     radiusMiles: u.settings?.generalRadiusMiles ?? null,
     hidePostsFromFriends: u.settings?.hidePostsFromFriends ?? false,
+    areaStatsOptOut: u.settings?.areaStatsOptOut ?? false,
   };
 }
 

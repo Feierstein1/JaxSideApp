@@ -2,7 +2,7 @@ import { Prisma } from '@/generated/prisma/client';
 import { db } from '../db';
 
 /** Tables the cleanup jobs delete from in batches. */
-type PurgeTable = 'Session' | 'EmailToken' | 'Notification' | 'RateLimitCounter';
+type PurgeTable = 'Session' | 'EmailToken' | 'Notification' | 'RateLimitCounter' | 'AreaVisit';
 
 export const PURGE_BATCH = 5000;
 
