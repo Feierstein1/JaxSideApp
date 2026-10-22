@@ -296,7 +296,7 @@ describe('comments (P3.3, D20)', () => {
     expect((await comment(bob, p, 'from up the street', undefined, NEAR)).status).toBe(201);
     const far = await comment(bob, p, 'from Memorial Park', undefined, MEMORIAL);
     expect(far.body.error.code).toBe('LOCATION_TOO_FAR');
-    expect(far.body.error.message).toBe('Get within 528 yd of this post to take part.');
+    expect(far.body.error.message).toBe('Get within 530 yd of this post to take part.'); // shown rounded
   });
 
   // D105: post → comment → reply, nothing deeper.

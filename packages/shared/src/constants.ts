@@ -265,7 +265,11 @@ export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
 export const RADIUS_OPTIONS_MILES = [0.1, 0.2, 0.3] as const;
 export type RadiusMiles = (typeof RADIUS_OPTIONS_MILES)[number];
 
-/** "176 yd", "528 yd": distances up to a mile are shown in yards (D71). */
+/**
+ * "175 yd", "530 yd": distances up to a mile are shown in yards (D71), rounded to the nearest
+ * 5 so the choices read as round numbers (user 2026-10-22). 0.1 / 0.2 / 0.3 mi are 176 / 352 /
+ * 528 yd exactly, so the label is never more than 2 yd off.
+ */
 export function yardsLabel(miles: number): string {
-  return `${Math.round(miles * 1760)} yd`;
+  return `${Math.round((miles * 1760) / 5) * 5} yd`;
 }

@@ -108,7 +108,7 @@ export const GUIDES: Record<GuideKey, Guide> = {
       {
         kind: 'info',
         items: [
-          'Place discussions open only within about 528 yards of the place.',
+          'Place discussions open only within about 530 yards of the place.',
           'Own or work at this place? Say so in your post. Owners can get a verified Owner tag (“I own this place” on the place page). Repeated promotions aren’t allowed.',
         ],
       },
@@ -138,7 +138,7 @@ export const GUIDES: Record<GuideKey, Guide> = {
       {
         kind: 'info',
         items: [
-          'Commenting and voting need you within about 528 yards of the post.',
+          'Commenting and voting need you within about 530 yards of the post.',
           'If a thread gets heated, you can leave it, or block someone without them being told.',
         ],
       },

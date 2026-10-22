@@ -28,6 +28,7 @@ import { haptic } from '@/motion';
 import { categoryIcon } from '@/places/PlaceHeader';
 import { social } from '@/social/api';
 import { Text, TextInput } from '@/text';
+import { showAlert } from '@/dialog';
 import { GUTTER, RADIUS, SPACE, TYPE } from '@/tokens';
 import {
   Button,
@@ -514,7 +515,7 @@ function Settings() {
       {/* D116: the anonymous area statistics, on unless you turn them off. */}
       <ListGroup
         title="Area statistics"
-        footer="Jax counts how many people use the app in each ZIP code, by day and part of the day, to show which parts of Jacksonville are busy. Only totals are kept: never who you are or your exact location, and nothing about you is kept after the month."
+        footer="No personal data is collected and no one’s location is tracked. Jax only counts the total number of people who visited each area."
       >
         <ListRow
           icon="stats-chart-outline"
@@ -527,6 +528,22 @@ function Settings() {
               onValueChange={(v) => void setAreaStats(!v)}
               {...switchColors}
             />
+          }
+        />
+        <ListRow
+          icon="information-circle-outline"
+          label="See details"
+          onPress={() =>
+            showAlert(
+              'Area statistics',
+              [
+                'When you open Jax, we note that someone used the app in your ZIP code that day, and in which part of the day (morning, afternoon, evening or night). That’s all: never your exact location, your route, or who you are.',
+                'The note is under a code that can’t be traced back to you. It’s deleted after the month, and the code’s key is destroyed. Only totals are kept, like “120 people in 32205 on Saturday,” and groups under 10 people are never shown.',
+                'The totals show which parts of Jacksonville are busy, and may be shared with local businesses as totals only. Turn this off any time; you won’t be counted.',
+              ].join('\n\n'),
+              undefined,
+              { icon: 'stats-chart-outline' },
+            )
           }
         />
       </ListGroup>

@@ -243,7 +243,7 @@ export function FriendsManager({ embedded = false }: { embedded?: boolean }) {
                 <FriendRow
                   key={f.username}
                   user={f}
-                  subtitle={`Friends since ${new Date(f.since).toLocaleDateString('en-US', {
+                  footnote={`Friends since ${new Date(f.since).toLocaleDateString('en-US', {
                     month: 'short',
                     year: 'numeric',
                   })}`}

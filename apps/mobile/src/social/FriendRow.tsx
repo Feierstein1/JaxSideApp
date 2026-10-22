@@ -15,55 +15,66 @@ export function FriendRow({
   user,
   children,
   subtitle,
+  footnote,
 }: {
   user: FriendUser;
   children?: ReactNode;
   subtitle?: ReactNode;
+  /** A small one-line note along the bottom of the row, under the name (e.g. "Friends since"). */
+  footnote?: string;
 }) {
   const color = profileColor(user.color);
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: SPACE.md,
-        minHeight: 68,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-      }}
-    >
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={`Open ${user.username}'s profile`}
-        onPress={() => router.push(`/user/${encodeURIComponent(user.username)}`)}
-        style={({ pressed }) => ({
+    <View style={{ paddingHorizontal: 14, paddingVertical: 10 }}>
+      <View
+        style={{
           flexDirection: 'row',
           alignItems: 'center',
           gap: SPACE.md,
-          flex: 1,
-          opacity: pressed ? 0.7 : 1,
-        })}
+          minHeight: 48,
+        }}
       >
-        <ProfileAvatar
-          name={user.username}
-          url={user.avatarUrl}
-          size={44}
-          ringColor={color.hex}
-          fill={color.hex}
-        />
-        <View style={{ flex: 1 }}>
-          <Text numberOfLines={1} style={{ fontSize: 16, fontWeight: '800' }}>
-            {user.username}
-          </Text>
-          {subtitle ? (
-            <Text numberOfLines={2} style={[TYPE.caption, { color: DARK.textMuted }]}>
-              {subtitle}
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={`Open ${user.username}'s profile`}
+          onPress={() => router.push(`/user/${encodeURIComponent(user.username)}`)}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: SPACE.md,
+            flex: 1,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <ProfileAvatar
+            name={user.username}
+            url={user.avatarUrl}
+            size={44}
+            ringColor={color.hex}
+            fill={color.hex}
+          />
+          <View style={{ flex: 1 }}>
+            <Text numberOfLines={1} style={{ fontSize: 16, fontWeight: '800' }}>
+              {user.username}
             </Text>
-          ) : null}
-        </View>
-      </Pressable>
-      {children ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>{children}</View>
+            {subtitle ? (
+              <Text numberOfLines={2} style={[TYPE.caption, { color: DARK.textMuted }]}>
+                {subtitle}
+              </Text>
+            ) : null}
+          </View>
+        </Pressable>
+        {children ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>{children}</View>
+        ) : null}
+      </View>
+      {footnote ? (
+        <Text
+          numberOfLines={1}
+          style={{ color: DARK.textMuted, fontSize: 11.5, marginTop: 2, marginLeft: 44 + SPACE.md }}
+        >
+          {footnote}
+        </Text>
       ) : null}
     </View>
   );

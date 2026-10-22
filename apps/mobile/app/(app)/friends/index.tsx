@@ -20,7 +20,8 @@ import { FriendsManager } from './manage';
  */
 export default function FriendsFeed() {
   // D89: a switch between friend activity and your friends list, like Home's switches.
-  const [view, setView] = useState<'activity' | 'friends'>('activity');
+  // "Your friends" first and open by default (user 2026-10-22).
+  const [view, setView] = useState<'activity' | 'friends'>('friends');
   const [typed, setTyped] = useState('');
   const [q, setQ] = useState('');
   useEffect(() => {
@@ -67,12 +68,12 @@ export default function FriendsFeed() {
         <Segmented
           stretch
           options={[
-            { key: 'activity', label: 'Friend activity', icon: 'pulse' },
             {
               key: 'friends',
               label: incoming ? `Your friends (${incoming} new)` : 'Your friends',
               icon: 'people',
             },
+            { key: 'activity', label: 'Friend activity', icon: 'pulse' },
           ]}
           value={view}
           onChange={(v) => setView(v as 'activity' | 'friends')}

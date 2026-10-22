@@ -99,7 +99,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       },
       {
         heading: 'Sharing',
-        body: 'We don’t sell your information or show ads. We share information only when the law requires it, for example a valid legal request or a mandatory report of child sexual abuse material.',
+        body: 'We don’t sell your personal information or show ads. We may share or sell area statistics (totals such as how many people used Jax in a ZIP code, or how active a place’s discussion is) to Jacksonville businesses and organizations; they never include who you are, your account, your posts or your location, and groups under 10 people are never included. Otherwise we share information only when the law requires it, for example a valid legal request or a mandatory report of child sexual abuse material.',
       },
       {
         heading: 'Your choices',

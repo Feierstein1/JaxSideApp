@@ -67,7 +67,22 @@ async function markSeen(key: GuideKey) {
   }
 }
 
-export async function ensureGuide(key: GuideKey): Promise<boolean> {
+/**
+ * A guide already on its way for a key. Two calls at once (React runs a screen's first effect
+ * twice in development, or a double tap) share one showing, so a guide finished once never
+ * pops up again right after.
+ */
+const inFlight = new Map<GuideKey, Promise<boolean>>();
+
+export function ensureGuide(key: GuideKey): Promise<boolean> {
+  const pending = inFlight.get(key);
+  if (pending) return pending;
+  const run = ensureGuideOnce(key).finally(() => inFlight.delete(key));
+  inFlight.set(key, run);
+  return run;
+}
+
+async function ensureGuideOnce(key: GuideKey): Promise<boolean> {
   if (!who) return true; // signed out: nothing to guide
   try {
     const s = await loadSeen();

@@ -708,12 +708,15 @@ export function Segmented({
   value,
   onChange,
   stretch = false,
+  small = false,
 }: {
   options: { key: string; label: string; icon?: IconName }[];
   value: string;
   onChange: (key: string) => void;
   /** Fill the width, equal parts. */
   stretch?: boolean;
+  /** Smaller text and icons, so longer labels fit their pill. */
+  small?: boolean;
   /** Kept for older call sites; every control is dark now. */
   dark?: boolean;
 }) {
@@ -744,18 +747,21 @@ export function Segmented({
               {
                 flex: stretch ? 1 : undefined,
                 minHeight: 36,
-                paddingHorizontal: 14,
+                paddingHorizontal: small ? 8 : 14,
                 borderRadius: RADIUS.pill,
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexDirection: 'row',
-                gap: 6,
+                gap: small ? 4 : 6,
               },
               active && { backgroundColor: DARK.accent },
             ]}
           >
-            {o.icon ? <Ionicons name={o.icon} size={15} color={fg} /> : null}
-            <Text style={{ color: fg, fontWeight: active ? '800' : '600', fontSize: 14 }}>
+            {o.icon ? <Ionicons name={o.icon} size={small ? 13 : 15} color={fg} /> : null}
+            <Text
+              numberOfLines={1}
+              style={{ color: fg, fontWeight: active ? '800' : '600', fontSize: small ? 12.5 : 14 }}
+            >
               {o.label}
             </Text>
           </Pressable>

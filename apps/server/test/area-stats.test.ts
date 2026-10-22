@@ -203,3 +203,28 @@ describe('the nightly counting (D116)', () => {
     });
   });
 });
+
+describe('the admin report (P14.6)', () => {
+  it('reads the counts: people per day, unique people for a month, and hides small groups', async () => {
+    const { zipReport, flowReport, parsePeriod, shown, periods } =
+      await import('@/server/stats/report');
+    await recordAreaVisit(alice.id, FIVE_POINTS, local('2026-09-07', 9));
+    await recordAreaVisit(alice.id, FIVE_POINTS, local('2026-09-08', 18));
+    await recordAreaVisit(bob.id, FIVE_POINTS, local('2026-09-08', 23));
+    await recordAreaVisit(bob.id, JAX_BEACH, local('2026-09-08', 10));
+    await runAreaStats(local('2026-10-02', 12));
+
+    expect((await periods()).map((p) => p.key)).toContain('month:2026-09-01');
+    const sept = parsePeriod('month:2026-09-01');
+    const rows = await zipReport(sept);
+    const five = rows.find((r) => r.zip === '32204')!;
+    expect(five).toMatchObject({ visitorDays: 3, unique: 2, morning: 1, evening: 1, night: 1 });
+    expect(five.perDay).toBeCloseTo(3 / 30);
+    expect(await flowReport(sept)).toMatchObject([{ zipA: '32204', zipB: '32250', peopleDays: 1 }]);
+    // Small groups never show as numbers.
+    expect(shown(3)).toBe('<10');
+    expect(shown(12)).toBe('12');
+    expect(parsePeriod('30d')).toEqual({ kind: 'days', days: 30 });
+    expect(parsePeriod('nonsense')).toEqual({ kind: 'days', days: 7 });
+  });
+});

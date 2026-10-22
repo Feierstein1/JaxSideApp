@@ -295,6 +295,7 @@ export function Compose({
         {/* D80: pick the kind of post first. */}
         <Segmented
           stretch
+          small
           options={[
             { key: 'text', label: 'Text & photos', icon: 'create-outline' },
             { key: 'voice', label: 'Voice', icon: 'mic-outline' },
