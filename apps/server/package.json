@@ -20,6 +20,9 @@
     "import:boundary": "tsx --env-file=../../.env scripts/boundary/import-service-area.ts",
     "jobs:maintenance": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/jobs/run-maintenance.ts",
     "jobs:counters": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/jobs/run-counter-cleanup.ts",
+    "load:seed": "tsx --env-file-if-exists=../../.env --tsconfig tsconfig.json scripts/load/seed-load.ts",
+    "load:measure": "tsx --env-file-if-exists=../../.env --tsconfig tsconfig.json scripts/load/measure.ts",
+
     "admin:promote": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/admin/promote.ts",
     "e2e:live": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/e2e/live-check.ts",
     "docs:api": "tsx scripts/docs/api-reference.ts",

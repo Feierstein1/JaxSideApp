@@ -51,6 +51,16 @@ describe('the User row holds only the account (P13.8, D108)', () => {
     expect(await cols('Profile')).toContain('color');
   });
 
+  // 🔒 The User table's radius rule moved with the columns.
+  it('a radius must still be positive', async () => {
+    await expect(
+      db.userSettings.create({ data: { userId, generalRadiusMiles: 0 } }),
+    ).rejects.toThrow(/radius_positive/);
+    await expect(
+      db.userSettings.create({ data: { userId, businessRadiusMiles: -1 } }),
+    ).rejects.toThrow(/radius_positive/);
+  });
+
   it('no settings or profile row means the defaults', async () => {
     expect(await db.userSettings.count()).toBe(0);
     expect(await me()).toMatchObject({
