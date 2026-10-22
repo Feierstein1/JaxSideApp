@@ -50,6 +50,8 @@ export interface PostDetailResponse {
   commentsHidden: boolean;
   /** D105: the post reached its comment limit. */
   commentsLocked: boolean;
+  /** D115: close enough to comment (reading only needs Jacksonville; commenting the radius). */
+  canComment: boolean;
 }
 
 export async function fetchPost(kind: DiscussionKind, id: string) {

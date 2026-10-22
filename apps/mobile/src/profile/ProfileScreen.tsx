@@ -6,6 +6,8 @@ import { profileColor, type PostView, type PublicProfile, DARK } from '@jax/shar
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { useGuest } from '@/auth/guest';
+import { deletePost, markFeedsDirty } from '@/discussion/api';
+import { EditPostSheet } from '@/discussion/EditPostSheet';
 import { PostCard, PostSkeleton } from '@/discussion/PostCard';
 import { getFreshReading } from '@/location/device';
 import { ReportSheet } from '@/report/ReportSheet';
@@ -21,13 +23,25 @@ import { showAlert } from '@/dialog';
 import { ensureGuide } from '@/guides/guide';
 
 /** P4.8: someone's public profile and recent area posts, with Block (P5.2). */
-export function ProfileScreen({ username, postPath }: { username: string; postPath: string }) {
+export function ProfileScreen({
+  username,
+  postPath,
+  placePostPath = '/places/post',
+}: {
+  username: string;
+  /** Where an area post opens, in this tab's stack (e.g. "/post" or "/account/post"). */
+  postPath: string;
+  /** D115: where a place post opens (your own profile under Account keeps it in Account). */
+  placePostPath?: string;
+}) {
   const { isGuest } = useGuest();
   const [profile, setProfile] = useState<PublicProfile>();
   const [posts, setPosts] = useState<PostView[]>([]);
   /** D112: bookmark for "Load more posts" (10 at a time). */
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  /** D115: your own post being edited from the list. */
+  const [editingPost, setEditingPost] = useState<PostView>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -75,6 +89,40 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
     } finally {
       setLoadingMore(false);
     }
+  }
+
+  /** D115: the "•••" on each of your own posts: Edit or Delete, without opening it. */
+  function myPostMenu(p: PostView) {
+    openMenu('Your post', [
+      { label: 'Edit post', icon: 'create-outline', onPress: () => setEditingPost(p) },
+      {
+        label: 'Delete post',
+        icon: 'trash-outline',
+        destructive: true,
+        onPress: () =>
+          showAlert(
+            'Delete post?',
+            'This can’t be undone.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await deletePost(p.kind, p.id);
+                    markFeedsDirty();
+                    setPosts((all) => all.filter((x) => x.id !== p.id));
+                  } catch (e) {
+                    setError(e instanceof ApiRequestError ? e.message : 'Couldn’t delete.');
+                  }
+                },
+              },
+            ],
+            { icon: 'trash-outline' },
+          ),
+      },
+    ]);
   }
 
   async function setBlocked(blocked: boolean) {
@@ -302,9 +350,11 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
         <PostCard
           key={p.id}
           post={p}
+          showWhere={profile.isMe}
+          onMore={profile.isMe ? () => myPostMenu(p) : undefined}
           onOpen={() =>
             router.push(
-              (p.kind === 'business' ? `/places/post/${p.id}` : `${postPath}/${p.id}`) as never,
+              (p.kind === 'business' ? `${placePostPath}/${p.id}` : `${postPath}/${p.id}`) as never,
             )
           }
         />
@@ -320,6 +370,11 @@ export function ProfileScreen({ username, postPath }: { username: string; postPa
         />
       ) : null}
 
+      <EditPostSheet
+        post={editingPost}
+        onClose={() => setEditingPost(undefined)}
+        onSaved={() => void load()}
+      />
       <ReportSheet
         target={reporting ? { type: 'user', username: profile.username } : undefined}
         onClose={() => setReporting(false)}

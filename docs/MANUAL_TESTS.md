@@ -178,6 +178,12 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ## 7h. Your own posts, anywhere (D105)
 
+- [ ] (D115) Account → **View** opens your profile inside the Account tab. Back returns to Account.
+- [ ] (D115) Each of your posts shows where it was made (neighborhood or place name) and has a ••• menu
+      with Edit and Delete. Open one, then Back: you're on your profile again (not Places or Home).
+- [ ] (D115) Open one of your area posts from over 528 yd away: comments show, but instead of the
+      comment box it says "Get within 528 yd of this post to comment".
+
 - [ ] Account → **View profile**: the profile lists **Your posts**, area and place posts both,
       and the Posts number matches the list. Tapping a place post opens it.
 - [ ] Away from a post (across town, or outside Jacksonville): your own post still opens, with

@@ -12,6 +12,7 @@ import {
   editPostSchema,
   feedRequestSchema,
   listCommentsSchema,
+  milesToMeters,
   voteSchema,
   type ConfigKey,
   type DiscussionKind,
@@ -111,6 +112,19 @@ async function checkPostAccess(
       ? undefined
       : { kind, point: { latitude: anchor.latitude, longitude: anchor.longitude } };
   return assertLocationEligible(actor, reading, action, target);
+}
+
+/** D115: is this reading within the comment radius of the post? (Place posts: read = near.) */
+async function withinCommentRadius(kind: DiscussionKind, id: string, reading: LocationReading) {
+  if (kind === 'business') return true; // reading a place's post already needs its radius
+  const anchor = await postAnchor(kind, id);
+  const meters = milesToMeters(await getConfig('radius.general.maxMiles'));
+  const [row] = await db.$queryRaw<{ within: boolean }[]>`
+    SELECT ST_DWithin(
+      ST_SetSRID(ST_MakePoint(${reading.longitude}, ${reading.latitude}), 4326)::geography,
+      ST_SetSRID(ST_MakePoint(${anchor.longitude}, ${anchor.latitude}), 4326)::geography,
+      ${meters}) AS within`;
+  return !!row?.within;
 }
 
 /** Guests act through requireActor (P4.2); IDs for rate limits and viewer joins. */
@@ -283,16 +297,21 @@ export function postDetail(kind: DiscussionKind) {
       commentsHidden = true;
     }
     const viewer = viewerOf(actor);
-    const [post, comments, limit] = await Promise.all([
+    const [post, comments, limit, canComment] = await Promise.all([
       getPostView(kind, id, viewer.userId ?? NO_USER, kind === 'general' ? at : undefined),
       commentsHidden ? [] : listComments(kind, id, viewer),
       getConfig('comments.limitPerPost'),
+      // D115: whether this reading is close enough to comment, so the app only offers the box
+      // when sending would work (reading a general post needs only Duval; commenting needs the
+      // radius). Not a location check of its own: nothing is recorded, and sending checks again.
+      commentsHidden ? false : withinCommentRadius(kind, id, reading),
     ]);
     return NextResponse.json({
       post,
       comments,
       commentsHidden,
       commentsLocked: post.commentCount >= limit,
+      canComment,
     });
   };
 }

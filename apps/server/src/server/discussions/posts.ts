@@ -12,6 +12,7 @@ import { getConfig } from '../config';
 import { db } from '../db';
 import { ApiError } from '../http';
 import type { GeoPoint } from '../location/eligibility';
+import { nearestNeighborhood } from '../location/neighborhood';
 import { decodeCursor, encodeCursor } from './cursor';
 
 /**
@@ -415,7 +416,17 @@ export async function listMyPosts(userId: string, at: GeoPoint | undefined, curs
       ),
     ),
   );
-  return profilePage([...general!, ...business!].sort(newestFirst), size);
+  const page = profilePage([...general!, ...business!].sort(newestFirst), size);
+  // D115: where each area post was made, as a neighborhood (from its stored ~100 m point).
+  const ids = page.posts.filter((p) => p.kind === 'general').map((p) => p.id);
+  if (ids.length) {
+    const points = await db.$queryRaw<{ id: string; latitude: number; longitude: number }[]>`
+      SELECT id, ST_Y(location::geometry) AS latitude, ST_X(location::geometry) AS longitude
+      FROM "GeneralPost" WHERE id = ANY(${ids}::uuid[])`;
+    const area = new Map(points.map((p) => [p.id, nearestNeighborhood(p)]));
+    for (const p of page.posts) if (p.kind === 'general') p.area = area.get(p.id) ?? null;
+  }
+  return page;
 }
 
 /** P4.8: an author's recent area-feed posts (business-room posts stay behind D19). D112: 10 at a time. */

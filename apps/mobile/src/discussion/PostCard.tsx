@@ -47,6 +47,7 @@ export function PostCard({
   onReportPhoto,
   onMore,
   full = false,
+  showWhere = false,
 }: {
   post: PostView;
   onOpen?: () => void;
@@ -56,6 +57,8 @@ export function PostCard({
   /** D78: the "•••" menu (report, delete) on the post page. */
   onMore?: () => void;
   full?: boolean;
+  /** D115: under the name, where the post was made (your own profile's list). */
+  showWhere?: boolean;
 }) {
   const author = post.author;
   const nameHidden = useNameHidden(); // D73: no ★ on your posts while your name is hidden
@@ -159,6 +162,27 @@ export function PostCard({
             <Text style={{ color: DARK.textMuted, fontSize: 13, fontWeight: '500', marginTop: 1 }}>
               {meta}
             </Text>
+            {showWhere ? (
+              <View
+                accessible
+                accessibilityLabel={
+                  post.place ? `Posted at ${post.place.name}` : `Posted near ${post.area ?? 'you'}`
+                }
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}
+              >
+                <Ionicons
+                  name={post.place ? 'storefront' : 'location'}
+                  size={12}
+                  color={DARK.tealText}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={{ color: DARK.tealText, fontSize: 13, fontWeight: '700', flexShrink: 1 }}
+                >
+                  {post.place ? post.place.name : (post.area ?? 'Area post')}
+                </Text>
+              </View>
+            ) : null}
           </View>
           {post.score >= POPULAR ? (
             <View

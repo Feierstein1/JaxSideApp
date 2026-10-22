@@ -625,3 +625,43 @@ describe('profile pages (D112)', () => {
     expect((await page(alice, 'not-a-bookmark')).status).toBe(400);
   });
 });
+
+// D115: where your posts were made, and the comment box only where commenting works.
+describe('your posts on your profile, and commenting from afar (D115)', () => {
+  it('a general post read from across town shows its comments but can’t be commented on', async () => {
+    const id = (await post(alice, 'mine')).body.post.id;
+    const open = (at: typeof FIVE_POINTS) =>
+      call(postDetailPOST as H, 'POST', { token: alice, id, body: { reading: reading(at) } });
+    expect((await open(FIVE_POINTS)).body).toMatchObject({
+      canComment: true,
+      commentsHidden: false,
+    });
+    expect((await open(DOWNTOWN)).body).toMatchObject({ canComment: false, commentsHidden: false });
+  });
+
+  it('your own profile says where each post was made: the neighborhood or the place', async () => {
+    await post(alice, 'area post');
+    await call(roomPostPOST as H, 'POST', {
+      token: alice,
+      id: cafeId,
+      body: { reading: reading(FIVE_POINTS), body: 'room post' },
+    });
+    const mine = await call(profilePOST as H, 'POST', {
+      token: alice,
+      params: { username: 'alice_p' },
+      body: { reading: reading(FIVE_POINTS) },
+    });
+    const byBody = Object.fromEntries(
+      mine.body.posts.map((p: { body: string }) => [p.body, p]),
+    ) as Record<string, { area?: string | null; place: { name: string } | null }>;
+    expect(byBody['area post']!.area).toEqual(expect.any(String));
+    expect(byBody['room post']!.place?.name).toBe('Bold Bean');
+    // Someone else's view of the profile doesn't carry the neighborhood.
+    const theirs = await call(profilePOST as H, 'POST', {
+      token: bob,
+      params: { username: 'alice_p' },
+      body: { reading: reading(FIVE_POINTS) },
+    });
+    expect(theirs.body.posts[0].area).toBeUndefined();
+  });
+});

@@ -132,6 +132,8 @@ export interface PostView {
   video: VideoView | null;
   /** D75: text, media (photos/GIFs), voice or video. */
   type: PostType;
+  /** D115: on your own profile, the neighborhood an area post was made in (null if none). */
+  area?: string | null;
 }
 
 export interface VideoView {

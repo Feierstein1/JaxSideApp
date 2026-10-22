@@ -5,7 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   COMMENT_MAX,
   CONFIG_DEFAULTS,
-  POST_MAX,
+  yardsLabel,
   type CommentView,
   type DiscussionKind,
   type PostView,
@@ -17,15 +17,9 @@ import { timeAgo } from '@/format';
 import { haptic } from '@/motion';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
-import { Banner, Button, ErrorState, openMenu, SectionTitle, KeyboardSafeView, Sheet } from '@/ui';
-import {
-  createComment,
-  deleteComment,
-  deletePost,
-  editPost,
-  fetchPost,
-  markFeedsDirty,
-} from './api';
+import { Banner, Button, ErrorState, openMenu, SectionTitle, KeyboardSafeView } from '@/ui';
+import { createComment, deleteComment, deletePost, fetchPost, markFeedsDirty } from './api';
+import { EditPostSheet } from './EditPostSheet';
 import { sendScreened } from './screening';
 import { authorName, openAuthor, PostCard, PostSkeleton } from './PostCard';
 import { useGuest } from '@/auth/guest';
@@ -57,9 +51,10 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
   /** D105: your own post opened away from it (comments left out), or a full thread. */
   const [commentsHidden, setCommentsHidden] = useState(false);
   const [commentsLocked, setCommentsLocked] = useState(false);
-  /** P3.8 / D105: the text being edited (your own post). */
-  const [editing, setEditing] = useState<string>();
-  const [saving, setSaving] = useState(false);
+  /** P3.8 / D105: editing your own post. */
+  const [editing, setEditing] = useState(false);
+  /** D115: close enough to comment (the server says; reading a post doesn't need it). */
+  const [nearEnough, setNearEnough] = useState(true);
 
   const load = useCallback(async () => {
     setError(undefined);
@@ -69,6 +64,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
       setComments(res.comments);
       setCommentsHidden(res.commentsHidden);
       setCommentsLocked(res.commentsLocked);
+      setNearEnough(res.canComment);
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t get your location.');
     }
@@ -107,31 +103,6 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
     if (c.depth >= MAX_DEPTH && 'username' in c.author && !c.isMine) {
       const tag = `@${c.author.username} `;
       setText((t) => (t.startsWith(tag) ? t : tag + t));
-    }
-  }
-
-  async function saveEdit() {
-    if (!editing?.trim() || saving) return;
-    setSaving(true);
-    try {
-      const sent = await sendScreened((ok) => editPost(kind, id, editing.trim(), ok));
-      if (!sent) return;
-      haptic.success();
-      setEditing(undefined);
-      markFeedsDirty();
-      await load();
-    } catch (e) {
-      showAlert(
-        'Couldn’t save',
-        e instanceof ApiRequestError ? e.message : 'Try again.',
-        undefined,
-        {
-          icon: 'alert-circle-outline',
-          tone: 'warning',
-        },
-      );
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -183,7 +154,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
           {
             label: 'Edit post',
             icon: 'create-outline',
-            onPress: () => setEditing(post.body),
+            onPress: () => setEditing(true),
           },
           {
             label: 'Delete post',
@@ -268,7 +239,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
                 c={c}
                 first={i === 0}
                 onReply={
-                  canComment && !commentsLocked && c.status === 'visible'
+                  canComment && nearEnough && !commentsLocked && c.status === 'visible'
                     ? () => startReply(c)
                     : undefined
                 }
@@ -307,9 +278,33 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
           />
         </View>
       ) : null}
+      {canComment && !nearEnough && !commentsHidden && !commentsLocked ? (
+        // D115: reading a post works anywhere in Jacksonville; commenting needs you close by.
+        <View
+          accessibilityRole="text"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: SPACE.sm,
+            padding: SPACE.md,
+            backgroundColor: DARK.card,
+            borderTopWidth: 1,
+            borderTopColor: DARK.hairline,
+          }}
+        >
+          <Ionicons name="location-outline" size={20} color={DARK.accent} />
+          <Text style={[TYPE.callout, { color: DARK.textMuted, flex: 1 }]}>
+            {`Get within ${yardsLabel(
+              CONFIG_DEFAULTS[
+                kind === 'business' ? 'radius.business.maxMiles' : 'radius.general.maxMiles'
+              ],
+            )} of this post to comment.`}
+          </Text>
+        </View>
+      ) : null}
       <View
         style={{
-          display: canComment && !commentsLocked && !commentsHidden ? 'flex' : 'none',
+          display: canComment && nearEnough && !commentsLocked && !commentsHidden ? 'flex' : 'none',
           borderTopWidth: 1,
           borderTopColor: DARK.hairline,
           backgroundColor: DARK.card,
@@ -393,35 +388,11 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
         </View>
       </View>
       <ReportSheet target={reporting} onClose={() => setReporting(undefined)} />
-      <Sheet open={editing !== undefined} onClose={() => setEditing(undefined)} title="Edit post">
-        <View style={{ paddingHorizontal: 20, paddingBottom: SPACE.sm, gap: SPACE.sm }}>
-          <TextInput
-            accessibilityLabel="Post text"
-            value={editing ?? ''}
-            onChangeText={setEditing}
-            maxLength={POST_MAX}
-            multiline
-            autoFocus
-            textAlignVertical="top"
-            style={{
-              minHeight: 120,
-              maxHeight: 260,
-              borderRadius: RADIUS.md,
-              borderWidth: 1,
-              borderColor: DARK.border,
-              padding: SPACE.md,
-              fontSize: 16,
-              backgroundColor: DARK.raised,
-            }}
-          />
-          <Button
-            title="Save"
-            busy={saving}
-            disabled={!editing?.trim()}
-            onPress={() => void saveEdit()}
-          />
-        </View>
-      </Sheet>
+      <EditPostSheet
+        post={editing ? { kind, id, body: post.body } : undefined}
+        onClose={() => setEditing(false)}
+        onSaved={() => void load()}
+      />
     </KeyboardSafeView>
   );
 }

@@ -22,6 +22,10 @@ export default function AccountLayout() {
       <Stack.Screen name="legal/[key]" options={{ title: 'Policies' }} />
       <Stack.Screen name="contact" options={{ title: 'Contact us' }} />
       <Stack.Screen name="rules" options={{ title: 'Community rules' }} />
+      {/* D115: your profile and your posts stay in the Account tab. */}
+      <Stack.Screen name="me" options={{ title: 'Your profile' }} />
+      <Stack.Screen name="post/[id]" options={{ title: 'Post' }} />
+      <Stack.Screen name="place-post/[id]" options={{ title: 'Post' }} />
     </Stack>
   );
 }

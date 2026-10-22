@@ -254,7 +254,7 @@ function ProfileSection() {
             <QuickAction
               icon="eye-outline"
               label="View"
-              onPress={() => router.push(`/user/${encodeURIComponent(user.username)}`)}
+              onPress={() => router.push('/account/me')}
             />
           </View>
         </View>
