@@ -1,6 +1,10 @@
 # App Name: Candidates (Q21)
 
-The app's name is still open. "Jax" is a placeholder. The icon is chosen: the art deco emblem of the Modis
+> **Decided 2026-10-23: JaxSide** ("The JaxSide app", D118). The rest of this file is the record of what was considered.
+
+**Still for the owner to do:** register jaxside.com and jaxside.app; search the USPTO trademark database (tmsearch.uspto.gov) for `jaxside` and `jax side` (the site blocks automated searches); claim @jaxside on Instagram, TikTok, X and Facebook (those sites can't be checked from here). Checked already: no app named JaxSide on the App Store or Google Play (2026-10-23).
+
+The app's name was open; "Jax" was a placeholder. The icon is chosen: the art deco emblem of the Modis
 Building and the Main Street Bridge (`apps/mobile/assets/brand/icon-emblem.svg`). Everything that depends on
 the name (domain, email sender, app store ID, listings, legal pages) waits for the decision.
 

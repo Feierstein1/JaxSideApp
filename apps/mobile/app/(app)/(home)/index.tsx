@@ -88,7 +88,7 @@ export default function HomeFeed() {
     <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10 }}>
       {guest?.expiringSoon ? (
         <Banner icon="time-outline" style={{ marginBottom: 0 }}>
-          {`Your guest session ends in ${guest.daysLeft} ${guest.daysLeft === 1 ? 'day' : 'days'} unless you use Jax before then.`}
+          {`Your guest session ends in ${guest.daysLeft} ${guest.daysLeft === 1 ? 'day' : 'days'} unless you use JaxSide before then.`}
         </Banner>
       ) : null}
       {!verified && !isGuest ? (

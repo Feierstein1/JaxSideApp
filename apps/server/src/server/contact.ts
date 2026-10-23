@@ -34,7 +34,7 @@ export async function createContactMessage(actor: Actor, input: ContactInput) {
     await sendSafely(
       {
         to: inbox,
-        subject: `[Jax ${input.category === 'SUPPORT' ? 'support ticket' : 'contact'}] ${input.subject}`,
+        subject: `[JaxSide ${input.category === 'SUPPORT' ? 'support ticket' : 'contact'}] ${input.subject}`,
         text:
           `From ${from}.\n\n${input.body}\n\n` +
           `Open the admin portal (Messages) to see it${input.allowReply && actor.kind === 'user' ? ' and the reply address' : ''}.`,

@@ -77,6 +77,6 @@ export function matchTotp(secret: string, code: string, now: Date): number | nul
 }
 
 export function otpauthUrl(secret: string, account: string): string {
-  const label = encodeURIComponent(`Jax Admin:${account}`);
-  return `otpauth://totp/${label}?secret=${secret}&issuer=${encodeURIComponent('Jax Admin')}&digits=${DIGITS}&period=${STEP_SECONDS}`;
+  const label = encodeURIComponent(`JaxSide Admin:${account}`);
+  return `otpauth://totp/${label}?secret=${secret}&issuer=${encodeURIComponent('JaxSide Admin')}&digits=${DIGITS}&period=${STEP_SECONDS}`;
 }

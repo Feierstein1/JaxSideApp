@@ -1,6 +1,6 @@
 import { ResetPassword } from '../token-actions';
 
-export const metadata = { title: 'Reset password · Jax' };
+export const metadata = { title: 'Reset password · JaxSide' };
 
 export default async function Page({
   searchParams,

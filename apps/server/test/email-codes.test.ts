@@ -48,7 +48,7 @@ describe('email contents (D31)', () => {
     const { mail: verify } = await signUp();
     expect(codeFromMail(verify)).toMatch(/^\d{6}$/);
     expect(tokenFromMail(verify).length).toBeGreaterThan(20);
-    expect(verify.subject).toMatch(/^\d{3} \d{3} is your Jax confirmation code$/);
+    expect(verify.subject).toMatch(/^\d{3} \d{3} is your JaxSide confirmation code$/);
 
     await call(resetRequestPOST, 'POST', { body: { email: 'river@example.test' } });
     const reset = mail.sent.at(-1)!;

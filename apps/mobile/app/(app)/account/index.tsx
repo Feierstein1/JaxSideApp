@@ -515,7 +515,7 @@ function Settings() {
       {/* D116: the anonymous area statistics, on unless you turn them off. */}
       <ListGroup
         title="Area statistics"
-        footer="No personal data is collected and no one’s location is tracked. Jax only counts the total number of people who visited each area."
+        footer="No personal data is collected and no one’s location is tracked. JaxSide only counts the total number of people who visited each area."
       >
         <ListRow
           icon="stats-chart-outline"
@@ -537,7 +537,7 @@ function Settings() {
             showAlert(
               'Area statistics',
               [
-                'When you open Jax, we note that someone used the app in your ZIP code that day, and in which part of the day (morning, afternoon, evening or night). That’s all: never your exact location, your route, or who you are.',
+                'When you open JaxSide, we note that someone used the app in your ZIP code that day, and in which part of the day (morning, afternoon, evening or night). That’s all: never your exact location, your route, or who you are.',
                 'The note is under a code that can’t be traced back to you. It’s deleted after the month, and the code’s key is destroyed. Only totals are kept, like “120 people in 32205 on Saturday,” and groups under 10 people are never shown.',
                 'The totals show which parts of Jacksonville are busy, and may be shared with local businesses as totals only. Turn this off any time; you won’t be counted.',
               ].join('\n\n'),
@@ -638,7 +638,7 @@ function GuestAccount() {
       </Card>
       <ListGroup
         title="Guest session"
-        footer={`Your guest session ends after ${CONFIG_DEFAULTS['guest.inactivityDays']} days without use. Using Jax resets the clock.`}
+        footer={`Your guest session ends after ${CONFIG_DEFAULTS['guest.inactivityDays']} days without use. Using JaxSide resets the clock.`}
       >
         <ListRow
           icon="time-outline"
@@ -671,7 +671,7 @@ function LocationHelp() {
   return (
     <ListGroup
       title="Location"
-      footer="Jax uses your location only while the app is open, to show and verify conversations near you. It never tracks you in the background."
+      footer="JaxSide uses your location only while the app is open, to show and verify conversations near you. It never tracks you in the background."
     >
       <ListRow
         icon="settings-outline"

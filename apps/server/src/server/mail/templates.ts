@@ -20,9 +20,9 @@ export function verificationEmail(
 ): OutgoingMail {
   return {
     to,
-    subject: `${spaced(code)} is your Jax confirmation code`,
+    subject: `${spaced(code)} is your JaxSide confirmation code`,
     text: [
-      'Welcome to Jax.',
+      'Welcome to JaxSide.',
       '',
       'Enter this code in the app to confirm your email address:',
       '',
@@ -43,7 +43,7 @@ export function registrationAttemptEmail(to: string, baseUrl: string): OutgoingM
     to,
     subject: 'Someone tried to sign up with your email',
     text: [
-      'Someone tried to create a Jax account with this email address, but an account already exists.',
+      'Someone tried to create a JaxSide account with this email address, but an account already exists.',
       '',
       `If it was you, sign in instead. Forgot your password? Use "Forgot password?" in the app, or go to ${baseUrl}/reset-password.`,
       "If it wasn't you, you can ignore this email.",
@@ -59,7 +59,7 @@ export function passwordResetEmail(
 ): OutgoingMail {
   return {
     to,
-    subject: `${spaced(code)} is your Jax password reset code`,
+    subject: `${spaced(code)} is your JaxSide password reset code`,
     text: [
       'We received a request to reset your password.',
       '',
@@ -80,9 +80,9 @@ export function passwordResetEmail(
 export function emailChangeCodeEmail(to: string, code: string): OutgoingMail {
   return {
     to,
-    subject: `${spaced(code)} is your Jax email change code`,
+    subject: `${spaced(code)} is your JaxSide email change code`,
     text: [
-      'Someone asked to use this address for their Jax account.',
+      'Someone asked to use this address for their JaxSide account.',
       '',
       'If it was you, enter this code in the app to finish the change:',
       '',
@@ -98,11 +98,13 @@ export function emailChangeNoticeEmail(to: string, stage: 'requested' | 'complet
   return {
     to,
     subject:
-      stage === 'requested' ? 'Your Jax email change was requested' : 'Your Jax email was changed',
+      stage === 'requested'
+        ? 'Your JaxSide email change was requested'
+        : 'Your JaxSide email was changed',
     text: [
       stage === 'requested'
-        ? 'A change of the email address on your Jax account was requested. It completes only once the new address is confirmed.'
-        : 'The email address on your Jax account was changed. This address will no longer receive messages from Jax.',
+        ? 'A change of the email address on your JaxSide account was requested. It completes only once the new address is confirmed.'
+        : 'The email address on your JaxSide account was changed. This address will no longer receive messages from JaxSide.',
       '',
       "If this wasn't you, reset your password from the app right away and contact support.",
     ].join('\n'),
@@ -113,9 +115,9 @@ export function emailChangeNoticeEmail(to: string, stage: 'requested' | 'complet
 export function emailChangeTakenEmail(to: string): OutgoingMail {
   return {
     to,
-    subject: 'Someone tried to use your email on Jax',
+    subject: 'Someone tried to use your email on JaxSide',
     text: [
-      'Someone tried to switch their Jax account to this address, but it already belongs to an account, so nothing changed.',
+      'Someone tried to switch their JaxSide account to this address, but it already belongs to an account, so nothing changed.',
       "If this wasn't you, you can ignore this email.",
     ].join('\n'),
   };
@@ -125,9 +127,9 @@ export function emailChangeTakenEmail(to: string): OutgoingMail {
 export function accountDeletedEmail(to: string, days: number): OutgoingMail {
   return {
     to,
-    subject: 'Your Jax account was deleted',
+    subject: 'Your JaxSide account was deleted',
     text: [
-      'Your Jax account has been deleted. You can no longer sign in, and your profile is hidden.',
+      'Your JaxSide account has been deleted. You can no longer sign in, and your profile is hidden.',
       '',
       `Your email address is kept encrypted for ${days} days in case of abuse reports, then permanently destroyed.`,
       "If you didn't do this, contact support right away.",
@@ -139,9 +141,9 @@ export function accountDeletedEmail(to: string, days: number): OutgoingMail {
 export function ownerCodeEmail(to: string, code: string, placeName: string): OutgoingMail {
   return {
     to,
-    subject: `${spaced(code)} is your Jax owner code`,
+    subject: `${spaced(code)} is your JaxSide owner code`,
     text: [
-      `Someone asked to be verified on Jax as the owner of ${placeName}, using this address.`,
+      `Someone asked to be verified on JaxSide as the owner of ${placeName}, using this address.`,
       '',
       'If it was you, enter this code in the app:',
       '',

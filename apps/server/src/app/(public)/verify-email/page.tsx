@@ -1,6 +1,6 @@
 import { VerifyEmail } from '../token-actions';
 
-export const metadata = { title: 'Confirm email · Jax' };
+export const metadata = { title: 'Confirm email · JaxSide' };
 
 export default async function Page({
   searchParams,

@@ -12,7 +12,7 @@ const REASONS: { icon: IconName; title: string; body: string }[] = [
   {
     icon: 'shield-checkmark',
     title: 'Confirm you’re in Duval County',
-    body: 'Jax is a Jacksonville-only community.',
+    body: 'JaxSide is a Jacksonville-only community.',
   },
   {
     icon: 'people',
@@ -72,7 +72,7 @@ export function LocationGate({
           accessibilityRole="header"
           style={[TYPE.title, { color: DARK.text, textAlign: 'center' }]}
         >
-          Jax needs your location
+          JaxSide needs your location
         </Text>
         <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
           We use it only while you use the app, to:
@@ -112,8 +112,8 @@ export function LocationGate({
       {blocked ? (
         <View>
           <Text style={[TYPE.callout, { color: DARK.text }]}>
-            Location is turned off for Jax. Turn it on in Settings → Location → &quot;While using
-            the app&quot;.
+            Location is turned off for JaxSide. Turn it on in Settings → Location → &quot;While
+            using the app&quot;.
           </Text>
           <Button
             title="Open Settings"

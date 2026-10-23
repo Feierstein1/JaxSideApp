@@ -64,7 +64,7 @@ export default function SignIn() {
         keyboardShouldPersistTaps="handled"
         bounces={false}
       >
-        {/* D79: the Jax mark top-left like every other screen, then a big welcome line
+        {/* D79: the JaxSide mark top-left like every other screen, then a big welcome line
             (no team names or marks, see UI_DESIGN.md). */}
         <View
           style={{
@@ -156,7 +156,7 @@ export default function SignIn() {
             }}
           >
             <View style={{ flex: 1, height: 1, backgroundColor: DARK.hairline }} />
-            <Text style={[TYPE.caption, { color: DARK.textMuted }]}>New to Jax?</Text>
+            <Text style={[TYPE.caption, { color: DARK.textMuted }]}>New to JaxSide?</Text>
             <View style={{ flex: 1, height: 1, backgroundColor: DARK.hairline }} />
           </View>
           <Button

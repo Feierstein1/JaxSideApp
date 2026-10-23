@@ -27,7 +27,7 @@ export async function startGuestSession(
     throw new ApiError(400, 'INSTALLATION_REQUIRED', 'Please update the app and try again.');
   }
   if (installation.bannedAt) {
-    throw new ApiError(403, 'INSTALLATION_BANNED', 'This device can no longer use Jax.');
+    throw new ApiError(403, 'INSTALLATION_BANNED', 'This device can no longer use JaxSide.');
   }
   const bannedGuest = await db.guestSession.findFirst({
     where: {
@@ -37,7 +37,7 @@ export async function startGuestSession(
     select: { id: true },
   });
   if (bannedGuest) {
-    throw new ApiError(403, 'INSTALLATION_BANNED', 'This device can no longer use Jax.');
+    throw new ApiError(403, 'INSTALLATION_BANNED', 'This device can no longer use JaxSide.');
   }
   await enforce(
     [

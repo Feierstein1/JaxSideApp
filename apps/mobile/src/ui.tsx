@@ -41,7 +41,7 @@ export type IconName = ComponentProps<typeof Ionicons>['name'];
 
 /**
  * D79: the app name, always top-left in the header on every screen (with the back arrow
- * before it on inner screens). A gold pin tile and "Jax" in the heavy weight.
+ * before it on inner screens). A gold pin tile and "JaxSide" in the heavy weight.
  */
 export function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
   const lg = size === 'lg';
@@ -49,7 +49,7 @@ export function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
     <View
       accessible
       accessibilityRole="header"
-      accessibilityLabel="Jax"
+      accessibilityLabel="JaxSide"
       style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}
     >
       <View
@@ -65,14 +65,14 @@ export function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
         <Ionicons name="location-sharp" size={lg ? 36 : 18} color={DARK.onAccent} />
       </View>
       {lg ? null : (
-        <Text style={{ fontSize: 23, fontWeight: '800', letterSpacing: -0.8 }}>Jax</Text>
+        <Text style={{ fontSize: 23, fontWeight: '800', letterSpacing: -0.8 }}>JaxSide</Text>
       )}
     </View>
   );
 }
 
 /**
- * Navigation header (D33, D79): black bar, the Jax mark on the left on every screen (no
+ * Navigation header (D33, D79): black bar, the JaxSide mark on the left on every screen (no
  * centered page names), gold back arrow, and your username on the right (hideable, D43).
  * The page's own name is shown inside the page with `PageTitle`.
  */

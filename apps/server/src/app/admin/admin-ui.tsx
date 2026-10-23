@@ -87,7 +87,7 @@ export function TopBar({ username, children }: { username?: string; children?: R
           paddingBottom: 14,
         }}
       >
-        <strong style={{ color: BRAND.gold, fontSize: 18 }}>Jax Admin</strong>
+        <strong style={{ color: BRAND.gold, fontSize: 18 }}>JaxSide Admin</strong>
         <nav style={{ display: 'flex', gap: 18, flex: 1 }}>{children}</nav>
         {username ? <span>@{username}</span> : null}
       </div>

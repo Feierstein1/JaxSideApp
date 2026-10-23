@@ -83,7 +83,7 @@ export async function assertAgeEligible(birthYear: number, now = new Date()): Pr
     throw new ApiError(
       422,
       'AGE_INELIGIBLE',
-      `Jax is for adults 18 and older. Because we only ask for birth year, ` +
+      `JaxSide is for adults 18 and older. Because we only ask for birth year, ` +
         `accounts are open to people born in ${max} or earlier.`,
       { maxBirthYear: max },
     );

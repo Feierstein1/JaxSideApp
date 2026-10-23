@@ -180,10 +180,10 @@ export async function strongestMatch(text: string): Promise<Rule | null> {
 // ───────────────────────────── Decisions ─────────────────────────────
 
 const DEFAULT_MESSAGE: Record<ScreeningCategory, string> = {
-  SLUR: 'This looks like it includes a slur. Jax doesn’t allow hate toward people for who they are.',
+  SLUR: 'This looks like it includes a slur. JaxSide doesn’t allow hate toward people for who they are.',
   THREAT:
     'This looks like a threat. Threats of violence aren’t allowed. If someone is in danger, call 911.',
-  SEXUAL: 'Sexual content isn’t allowed on Jax.',
+  SEXUAL: 'Sexual content isn’t allowed on JaxSide.',
   HARASSMENT:
     'This may come across as harassment. Please keep it about ideas, not attacking people.',
   DOXXING: 'This looks like it may share someone’s private information.',

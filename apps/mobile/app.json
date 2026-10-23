@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "Jax",
-    "slug": "jax-app",
-    "scheme": "jaxapp",
+    "name": "JaxSide",
+    "slug": "jaxside",
+    "scheme": "jaxside",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.jaxapp.mobile"
+      "bundleIdentifier": "com.jaxside.app"
     },
     "android": {
-      "package": "com.jaxapp.mobile",
+      "package": "com.jaxside.app",
       "adaptiveIcon": {
         "backgroundColor": "#071A33",
         "foregroundImage": "./assets/android-icon-foreground.png",

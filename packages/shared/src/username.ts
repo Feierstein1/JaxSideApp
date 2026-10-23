@@ -16,6 +16,7 @@ export const RESERVED_USERNAMES: ReadonlySet<string> = new Set([
   'official',
   'jax',
   'jaxapp',
+  'jaxside', // D118: the app's name
   'root',
   'null',
   'undefined',

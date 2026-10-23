@@ -21,7 +21,7 @@ export type PolicyKey = (typeof POLICY_KEYS)[number];
 
 const DRAFT: PolicySection = {
   heading: 'Beta',
-  body: 'Jax is in beta. These policies may change as the app grows; we’ll update the date above when they do.',
+  body: 'JaxSide is in beta. These policies may change as the app grows; we’ll update the date above when they do.',
 };
 const UPDATED = '2026-10-22';
 
@@ -33,8 +33,8 @@ export const POLICIES: Record<PolicyKey, Policy> = {
     sections: [
       DRAFT,
       {
-        heading: 'Who can use Jax',
-        body: 'Jax is for adults 18 and older. When you sign up, you confirm you meet that age. We check your birth year at signup but do not verify identity.',
+        heading: 'Who can use JaxSide',
+        body: 'JaxSide is for adults 18 and older. When you sign up, you confirm you meet that age. We check your birth year at signup but do not verify identity.',
       },
       {
         heading: 'A Jacksonville community',
@@ -42,7 +42,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       },
       {
         heading: 'Your content',
-        body: 'You own what you post. By posting, you let Jax display it to other users in the app. You are responsible for what you post. Don’t post anything you don’t have the right to share.',
+        body: 'You own what you post. By posting, you let JaxSide display it to other users in the app. You are responsible for what you post. Don’t post anything you don’t have the right to share.',
       },
       {
         heading: 'Zero tolerance for objectionable content',
@@ -54,7 +54,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       },
       {
         heading: 'No warranty',
-        body: 'Jax is provided as is. Information posted by users may be wrong or out of date. Use your own judgment.',
+        body: 'JaxSide is provided as is. Information posted by users may be wrong or out of date. Use your own judgment.',
       },
     ],
   },
@@ -79,7 +79,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       },
       {
         heading: 'Your location',
-        body: 'Jax uses your location only while you are using the app, never in the background. Each time you read or post, your phone sends its current location so we can check you’re in Duval County and close enough to the conversation. Posts are stored with a rounded location (about 100 meters), never your exact spot. Readings used only to show you content are not saved. When you post, comment, vote, report, suggest or verify a place, or send a message (or try to and are refused), that exact reading is kept for 30 days for abuse review, is visible only to administrators, and is then deleted.',
+        body: 'JaxSide uses your location only while you are using the app, never in the background. Each time you read or post, your phone sends its current location so we can check you’re in Duval County and close enough to the conversation. Posts are stored with a rounded location (about 100 meters), never your exact spot. Readings used only to show you content are not saved. When you post, comment, vote, report, suggest or verify a place, or send a message (or try to and are refused), that exact reading is kept for 30 days for abuse review, is visible only to administrators, and is then deleted.',
       },
       {
         heading: 'Your device',
@@ -95,15 +95,15 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       },
       {
         heading: 'Area statistics',
-        body: 'When you open Jax, we count that someone used the app in your ZIP code that day, and in which part of the day (morning, afternoon, evening or night), to see which parts of Jacksonville are busy. We also count activity in place discussions. Only totals are kept. Your exact location and your account are never part of them: a coded entry that can’t be traced back to you is kept for the rest of the month so you count once, then deleted, and the code’s key is destroyed. Small groups (fewer than 10 people) are never shown. You can turn this off in Account → Settings.',
+        body: 'When you open JaxSide, we count that someone used the app in your ZIP code that day, and in which part of the day (morning, afternoon, evening or night), to see which parts of Jacksonville are busy. We also count activity in place discussions. Only totals are kept. Your exact location and your account are never part of them: a coded entry that can’t be traced back to you is kept for the rest of the month so you count once, then deleted, and the code’s key is destroyed. Small groups (fewer than 10 people) are never shown. You can turn this off in Account → Settings.',
       },
       {
         heading: 'Sharing',
-        body: 'We don’t sell your personal information or show ads. We may share or sell area statistics (totals such as how many people used Jax in a ZIP code, or how active a place’s discussion is) to Jacksonville businesses and organizations; they never include who you are, your account, your posts or your location, and groups under 10 people are never included. Otherwise we share information only when the law requires it, for example a valid legal request or a mandatory report of child sexual abuse material.',
+        body: 'We don’t sell your personal information or show ads. We may share or sell area statistics (totals such as how many people used JaxSide in a ZIP code, or how active a place’s discussion is) to Jacksonville businesses and organizations; they never include who you are, your account, your posts or your location, and groups under 10 people are never included. Otherwise we share information only when the law requires it, for example a valid legal request or a mandatory report of child sexual abuse material.',
       },
       {
         heading: 'Your choices',
-        body: 'You can change your username, bio, email and password, turn off location in your phone’s settings (Jax then can’t show local content), and delete your account in Account → Settings. See the Data Retention policy for what happens after deletion.',
+        body: 'You can change your username, bio, email and password, turn off location in your phone’s settings (JaxSide then can’t show local content), and delete your account in Account → Settings. See the Data Retention policy for what happens after deletion.',
       },
     ],
   },
@@ -116,7 +116,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       DRAFT,
       {
         heading: 'Be a good neighbor',
-        body: 'Jax is for real conversations about Jacksonville. Disagreement and the occasional swear word are fine. Making it unpleasant for others is not.',
+        body: 'JaxSide is for real conversations about Jacksonville. Disagreement and the occasional swear word are fine. Making it unpleasant for others is not.',
       },
       {
         heading: 'Not allowed',

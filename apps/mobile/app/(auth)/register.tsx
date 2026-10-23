@@ -67,9 +67,9 @@ export default function Register() {
         </Text>
         <Banner icon="shield-checkmark-outline">
           <Text style={[TYPE.callout, { color: DARK.text }]}>
-            Jax is for adults 18 and older. We use your birth year only to check that, then discard
-            it. We don&apos;t store it. Your email is stored encrypted and never shown to anyone.
-            This is a simple age check, not identity verification.
+            JaxSide is for adults 18 and older. We use your birth year only to check that, then
+            discard it. We don&apos;t store it. Your email is stored encrypted and never shown to
+            anyone. This is a simple age check, not identity verification.
           </Text>
         </Banner>
         <FormError>{errors.form}</FormError>

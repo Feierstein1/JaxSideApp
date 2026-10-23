@@ -57,6 +57,6 @@ export async function resolveInstallation(
 /** Ban carry-over: a banned installation can't sign up or sign in (MS4, R2). */
 export function assertInstallationNotBanned(inst: Installation | null): void {
   if (inst?.bannedAt) {
-    throw new ApiError(403, 'INSTALLATION_BANNED', 'This device can no longer use Jax.');
+    throw new ApiError(403, 'INSTALLATION_BANNED', 'This device can no longer use JaxSide.');
   }
 }

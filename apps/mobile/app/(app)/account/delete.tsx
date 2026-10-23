@@ -27,7 +27,7 @@ export default function DeleteAccount() {
       await api.post('/api/v1/me/delete', v.data);
       showAlert(
         'Account deleted',
-        'Your account has been deleted. Thanks for being part of Jax.',
+        'Your account has been deleted. Thanks for being part of JaxSide.',
         undefined,
         { icon: 'checkmark-circle', tone: 'success' },
       );
