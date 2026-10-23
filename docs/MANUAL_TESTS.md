@@ -81,7 +81,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [x] Account → Profile → tap the circle (or **Add a photo**): pick and crop a square photo; it
       shows on your profile and to others who open your profile.
 - [x] On someone else's post, long-press a photo → the report sheet opens (type: photo).
-- [x] In the portal, the photo report shows the image; **Remove** makes it disappear in the app.
+- [ ] In the portal, the photo report shows the image; **Remove** makes it disappear in the app.
 
 ## 4c. Voice posts and type tabs (D75)
 
@@ -94,7 +94,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [x] On an iPhone (if you have one), clips play too.
 - [x] Home and place pages show **All / Text / Media / Voice** under the black bar; each tab only
       shows that kind of post ("No voice posts nearby yet" when empty).
-- [x] Report a voice post; in the portal its case page has an audio player.
+- [ ] Report a voice post; in the portal its case page has an audio player.
 
 ## 4d. Video posts (D102)
 
@@ -122,7 +122,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [x] B reports A's post (**Report post**) and a comment (**Report**): the sheet shows reasons,
       details, and the "call 911" note for Child safety; then "Thanks for reporting".
 - [x] B's Account → Settings → **My reports** lists them as "Waiting for review".
-- [x] **Auto-hide (D73):** three different accounts report the same post: it disappears from the
+- [ ] **Auto-hide (D73):** three different accounts report the same post: it disappears from the
       feed right away. In the portal it shows **Held** with all three reporters and the author;
       **Approve (publish)** brings it back.
 
@@ -131,7 +131,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [x] Comment "I know where you live": you see **Sent for review**, and the other account
       doesn't see the comment.
 - [x] A post with 3 web links is sent for review.
-- [x] (After adding a WARN rule in the database or, later, the portal) a matching post asks
+- [ ] (After adding a WARN rule in the database or, later, the portal) a matching post asks
       **Post anyway?**, and choosing it posts.
 
 ## 7. Places and business rooms
@@ -207,9 +207,9 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [x] Business email: a Gmail address is refused; an address at the place's website gets a code
       (Mailpit); entering it shows "You're a verified owner".
 - [x] Your posts in that place's discussion show a gold **Owner** tag; your area posts don't.
-- [x] Website code: you get a `JAX-…` code; after sending a link it says the team will check.
+- [ ] Website code: you get a `JAX-…` code; after sending a link it says the team will check.
       In the portal → **Owners**, the claim shows the code and link; **Verify owner** or **Reject**.
-- [x] Phone: the portal shows the number on file and a code; entering that code in the app
+- [ ] Phone: the portal shows the number on file and a code; entering that code in the app
       verifies. **Remove Owner tag** in the portal takes the tag away.
 
 ## 7b. Suggest a place
@@ -220,7 +220,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
       tapping one opens that place.
 - [x] Pick a category, send: "Thanks for the suggestion". It's **not** in the Places list yet.
 - [x] Account → Settings → **My suggestions** shows it as "Waiting for review".
-- [x] In the portal (section 10), **Places** shows it with a small map. Approve it: it appears in
+- [ ] In the portal (section 10), **Places** shows it with a small map. Approve it: it appears in
       the app's Places list, and My suggestions says "Approved". Reject another with a reason:
       My suggestions shows the reason.
 
@@ -266,7 +266,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
       appears in the strip for others.
 - [x] Suggest a place: the message says people nearby will vote it in; My suggestions says
       "Waiting for votes nearby".
-- [x] Portal → **Places** shows each suggestion's votes; **Removals** lists requests with every
+- [ ] Portal → **Places** shows each suggestion's votes; **Removals** lists requests with every
       vote (who, which way, how far) and **Restore place** / **Remove now**.
 
 ## 7e. Private messages (D98, two accounts that are friends)
@@ -281,7 +281,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
       with the chat open, new messages appear within a few seconds.
 - [x] Long-press your message within 15 minutes → **Unsend (for both)**: it disappears on both
       phones. **Delete for me** hides it only for you.
-- [x] Long-press their message → **Report**: in the portal the case shows the message with the
+- [ ] Long-press their message → **Report**: in the portal the case shows the message with the
       messages around it; **Remove** unsends it.
 - [x] Messages → long-press a chat → **Delete for me**: it's gone from your list until they send
       something new.
@@ -349,7 +349,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [x] **Account standing** says "good standing" with the How it works text.
 - [x] Delete account (password + type DELETE) signs you out; that account can't sign in again.
 
-- [x] **Contact us (D90):** Account → Help → **Contact us**: pick Support ticket or General, add a
+- [ ] **Contact us (D90):** Account → Help → **Contact us**: pick Support ticket or General, add a
       subject and message, send → "Thanks!". In the portal, **Messages** lists it; **Show reply
       email** appears only if you turned on "You can reply to my account email"; **Mark resolved**
       moves it to Resolved.
@@ -403,7 +403,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [x] **Account:** one page: profile card (color band, photo with camera badge, Edit bio /
       Color / View), About, Medals, then dark grouped settings. Email shows a Confirmed / Not
       confirmed badge; radius is a three-way switch.
-- [x] **Account sub-pages** (username, email, password, blocked, reports, suggestions, standing,
+- [ ] **Account sub-pages** (username, email, password, blocked, reports, suggestions, standing,
       delete, policies) each start with an icon and a big title. Reports and suggestions are
       cards with colored status badges.
 
