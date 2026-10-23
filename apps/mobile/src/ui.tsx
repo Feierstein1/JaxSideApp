@@ -10,6 +10,7 @@ import {
 import {
   ActivityIndicator,
   Animated,
+  Image,
   Keyboard,
   LayoutAnimation,
   Modal,
@@ -26,6 +27,8 @@ import {
 import { router, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import EMBLEM from '../assets/brand-emblem.png';
+import MARK from '../assets/brand-mark.png';
 import { DARK } from '@jax/shared';
 import { UserBadge } from './auth/UserBadge';
 import { Bell } from './social/Bell';
@@ -41,7 +44,9 @@ export type IconName = ComponentProps<typeof Ionicons>['name'];
 
 /**
  * D79: the app name, always top-left in the header on every screen (with the back arrow
- * before it on inner screens). A gold pin tile and "JaxSide" in the heavy weight.
+ * before it on inner screens). The app icon (a simplified version that stays readable when
+ * small, assets/brand/mark-small.svg) and "JaxSide" in the heavy weight. The large size (the
+ * loading screen) is the full icon emblem without the name.
  */
 export function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
   const lg = size === 'lg';
@@ -50,20 +55,12 @@ export function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
       accessible
       accessibilityRole="header"
       accessibilityLabel="JaxSide"
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
     >
-      <View
-        style={{
-          width: lg ? 64 : 28,
-          height: lg ? 64 : 28,
-          borderRadius: lg ? 20 : 9,
-          backgroundColor: DARK.accent,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Ionicons name="location-sharp" size={lg ? 36 : 18} color={DARK.onAccent} />
-      </View>
+      <Image
+        source={lg ? EMBLEM : MARK}
+        style={{ width: lg ? 96 : 30, height: lg ? 96 : 30, borderRadius: lg ? 22 : 8 }}
+      />
       {lg ? null : (
         <Text style={{ fontSize: 23, fontWeight: '800', letterSpacing: -0.8 }}>JaxSide</Text>
       )}

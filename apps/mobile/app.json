@@ -32,7 +32,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Jax uses your location while you use the app to confirm you are in Jacksonville and show what is nearby. Your exact location is never shown to other people.",
+          "locationWhenInUsePermission": "JaxSide uses your location while you use the app to confirm you are in Jacksonville and show what is nearby. Your exact location is never shown to other people.",
           "isAndroidBackgroundLocationEnabled": false,
           "isIosBackgroundLocationEnabled": false
         }
@@ -40,14 +40,23 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Jax lets you add photos from your library to posts and your profile. Photos are cleaned of location and camera details before they're shared.",
-          "cameraPermission": "Jax uses the camera only when you record a video for a post.",
+          "photosPermission": "JaxSide lets you add photos from your library to posts and your profile. Photos are cleaned of location and camera details before they're shared.",
+          "cameraPermission": "JaxSide uses the camera only when you record a video for a post.",
           "microphonePermission": false
         }
       ],
       "expo-audio",
       "expo-font",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#000000"
+        }
+      ]
     ],
     "backgroundColor": "#1E1F22"
   }
