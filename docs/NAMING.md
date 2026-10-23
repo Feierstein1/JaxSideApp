@@ -16,30 +16,30 @@ nobody had registered it on that date, not that it's reserved. Register the fina
 
 ## Other candidates considered (2026-10-23)
 
-| Name                                           | Idea                                      | .com                    | .app                    |
-| ---------------------------------------------- | ----------------------------------------- | ----------------------- | ----------------------- |
-| Round Here (roundherejax)                      | "What's going on 'round here," Southern   | free (with "jax")       | free (with "jax")       |
-| Jax Current                                    | Current events + the river's current      | free                    | free                    |
-| Skyline Jax                                    | Matches the deco skyline icon             | free                    | free                    |
-| Duvalhood                                      | Duval + neighborhood                      | free                    | free                    |
-| JaxPorch / Front Porch Jax                     | Neighbors on the porch                    | free                    | free                    |
-| Y'all Jax                                      | Playful Southern                          | free                    | free                    |
-| Holler Jax                                     | "Holler at your neighbors"                | free                    | free                    |
-| Stoop Jax                                      | City porch                                | free                    | free                    |
-| First Light Jax                                | The Atlantic coast sees the sunrise first | free                    | free                    |
-| JaxNear / NearJax                              | What's near you                           | free                    | free                    |
-| Neighbor Jax / JaxNeighbors                    | Plain                                     | free                    | free                    |
-| Corner Jax                                     | "What's happening on my corner"           | free                    | free                    |
-| Block Talk Jax                                 | Talk on your block                        | free                    | free                    |
-| Within 530                                     | The app's 530-yard radius                 | free                    | free                    |
-| The 904 / 904 Talk / 904 Social / 904 Local    | Area code pride                           | taken                   | free                    |
-| River Talk / The St. Johns                     | The river                                 | taken                   | free                    |
-| Southbank / Northbank                          | Downtown's two riverbanks                 | taken                   | free                    |
-| DuvalNow / Duval Daily                         | News-y                                    | taken                   | free                    |
-| JaxLocal / JaxPulse / JaxBlock / MainStreetJax | Jax + a word                              | taken                   | free                    |
-| Porchlight Jax                                 |                                           | taken                   | free                    |
-| Bold City (boldcityapp)                        | Jacksonville's nickname                   | free (boldcityapp only) | free (boldcityapp only) |
-| JaxHub                                         | Earlier tentative pick                    |                         |                         | Dropped as a front-runner: "hub" echoes a well-known adult site, the same reason the app moved off gold (D110) |
+| Name                                           | Idea                                                                                                                                   | .com                    | .app                    |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ----------------------- |
+| Round Here (roundherejax)                      | "What's going on 'round here," Southern                                                                                                | free (with "jax")       | free (with "jax")       |
+| Jax Current                                    | Current events + the river's current                                                                                                   | free                    | free                    |
+| Skyline Jax                                    | Matches the deco skyline icon                                                                                                          | free                    | free                    |
+| Duvalhood                                      | Duval + neighborhood                                                                                                                   | free                    | free                    |
+| JaxPorch / Front Porch Jax                     | Neighbors on the porch                                                                                                                 | free                    | free                    |
+| Y'all Jax                                      | Playful Southern                                                                                                                       | free                    | free                    |
+| Holler Jax                                     | "Holler at your neighbors"                                                                                                             | free                    | free                    |
+| Stoop Jax                                      | City porch                                                                                                                             | free                    | free                    |
+| First Light Jax                                | The Atlantic coast sees the sunrise first                                                                                              | free                    | free                    |
+| JaxNear / NearJax                              | What's near you                                                                                                                        | free                    | free                    |
+| Neighbor Jax / JaxNeighbors                    | Plain                                                                                                                                  | free                    | free                    |
+| Corner Jax                                     | "What's happening on my corner"                                                                                                        | free                    | free                    |
+| Block Talk Jax                                 | Talk on your block                                                                                                                     | free                    | free                    |
+| Within 530                                     | The app's 530-yard radius                                                                                                              | free                    | free                    |
+| The 904 / 904 Talk / 904 Social / 904 Local    | Area code pride                                                                                                                        | taken                   | free                    |
+| River Talk / The St. Johns                     | The river                                                                                                                              | taken                   | free                    |
+| Southbank / Northbank                          | Downtown's two riverbanks                                                                                                              | taken                   | free                    |
+| DuvalNow / Duval Daily                         | News-y                                                                                                                                 | taken                   | free                    |
+| JaxLocal / JaxPulse / JaxBlock / MainStreetJax | Jax + a word                                                                                                                           | taken                   | free                    |
+| Porchlight Jax                                 |                                                                                                                                        | taken                   | free                    |
+| Bold City (boldcityapp)                        | Jacksonville's nickname                                                                                                                | free (boldcityapp only) | free (boldcityapp only) |
+| JaxHub                                         | Earlier tentative pick; dropped as a front-runner: "hub" echoes a well-known adult site, the same reason the app moved off gold (D110) |                         |                         |
 
 Taken on both: River City, HeyJax, OnJax, Round Here (plain), Bridge City, Blue Bridge, BoldTalk, Holler, Jaxly, Jaxo, Hereabouts.
 
