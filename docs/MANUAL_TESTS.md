@@ -1,6 +1,6 @@
 # Manual test checklist (phone + admin portal)
 
-> **2026-10-23:** the user ran the phone checklist and reported everything working (uploads, display, location rules); all items marked passed.
+> **2026-10-23:** the user ran the phone checklist and reported everything working (uploads, display, location rules); the phone items are marked passed. The admin portal section (§10) is still to do (Phase 15, P15.8).
 
 The server behavior behind every item here is already covered by automated tests and by
 `npm run e2e:live -w @jax/server`, which plays temporary people through the whole app over
@@ -409,22 +409,22 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ## 10. Admin portal (on your computer)
 
-- [x] Make yourself admin: `npm run admin:promote -w @jax/server -- <your username>`.
-- [x] Open http://localhost:3000/admin → redirected to sign-in; password, then scan the QR code
+- [ ] Make yourself admin: `npm run admin:promote -w @jax/server -- <your username>`.
+- [ ] Open http://localhost:3000/admin → redirected to sign-in; password, then scan the QR code
       with an authenticator app and enter the code. Next sign-in only asks for the code.
-- [x] Dashboard counts match what's waiting; the tiles link to the queues.
-- [x] Reports: the item reported in section 5 is there; the held comment from section 6 shows
+- [ ] Dashboard counts match what's waiting; the tiles link to the queues.
+- [ ] Reports: the item reported in section 5 is there; the held comment from section 6 shows
       **Held** and **Automatic**.
-- [x] Open a case: you see the content, the post it's on, who reported it, and the author's history.
-- [x] **Remove** with "Also give the author a strike": on the author's phone, Account standing
+- [ ] Open a case: you see the content, the post it's on, who reported it, and the author's history.
+- [ ] **Remove** with "Also give the author a strike": on the author's phone, Account standing
       shows the warning with your reason; the reporter's My reports says "Action taken".
-- [x] **Approve (publish)** the held comment: it appears on the phone.
-- [x] Users: search by username; the record shows previous usernames and history (never email).
-- [x] Give a second strike (suspends 24 h): the phone shows "suspended until …" and signing in
+- [ ] **Approve (publish)** the held comment: it appears on the phone.
+- [ ] Users: search by username; the record shows previous usernames and history (never email).
+- [ ] Give a second strike (suspends 24 h): the phone shows "suspended until …" and signing in
       offers **See why and appeal**; send an appeal.
-- [x] Appeals: accept it with a note; the person can sign in again and sees the note.
-- [x] **Automatic suspension (D74):** hard to do by hand (10 accounts at least 3 days old); the
+- [ ] Appeals: accept it with a note; the person can sign in again and sees the note.
+- [ ] **Automatic suspension (D74):** hard to do by hand (10 accounts at least 3 days old); the
       automated tests cover it. If one happens: it's at the top of Reports, the account's case
       lists every report on its posts; **Ban** removes the posts, **Lift** brings them back.
-- [x] A case with more than 20 reports shows a per-reason summary and **Show all**.
-- [x] Audit log lists everything you did. **Sign out** ends the session.
+- [ ] A case with more than 20 reports shows a per-reason summary and **Show all**.
+- [ ] Audit log lists everything you did. **Sign out** ends the session.
