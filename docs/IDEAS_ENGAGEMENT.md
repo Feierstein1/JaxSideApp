@@ -221,6 +221,17 @@ Either way, showing it costs nothing extra: it's one number read with the profil
 3. A raw number, or tiers?
 4. Counted from posts and comments, or posts only?
 
+**Owner's answers (2026-10-22):**
+
+1. **Profile only**, not next to names on posts. (Showing it on posts would also be cheap, one number read
+   alongside the author, so this is a design choice that can be revisited.)
+2. **Open: for the advisors to weigh in.** Should Rep stay display-only, or ever unlock or limit things (for
+   example posting limits for very low Rep, or trust perks for high Rep)? See the concern above: popularity isn't
+   the same as good behavior.
+3. **Raw number vs tiers:** undecided, to be seen.
+4. **Posts only** for now. (Including comments would cost about the same, one counter update per vote, so it can be
+   added later without a redesign.)
+
 ---
 
 ## Overall suggestions
