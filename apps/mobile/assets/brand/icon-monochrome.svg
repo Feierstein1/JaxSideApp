@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<!-- Android 13+ themed icon: one-color silhouette of the emblem (the system tints it). -->
+<g fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linejoin="miter">
+<path d="M152 900 V380 H208 V316 H264 V252 H320 V188 H704 V252 H760 V316 H816 V380 H872 V900 Z"/>
+<path d="M260 600 Q 512 470 764 600"/>
+<rect x="208" y="488" width="52" height="312"/>
+<rect x="764" y="488" width="52" height="312"/>
+</g>
+<g fill="#FFFFFF">
+<rect x="200" y="376" width="68" height="114"/>
+<rect x="756" y="376" width="68" height="114"/>
+<path d="M412 270 H612 V610 L672 760 H352 L412 610 Z"/>
+<rect x="152" y="620" width="720" height="18"/>
+</g>
+</svg>

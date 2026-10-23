@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<!--
+  The app icon (chosen 2026-10-23): an art deco emblem of downtown Jacksonville. The Modis
+  Building (1 Independent Square) stands in front of the blue Main Street Bridge, whose two
+  lift towers rise on both sides and whose arched truss spans behind the building, under a
+  sunburst, inside a stepped deco frame. Original artwork. Full-bleed square: the app stores
+  and phones round the corners themselves. PNGs in assets/ are generated from this file.
+-->
+<defs>
+<clipPath id="frameE">
+<path d="M152 900 V380 H208 V316 H264 V252 H320 V188 H704 V252 H760 V316 H816 V380 H872 V900 Z"/>
+</clipPath>
+</defs>
+<rect width="1024" height="1024" fill="#071A33"/>
+<g clip-path="url(#frameE)">
+<rect width="1024" height="1024" fill="#0B2545"/>
+<path d="M512 800 L-388 800 L-368 613 Z M512 800 L-310 434 L-216 271 Z M512 800 L-90 131 L62 21 Z M512 800 L234 -56 L418 -95 Z M512 800 L606 -95 L790 -56 Z M512 800 L962 21 L1114 131 Z M512 800 L1240 271 L1334 434 Z M512 800 L1392 613 L1412 800 Z" fill="#0F2D55"/>
+<path d="M172 880 V400 H228 V336 H284 V272 H340 V208 H684 V272 H740 V336 H796 V400 H852 V880 Z" fill="none" stroke="#3C8DDE" stroke-width="4" stroke-linejoin="miter"/>
+<g fill="none" stroke="#3C8DDE" stroke-width="12" stroke-linejoin="round">
+<path d="M260 600 Q 512 470 764 600"/>
+<path d="M260 620 L302 580 L344 620 L386 551 L428 620 L470 537 L512 620 L554 537 L596 620 L638 551 L680 620 L722 580 L764 620"/>
+<rect x="208" y="488" width="52" height="312"/>
+<rect x="764" y="488" width="52" height="312"/>
+<path d="M208 488 L260 588 M260 488 L208 588"/>
+<path d="M764 488 L816 588 M816 488 L764 588"/>
+<path d="M208 660 L260 730 M260 660 L208 730"/>
+<path d="M764 660 L816 730 M816 660 L764 730"/>
+</g>
+<rect x="152" y="620" width="720" height="18" fill="#3C8DDE"/>
+<rect x="200" y="376" width="68" height="114" fill="#3C8DDE"/>
+<rect x="756" y="376" width="68" height="114" fill="#3C8DDE"/>
+<g fill="#0B2545">
+<rect x="211" y="394" width="10" height="52"/>
+<rect x="229" y="394" width="10" height="52"/>
+<rect x="247" y="394" width="10" height="52"/>
+<rect x="767" y="394" width="10" height="52"/>
+<rect x="785" y="394" width="10" height="52"/>
+<rect x="803" y="394" width="10" height="52"/>
+</g>
+<rect x="192" y="362" width="84" height="16" fill="#7CC2FF"/>
+<rect x="748" y="362" width="84" height="16" fill="#7CC2FF"/>
+<path d="M412 270 H612 V610 L672 760 H352 L412 610 Z" fill="#EEF3FA"/>
+<path d="M586 330 H612 V610 L672 760 H636 L586 610 Z" fill="#C6D5E9"/>
+<rect x="438" y="330" width="148" height="280" fill="#2C5E9E"/>
+<g stroke="#6FA0D8" stroke-width="4">
+<line x1="458" y1="330" x2="458" y2="610"/>
+<line x1="478" y1="330" x2="478" y2="610"/>
+<line x1="498" y1="330" x2="498" y2="610"/>
+<line x1="518" y1="330" x2="518" y2="610"/>
+<line x1="538" y1="330" x2="538" y2="610"/>
+<line x1="558" y1="330" x2="558" y2="610"/>
+</g>
+<path d="M438 610 H586 L636 760 H388 Z" fill="#4F86C6"/>
+<g stroke="#8DB8E8" stroke-width="4">
+<line x1="476" y1="610" x2="452" y2="760"/>
+<line x1="512" y1="610" x2="512" y2="760"/>
+<line x1="548" y1="610" x2="572" y2="760"/>
+<line x1="420" y1="690" x2="604" y2="690"/>
+</g>
+<g stroke="#0B2545" stroke-width="6">
+<line x1="428" y1="290" x2="596" y2="290"/>
+<line x1="428" y1="312" x2="596" y2="312"/>
+</g>
+<g stroke="#EEF3FA" stroke-width="8" stroke-linecap="round">
+<line x1="512" y1="270" x2="512" y2="222"/>
+</g>
+<rect x="0" y="798" width="1024" height="226" fill="#071A33"/>
+<g fill="#10305A">
+<rect x="152" y="820" width="720" height="8"/>
+<rect x="232" y="846" width="560" height="8"/>
+<rect x="332" y="872" width="360" height="8"/>
+</g>
+<g fill="#EEF3FA" opacity="0.3">
+<rect x="440" y="808" width="14" height="30"/>
+<rect x="474" y="808" width="14" height="44"/>
+<rect x="508" y="808" width="14" height="56"/>
+<rect x="542" y="808" width="14" height="44"/>
+<rect x="576" y="808" width="14" height="30"/>
+</g>
+<g fill="#3C8DDE" opacity="0.5">
+<rect x="222" y="808" width="24" height="48"/>
+<rect x="778" y="808" width="24" height="48"/>
+</g>
+</g>
+<path d="M152 900 V380 H208 V316 H264 V252 H320 V188 H704 V252 H760 V316 H816 V380 H872 V900 Z" fill="none" stroke="#EEF3FA" stroke-width="12" stroke-linejoin="miter"/>
+<g fill="#EEF3FA">
+<path d="M512 932 L536 956 L512 980 L488 956 Z"/>
+<rect x="392" y="952" width="72" height="8"/>
+<rect x="560" y="952" width="72" height="8"/>
+</g>
+</svg>
