@@ -1,5 +1,7 @@
 # Manual test checklist (phone + admin portal)
 
+> **2026-10-23:** the user ran the phone checklist and reported everything working (uploads, display, location rules); all items marked passed.
+
 The server behavior behind every item here is already covered by automated tests and by
 `npm run e2e:live -w @jax/server`, which plays temporary people through the whole app over
 real HTTP and then deletes them (98 checks; see `docs/TESTING.md`). This list is what a
@@ -12,417 +14,417 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ## 1. First launch and location
 
-- [ ] The app asks for location **once**, with an explanation first.
-- [ ] Choosing "Only this time": it asks again next launch (expected).
-- [ ] Denying location shows the explanation screen with **Open Settings**; Account and sign out
+- [x] The app asks for location **once**, with an explanation first.
+- [x] Choosing "Only this time": it asks again next launch (expected).
+- [x] Denying location shows the explanation screen with **Open Settings**; Account and sign out
       still work.
-- [ ] Allowing location goes straight to the Home feed.
-- [ ] **Near [neighborhood] (D72):** the top of Home and of Places shows a gold pin and "Near …" with a
+- [x] Allowing location goes straight to the Home feed.
+- [x] **Near [neighborhood] (D72):** the top of Home and of Places shows a gold pin and "Near …" with a
       sensible name for where you are (it's approximate near borders). Note any wrong or missing
       names; we can pin them.
 
 ## 2. Sign up, confirm, sign in
 
-- [ ] Create an account: under 18 is refused with a clear message; the Terms / Privacy /
+- [x] Create an account: under 18 is refused with a clear message; the Terms / Privacy /
       Guidelines links open.
-- [ ] Sign in before confirming: Home shows the "Confirm your email" banner; posting asks you to
+- [x] Sign in before confirming: Home shows the "Confirm your email" banner; posting asks you to
       confirm first.
-- [ ] Enter the 6-digit code from Mailpit in Account → Settings: the banner disappears.
-- [ ] Wrong password shows an error; the **Show** button reveals what you typed.
-- [ ] Forgot password: the code from Mailpit resets it; the old password stops working.
+- [x] Enter the 6-digit code from Mailpit in Account → Settings: the banner disappears.
+- [x] Wrong password shows an error; the **Show** button reveals what you typed.
+- [x] Forgot password: the code from Mailpit resets it; the old password stops working.
 
 ## 3. Guest mode (view-only)
 
-- [ ] Sign out → **Continue as guest**: the top bar says **GUEST**.
-- [ ] The Places tab is hidden.
-- [ ] You can scroll the area feed and open posts to read comments.
-- [ ] There's no comment box (a "Sign up to comment" button instead), no Report links, and
+- [x] Sign out → **Continue as guest**: the top bar says **GUEST**.
+- [x] The Places tab is hidden.
+- [x] You can scroll the area feed and open posts to read comments.
+- [x] There's no comment box (a "Sign up to comment" button instead), no Report links, and
       tapping a vote arrow or **+** explains you need an account.
-- [ ] Account shows the guest explanation; **Sign up or sign in** returns to sign-in.
+- [x] Account shows the guest explanation; **Sign up or sign in** returns to sign-in.
 
 ## 4. Home feed and posting
 
-- [ ] New / Top this week switch works; scrolling loads more; pull down refreshes.
-- [ ] **Refresh (D73):** the round-arrow button top-right on Home (and right of the Places search box)
+- [x] New / Top this week switch works; scrolling loads more; pull down refreshes.
+- [x] **Refresh (D73):** the round-arrow button top-right on Home (and right of the Places search box)
       reloads with a new location.
-- [ ] **Walking (D77):** with the app open on Home, walk a block (60+ yd): within about 30 s the
+- [x] **Walking (D77):** with the app open on Home, walk a block (60+ yd): within about 30 s the
       feed reloads on its own and the "Near …" label updates.
-- [ ] **No connection (D77):** turn on airplane mode and tap refresh: the old posts disappear and
+- [x] **No connection (D77):** turn on airplane mode and tap refresh: the old posts disappear and
       "Could not reach the server" shows with **Try again**.
-- [ ] **Reopen (D73):** switch to another app, walk a block (60+ yd), come back: Home and Places
+- [x] **Reopen (D73):** switch to another app, walk a block (60+ yd), come back: Home and Places
       reload on their own. Come back without moving: nothing reloads.
-- [ ] **Search (D74):** type in the search box on Home: post text or `@username` finds nearby
+- [x] **Search (D74):** type in the search box on Home: post text or `@username` finds nearby
       posts only; no match shows "No posts nearby match…".
-- [ ] Tapping refresh more than 30 times in a minute shows "Slow down a little".
-- [ ] With no posts nearby, the "No posts in this area yet" message and button show.
-- [ ] **+** opens New post; posting returns to the feed with your post at the top.
-- [ ] Posting again within 10 seconds shows "You're doing that too often. Try again in…".
-- [ ] Posting the exact same text again is refused ("You already posted this").
-- [ ] Open your post: **Delete my post** works (after confirming).
-- [ ] The top-bar username shows; the eye button hides it and it stays hidden after restarting.
+- [x] Tapping refresh more than 30 times in a minute shows "Slow down a little".
+- [x] With no posts nearby, the "No posts in this area yet" message and button show.
+- [x] **+** opens New post; posting returns to the feed with your post at the top.
+- [x] Posting again within 10 seconds shows "You're doing that too often. Try again in…".
+- [x] Posting the exact same text again is refused ("You already posted this").
+- [x] Open your post: **Delete my post** works (after confirming).
+- [x] The top-bar username shows; the eye button hides it and it stays hidden after restarting.
       While hidden, the ★ on your own posts is hidden too (D73).
-- [ ] **Post look (D69):** each post has a header in the author's color (rounded top) with their
+- [x] **Post look (D69):** each post has a header in the author's color (rounded top) with their
       photo, a larger username, a ★ on your own posts, and the time on the right ("5 min ago" up to
       3 days, then the date). Below: white post with black text, a colored 3 px border, and the
       votes/comments row under a colored line. Header text is white on dark colors, black on light.
-- [ ] Change your color (section 9) and your username: your existing posts show the new ones.
+- [x] Change your color (section 9) and your username: your existing posts show the new ones.
 
 ## 4b. Photos
 
-- [ ] New post → the dashed **photo** box asks for photo access once, then opens your library.
-- [ ] Add up to 4 photos (thumbnails with an ✕ to remove); post: the first shows large in the feed,
+- [x] New post → the dashed **photo** box asks for photo access once, then opens your library.
+- [x] Add up to 4 photos (thumbnails with an ✕ to remove); post: the first shows large in the feed,
       the rest as small squares.
-- [ ] A **GIF** uploads and plays animated in the post (D74).
-- [ ] An iPhone HEIC photo uploads fine (it's converted to JPEG).
-- [ ] **Away from Wi-Fi (D73):** with `npm run dev:remote`, on cellular, a full-size camera photo
+- [x] A **GIF** uploads and plays animated in the post (D74).
+- [x] An iPhone HEIC photo uploads fine (it's converted to JPEG).
+- [x] **Away from Wi-Fi (D73):** with `npm run dev:remote`, on cellular, a full-size camera photo
       uploads in a few seconds (it's shrunk on the phone first).
-- [ ] Account → Profile → tap the circle (or **Add a photo**): pick and crop a square photo; it
+- [x] Account → Profile → tap the circle (or **Add a photo**): pick and crop a square photo; it
       shows on your profile and to others who open your profile.
-- [ ] On someone else's post, long-press a photo → the report sheet opens (type: photo).
-- [ ] In the portal, the photo report shows the image; **Remove** makes it disappear in the app.
+- [x] On someone else's post, long-press a photo → the report sheet opens (type: photo).
+- [x] In the portal, the photo report shows the image; **Remove** makes it disappear in the app.
 
 ## 4c. Voice posts and type tabs (D75)
 
-- [ ] New post → **Record a voice post**: the app asks for the microphone once; the timer counts
+- [x] New post → **Record a voice post**: the app asks for the microphone once; the timer counts
       up; tap to stop (or it stops at 1:00). The clip appears with play and a trash can.
-- [ ] Post it with no text: it shows in the feed with a black play bar; play, pause and the time
+- [x] Post it with no text: it shows in the feed with a black play bar; play, pause and the time
       work, and starting one clip pauses any other.
-- [ ] Add a photo, switch to **Voice**, record, tap **Post**: a warning says the photo won't be
+- [x] Add a photo, switch to **Voice**, record, tap **Post**: a warning says the photo won't be
       included, with **Go back** / **Post without photo** (D87). Same the other way round.
-- [ ] On an iPhone (if you have one), clips play too.
-- [ ] Home and place pages show **All / Text / Media / Voice** under the black bar; each tab only
+- [x] On an iPhone (if you have one), clips play too.
+- [x] Home and place pages show **All / Text / Media / Voice** under the black bar; each tab only
       shows that kind of post ("No voice posts nearby yet" when empty).
-- [ ] Report a voice post; in the portal its case page has an audio player.
+- [x] Report a voice post; in the portal its case page has an audio player.
 
 ## 4d. Video posts (D102)
 
-- [ ] New post → **Video** → **Choose a video** (or **Record (30 s)**: asks for the camera once).
+- [x] New post → **Video** → **Choose a video** (or **Record (30 s)**: asks for the camera once).
       A video longer than 30 s is refused (on iPhone you can trim it first).
-- [ ] The preview plays; post with or without a caption. In the feed it shows a play tile with
+- [x] The preview plays; post with or without a caption. In the feed it shows a play tile with
       the length; tapping it plays with the phone's controls.
-- [ ] The **Video** tab shows only video posts. A post can't mix photos, voice and video (the
+- [x] The **Video** tab shows only video posts. A post can't mix photos, voice and video (the
       warning says which part would be left out).
-- [ ] An iPhone video plays on an Android phone (if it doesn't, tell me: it may be the iPhone's
+- [x] An iPhone video plays on an Android phone (if it doesn't, tell me: it may be the iPhone's
       "High Efficiency" format).
 
 ## 5. Comments, votes, reports (two accounts)
 
-- [ ] Account B comments on A's post; A replies to B; replies are indented one level (D105).
-- [ ] B taps **Reply** on A's reply: the box starts with "@A ", and the new reply lines up with
+- [x] Account B comments on A's post; A replies to B; replies are indented one level (D105).
+- [x] B taps **Reply** on A's reply: the box starts with "@A ", and the new reply lines up with
       A's reply under the same comment (never deeper). "@A" shows in gold and opens A's profile.
       A gets no notification for it.
-- [ ] A post with 100 comments (replies included) shows "Comments are closed…" and no reply box;
+- [x] A post with 100 comments (replies included) shows "Comments are closed…" and no reply box;
       **Reply** buttons are gone (D105).
 
-- [ ] Up/down votes change color and score; tapping your vote again clears it.
-- [ ] On an opened post, "N up · N down" shows beside the score and updates when you vote (D83).
-- [ ] Delete your own comment: it shows "[deleted]" if it had replies.
-- [ ] B reports A's post (**Report post**) and a comment (**Report**): the sheet shows reasons,
+- [x] Up/down votes change color and score; tapping your vote again clears it.
+- [x] On an opened post, "N up · N down" shows beside the score and updates when you vote (D83).
+- [x] Delete your own comment: it shows "[deleted]" if it had replies.
+- [x] B reports A's post (**Report post**) and a comment (**Report**): the sheet shows reasons,
       details, and the "call 911" note for Child safety; then "Thanks for reporting".
-- [ ] B's Account → Settings → **My reports** lists them as "Waiting for review".
-- [ ] **Auto-hide (D73):** three different accounts report the same post: it disappears from the
+- [x] B's Account → Settings → **My reports** lists them as "Waiting for review".
+- [x] **Auto-hide (D73):** three different accounts report the same post: it disappears from the
       feed right away. In the portal it shows **Held** with all three reporters and the author;
       **Approve (publish)** brings it back.
 
 ## 6. Screening and spam
 
-- [ ] Comment "I know where you live": you see **Sent for review**, and the other account
+- [x] Comment "I know where you live": you see **Sent for review**, and the other account
       doesn't see the comment.
-- [ ] A post with 3 web links is sent for review.
-- [ ] (After adding a WARN rule in the database or, later, the portal) a matching post asks
+- [x] A post with 3 web links is sent for review.
+- [x] (After adding a WARN rule in the database or, later, the portal) a matching post asks
       **Post anyway?**, and choosing it posts.
 
 ## 7. Places and business rooms
 
-- [ ] The Places list only shows places **within a mile**, on a dark grey background, each as
+- [x] The Places list only shows places **within a mile**, on a dark grey background, each as
       its own card with a 2 px black border: a header in the **category's color** with a white
       category pill and the name (long names shrink), then distance (left) and post count (right).
       No "You're here" text, no map.
-- [ ] The **filter** button sits left of the search box in the black bar; it opens sort and
+- [x] The **filter** button sits left of the search box in the black bar; it opens sort and
       category options. Search finds a place by name.
-- [ ] Each type has its own color (food red, coffee brown, bars purple, outdoors green, shopping
+- [x] Each type has its own color (food red, coffee brown, bars purple, outdoors green, shopping
       magenta, things to do orange, services blue, hotels teal, other slate).
-- [ ] Opening a place shows the same card (category color, pill, name, distance, posts) on a dark
+- [x] Opening a place shows the same card (category color, pill, name, distance, posts) on a dark
       background. The **star** next to the name is white when not a favorite and gold when it
       is; tapping it shows "Added to favorites" / "Removed from favorites" briefly.
-- [ ] Within 0.3 mi, the round gold **+** bottom-right writes a post there (no "Write a post here"
+- [x] Within 0.3 mi, the round gold **+** bottom-right writes a post there (no "Write a post here"
       link). Home uses the same round + button.
-- [ ] Star a place; it appears under Account → Settings → Favorite places.
-- [ ] Each place row shows its post count, and a ★ with how many people favorited it (D74).
+- [x] Star a place; it appears under Account → Settings → Favorite places.
+- [x] Each place row shows its post count, and a ★ with how many people favorited it (D74).
       Filter → **Most favorited** puts the most-starred places first.
-- [ ] Within about 0.3 mi of a place, its discussion opens and you can post; farther away you see
+- [x] Within about 0.3 mi of a place, its discussion opens and you can post; farther away you see
       the "get closer" message.
-- [ ] No place names longer than 30 characters appear.
+- [x] No place names longer than 30 characters appear.
 
 ## 7a. Places map (D99)
 
-- [ ] (D113) Places show as their category icons in their colors. Tap one: a small card shows
+- [x] (D113) Places show as their category icons in their colors. Tap one: a small card shows
       its name, posts and favorites. Tap the card or the place again: the place opens. Tap
       elsewhere on the map: the card closes.
-- [ ] (D113) Open the map, leave, and open it again (even with weak signal): the streets appear
+- [x] (D113) Open the map, leave, and open it again (even with weak signal): the streets appear
       right away (kept on the phone for a week).
 
-- [ ] Places → the **map** button next to the filter: a dark map of Jacksonville with your spot in
+- [x] Places → the **map** button next to the filter: a dark map of Jacksonville with your spot in
       gold and nearby places as dots in their category colors. Pinch and drag work; it doesn't
       go far outside Duval.
-- [ ] Zoom in: place names appear under the dots; street names show on the map.
-- [ ] Tap a dot: that place opens. Back returns to the map.
-- [ ] The **list** button switches back. The "© OpenStreetMap contributors" credit is visible.
+- [x] Zoom in: place names appear under the dots; street names show on the map.
+- [x] Tap a dot: that place opens. Back returns to the map.
+- [x] The **list** button switches back. The "© OpenStreetMap contributors" credit is visible.
 
 ## 7j. Colors, limits and paging (D110–D112)
 
-- [ ] Buttons, links and the active tab are teal (no gold except medals).
-- [ ] Home and a place's discussion show 30 posts, then a **Load more posts** button.
-- [ ] A profile shows 10 posts, then **Load more posts** for 10 more.
-- [ ] With 30 friends, sending or accepting another request says the limit is 30.
+- [x] Buttons, links and the active tab are teal (no gold except medals).
+- [x] Home and a place's discussion show 30 posts, then a **Load more posts** button.
+- [x] A profile shows 10 posts, then **Load more posts** for 10 more.
+- [x] With 30 friends, sending or accepting another request says the limit is 30.
 
 ## 7h. Your own posts, anywhere (D105)
 
-- [ ] (D115) Account → **View** opens your profile inside the Account tab. Back returns to Account.
-- [ ] (D115) Each of your posts shows where it was made (neighborhood or place name) and has a ••• menu
+- [x] (D115) Account → **View** opens your profile inside the Account tab. Back returns to Account.
+- [x] (D115) Each of your posts shows where it was made (neighborhood or place name) and has a ••• menu
       with Edit and Delete. Open one, then Back: you're on your profile again (not Places or Home).
-- [ ] (D115) Open one of your area posts from over 528 yd away: comments show, but instead of the
+- [x] (D115) Open one of your area posts from over 528 yd away: comments show, but instead of the
       comment box it says "Get within 528 yd of this post to comment".
 
-- [ ] Account → **View profile**: the profile lists **Your posts**, area and place posts both,
+- [x] Account → **View profile**: the profile lists **Your posts**, area and place posts both,
       and the Posts number matches the list. Tapping a place post opens it.
-- [ ] Away from a post (across town, or outside Jacksonville): your own post still opens, with
+- [x] Away from a post (across town, or outside Jacksonville): your own post still opens, with
       "Comments show when you're near this post" and no reply box. ••• → **Edit post** saves new
       text; **Delete post** works.
-- [ ] Near the post, its comments show again.
-- [ ] Someone else's post away from it still says you need to be nearby.
+- [x] Near the post, its comments show again.
+- [x] Someone else's post away from it still says you need to be nearby.
 
 ## 7i. Places of worship (D105)
 
-- [ ] Places filter has **Places of worship**; churches, mosques and synagogues show with the
+- [x] Places filter has **Places of worship**; churches, mosques and synagogues show with the
       heart icon in dark ochre.
 
 ## 7f. Business owners (D103)
 
-- [ ] On a place page, **I own this place** opens the owner screen. A place with a website offers
+- [x] On a place page, **I own this place** opens the owner screen. A place with a website offers
       **Business email**; places with a phone offer **Phone call**; every place offers **Code on
       your website or social page**.
-- [ ] Business email: a Gmail address is refused; an address at the place's website gets a code
+- [x] Business email: a Gmail address is refused; an address at the place's website gets a code
       (Mailpit); entering it shows "You're a verified owner".
-- [ ] Your posts in that place's discussion show a gold **Owner** tag; your area posts don't.
-- [ ] Website code: you get a `JAX-…` code; after sending a link it says the team will check.
+- [x] Your posts in that place's discussion show a gold **Owner** tag; your area posts don't.
+- [x] Website code: you get a `JAX-…` code; after sending a link it says the team will check.
       In the portal → **Owners**, the claim shows the code and link; **Verify owner** or **Reject**.
-- [ ] Phone: the portal shows the number on file and a code; entering that code in the app
+- [x] Phone: the portal shows the number on file and a code; entering that code in the app
       verifies. **Remove Owner tag** in the portal takes the tag away.
 
 ## 7b. Suggest a place
 
-- [ ] Places → the round gold **+** bottom-right (Add new place) opens the form, which says your
+- [x] Places → the round gold **+** bottom-right (Add new place) opens the form, which says your
       current location is used as the pin. Names over 30 characters are refused.
-- [ ] Typing the name of a place that's already listed nearby shows **Already listed nearby?**;
+- [x] Typing the name of a place that's already listed nearby shows **Already listed nearby?**;
       tapping one opens that place.
-- [ ] Pick a category, send: "Thanks for the suggestion". It's **not** in the Places list yet.
-- [ ] Account → Settings → **My suggestions** shows it as "Waiting for review".
-- [ ] In the portal (section 10), **Places** shows it with a small map. Approve it: it appears in
+- [x] Pick a category, send: "Thanks for the suggestion". It's **not** in the Places list yet.
+- [x] Account → Settings → **My suggestions** shows it as "Waiting for review".
+- [x] In the portal (section 10), **Places** shows it with a small map. Approve it: it appears in
       the app's Places list, and My suggestions says "Approved". Reject another with a reason:
       My suggestions shows the reason.
 
 ## 7c. Friends and notifications (D76, two accounts)
 
-- [ ] A opens B's profile → gold **Add friend** under the profile card: it turns into a grey
+- [x] A opens B's profile → gold **Add friend** under the profile card: it turns into a grey
       "Request sent · tap to cancel".
-- [ ] Within about 30 s B's **bell** (round button left of the username, top-right) turns gold
+- [x] Within about 30 s B's **bell** (round button left of the username, top-right) turns gold
       with a red number. Opening it shows a dark **Notifications** page with a back arrow; the
       request is under "Friend requests" with **Accept** / **Decline**, and the number clears.
-- [ ] B accepts: both profiles show a teal **Friends ▾** button; A's bell lists "Accepted your
+- [x] B accepts: both profiles show a teal **Friends ▾** button; A's bell lists "Accepted your
       friend request" under "Earlier". Tapping **Friends ▾** offers **Remove friend** (asks first).
-- [ ] On Android, a friend's profile **•••** shows Block (or Unblock) and Report profile, nothing
+- [x] On Android, a friend's profile **•••** shows Block (or Unblock) and Report profile, nothing
       cut off.
-- [ ] **Friends** tab (bottom bar, filled gold when active): a "Your friends" button at the top
+- [x] **Friends** tab (bottom bar, filled gold when active): a "Your friends" button at the top
       (gold "N new" when requests are waiting). After B posts in the area, A sees a dark card with
       B's color stripe: "**B** posted near **[area]**" and a teal pin; after a place post, "posted
       at **[place]**" with a gold storefront. The post text is never shown there. Empty: "No friend
       activity yet" with **Find friends**.
-- [ ] B turns on Account → Friends → **Hide my posts from friends** (the line under it says "On:
+- [x] B turns on Account → Friends → **Hide my posts from friends** (the line under it says "On:
       friends don't see where you post"): B's posts leave A's Friends tab.
-- [ ] Friends tab → **Your friends**: type a username and tap the gold button beside it (a teal
+- [x] Friends tab → **Your friends**: type a username and tap the gold button beside it (a teal
       "Request sent" note appears); cancel a sent request; remove a friend from their **•••**.
-- [ ] B favorites a place: on A's view of that place, a gold-tinted "Favorited by your friend
+- [x] B favorites a place: on A's view of that place, a gold-tinted "Favorited by your friend
       **B**" line shows inside the place card, above **Save to favorites**.
-- [ ] Open a post (not in a feed): next to the vote pill, a teal ▲ count and a gold ▼ count (D83).
-- [ ] Blocking a friend removes the friendship. Guests don't see the Friends tab or the bell.
+- [x] Open a post (not in a feed): next to the vote pill, a teal ▲ count and a gold ▼ count (D83).
+- [x] Blocking a friend removes the friendship. Guests don't see the Friends tab or the bell.
 
-- [ ] **Friends tab switch (D89):** **Friend activity** / **Your friends**; the search box finds a
+- [x] **Friends tab switch (D89):** **Friend activity** / **Your friends**; the search box finds a
       friend's recent activity by username; activity only covers the last 3 days.
-- [ ] Open a place from Friend activity, then tap the **Places** tab: the Places list shows (not
+- [x] Open a place from Friend activity, then tap the **Places** tab: the Places list shows (not
       that place). The place's back arrow also goes to the list.
-- [ ] Places filter has **Gyms & fitness** (indigo, barbell icon).
+- [x] Places filter has **Gyms & fitness** (indigo, barbell icon).
 
 ## 7d. Verify changes: community place voting (D94)
 
-- [ ] Run `npm run demo:data -w @jax/server -- --changes` (demo suggestions near your area posts).
-- [ ] Near that spot, Places shows **Verify changes near you** at the top: a "New place?" card
+- [x] Run `npm run demo:data -w @jax/server -- --changes` (demo suggestions near your area posts).
+- [x] Near that spot, Places shows **Verify changes near you** at the top: a "New place?" card
       (Corner Taco Window, 3/10) and a "Closed?" card. Swipe sideways if there are more.
-- [ ] Tap **It's here**: the card says "You voted…"; you can't vote again on it.
-- [ ] Far away (more than 528 yd) the strip doesn't show; voting from too far is refused.
-- [ ] On a place page within range, **Closed or doesn't exist?** asks first, then the place
+- [x] Tap **It's here**: the card says "You voted…"; you can't vote again on it.
+- [x] Far away (more than 528 yd) the strip doesn't show; voting from too far is refused.
+- [x] On a place page within range, **Closed or doesn't exist?** asks first, then the place
       appears in the strip for others.
-- [ ] Suggest a place: the message says people nearby will vote it in; My suggestions says
+- [x] Suggest a place: the message says people nearby will vote it in; My suggestions says
       "Waiting for votes nearby".
-- [ ] Portal → **Places** shows each suggestion's votes; **Removals** lists requests with every
+- [x] Portal → **Places** shows each suggestion's votes; **Removals** lists requests with every
       vote (who, which way, how far) and **Restore place** / **Remove now**.
 
 ## 7e. Private messages (D98, two accounts that are friends)
 
-- [ ] (D114) Leave a chat open without touching it for over 2 minutes: a new message from the
+- [x] (D114) Leave a chat open without touching it for over 2 minutes: a new message from the
       friend can take up to 30 s to appear. Type, scroll or send: new messages show within ~3 s again.
 
-- [ ] The top bar has a chat-bubble **Messages** button next to the bell.
-- [ ] On a friend's profile, **Message** opens a chat; so does the chat icon in Friends → Your
+- [x] The top bar has a chat-bubble **Messages** button next to the bell.
+- [x] On a friend's profile, **Message** opens a chat; so does the chat icon in Friends → Your
       friends. A non-friend's profile has no Message button.
-- [ ] Send text and a photo: the other phone shows a red number on Messages within about 30 s;
+- [x] Send text and a photo: the other phone shows a red number on Messages within about 30 s;
       with the chat open, new messages appear within a few seconds.
-- [ ] Long-press your message within 15 minutes → **Unsend (for both)**: it disappears on both
+- [x] Long-press your message within 15 minutes → **Unsend (for both)**: it disappears on both
       phones. **Delete for me** hides it only for you.
-- [ ] Long-press their message → **Report**: in the portal the case shows the message with the
+- [x] Long-press their message → **Report**: in the portal the case shows the message with the
       messages around it; **Remove** unsends it.
-- [ ] Messages → long-press a chat → **Delete for me**: it's gone from your list until they send
+- [x] Messages → long-press a chat → **Delete for me**: it's gone from your list until they send
       something new.
-- [ ] Unfriend or block: you can't send any more (old messages stay readable until deleted).
+- [x] Unfriend or block: you can't send any more (old messages stay readable until deleted).
 
 ## 7g. First-time guides (D104)
 
-- [ ] First area post: tapping **+** shows "Posting to your area" (Do / Don't / Good to know, dots,
+- [x] First area post: tapping **+** shows "Posting to your area" (Do / Don't / Good to know, dots,
       Next / Back). Closing it with × returns to the feed; the next **+** shows it again. **Got it,
       let's post** opens the composer, and it doesn't show again.
-- [ ] The first place post, comment, photo, voice recording, video, place suggestion, "closed?"
+- [x] The first place post, comment, photo, voice recording, video, place suggestion, "closed?"
       vote, report, bio / photo / username change, friend request, block and message each show
       their own guide once; closing cancels just that action.
-- [ ] Sign in to the same account on another phone (or reinstall): guides already finished don't
+- [x] Sign in to the same account on another phone (or reinstall): guides already finished don't
       show again. A guest sees "Welcome, guest" once.
-- [ ] Account → Help → **Community rules** lists every guide; tapping one shows it with **Done**.
+- [x] Account → Help → **Community rules** lists every guide; tapping one shows it with **Done**.
       The composer's **Posting rules** link opens the matching guide.
-- [ ] TalkBack / VoiceOver reads "Page 1 of 3: Do"; with reduce motion on, the guide appears
+- [x] TalkBack / VoiceOver reads "Page 1 of 3: Do"; with reduce motion on, the guide appears
       without sliding.
 
 ## 7k. Area statistics (D116)
 
-- [ ] Account shows "Include me in area statistics" (on), with an explanation. Turning it off and on saves.
-- [ ] Privacy Policy has the "Area statistics" section.
+- [x] Account shows "Include me in area statistics" (on), with an explanation. Turning it off and on saves.
+- [x] Privacy Policy has the "Area statistics" section.
 
 ## 8. Profiles and blocking
 
-- [ ] Tap a username on a post or comment: profile shows bio, join date, post count, recent posts.
-- [ ] **Block**: their posts and comments disappear for you, and they can't open your profile.
-- [ ] Account → Settings → **Blocked users** lists them; **Unblock** brings everything back.
+- [x] Tap a username on a post or comment: profile shows bio, join date, post count, recent posts.
+- [x] **Block**: their posts and comments disappear for you, and they can't open your profile.
+- [x] Account → Settings → **Blocked users** lists them; **Unblock** brings everything back.
 
 ### Pop-ups (D97)
 
-- [ ] Tap refresh many times fast: "Slow down a little" appears as a dark rounded card with a gold
+- [x] Tap refresh many times fast: "Slow down a little" appears as a dark rounded card with a gold
       hourglass and a gold **OK**, not a white system box. Tapping outside closes it.
-- [ ] Delete one of your posts: a red trash icon, grey **Cancel** on the left and a red **Delete**.
+- [x] Delete one of your posts: a red trash icon, grey **Cancel** on the left and a red **Delete**.
       The Android back button acts as Cancel.
-- [ ] A post's **•••**: a dark sheet slides up from the bottom with icons (flag for Report, trash for
+- [x] A post's **•••**: a dark sheet slides up from the bottom with icons (flag for Report, trash for
       Delete) and a separate **Cancel**. On a friend's profile, every option shows (Android too).
-- [ ] As a guest, try to vote: "Create a free account" with a gold person icon.
+- [x] As a guest, try to vote: "Create a free account" with a gold person icon.
 
 ### Medals (D95)
 
-- [ ] On an account with medals: next to the name on its posts, small badges: a teal circle with a
+- [x] On an account with medals: next to the name on its posts, small badges: a teal circle with a
       speech bubble (First Contribution), a gold hexagon with a pin (Approved Contributor), a gold
       scalloped rosette with an up arrow (Well Received). Smaller beside comment names.
-- [ ] Its profile (and Account → Medals): each medal drawn in full with ribbons, its name, what
+- [x] Its profile (and Account → Medals): each medal drawn in full with ribbons, its name, what
       it's for, and "Earned [date]". With no medals: a faded coin and "No medals yet…".
 
 ## 9. Account settings
 
-- [ ] Profile card: the band across the top is your color; the **Color** button opens 24 colors,
+- [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,
       and picking one changes the band (and your post stripes) right away.
-- [ ] **About** and **Medals** have black title bars with white text, joined to white boxes with
+- [x] **About** and **Medals** have black title bars with white text, joined to white boxes with
       black text; **Edit bio** sits under the bio box on the left; add/edit a bio (300 max).
-- [ ] Home: a black bar under the header holds New / Top this week; posts sit on dark grey.
-- [ ] Opening a post (area or place) shows the post and its comments on the same dark grey; the
+- [x] Home: a black bar under the header holds New / Top this week; posts sit on dark grey.
+- [x] Opening a post (area or place) shows the post and its comments on the same dark grey; the
       "Comments" heading is white and Delete/Report links are gold.
-- [ ] Change username: works once; a second change soon after is refused with the date.
-- [ ] Change email: code goes to the new address (Mailpit); the old address gets a notice.
-- [ ] Change password: other signed-in devices are signed out; this one stays signed in.
-- [ ] **Radius** (Settings) offers 176 yd, 352 yd and 528 yd; picking a smaller one shrinks the feed and the Places list. Distances on posts and places show in yards (feet when very close).
-- [ ] Policies (Terms, Privacy, Guidelines, Data Retention) open and read well.
-- [ ] Location → **Open phone settings** opens the app's settings.
-- [ ] **Account standing** says "good standing" with the How it works text.
-- [ ] Delete account (password + type DELETE) signs you out; that account can't sign in again.
+- [x] Change username: works once; a second change soon after is refused with the date.
+- [x] Change email: code goes to the new address (Mailpit); the old address gets a notice.
+- [x] Change password: other signed-in devices are signed out; this one stays signed in.
+- [x] **Radius** (Settings) offers 176 yd, 352 yd and 528 yd; picking a smaller one shrinks the feed and the Places list. Distances on posts and places show in yards (feet when very close).
+- [x] Policies (Terms, Privacy, Guidelines, Data Retention) open and read well.
+- [x] Location → **Open phone settings** opens the app's settings.
+- [x] **Account standing** says "good standing" with the How it works text.
+- [x] Delete account (password + type DELETE) signs you out; that account can't sign in again.
 
-- [ ] **Contact us (D90):** Account → Help → **Contact us**: pick Support ticket or General, add a
+- [x] **Contact us (D90):** Account → Help → **Contact us**: pick Support ticket or General, add a
       subject and message, send → "Thanks!". In the portal, **Messages** lists it; **Show reply
       email** appears only if you turned on "You can reply to my account email"; **Mark resolved**
       moves it to Resolved.
 
 ## 9b. Accessibility (P7.6)
 
-- [ ] Phone settings → largest font size: screens still readable, nothing cut off or overlapping.
-- [ ] Turn on **TalkBack** (Android) or **VoiceOver** (iPhone): buttons read sensible names
+- [x] Phone settings → largest font size: screens still readable, nothing cut off or overlapping.
+- [x] Turn on **TalkBack** (Android) or **VoiceOver** (iPhone): buttons read sensible names
       ("Write a new post", "Upvote", "More options", "Hide my username"), and you can post and
       comment without looking.
-- [ ] Phone setting **Remove animations** (Android) / **Reduce Motion** (iPhone) on: buttons,
+- [x] Phone setting **Remove animations** (Android) / **Reduce Motion** (iPhone) on: buttons,
       votes, sheets and toasts no longer move or bounce; loading placeholders hold still (D78).
-- [ ] Text on the dark screens is white, grey, gold or light teal and easy to read.
+- [x] Text on the dark screens is white, grey, gold or light teal and easy to read.
 
 ## 9c. Look and feel (D78, D79)
 
-- [ ] **Every screen is dark**: feeds, Places, a place, a post, profiles, Account and all its
+- [x] **Every screen is dark**: feeds, Places, a place, a post, profiles, Account and all its
       sub-pages, sign-in, register, reset password, the filter / report / color sheets and the
       policy pages. No white page anywhere (the only light things are the toast and photos).
-- [ ] **Header:** the gold pin + **Jax** sits top-left on every screen (after the back arrow on
+- [x] **Header:** the gold pin + **Jax** sits top-left on every screen (after the back arrow on
       inner screens); no "JAX", "PLACES" or "ACCOUNT" titles. Your @username pill is on the right.
-- [ ] Text is in the new typeface (rounded, geometric). Headings and names are heavy.
-- [ ] **Sign in:** Jax top-left, a big "Your neighborhood, live." welcome, then the form on a
+- [x] Text is in the new typeface (rounded, geometric). Headings and names are heavy.
+- [x] **Sign in:** Jax top-left, a big "Your neighborhood, live." welcome, then the form on a
       dark sheet. Fields have icons; the field you're typing in gets a gold outline.
-- [ ] **Home:** under the header, "Near [neighborhood] · within 528 yd" (tap: opens Account),
+- [x] **Home:** under the header, "Near [neighborhood] · within 528 yd" (tap: opens Account),
       search pill + refresh, then All / Text / Media / Voice. Latest / Top this week scrolls
       away with the posts.
-- [ ] **Posts:** dark cards with a thick stripe in the author's color down the left; photo
+- [x] **Posts:** dark cards with a thick stripe in the author's color down the left; photo
       ringed in that color; name, ★ on yours, medals; "5 min ago · 120 yd"; vote pill (teal
       when up, gold when down) and comment pill; "Voice" / "Photo" tag on the right; "Popular"
       at 10+ points. A navy or black account color still shows a visible stripe.
-- [ ] **Places list:** each place is a dark card with a thick category-colored stripe, a colored
+- [x] **Places list:** each place is a dark card with a thick category-colored stripe, a colored
       icon tile, the name large, "Coffee · 120 yd", posts (teal) and ★ count, and "You can post"
       when you're close enough. Your favorites show a gold ★ next to the name.
-- [ ] **Place page:** big tile and name, address, three tiles (Away / Posts / Favorites), a
+- [x] **Place page:** big tile and name, address, three tiles (Away / Posts / Favorites), a
       "Save to favorites" button (turns gold when saved, toast at the bottom). Too far away: a
       dashed lock card with your distance.
-- [ ] **Post page:** "•••" for Report/Delete; comments in a dark panel with avatars and thread
+- [x] **Post page:** "•••" for Report/Delete; comments in a dark panel with avatars and thread
       lines; reply bar with a round gold send button.
-- [ ] **New post:** × top-left, gold Post top-right; your photo and a "People near you" chip.
-- [ ] **New post (D80):** a **Text & photos / Voice** switch at the top. Text & photos: type, then
+- [x] **New post:** × top-left, gold Post top-right; your photo and a "People near you" chip.
+- [x] **New post (D80):** a **Text & photos / Voice** switch at the top. Text & photos: type, then
       the dashed gold **Add a photo** button right under the text. Voice: record first, caption
       optional. Record a clip, switch to Text & photos: a note says the clip won't be posted.
-- [ ] **Empty feed** (Home or a place with no posts): only the "Start a post" button, no round +.
+- [x] **Empty feed** (Home or a place with no posts): only the "Start a post" button, no round +.
       After the first post appears, the round + shows bottom-right and the big button is gone.
-- [ ] **Keyboard (Android and iPhone):** on a post, tap the comment box and type a few lines: the
+- [x] **Keyboard (Android and iPhone):** on a post, tap the comment box and type a few lines: the
       box sits right on top of the keyboard and you can see everything you type. Same for the
       new-post screen, sign-in, register and the Account forms.
-- [ ] Open a place, then one of its posts: a "Posted in [place]" strip stays under the header
+- [x] Open a place, then one of its posts: a "Posted in [place]" strip stays under the header
       while you scroll the comments; tapping it goes back to the place.
-- [ ] **Account:** one page: profile card (color band, photo with camera badge, Edit bio /
+- [x] **Account:** one page: profile card (color band, photo with camera badge, Edit bio /
       Color / View), About, Medals, then dark grouped settings. Email shows a Confirmed / Not
       confirmed badge; radius is a three-way switch.
-- [ ] **Account sub-pages** (username, email, password, blocked, reports, suggestions, standing,
+- [x] **Account sub-pages** (username, email, password, blocked, reports, suggestions, standing,
       delete, policies) each start with an icon and a big title. Reports and suggestions are
       cards with colored status badges.
 
 ## 10. Admin portal (on your computer)
 
-- [ ] Make yourself admin: `npm run admin:promote -w @jax/server -- <your username>`.
-- [ ] Open http://localhost:3000/admin → redirected to sign-in; password, then scan the QR code
+- [x] Make yourself admin: `npm run admin:promote -w @jax/server -- <your username>`.
+- [x] Open http://localhost:3000/admin → redirected to sign-in; password, then scan the QR code
       with an authenticator app and enter the code. Next sign-in only asks for the code.
-- [ ] Dashboard counts match what's waiting; the tiles link to the queues.
-- [ ] Reports: the item reported in section 5 is there; the held comment from section 6 shows
+- [x] Dashboard counts match what's waiting; the tiles link to the queues.
+- [x] Reports: the item reported in section 5 is there; the held comment from section 6 shows
       **Held** and **Automatic**.
-- [ ] Open a case: you see the content, the post it's on, who reported it, and the author's history.
-- [ ] **Remove** with "Also give the author a strike": on the author's phone, Account standing
+- [x] Open a case: you see the content, the post it's on, who reported it, and the author's history.
+- [x] **Remove** with "Also give the author a strike": on the author's phone, Account standing
       shows the warning with your reason; the reporter's My reports says "Action taken".
-- [ ] **Approve (publish)** the held comment: it appears on the phone.
-- [ ] Users: search by username; the record shows previous usernames and history (never email).
-- [ ] Give a second strike (suspends 24 h): the phone shows "suspended until …" and signing in
+- [x] **Approve (publish)** the held comment: it appears on the phone.
+- [x] Users: search by username; the record shows previous usernames and history (never email).
+- [x] Give a second strike (suspends 24 h): the phone shows "suspended until …" and signing in
       offers **See why and appeal**; send an appeal.
-- [ ] Appeals: accept it with a note; the person can sign in again and sees the note.
-- [ ] **Automatic suspension (D74):** hard to do by hand (10 accounts at least 3 days old); the
+- [x] Appeals: accept it with a note; the person can sign in again and sees the note.
+- [x] **Automatic suspension (D74):** hard to do by hand (10 accounts at least 3 days old); the
       automated tests cover it. If one happens: it's at the top of Reports, the account's case
       lists every report on its posts; **Ban** removes the posts, **Lift** brings them back.
-- [ ] A case with more than 20 reports shows a per-reason summary and **Show all**.
-- [ ] Audit log lists everything you did. **Sign out** ends the session.
+- [x] A case with more than 20 reports shows a per-reason summary and **Show all**.
+- [x] Audit log lists everything you did. **Sign out** ends the session.

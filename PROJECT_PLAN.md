@@ -428,7 +428,7 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 - [x] P8.4 🔒 Automatic suspension at 10 reporters in 7 days (throwaway accounts don't count; Ban/Lift resolve it)
 - [x] P8.5 Feed search by text or @username within the radius
 - [x] P8.6 Animated GIFs
-- [ ] P8.7 Photo upload: cause found (D81, Blob upload refused by Expo) and fixed; confirm on the phone
+- [x] P8.7 Photo upload: cause found (D81, Blob upload refused by Expo) and fixed; confirm on the phone ✅ user confirmed on the phone 2026-10-23
 - [x] P8.8 Voice posts (D75; record in the app, up to 60 s; reviewed by report, since screening reads text only). Phone check pending
 - [x] P8.9 Video posts (D102: free, as recorded, 30 s / 25 MB, cleaned in place; Video tab). Phone check pending
 - [x] P8.10 Post-type tabs on Home and place pages: All / Text / Media / Voice (Video joins with P8.9; type decided by what's attached, D75). Phone check pending
@@ -461,7 +461,7 @@ A short swipeable guide (Do's ✅ / Don'ts ❌ / Good to know, page dots, Next, 
 - [x] P11.9 Account → **Community rules** to reread any guide, plus a small "Rules" link in each composer
 
 
-## Phase 12 — Verified business owners (D92, built 2026-10-20 as D103; phone check pending)
+## Phase 12 — Verified business owners (D92, built 2026-10-20 as D103; phone check passed 2026-10-23)
 
 - [x] P12.1 "I own this place" on the place page → choose how to verify; one open claim per account and place; rate-limited
 - [x] P12.2 🔒 Business-domain email: send a 6-digit code to an address at the business's web domain (not Gmail, Yahoo, etc.); entering it verifies automatically
@@ -498,6 +498,21 @@ Counts of where people use Jax, by ZIP code and day, without keeping anyone's lo
 - [x] P14.4 Nightly rollups into counts (daily, weekly, monthly per ZIP; parts of day; new this month; also-visited pairs; place activity without places of worship); per-person rows deleted after their week and month are counted ✅ `area-stats.test.ts` (runs in the daily maintenance job)
 - [x] P14.5 Off switch in Account → Settings, Privacy Policy and Data Retention text ✅ switch in Account ("Include me in area statistics"), `PATCH /me/area-stats`, policies updated 2026-10-22
 - [x] P14.6 Admin report (minimum 10 people per group shown) ✅ Admin → Area stats (`/admin/stats`): ZIP codes, Places, Travel between areas tabs; period menu (last 7 / 30 days, counted months and weeks); sortable columns; ZIP day-by-day view; `area-stats.test.ts`
+
+---
+
+## Phase 15 — Branding and pre-deployment polish (user 2026-10-23)
+
+Before the staging deploy. Name and look first, because the domain, email sender, app store ID and listings depend on them.
+
+- [ ] P15.1 App name: explore and shortlist; check domains, app stores, trademarks and social handles; decide (Q21)
+- [ ] P15.2 App icon and brand art, Jacksonville-themed. First concept: the Modis Building (1 Independent Square) with the blue Main Street Bridge beside it, dark blue, monochrome, up to two more colors in the black / white / blue range
+- [ ] P15.3 Branded emails: account confirmation, password reset, email change, owner code (today they're plain)
+- [ ] P15.4 Sign-in and sign-up screens reorganized and branded; branded loading animation
+- [ ] P15.5 Medal tiers: **bronze, silver, gold, platinum**, more ways to earn medals, and refreshed medal art (current medals updated to fit)
+- [ ] P15.6 Weekly polls (before deploy; see `docs/IDEAS_ENGAGEMENT.md` §1)
+- [ ] P15.7 Citywide discussion topics (before deploy; see `docs/IDEAS_ENGAGEMENT.md` §2)
+- [ ] P15.8 Admin portal walkthrough with the user (admin account, authenticator set-up, each page)
 
 ---
 
@@ -700,3 +715,4 @@ Events/meetups/RSVPs · sponsored content / ads / subscriptions · phone push no
 | 2026-10-22 | D115 | Your profile in the Account tab (`account/me`, `account/post/[id]`, `account/place-post/[id]`), where-it-was-made line and ••• Edit/Delete on your own posts (shared `EditPostSheet`), `canComment` on post detail so the comment box only shows within the radius. 784 server + 44 app tests, Android bundle |
 | 2026-10-22 | P14.1–P14.5, D116 | Anonymous area statistics: Census 2020 ZIP areas (52 around Duval, committed GeoJSON); feed first page records (ZIP, local day, part of day, weekly and monthly keyed codes; no ID, no coordinates) for signed-in users not opted out; nightly counts into daily / weekly / monthly per-ZIP tables, part-of-day and new-this-month counts, same-day ZIP pairs, place activity (not places of worship); keys destroyed and per-person rows deleted after their week and month are counted. Off switch in Account; Privacy Policy and Data Retention updated. Admin report (P14.6) still to do. 791 server + 136 shared + 44 app tests, Android bundle |
 | 2026-10-22 | P14.6, D117 | Admin Area stats page (tabs, period menu, sortable columns, ZIP drill-down, <10 masked). Privacy Policy allows selling aggregate area statistics. Quick fixes: Friends tab defaults to Your friends; friend-row footnote; smaller post-kind pills; yards rounded to 5; Area statistics See details + reworded; guide double-show fix. 792 server + 136 shared + 44 app tests, Android bundle |
+| 2026-10-23 | Phase 15 (planned), phone checks | User confirmed the phone checklist (everything uploads and displays correctly by location), so P8.7 and the Phase 12 phone check pass. New Phase 15: name, icon and brand art (first concept: Modis Building and the blue Main Street Bridge), branded emails, sign-in screens and loading animation, medal tiers (bronze/silver/gold/platinum), polls and citywide topics before deploying, admin portal walkthrough |
