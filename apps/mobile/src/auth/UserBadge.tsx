@@ -1,101 +1,27 @@
-import { useEffect, useSyncExternalStore } from 'react';
-import { Pressable, View } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { View } from 'react-native';
 import { DARK } from '@jax/shared';
 import { useAuth } from './AuthContext';
 import { Text } from '@/text';
 
 /**
- * "Hide my name on screen" (D43): a per-device display preference, e.g. when showing the
- * phone to someone. It only affects this screen; posts still show the username to others.
+ * The GUEST pill at the right of the top bar while browsing as a guest. D119: signed-in
+ * people see nothing here; the username left the top bar (it's on the Account tab).
  */
-const KEY = 'jax.hideNameOnScreen';
-let hidden = false;
-let loaded = false;
-const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((l) => l());
-
-function subscribe(l: () => void) {
-  listeners.add(l);
-  return () => listeners.delete(l);
-}
-
-async function load() {
-  if (loaded) return;
-  loaded = true;
-  hidden = (await SecureStore.getItemAsync(KEY).catch(() => null)) === '1';
-  emit();
-}
-
-function toggle() {
-  hidden = !hidden;
-  emit();
-  void SecureStore.setItemAsync(KEY, hidden ? '1' : '0').catch(() => undefined);
-}
-
-/**
- * Whether "hide my name on screen" is on. D73: also hides the ★ that marks your own posts,
- * so someone looking at the screen can't tell which posts are yours.
- */
-export function useNameHidden() {
-  const isHidden = useSyncExternalStore(subscribe, () => hidden);
-  useEffect(() => {
-    void load();
-  }, []);
-  return isHidden;
-}
-
-/** Signed-in username in the top bar, with an eye button to hide it. Gold on black (D33). */
 export function UserBadge() {
   const { state } = useAuth();
-  const isHidden = useSyncExternalStore(subscribe, () => hidden);
-  useEffect(() => {
-    void load();
-  }, []);
-  if (state.status === 'guest') {
-    return (
-      <View
-        style={{
-          backgroundColor: DARK.accent,
-          borderRadius: 999,
-          paddingHorizontal: 10,
-          paddingVertical: 4,
-          marginRight: 4,
-        }}
-      >
-        {/* Black on gold (D33). */}
-        <Text style={{ color: DARK.onAccent, fontWeight: '800', fontSize: 12 }}>GUEST</Text>
-      </View>
-    );
-  }
-  if (state.status !== 'signedIn') return null;
-
+  if (state.status !== 'guest') return null;
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={isHidden ? 'Show my username' : 'Hide my username'}
-      onPress={toggle}
-      hitSlop={8}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        minHeight: 32,
-        paddingHorizontal: 10,
+    <View
+      style={{
+        backgroundColor: DARK.accent,
         borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
         marginRight: 4,
-        backgroundColor: DARK.raised,
-        opacity: pressed ? 0.7 : 1,
-      })}
+      }}
     >
-      <Text
-        style={{ color: DARK.text, fontWeight: '700', fontSize: 13, maxWidth: 110 }}
-        numberOfLines={1}
-      >
-        {isHidden ? '••••••' : `@${state.user.username}`}
-      </Text>
-      <Ionicons name={isHidden ? 'eye-off-outline' : 'eye-outline'} size={16} color={DARK.accent} />
-    </Pressable>
+      {/* Dark text on the accent (D33). */}
+      <Text style={{ color: DARK.onAccent, fontWeight: '800', fontSize: 12 }}>GUEST</Text>
+    </View>
   );
 }

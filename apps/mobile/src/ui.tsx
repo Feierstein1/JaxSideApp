@@ -70,13 +70,14 @@ export function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
 
 /**
  * Navigation header (D33, D79): black bar, the JaxSide mark on the left on every screen (no
- * centered page names), gold back arrow, and your username on the right (hideable, D43).
+ * centered page names), the accent back arrow, and messages and notifications on the right
+ * (D119: no username there; a GUEST pill for guests).
  * The page's own name is shown inside the page with `PageTitle`.
  */
 export const headerOptions = {
   headerTitle: () => <BrandMark />,
   headerTitleAlign: 'left' as const,
-  // D76: the notification bell before your username.
+  // D76 / D119: messages and the notification bell (plus the GUEST pill for guests).
   headerRight: () => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
       <MessagesButton />

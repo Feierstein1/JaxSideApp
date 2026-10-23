@@ -61,7 +61,8 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [x] Posting again within 10 seconds shows "You're doing that too often. Try again in…".
 - [x] Posting the exact same text again is refused ("You already posted this").
 - [x] Open your post: **Delete my post** works (after confirming).
-- [x] The top-bar username shows; the eye button hides it and it stays hidden after restarting.
+- [ ] The top bar shows the JaxSide mark on the left and only messages and notifications on the
+      right (no username, D119); guests also see the GUEST pill.
       While hidden, the ★ on your own posts is hidden too (D73).
 - [x] **Post look (D69):** each post has a header in the author's color (rounded top) with their
       photo, a larger username, a ★ on your own posts, and the time on the right ("5 min ago" up to
@@ -358,7 +359,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 - [x] Phone settings → largest font size: screens still readable, nothing cut off or overlapping.
 - [x] Turn on **TalkBack** (Android) or **VoiceOver** (iPhone): buttons read sensible names
-      ("Write a new post", "Upvote", "More options", "Hide my username"), and you can post and
+      ("Write a new post", "Upvote", "More options", "Notifications"), and you can post and
       comment without looking.
 - [x] Phone setting **Remove animations** (Android) / **Reduce Motion** (iPhone) on: buttons,
       votes, sheets and toasts no longer move or bounce; loading placeholders hold still (D78).
