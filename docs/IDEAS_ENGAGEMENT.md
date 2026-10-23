@@ -171,6 +171,58 @@ in-app drawing tool is a large build; uploads of images made in any app are much
 
 ---
 
+## 6. A public reputation score (like Reddit's karma, under another name)
+
+**Idea:** each person earns a score from the up and down votes on their posts and comments. It's **public to all
+users**, so people think before posting. It should not strain the system, and it shouldn't be called "karma."
+
+**Name ideas:**
+
+- **Rep** (short for reputation);
+- **Props**;
+- **Cred**.
+
+"Standing" is already taken by the private _Account standing_ screen (warnings and suspensions), so avoid it.
+**Rep** reads clearly next to a name ("1.2k rep").
+
+**Cost:** low. Every post and comment already stores its vote total, updated in the same database step as the vote,
+and the load test showed those paths are fast. Options:
+
+- **Live total:** one counter per person, updated with each vote. One extra tiny write per vote.
+- **Nightly total:** summed by the existing daily job. No extra work per vote, but it updates once a day.
+
+Either way, showing it costs nothing extra: it's one number read with the profile.
+
+**Suggested shape:**
+
+- **Score:** upvotes minus downvotes received on posts and comments.
+- **Shown** on the profile, and optionally as a small badge next to the username on posts.
+- **Votes that count:** only from accounts a few days old (the same rule place votes use).
+- **Votes that don't count:** your own, and votes on removed content. Removal for breaking the rules can also take
+  some rep away.
+- **A cap on how much one person can move another's rep each day**, so a friend or an enemy can't swing it alone.
+
+**Concerns:**
+
+- **Scope.** The spec lists _advanced reputation systems_ as out of scope, so building this needs a scope decision
+  and a Decision Log entry.
+- **Popularity isn't the same as good behavior.** A civil but unpopular opinion gets downvoted. If low rep ever
+  limits what someone can do, that punishes disagreement, not rule-breaking. Recommendation: display only at first.
+  Keep enforcement tied to reports and moderation, which already exist.
+- **Gaming.** Vote rings and fake accounts. Mitigated by the account-age rule, location-verified accounts and the
+  daily cap.
+- **New users** start at 0 and can look untrustworthy next to veterans. Consider showing rep only after a first few
+  posts, or as tiers (e.g. "New," "Regular," "Trusted") instead of a raw number.
+
+**Questions for the owner:**
+
+1. Shown next to names on every post, or only on profiles?
+2. Display only, or should rep ever unlock or limit things?
+3. A raw number, or tiers?
+4. Counted from posts and comments, or posts only?
+
+---
+
 ## Overall suggestions
 
 - **Suggested order** (most value first, least risk and work):
@@ -179,6 +231,7 @@ in-app drawing tool is a large build; uploads of images made in any app are much
   3. the **game-day celebration** (small and fun);
   4. the **news strip**;
   5. **contests with prizes** (most legal work).
+  6. **rep** whenever the scope decision is made; it's cheap to build.
 - **Polls and area statistics fit together:** poll results by ZIP code next to activity by ZIP code are a strong
   combined offering for the insight business, still totals-only.
 - **Each feature adds moderation work.** Plan who reviews reports as the city-wide parts grow.
