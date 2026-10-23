@@ -21,9 +21,10 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 ## Current status
 
-**Phase:** 7 — Verification & Release Readiness: work done 2026-10-16, waiting for sign-off. Phase 3 gate pending only the on-device vote/comment check
-**Next action:** Your sign-off on Phase 7: phone checklist (`docs/MANUAL_TESTS.md`), hosting approval (Q15, `docs/LAUNCH_SERVICES.md`), store accounts (`docs/STORE_PREP.md`).
-**Last updated:** 2026-10-21 (D105 comment rules, own posts anywhere, places of worship; map fixed)
+**Phase:** Feature work through Phase 14 is built and tested (792 server + 136 shared + 44 app tests; production server build passes, 2026-10-23). Phase 7 sign-off is still open. Next is a **private cloud test environment (staging)**, then launch preparation.
+**Next action:** Your decisions: hosting approval (Q15, about $30–35/month), a domain (Q21, or a temporary one for staging), email via SES (Q6). Then I prepare the deploy runbook and scripts, and run the HTTP checks (`e2e:live`) against staging.
+**Before a public launch:** phone checklist pass (`docs/MANUAL_TESTS.md`), screening word list (Q14), City neighborhood data license (Q16), store accounts and listings (`docs/STORE_PREP.md`), lawyer review of the Privacy Policy (area statistics, selling totals), full-size load test on the production database, remove the temporary phone log (D100), Phase 7 sign-off.
+**Last updated:** 2026-10-23
 
 ---
 
