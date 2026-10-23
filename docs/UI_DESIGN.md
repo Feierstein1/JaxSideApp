@@ -66,10 +66,12 @@ it. Every text color is tested at 4.5:1 on `page`, `card` and `raised`, and inpu
 
 **Typeface:** Plus Jakarta Sans (free, Open Font License, `@expo-google-fonts`). Import `Text`
 and `TextInput` from `@/text`, not from `react-native`: they pick the right font file for
-`fontWeight` and default to the dark theme's text color.
+`fontWeight` and default to the dark theme's text color. The one exception is the app's name in
+the header, set in **Russo One** (`FONT.brand`, D120).
 
-**Header (every screen):** black bar, the **Jax mark (gold pin tile + "Jax") top-left**, gold
-back arrow before it on inner screens, username pill on the right. No centered page names; an
+**Header (every screen):** black bar, the **JaxSide mark top-left**: the small icon emblem and
+"JAXSIDE" in Russo One, JAX in the teal accent and SIDE in white (D120). The accent back arrow
+sits before it on inner screens; messages and notifications on the right (no username, D119). No centered page names; an
 inner page shows its own name at the top of the page with `PageTitle` (big title, optional line
 and icon).
 

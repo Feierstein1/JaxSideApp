@@ -20,6 +20,8 @@ export const FONT = {
   semibold: 'PlusJakartaSans_600SemiBold',
   bold: 'PlusJakartaSans_700Bold',
   heavy: 'PlusJakartaSans_800ExtraBold',
+  /** D120: the JaxSide name in the top bar only (Russo One, free, Open Font License). */
+  brand: 'RussoOne_400Regular',
 } as const;
 
 const BY_WEIGHT: Record<string, string> = {

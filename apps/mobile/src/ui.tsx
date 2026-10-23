@@ -35,7 +35,7 @@ import { Bell } from './social/Bell';
 import { MessagesButton } from './social/MessagesButton';
 import { showMenu, type MenuItem } from './dialog';
 import { haptic, useReducedMotion } from './motion';
-import { Text, TextInput } from './text';
+import { FONT, Text, TextInput } from './text';
 import { elevation, GUTTER, RADIUS, SPACE, TYPE } from './tokens';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -45,7 +45,8 @@ export type IconName = ComponentProps<typeof Ionicons>['name'];
 /**
  * D79: the app name, always top-left in the header on every screen (with the back arrow
  * before it on inner screens). The app icon (a simplified version that stays readable when
- * small, assets/brand/mark-small.svg) and "JaxSide" in the heavy weight. The large size (the
+ * small, assets/brand/mark-small.svg) and the name in capitals, JAX in teal and SIDE in
+ * white, set in Russo One (D120). The large size (the
  * loading screen) is the full icon emblem without the name.
  */
 export function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
@@ -62,7 +63,10 @@ export function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
         style={{ width: lg ? 96 : 30, height: lg ? 96 : 30, borderRadius: lg ? 22 : 8 }}
       />
       {lg ? null : (
-        <Text style={{ fontSize: 23, fontWeight: '800', letterSpacing: -0.8 }}>JaxSide</Text>
+        <Text style={{ fontFamily: FONT.brand, fontSize: 22 }}>
+          <Text style={{ color: DARK.accent }}>JAX</Text>
+          <Text style={{ color: DARK.text }}>SIDE</Text>
+        </Text>
       )}
     </View>
   );

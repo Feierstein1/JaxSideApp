@@ -9,6 +9,7 @@ import {
   PlusJakartaSans_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/plus-jakarta-sans';
+import { RussoOne_400Regular } from '@expo-google-fonts/russo-one';
 import { DARK } from '@jax/shared';
 import { AuthProvider, useAuth } from '@/auth/AuthContext';
 import { installRemoteLogging } from '@/debug/remote-log';
@@ -74,6 +75,7 @@ export default function RootLayout() {
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
+    RussoOne_400Regular, // D120: the JaxSide name
   });
   return (
     <ThemeProvider value={NAV_THEME}>
