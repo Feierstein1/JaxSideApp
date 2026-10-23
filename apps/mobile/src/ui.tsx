@@ -46,8 +46,8 @@ export type IconName = ComponentProps<typeof Ionicons>['name'];
  * D79: the app name, always top-left in the header on every screen (with the back arrow
  * before it on inner screens). The app icon (a simplified version that stays readable when
  * small, assets/brand/mark-small.svg) and the name in capitals, JAX in teal and SIDE in
- * white, set in Russo One (D120). The large size (the
- * loading screen) is the full icon emblem without the name.
+ * white, set in Russo One (D120). The large size (the loading screen) is the full icon
+ * emblem with the name under it.
  */
 export function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
   const lg = size === 'lg';
@@ -56,18 +56,16 @@ export function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
       accessible
       accessibilityRole="header"
       accessibilityLabel="JaxSide"
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+      style={{ flexDirection: lg ? 'column' : 'row', alignItems: 'center', gap: lg ? 18 : 8 }}
     >
       <Image
         source={lg ? EMBLEM : MARK}
         style={{ width: lg ? 96 : 30, height: lg ? 96 : 30, borderRadius: lg ? 22 : 8 }}
       />
-      {lg ? null : (
-        <Text style={{ fontFamily: FONT.brand, fontSize: 22 }}>
-          <Text style={{ color: DARK.accent }}>JAX</Text>
-          <Text style={{ color: DARK.text }}>SIDE</Text>
-        </Text>
-      )}
+      <Text style={{ fontFamily: FONT.brand, fontSize: lg ? 36 : 22 }}>
+        <Text style={{ color: DARK.accent }}>JAX</Text>
+        <Text style={{ color: DARK.text }}>SIDE</Text>
+      </Text>
     </View>
   );
 }
