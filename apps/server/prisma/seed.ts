@@ -103,6 +103,24 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
               longitude = EXCLUDED.longitude, location = EXCLUDED.location, "updatedAt" = now()`;
     }
   }
+
+  // D123: one sample poll to try in development (only while there are none).
+  if (opts.includeDevData && (await db.poll.count()) === 0) {
+    const opensAt = new Date();
+    await db.poll.create({
+      data: {
+        question: 'What’s your favorite Jacksonville-area beach?',
+        details: 'Sample poll for development.',
+        opensAt,
+        closesAt: new Date(opensAt.getTime() + 7 * 86_400_000),
+        choices: {
+          create: ['Jacksonville Beach', 'Neptune Beach', 'Atlantic Beach', 'Hanna Park'].map(
+            (label, position) => ({ label, position }),
+          ),
+        },
+      },
+    });
+  }
 }
 
 async function main() {

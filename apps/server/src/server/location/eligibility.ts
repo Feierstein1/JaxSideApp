@@ -38,6 +38,8 @@ export const LOCATION_ACTIONS = {
   'directory.verify': ['user'],
   /** D98: sending a private message: inside Duval, no radius. */
   'message.send': ['user'],
+  /** D123: voting in a poll: inside Duval, no radius. */
+  'poll.vote': ['user'],
 } as const satisfies Record<string, readonly LocationActor['kind'][]>;
 export type LocationAction = keyof typeof LOCATION_ACTIONS;
 

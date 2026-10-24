@@ -9,6 +9,7 @@ import { AreaStrip } from '@/location/AreaLabel';
 import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/device';
 import { PostList } from '@/discussion/PostList';
 import { PostTypeTabs } from '@/discussion/PostTypeTabs';
+import { PollCard } from '@/polls/PollCard';
 import { refreshLimiter } from '@/refresh-limit';
 import { Banner, FloatingButton, RefreshButton, SearchField, Segmented } from '@/ui';
 import { showAlert } from '@/dialog';
@@ -100,6 +101,8 @@ export default function HomeFeed() {
           Confirm your email to post, comment and vote. Tap to enter your code.
         </Banner>
       ) : null}
+      {/* D123: the poll of the week (hidden while searching). */}
+      {q ? null : <PollCard reloadKey={String(reloads)} />}
       <Segmented
         options={[
           { key: 'new', label: 'Latest', icon: 'time-outline' },

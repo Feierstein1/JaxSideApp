@@ -208,6 +208,9 @@ export const CONFIG_DEFAULTS = {
   /** D101: a removed place's posts stay archived (hidden, restorable) this long, then go. */
   'places.removedPostDays': 90,
   'rateLimit.placeVote.perMinute': 20,
+  /** D123: polls: who may vote, and how fast. */
+  'polls.voterMinAccountDays': 3,
+  'rateLimit.pollVote.perMinute': 10,
   'rateLimit.placeRemoval.perDay': 5,
   /** Places within this distance with a similar name are shown as possible duplicates. */
   'submission.duplicateRadiusMeters': 300,

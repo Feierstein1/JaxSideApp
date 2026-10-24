@@ -336,6 +336,21 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Upvote someone's comment to +3 on 5 different posts: their Helpful Commenter medal appears
       right away (no waiting for the nightly check).
 
+### Polls (D123)
+
+- [ ] Home shows a **Poll of the week** card above Latest / Top this week (not while searching).
+      Tap it: the question, the choices, **Vote**. Pick one → "Vote “…”? Your vote is final" →
+      Vote. The screen then says "You voted “…”" and no totals.
+- [ ] Vote again from another phone with the same account: refused ("You already voted").
+- [ ] As a guest: the card shows; the poll's button says "Create an account to vote".
+- [ ] Admin portal → **Polls**: write a poll (question, 2–6 choices, opens / closes). Before it
+      opens: Edit and Delete work, and the app doesn't show it. Once open: only "End now"; the
+      card shows "N votes so far" but no totals.
+- [ ] End it (or wait until it closes): the app card says **Results are in** with the top answer;
+      the poll shows bars per choice, "By area" for ZIP codes with 10+ voters, and the note that
+      results are JaxSide users, not a scientific survey. **Past polls** lists it.
+- [ ] Privacy Policy has a **Polls** section.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

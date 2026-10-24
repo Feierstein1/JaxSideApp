@@ -98,8 +98,12 @@ export const POLICIES: Record<PolicyKey, Policy> = {
         body: 'When you open JaxSide, we count that someone used the app in your ZIP code that day, and in which part of the day (morning, afternoon, evening or night), to see which parts of Jacksonville are busy. We also count activity in place discussions. Only totals are kept. Your exact location and your account are never part of them: a coded entry that can’t be traced back to you is kept for the rest of the month so you count once, then deleted, and the code’s key is destroyed. Small groups (fewer than 10 people) are never shown. You can turn this off in Account → Settings.',
       },
       {
+        heading: 'Polls',
+        body: 'When you vote in a poll, we check that you’re in Duval County and note your ZIP code. Your vote is stored under a code that can’t be traced back to you; it lets us show you your own choice while the poll is open and stop anyone voting twice. When the poll closes, the votes are turned into totals per choice and per ZIP code, the coded votes are deleted, and the code’s key is destroyed, so no one (including us) can tell how you voted. ZIP codes with fewer than 10 voters are never shown on their own. Poll results describe JaxSide users who voted, not all of Jacksonville, and may be published or shared like area statistics.',
+      },
+      {
         heading: 'Sharing',
-        body: 'We don’t sell your personal information or show ads. We may share or sell area statistics (totals such as how many people used JaxSide in a ZIP code, or how active a place’s discussion is) to Jacksonville businesses and organizations; they never include who you are, your account, your posts or your location, and groups under 10 people are never included. Otherwise we share information only when the law requires it, for example a valid legal request or a mandatory report of child sexual abuse material.',
+        body: 'We don’t sell your personal information or show ads. We may share or sell area statistics and poll results (totals such as how many people used JaxSide in a ZIP code, how active a place’s discussion is, or how a poll came out) to Jacksonville businesses and organizations; they never include who you are, your account, your posts or your location, and groups under 10 people are never included. Otherwise we share information only when the law requires it, for example a valid legal request or a mandatory report of child sexual abuse material.',
       },
       {
         heading: 'Your choices',

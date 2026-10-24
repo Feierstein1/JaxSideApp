@@ -1,5 +1,6 @@
 import { Prisma } from '@/generated/prisma/client';
 import { evaluateAchievements } from '../achievements';
+import { finalizeDuePolls } from '../polls';
 import { expirePlaceChanges, purgeRemovedPlacePosts } from '../directory/place-changes';
 import { purgeUnusedPhotos } from '../media/photos';
 import { purgeExpiredCounters } from '../rate-limit';
@@ -41,6 +42,8 @@ export interface MaintenanceReport extends Partial<Omit<RetentionReport, 'notifi
   messageEvidencePurged?: number;
   /** D116: the anonymous area statistics counted tonight. */
   areaStats?: AreaStatsReport;
+  /** D123: polls that closed and were counted (votes deleted, key destroyed). */
+  pollsCounted?: number;
 }
 
 /**
@@ -143,6 +146,8 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
     // D98: message snapshots on reports are kept for a year.
     messageEvidencePurged: await purgeOldMessageEvidence(now),
     areaStats: await runAreaStats(now),
+    // D123: closed polls not yet counted (normally counted when someone opens them).
+    pollsCounted: await finalizeDuePolls(now),
   };
   logger.info({ report }, 'maintenance complete');
   return report;

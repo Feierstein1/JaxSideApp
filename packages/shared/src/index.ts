@@ -10,6 +10,7 @@ export * from './schemas/discussion';
 export * from './schemas/report';
 export * from './schemas/social';
 export * from './schemas/submission';
+export * from './schemas/polls';
 export * from './policies';
 export * from './guides';
 export * from './profile-colors';

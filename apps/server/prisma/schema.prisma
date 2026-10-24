@@ -178,6 +178,7 @@ model User {
   favorites       FavoritePlace[]
   appeals         Appeal[]             @relation("Appellant")
   achievements    UserAchievement[]
+  pollsCreated    Poll[]               @relation("PollCreator")
   submissions     BusinessSubmission[] @relation("Submitter")
   reviewedSubs    BusinessSubmission[] @relation("Reviewer")
   reportsMade     Report[]             @relation("Reporter")
@@ -1329,4 +1330,78 @@ model StatsRollup {
   period DateTime @db.Date
 
   @@id([kind, period])
+}
+
+/// D123: a weekly poll, written by an admin. Editable only before `opensAt`.
+model Poll {
+  id          String       @id @default(uuid(7)) @db.Uuid
+  question    String       @db.VarChar(200)
+  /// Optional context under the question (neutral wording).
+  details     String?      @db.VarChar(500)
+  opensAt     DateTime     @db.Timestamptz(3)
+  closesAt    DateTime     @db.Timestamptz(3)
+  createdById String?      @db.Uuid
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+  /// Set once the votes are counted and the key destroyed (after closing).
+  finalizedAt DateTime?    @db.Timestamptz(3)
+  /// How many people voted (filled when finalized).
+  voterCount  Int          @default(0)
+  createdBy   User?        @relation("PollCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  choices     PollChoice[]
+  key         PollKey?
+  ballots     PollBallot[]
+  tallies     PollTally[]
+
+  @@index([opensAt, closesAt])
+  @@index([finalizedAt, closesAt])
+  @@index([createdById])
+}
+
+model PollChoice {
+  id       String       @id @default(uuid(7)) @db.Uuid
+  pollId   String       @db.Uuid
+  label    String       @db.VarChar(80)
+  position Int          @db.SmallInt
+  poll     Poll         @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  ballots  PollBallot[]
+  tallies  PollTally[]
+
+  @@unique([pollId, position])
+}
+
+/// D123: the poll's own secret key (wrapped by the master key). Destroyed when the poll is
+/// counted; after that the coded votes (already deleted) could not be linked to anyone.
+model PollKey {
+  pollId     String   @id @db.Uuid
+  keyWrapped Bytes
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  poll       Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+}
+
+/// D123: one vote while the poll is open: a code from the account ID and the poll key (never
+/// the ID), the choice, and the voter's ZIP code. No time. Deleted when the poll is counted.
+model PollBallot {
+  pollId    String     @db.Uuid
+  voterCode Bytes
+  choiceId  String     @db.Uuid
+  zip       String     @default("") @db.VarChar(5)
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  choice    PollChoice @relation(fields: [choiceId], references: [id], onDelete: Cascade)
+
+  @@id([pollId, voterCode])
+  @@index([choiceId])
+}
+
+/// D123: what's left after a poll closes: totals per choice and ZIP ("" = outside every ZIP area).
+model PollTally {
+  pollId   String     @db.Uuid
+  choiceId String     @db.Uuid
+  zip      String     @default("") @db.VarChar(5)
+  count    Int
+  poll     Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  choice   PollChoice @relation(fields: [choiceId], references: [id], onDelete: Cascade)
+
+  @@id([pollId, choiceId, zip])
+  @@index([choiceId])
 }

@@ -52,6 +52,7 @@ import * as messageHide from '@/app/api/v1/messages/[id]/hide/route';
 import * as chatHide from '@/app/api/v1/messages/conversations/[id]/hide/route';
 import * as placeChanges from '@/app/api/v1/places/changes/route';
 import * as placeVote from '@/app/api/v1/places/changes/vote/route';
+import * as pollVote from '@/app/api/v1/polls/[id]/vote/route';
 import * as placeRemoval from '@/app/api/v1/places/[id]/removal/route';
 import * as friendRequests from '@/app/api/v1/friends/requests/route';
 import * as friendRequest from '@/app/api/v1/friends/requests/[id]/route';
@@ -91,7 +92,7 @@ const IN = { latitude: 30.315, longitude: -81.686, accuracyMeters: 10 };
 const OUT = { latitude: 30.1661, longitude: -81.7065, accuracyMeters: 10 }; // Orange Park
 const r = (p: typeof IN) => ({ ...p, timestamp: Date.now() - 2_000 });
 
-type Id = 'place' | 'post' | 'bizPost' | 'comment' | 'username' | 'friendRequest' | null;
+type Id = 'place' | 'post' | 'bizPost' | 'comment' | 'username' | 'friendRequest' | 'poll' | null;
 interface Row {
   route: string;
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -415,6 +416,16 @@ const ROWS: Row[] = [
     id: 'place',
     location: false,
     body: (at) => ({ reading: r(at) }),
+  },
+  {
+    // Table accounts are brand new (refused before the location check); see polls.test.ts.
+    route: 'polls/[id]/vote',
+    method: 'POST',
+    handler: h(pollVote, 'POST'),
+    auth: true,
+    id: 'poll',
+    location: false,
+    body: (at) => ({ reading: r(at), choiceId: '00000000-0000-7000-8000-000000000000' }),
   },
   // D100: temporary phone error log (development only; no session, rate-limited per IP).
   {
@@ -847,6 +858,7 @@ const ids: Record<Exclude<Id, null>, string> = {
   comment: '',
   username: 'owner_w',
   friendRequest: '',
+  poll: '',
 };
 
 beforeAll(async () => {
@@ -898,6 +910,22 @@ beforeAll(async () => {
     },
   });
   ids.friendRequest = (await db.friendship.findFirstOrThrow()).id;
+  // D123: an open poll.
+  ids.poll = (
+    await db.poll.create({
+      data: {
+        question: 'Best beach?',
+        opensAt: new Date(Date.now() - 3_600_000),
+        closesAt: new Date(Date.now() + 86_400_000),
+        choices: {
+          create: [
+            { label: 'Jax Beach', position: 0 },
+            { label: 'Neptune', position: 1 },
+          ],
+        },
+      },
+    })
+  ).id;
   // Lift limits so the table can hit each route several times; limits have their own tests.
   await db.appConfiguration.createMany({
     data: [
