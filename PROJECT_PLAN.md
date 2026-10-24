@@ -21,10 +21,10 @@ This file tracks progress, decisions and open questions. Update it whenever work
 
 ## Current status
 
-**Phase:** Feature work through Phase 14 is built and tested (792 server + 136 shared + 44 app tests; production server build passes, 2026-10-23). Phase 7 sign-off is still open. Next is a **private cloud test environment (staging)**, then launch preparation.
+**Phase:** Phase 15 (branding and pre-deployment polish) built: name, icon, branded emails, sign-in and loading screens, medal levels, polls with types and topics, citywide topics (843 server + 144 shared + 44 app tests, 2026-10-24). P15.4 approved; P15.5–P15.7 wait for the phone check; P15.8 (admin portal walkthrough) is next. Then the private cloud test environment (staging).
 **Next action:** Your decisions: hosting approval (Q15, about $30–35/month), a domain (Q21, or a temporary one for staging), email via SES (Q6). Then I prepare the deploy runbook and scripts, and run the HTTP checks (`e2e:live`) against staging.
 **Before a public launch:** phone checklist pass (`docs/MANUAL_TESTS.md`), screening word list (Q14), City neighborhood data license (Q16), store accounts and listings (`docs/STORE_PREP.md`), lawyer review of the Privacy Policy (area statistics, selling totals), full-size load test on the production database, remove the temporary phone log (D100), Phase 7 sign-off.
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-24
 
 ---
 
