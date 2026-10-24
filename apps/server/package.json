@@ -24,6 +24,7 @@
     "load:measure": "tsx --env-file-if-exists=../../.env --tsconfig tsconfig.json scripts/load/measure.ts",
 
     "admin:promote": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/admin/promote.ts",
+    "mail:preview": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/mail/preview.ts",
     "e2e:live": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/e2e/live-check.ts",
     "docs:api": "tsx scripts/docs/api-reference.ts",
     "import:places": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/directory/import-osm.ts",

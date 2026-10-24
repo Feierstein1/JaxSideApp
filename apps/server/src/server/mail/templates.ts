@@ -1,3 +1,4 @@
+import { renderEmail } from './layout';
 import type { OutgoingMail } from './mailer';
 
 /*
@@ -5,6 +6,8 @@ import type { OutgoingMail } from './mailer';
  * (opening the email on a computer, or before app links exist).
  * The link opens a page with a confirm button that POSTs the token. A plain GET link
  * would be consumed by email security scanners that prefetch links.
+ * P15.3: each email has a plain-text version and a branded HTML version (layout.ts) with
+ * the same content.
  */
 
 /** "482913" -> "482 913" for readability. The app accepts either. */
@@ -35,6 +38,19 @@ export function verificationEmail(
       '',
       "If you didn't sign up, ignore this email.",
     ].join('\n'),
+    html: renderEmail({
+      preheader: 'Enter this code in the app to confirm your email address.',
+      heading: 'Welcome to JaxSide',
+      intro: ['Enter this code in the app to confirm your email address:'],
+      code,
+      codeNote: 'The code expires in 15 minutes. You can request a new one in the app.',
+      button: {
+        label: 'Confirm in a browser',
+        url: `${baseUrl}/verify-email?token=${encodeURIComponent(token)}`,
+        note: 'The button works for 24 hours.',
+      },
+      footnotes: ["If you didn't sign up, ignore this email."],
+    }),
   };
 }
 
@@ -48,6 +64,16 @@ export function registrationAttemptEmail(to: string, baseUrl: string): OutgoingM
       `If it was you, sign in instead. Forgot your password? Use "Forgot password?" in the app, or go to ${baseUrl}/reset-password.`,
       "If it wasn't you, you can ignore this email.",
     ].join('\n'),
+    html: renderEmail({
+      preheader: 'An account already exists with this email address.',
+      heading: 'Someone tried to sign up with your email',
+      intro: [
+        'Someone tried to create a JaxSide account with this email address, but an account already exists.',
+        'If it was you, sign in instead. Forgot your password? Use "Forgot password?" in the app, or reset it here:',
+      ],
+      button: { label: 'Reset password', url: `${baseUrl}/reset-password` },
+      footnotes: ["If it wasn't you, you can ignore this email."],
+    }),
   };
 }
 
@@ -73,6 +99,22 @@ export function passwordResetEmail(
       'The code expires in 15 minutes and the link in 30 minutes. Either one works once.',
       "If you didn't ask for this, ignore this email.",
     ].join('\n'),
+    html: renderEmail({
+      preheader: 'Enter this code in the app to reset your password.',
+      heading: 'Reset your password',
+      intro: [
+        'We received a request to reset your password.',
+        'Enter this code in the app, along with your new password:',
+      ],
+      code,
+      codeNote: 'The code expires in 15 minutes.',
+      button: {
+        label: 'Reset in a browser',
+        url: `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`,
+        note: 'The button works for 30 minutes. The code and the button each work once.',
+      },
+      footnotes: ["If you didn't ask for this, ignore this email."],
+    }),
   };
 }
 
@@ -90,6 +132,17 @@ export function emailChangeCodeEmail(to: string, code: string): OutgoingMail {
       '',
       "The code expires in 15 minutes. If this wasn't you, ignore this email; nothing changes.",
     ].join('\n'),
+    html: renderEmail({
+      preheader: 'Enter this code in the app to finish changing your email.',
+      heading: 'Confirm your new email',
+      intro: [
+        'Someone asked to use this address for their JaxSide account.',
+        'If it was you, enter this code in the app to finish the change:',
+      ],
+      code,
+      codeNote: 'The code expires in 15 minutes.',
+      footnotes: ["If this wasn't you, ignore this email; nothing changes."],
+    }),
   };
 }
 
@@ -108,6 +161,21 @@ export function emailChangeNoticeEmail(to: string, stage: 'requested' | 'complet
       '',
       "If this wasn't you, reset your password from the app right away and contact support.",
     ].join('\n'),
+    html: renderEmail({
+      preheader:
+        stage === 'requested'
+          ? 'An email change was requested.'
+          : 'Your email address was changed.',
+      heading: stage === 'requested' ? 'Email change requested' : 'Your email was changed',
+      intro: [
+        stage === 'requested'
+          ? 'A change of the email address on your JaxSide account was requested. It completes only once the new address is confirmed.'
+          : 'The email address on your JaxSide account was changed. This address will no longer receive messages from JaxSide.',
+      ],
+      footnotes: [
+        "If this wasn't you, reset your password from the app right away and contact support.",
+      ],
+    }),
   };
 }
 
@@ -120,6 +188,14 @@ export function emailChangeTakenEmail(to: string): OutgoingMail {
       'Someone tried to switch their JaxSide account to this address, but it already belongs to an account, so nothing changed.',
       "If this wasn't you, you can ignore this email.",
     ].join('\n'),
+    html: renderEmail({
+      preheader: 'This address already belongs to an account, so nothing changed.',
+      heading: 'Someone tried to use your email',
+      intro: [
+        'Someone tried to switch their JaxSide account to this address, but it already belongs to an account, so nothing changed.',
+      ],
+      footnotes: ["If this wasn't you, you can ignore this email."],
+    }),
   };
 }
 
@@ -134,6 +210,15 @@ export function accountDeletedEmail(to: string, days: number): OutgoingMail {
       `Your email address is kept encrypted for ${days} days in case of abuse reports, then permanently destroyed.`,
       "If you didn't do this, contact support right away.",
     ].join('\n'),
+    html: renderEmail({
+      preheader: 'Your JaxSide account has been deleted.',
+      heading: 'Your account was deleted',
+      intro: [
+        'Your JaxSide account has been deleted. You can no longer sign in, and your profile is hidden.',
+        `Your email address is kept encrypted for ${days} days in case of abuse reports, then permanently destroyed.`,
+      ],
+      footnotes: ["If you didn't do this, contact support right away."],
+    }),
   };
 }
 
@@ -151,5 +236,16 @@ export function ownerCodeEmail(to: string, code: string, placeName: string): Out
       '',
       "The code expires in 30 minutes. If this wasn't you, ignore this email; nothing changes.",
     ].join('\n'),
+    html: renderEmail({
+      preheader: `Enter this code in the app to be verified as the owner of ${placeName}.`,
+      heading: 'Your owner code',
+      intro: [
+        `Someone asked to be verified on JaxSide as the owner of ${placeName}, using this address.`,
+        'If it was you, enter this code in the app:',
+      ],
+      code,
+      codeNote: 'The code expires in 30 minutes.',
+      footnotes: ["If this wasn't you, ignore this email; nothing changes."],
+    }),
   };
 }

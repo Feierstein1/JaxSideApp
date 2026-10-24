@@ -1,11 +1,14 @@
 import nodemailer from 'nodemailer';
 import { getEnv } from '../env';
 import { logger } from '../logger';
+import { EMAIL_LOGO } from './logo';
 
 export interface OutgoingMail {
   to: string;
   subject: string;
   text: string;
+  /** P15.3: the branded version (layout.ts); mail apps show it instead of `text`. */
+  html?: string;
 }
 
 export interface Mailer {
@@ -22,7 +25,14 @@ function smtpMailer(): Mailer {
   });
   return {
     async send(mail) {
-      await transport.sendMail({ from: env.SMTP_FROM, ...mail });
+      await transport.sendMail({
+        from: env.SMTP_FROM,
+        ...mail,
+        // The header logo travels with the email, shown inline (see layout.ts).
+        attachments: mail.html
+          ? [{ filename: 'jaxside.png', content: EMAIL_LOGO.png, cid: EMAIL_LOGO.cid }]
+          : undefined,
+      });
     },
   };
 }

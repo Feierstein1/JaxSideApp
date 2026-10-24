@@ -94,7 +94,7 @@ describe('admin sign-in (P5.11, D4, ✅D8)', () => {
   it('first sign-in sets up the authenticator; the cookies are httpOnly + SameSite=Strict', async () => {
     const r1 = await step1();
     expect(r1.status).toBe(200);
-    expect(r1.body.enroll.otpauthUrl).toMatch(/^otpauth:\/\/totp\/Jax%20Admin/);
+    expect(r1.body.enroll.otpauthUrl).toMatch(/^otpauth:\/\/totp\/JaxSide%20Admin/);
     expect(r1.body.enroll.qrSvg).toMatch(/^<svg/);
     const { set, secret } = await signIn();
     expect(set.find((c) => c.startsWith(`${ADMIN_COOKIE}=`))).toMatch(/HttpOnly; SameSite=Strict/);
