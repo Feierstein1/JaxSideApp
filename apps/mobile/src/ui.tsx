@@ -27,7 +27,6 @@ import {
 import { router, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import EMBLEM from '../assets/brand-emblem.png';
 import MARK from '../assets/brand-mark.png';
 import { DARK } from '@jax/shared';
 import { UserBadge } from './auth/UserBadge';
@@ -46,23 +45,19 @@ export type IconName = ComponentProps<typeof Ionicons>['name'];
  * D79: the app name, always top-left in the header on every screen (with the back arrow
  * before it on inner screens). The app icon (a simplified version that stays readable when
  * small, assets/brand/mark-small.svg) and the name in capitals, JAX in teal and SIDE in
- * white, set in Russo One (D120). The large size (the loading screen) is the full icon
- * emblem with the name under it.
+ * white, set in Russo One (D120). The loading screen and sign-in use the drawn emblem
+ * instead (src/brand/Emblem.tsx).
  */
-export function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
-  const lg = size === 'lg';
+export function BrandMark() {
   return (
     <View
       accessible
       accessibilityRole="header"
       accessibilityLabel="JaxSide"
-      style={{ flexDirection: lg ? 'column' : 'row', alignItems: 'center', gap: lg ? 18 : 8 }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
     >
-      <Image
-        source={lg ? EMBLEM : MARK}
-        style={{ width: lg ? 96 : 30, height: lg ? 96 : 30, borderRadius: lg ? 22 : 8 }}
-      />
-      <Text style={{ fontFamily: FONT.brand, fontSize: lg ? 36 : 22 }}>
+      <Image source={MARK} style={{ width: 30, height: 30, borderRadius: 8 }} />
+      <Text style={{ fontFamily: FONT.brand, fontSize: 22 }}>
         <Text style={{ color: DARK.accent }}>JAX</Text>
         <Text style={{ color: DARK.text }}>SIDE</Text>
       </Text>

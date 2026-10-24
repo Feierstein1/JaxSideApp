@@ -1,6 +1,6 @@
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import {
   PlusJakartaSans_400Regular,
   PlusJakartaSans_500Medium,
@@ -18,7 +18,7 @@ import { GuideHost } from '@/guides/guide';
 
 // D100 (temporary): send app errors to the development server's log.
 installRemoteLogging();
-import { BrandMark } from '@/ui';
+import { LoadingEmblem } from '@/brand/Emblem';
 
 /** D79: navigation colors match the dark theme, so no white flashes between screens. */
 const NAV_THEME = {
@@ -45,8 +45,8 @@ function Loading() {
         backgroundColor: DARK.bar,
       }}
     >
-      <BrandMark size="lg" />
-      <ActivityIndicator color={DARK.accent} />
+      {/* D121: the frame draws in, the skyline appears, the fins light up, the name fills. */}
+      <LoadingEmblem />
     </View>
   );
 }

@@ -370,11 +370,18 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [x] **Every screen is dark**: feeds, Places, a place, a post, profiles, Account and all its
       sub-pages, sign-in, register, reset password, the filter / report / color sheets and the
       policy pages. No white page anywhere (the only light things are the toast and photos).
-- [x] **Header:** the gold pin + **Jax** sits top-left on every screen (after the back arrow on
-      inner screens); no "JAX", "PLACES" or "ACCOUNT" titles. Your @username pill is on the right.
+- [ ] **Header:** the small icon + **JAXSIDE** (JAX teal, SIDE white) sits top-left on every
+      screen (after the back arrow on inner screens); no "PLACES" or "ACCOUNT" titles. Only
+      messages and notifications on the right (D119, D120).
 - [x] Text is in the new typeface (rounded, geometric). Headings and names are heavy.
-- [x] **Sign in:** Jax top-left, a big "Your neighborhood, live." welcome, then the form on a
-      dark sheet. Fields have icons; the field you're typing in gets a gold outline.
+- [ ] **Sign in (D121):** a navy header with sunburst rays, the icon (white edge), JAXSIDE and
+      "Your neighborhood, live…", ending in a stepped edge; the form below on a dark card. Fields
+      have icons; the field you're typing in gets a teal outline. Fits on a small phone with
+      the keyboard open (scrolls).
+- [ ] **Loading screen (D121):** open the app while signed in: the icon's frame draws itself,
+      the skyline appears, JAXSIDE fills in from the left, then the building's fins light up one
+      by one while it loads. With "Remove animations" / "Reduce Motion" on, the icon and name
+      show still.
 - [x] **Home:** under the header, "Near [neighborhood] · within 528 yd" (tap: opens Account),
       search pill + refresh, then All / Text / Media / Voice. Latest / Top this week scrolls
       away with the posts.

@@ -117,3 +117,24 @@ export const MEDAL = {
   onGold: BRAND.black,
   glyph: '#F2F3F5', // symbol on the dark center, same as DARK.text
 } as const;
+
+/**
+ * P15.2 / P15.4: the app icon's colors (apps/mobile/assets/brand/icon-emblem.svg), for the
+ * emblem drawn in the app (the animated loading screen) and the navy sign-in header.
+ * Navy and blues only; the lit fins and the name use DARK.accent.
+ */
+export const EMBLEM = {
+  navy: '#071A33', // the icon's background and the sign-in header
+  panel: '#0B2545', // inside the stepped frame
+  ray: '#0F2D55', // sunburst rays
+  bridge: '#3C8DDE', // bridge towers, truss and deck
+  bridgeLight: '#7CC2FF', // tower caps
+  building: '#EEF3FA', // the Modis Building, the frame outline and the base ornament
+  buildingShade: '#C6D5E9', // the building's shaded side
+  curtain: '#2C5E9E', // the glass front
+  fin: '#6FA0D8', // the glass front's vertical fins
+  base: '#4F86C6', // the building's base
+  baseLine: '#8DB8E8', // lines on the base
+  water: '#10305A', // water stripes
+  onNavyMuted: '#C6D5E9', // secondary text on navy
+} as const;

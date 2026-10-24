@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CATEGORY_COLORS, categoryColor } from './schemas/directory';
-import { BRAND, COLORS, DARK, MEDAL } from './theme';
+import { BRAND, COLORS, DARK, EMBLEM, MEDAL } from './theme';
 
 /** WCAG 2 contrast ratio between two #RRGGBB colors. */
 function contrast(a: string, b: string): number {
@@ -136,5 +136,15 @@ describe('medal artwork (D95)', () => {
     expect(MEDAL.face).toBe(DARK.card);
     expect(MEDAL.glyph).toBe(DARK.text);
     expect(MEDAL.tealLine).toBe(DARK.tealText);
+  });
+});
+
+describe('EMBLEM (sign-in header text on navy)', () => {
+  it.each([
+    ['white text on navy', DARK.text, EMBLEM.navy],
+    ['muted text on navy', EMBLEM.onNavyMuted, EMBLEM.navy],
+    ['accent on navy', DARK.accent, EMBLEM.navy],
+  ] as const)('%s passes AA (4.5:1)', (_name, fg, bg) => {
+    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
 });
