@@ -1,22 +1,39 @@
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
-import Svg, { Circle, Ellipse, G, Path, Polygon } from 'react-native-svg';
-import { MEDAL } from '@jax/shared';
+import Svg, { Circle, Ellipse, G, Path, Polygon, Rect } from 'react-native-svg';
+import { MEDAL, MEDAL_METALS, MEDAL_TIER_NAMES } from '@jax/shared';
 
 /**
- * D95: medal artwork. Each medal has its own shape AND color, so they can be told apart at
- * 16 px and without relying on color:
- * - first_contribution: a round teal coin with a speech bubble and a gold spark;
- * - approved_contributor: a gold hexagon badge with a map pin and a check mark;
- * - well_received: a gold laurel rosette with an up arrow and five dots (five posts).
+ * D95 / D122: medal artwork. Each medal has its own shape, so they can be told apart at
+ * 16 px and without color; the level (Bronze, Silver, Gold, Platinum) sets the metal:
+ * - first_contribution: round coin, speech bubble with a spark
+ * - well_received: laurel rosette, up arrow and five dots (the posts)
+ * - approved_contributor: hexagon, map pin with a check
+ * - helpful_commenter: shield, heart
+ * - place_verifier: diamond, check mark
+ * - neighborhood_explorer: eight-point star (the icon's sunburst), compass
+ * - longtime_neighbor: arch (a doorway), house
  * `MedalArt` is the full medal with ribbon tails (profiles); `MedalBadge` the simple one
- * for next to a name. A medal added later without artwork gets a plain ribbon badge.
+ * next to a name. A medal added later without artwork gets a plain coin with a star.
+ * Shapes and symbols are drawn once in a 120 × 120 box; the badge scales them down.
  */
 
 export const MEDAL_NAMES: Record<string, string> = {
   first_contribution: 'First Contribution',
-  approved_contributor: 'Approved Contributor',
   well_received: 'Well Received',
+  approved_contributor: 'Approved Contributor',
+  helpful_commenter: 'Helpful Commenter',
+  place_verifier: 'Place Verifier',
+  neighborhood_explorer: 'Neighborhood Explorer',
+  longtime_neighbor: 'Longtime Neighbor',
 };
+
+/** "Gold Well Received" (what screen readers say). */
+export function medalLabel(key: string, tier: number) {
+  return `${MEDAL_TIER_NAMES[tier - 1] ?? 'Bronze'} ${MEDAL_NAMES[key] ?? 'medal'}`;
+}
+
+const metal = (tier: number) => MEDAL_METALS[Math.min(Math.max(tier, 1), 4) - 1]!;
 
 const ROSETTE = [
   [60, 10],
@@ -44,207 +61,224 @@ const LEAVES = [
   [85.5, 45, 120],
 ] as const;
 
-function Ribbons({ front, back, top = 92 }: { front: string; back: string; top?: number }) {
-  return (
-    <>
-      <Path d={`M42 ${top} L30 146 L44 136 L52 148 L60 ${top + 8} Z`} fill={front} />
-      <Path d={`M78 ${top} L90 146 L76 136 L68 148 L60 ${top + 8} Z`} fill={back} />
-    </>
-  );
+const STAR = Array.from({ length: 16 }, (_, i) => {
+  const a = (i / 16) * Math.PI * 2 - Math.PI / 2;
+  const r = i % 2 ? 46 : 57;
+  return `${(60 + r * Math.cos(a)).toFixed(1)},${(60 + r * Math.sin(a)).toFixed(1)}`;
+}).join(' ');
+
+/** The medal's outline, filled with one color. `ring`: the inner rings (plain for the rosette). */
+function Shape({ medalKey, fill, ring }: { medalKey: string; fill: string; ring?: boolean }) {
+  switch (medalKey) {
+    case 'well_received':
+      if (ring) return <Circle cx={60} cy={60} r={52} fill={fill} />;
+      return (
+        <G fill={fill}>
+          <Circle cx={60} cy={60} r={48} />
+          {ROSETTE.map(([x, y]) => (
+            <Circle key={`${x},${y}`} cx={x} cy={y} r={8} />
+          ))}
+        </G>
+      );
+    case 'approved_contributor':
+      return <Polygon points="60,4 108.5,32 108.5,88 60,116 11.5,88 11.5,32" fill={fill} />;
+    case 'helpful_commenter':
+      return (
+        <Path d="M60 5 L106 20 V58 C106 86 86 106 60 116 C34 106 14 86 14 58 V20 Z" fill={fill} />
+      );
+    case 'place_verifier':
+      return (
+        <Path
+          d="M60 4 L116 60 L60 116 L4 60 Z"
+          fill={fill}
+          strokeLinejoin="round"
+          stroke={fill}
+          strokeWidth={6}
+        />
+      );
+    case 'neighborhood_explorer':
+      return <Polygon points={STAR} fill={fill} />;
+    case 'longtime_neighbor':
+      return <Path d="M15 114 V58 A45 45 0 0 1 105 58 V114 Z" fill={fill} />;
+    default:
+      return <Circle cx={60} cy={60} r={53} fill={fill} />;
+  }
 }
 
-/** The full medal (120 × 150 artwork), `size` = its width. */
-export function MedalArt({ medalKey, size = 56 }: { medalKey: string; size?: number }) {
-  return (
-    <View
-      accessible
-      accessibilityRole="image"
-      accessibilityLabel={`${MEDAL_NAMES[medalKey] ?? 'Medal'} medal`}
-    >
-      <Svg width={size} height={size * 1.25} viewBox="0 0 120 150">
-        {medalKey === 'first_contribution' ? (
-          <>
-            <Ribbons front={MEDAL.teal} back={MEDAL.tealDeep} />
-            <Circle cx={60} cy={60} r={52} fill={MEDAL.teal} />
-            <Circle
-              cx={60}
-              cy={60}
-              r={47}
-              fill="none"
-              stroke={MEDAL.tealLine}
-              strokeWidth={2}
-              strokeDasharray="2 4"
-            />
-            <Circle cx={60} cy={60} r={40} fill={MEDAL.face} />
-            <Path
-              d="M27 80 q8.5 -5 17 0 t17 0 t17 0 t17 0"
-              fill="none"
-              stroke={MEDAL.tealLine}
-              strokeOpacity={0.4}
-              strokeWidth={2.5}
-              strokeLinecap="round"
-            />
-            <Path
-              d="M42 36 h36 a6 6 0 0 1 6 6 v20 a6 6 0 0 1 -6 6 h-19 l-11 9 v-9 h-6 a6 6 0 0 1 -6 -6 v-20 a6 6 0 0 1 6 -6 z"
-              fill="none"
-              stroke={MEDAL.glyph}
-              strokeWidth={4.5}
-              strokeLinejoin="round"
-            />
-            <Path
-              d="M60 42 L62.6 49.4 L70 52 L62.6 54.6 L60 62 L57.4 54.6 L50 52 L57.4 49.4 Z"
-              fill={MEDAL.gold}
-            />
-          </>
-        ) : medalKey === 'approved_contributor' ? (
-          <>
-            <Ribbons front={MEDAL.gold} back={MEDAL.oldGold} top={96} />
-            <Polygon points="60,6 106.8,33 106.8,87 60,114 13.2,87 13.2,33" fill={MEDAL.gold} />
-            <Polygon
-              points="60,12 101.6,36 101.6,84 60,108 18.4,84 18.4,36"
-              fill="none"
-              stroke={MEDAL.oldGold}
-              strokeWidth={2}
-            />
-            <Polygon
-              points="60,17 97.2,38.5 97.2,81.5 60,103 22.8,81.5 22.8,38.5"
-              fill={MEDAL.face}
-            />
-            <Ellipse cx={60} cy={86} rx={14} ry={3.5} fill={MEDAL.gold} fillOpacity={0.35} />
-            <Path
-              d="M60 30 c-11 0 -19 8.5 -19 19 c0 14 19 33 19 33 s19 -19 19 -33 c0 -10.5 -8 -19 -19 -19 z"
-              fill={MEDAL.gold}
-            />
-            <Path
-              d="M51.5 48.5 l6 6 l11 -12"
-              stroke={MEDAL.onGold}
-              strokeWidth={4.5}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </>
-        ) : medalKey === 'well_received' ? (
-          <>
-            <Ribbons front={MEDAL.oldGold} back={MEDAL.goldDeep} />
-            <G fill={MEDAL.gold}>
-              <Circle cx={60} cy={60} r={48} />
-              {ROSETTE.map(([x, y]) => (
-                <Circle key={`${x},${y}`} cx={x} cy={y} r={8} />
-              ))}
-            </G>
-            <Circle cx={60} cy={60} r={44} fill={MEDAL.oldGold} />
-            <Circle cx={60} cy={60} r={39} fill={MEDAL.face} />
-            <G fill={MEDAL.gold}>
-              {LEAVES.map(([x, y, a]) => (
-                <Ellipse
-                  key={`${x},${y}`}
-                  cx={x}
-                  cy={y}
-                  rx={6}
-                  ry={2.6}
-                  transform={`rotate(${a} ${x} ${y})`}
-                />
-              ))}
-            </G>
-            <Path
-              d="M60 74 V40 M47 53 L60 40 L73 53"
-              fill="none"
-              stroke={MEDAL.glyph}
-              strokeWidth={5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <G fill={MEDAL.gold}>
+/** `Shape` scaled about the center (1 = full size). */
+function Scaled({ s, children }: { s: number; children: ReactNode }) {
+  return <G transform={`translate(60 60) scale(${s}) translate(-60 -60)`}>{children}</G>;
+}
+
+interface GlyphColors {
+  /** Strokes and main symbol parts. */
+  line: string;
+  /** Highlights in the metal color. */
+  accent: string;
+  /** Marks cut out of a filled part (e.g. the check on the map pin). */
+  cut: string;
+  /** Stroke width multiplier (thicker in the small badge). */
+  w: number;
+}
+
+/** The symbol in the middle of the medal (120 × 120 box). */
+function Glyph({ medalKey, c }: { medalKey: string; c: GlyphColors }) {
+  const stroke = {
+    fill: 'none',
+    stroke: c.line,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+  } as const;
+  switch (medalKey) {
+    case 'first_contribution':
+      return (
+        <>
+          <Path
+            d="M42 38 h36 a6 6 0 0 1 6 6 v20 a6 6 0 0 1 -6 6 h-19 l-11 9 v-9 h-6 a6 6 0 0 1 -6 -6 v-20 a6 6 0 0 1 6 -6 z"
+            {...stroke}
+            strokeWidth={4.5 * c.w}
+          />
+          <Path
+            d="M60 44 L62.6 51.4 L70 54 L62.6 56.6 L60 64 L57.4 56.6 L50 54 L57.4 51.4 Z"
+            fill={c.accent}
+          />
+        </>
+      );
+    case 'well_received':
+      return (
+        <>
+          <Path d="M60 76 V40 M46 54 L60 40 L74 54" {...stroke} strokeWidth={5.5 * c.w} />
+          {c.w === 1 ? (
+            <G fill={c.accent}>
               {[47, 53.5, 60, 66.5, 73].map((x, i) => (
                 <Circle key={x} cx={x} cy={[86, 88, 88.7, 88, 86][i]} r={2.3} />
               ))}
             </G>
-          </>
-        ) : (
-          <>
-            <Ribbons front={MEDAL.oldGold} back={MEDAL.goldDeep} />
-            <Circle cx={60} cy={60} r={52} fill={MEDAL.oldGold} />
-            <Circle cx={60} cy={60} r={40} fill={MEDAL.face} />
-            <Path
-              d="M60 38 L65.5 52 L80 53 L69 62.5 L72.5 77 L60 69 L47.5 77 L51 62.5 L40 53 L54.5 52 Z"
-              fill={MEDAL.gold}
-            />
-          </>
-        )}
+          ) : null}
+        </>
+      );
+    case 'approved_contributor':
+      return (
+        <>
+          <Path
+            d="M60 32 c-11 0 -19 8.5 -19 19 c0 14 19 33 19 33 s19 -19 19 -33 c0 -10.5 -8 -19 -19 -19 z"
+            fill={c.accent}
+          />
+          <Path
+            d="M51.5 50.5 l6 6 l11 -12"
+            fill="none"
+            stroke={c.cut}
+            strokeWidth={4.5 * c.w}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      );
+    case 'helpful_commenter':
+      return (
+        <Path
+          d="M60 84 C40 71 35 60 35 51 C35 43 41 37 48.5 37 C53.5 37 57.5 40 60 44.5 C62.5 40 66.5 37 71.5 37 C79 37 85 43 85 51 C85 60 80 71 60 84 Z"
+          fill={c.accent}
+        />
+      );
+    case 'place_verifier':
+      return <Path d="M40 61 L54 75 L81 45" {...stroke} strokeWidth={8 * c.w} />;
+    case 'neighborhood_explorer':
+      return (
+        <>
+          <Circle cx={60} cy={60} r={25} {...stroke} strokeWidth={4 * c.w} />
+          <Path d="M60 36 L68 60 L52 60 Z" fill={c.accent} />
+          <Path d="M60 84 L68 60 L52 60 Z" fill={c.line} />
+        </>
+      );
+    case 'longtime_neighbor':
+      return (
+        <>
+          <Path d="M37 63 L60 42 L83 63 M45 57 V81 H75 V57" {...stroke} strokeWidth={5.5 * c.w} />
+          <Rect x={55} y={67} width={10} height={14} rx={1.5} fill={c.accent} />
+        </>
+      );
+    default:
+      return (
+        <Path
+          d="M60 38 L65.5 52 L80 53 L69 62.5 L72.5 77 L60 69 L47.5 77 L51 62.5 L40 53 L54.5 52 Z"
+          fill={c.accent}
+        />
+      );
+  }
+}
+
+/** The full medal (120 × 150 artwork) in its level's metal, `size` = its width. */
+export function MedalArt({
+  medalKey,
+  tier = 1,
+  size = 56,
+}: {
+  medalKey: string;
+  tier?: number;
+  size?: number;
+}) {
+  const m = metal(tier);
+  return (
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`${medalLabel(medalKey, tier)} medal`}
+    >
+      <Svg width={size} height={size * 1.25} viewBox="0 0 120 150">
+        <Path d="M42 92 L30 146 L44 136 L52 148 L60 100 Z" fill={m.rim} />
+        <Path d="M78 92 L90 146 L76 136 L68 148 L60 100 Z" fill={m.deep} />
+        <Shape medalKey={medalKey} fill={m.main} />
+        <Scaled s={0.9}>
+          <Shape medalKey={medalKey} fill={m.rim} ring />
+        </Scaled>
+        <Scaled s={0.85}>
+          <Shape medalKey={medalKey} fill={m.main} ring />
+        </Scaled>
+        <Scaled s={0.74}>
+          <Shape medalKey={medalKey} fill={MEDAL.face} ring />
+        </Scaled>
+        {medalKey === 'well_received' ? (
+          <G fill={m.main}>
+            {LEAVES.map(([x, y, a]) => (
+              <Ellipse
+                key={`${x},${y}`}
+                cx={x}
+                cy={y}
+                rx={6}
+                ry={2.6}
+                transform={`rotate(${a} ${x} ${y})`}
+              />
+            ))}
+          </G>
+        ) : null}
+        <Glyph medalKey={medalKey} c={{ line: MEDAL.glyph, accent: m.main, cut: m.on, w: 1 }} />
       </Svg>
     </View>
   );
 }
 
 /**
- * The simple badge (24 × 24 artwork) next to a username on posts, comments and profiles.
- * Decorative there: the name row announces the medals as text.
+ * The simple badge (24 × 24) next to a username on posts, comments and profiles: the
+ * medal's shape in its metal with a bold dark symbol. Decorative there: the name row
+ * announces the medals as text.
  */
-export function MedalBadge({ medalKey, size = 16 }: { medalKey: string; size?: number }) {
+export function MedalBadge({
+  medalKey,
+  tier = 1,
+  size = 16,
+}: {
+  medalKey: string;
+  tier?: number;
+  size?: number;
+}) {
+  const m = metal(tier);
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      {medalKey === 'first_contribution' ? (
-        <>
-          <Circle cx={12} cy={12} r={11} fill={MEDAL.teal} />
-          <Path
-            d="M7 7.5 h10 a1.6 1.6 0 0 1 1.6 1.6 v5 a1.6 1.6 0 0 1 -1.6 1.6 h-5 l-3 2.6 v-2.6 h-2 a1.6 1.6 0 0 1 -1.6 -1.6 v-5 a1.6 1.6 0 0 1 1.6 -1.6 z"
-            fill={MEDAL.onTeal}
-          />
-        </>
-      ) : medalKey === 'approved_contributor' ? (
-        <>
-          <Polygon points="12,0.8 21.7,6.4 21.7,17.6 12,23.2 2.3,17.6 2.3,6.4" fill={MEDAL.gold} />
-          <Path
-            d="M12 5.2 c-3 0 -5.2 2.3 -5.2 5.2 c0 3.8 5.2 8.6 5.2 8.6 s5.2 -4.8 5.2 -8.6 c0 -2.9 -2.2 -5.2 -5.2 -5.2 z"
-            fill={MEDAL.onGold}
-          />
-          {size >= 20 ? (
-            <Path
-              d="M9.6 10.3 l1.7 1.7 l3.2 -3.4"
-              stroke={MEDAL.gold}
-              strokeWidth={1.6}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ) : null}
-        </>
-      ) : medalKey === 'well_received' ? (
-        <>
-          <G fill={MEDAL.gold}>
-            <Circle cx={12} cy={12} r={9.4} />
-            {[
-              [12, 2.4],
-              [18.8, 5.2],
-              [21.6, 12],
-              [18.8, 18.8],
-              [12, 21.6],
-              [5.2, 18.8],
-              [2.4, 12],
-              [5.2, 5.2],
-            ].map(([x, y]) => (
-              <Circle key={`${x},${y}`} cx={x} cy={y} r={2} />
-            ))}
-          </G>
-          <Path
-            d="M12 16.5 V7.5 M8.2 11.3 L12 7.5 L15.8 11.3"
-            fill="none"
-            stroke={MEDAL.onGold}
-            strokeWidth={size >= 20 ? 2.4 : 2.8}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </>
-      ) : (
-        <>
-          <Circle cx={12} cy={12} r={11} fill={MEDAL.oldGold} />
-          <Path
-            d="M12 6 L13.6 10 L17.8 10.3 L14.6 13 L15.6 17.2 L12 14.9 L8.4 17.2 L9.4 13 L6.2 10.3 L10.4 10 Z"
-            fill={MEDAL.onGold}
-          />
-        </>
-      )}
+    <Svg width={size} height={size} viewBox="0 0 120 120">
+      <Shape medalKey={medalKey} fill={m.main} />
+      <Scaled s={1.2}>
+        <Glyph medalKey={medalKey} c={{ line: m.on, accent: m.on, cut: m.main, w: 1.9 }} />
+      </Scaled>
     </Svg>
   );
 }

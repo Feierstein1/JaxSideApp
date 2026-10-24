@@ -137,21 +137,30 @@ describe('medals shown (P6.9)', () => {
     });
     expect(feed.body.posts[0].author).toMatchObject({
       username: 'author_m',
-      medals: ['approved_contributor'],
+      medals: [{ key: 'approved_contributor', tier: 1 }],
     });
     const detail = await call(postDetailPOST as H, 'POST', {
       token: fan.token,
       id,
       body: { reading: reading() },
     });
-    expect(detail.body.comments[0].author.medals).toEqual(['approved_contributor']);
+    expect(detail.body.comments[0].author.medals).toEqual([
+      { key: 'approved_contributor', tier: 1 },
+    ]);
     const prof = await call(profilePOST as H, 'POST', {
       token: fan.token,
       params: { username: 'author_m' },
       body: { reading: reading() },
     });
     expect(prof.body.profile.medals).toEqual([
-      expect.objectContaining({ key: 'approved_contributor', name: 'Approved Contributor' }),
+      expect.objectContaining({
+        key: 'approved_contributor',
+        name: 'Approved Contributor',
+        tier: 1,
+        tierName: 'Bronze',
+        levels: 4,
+        next: { tierName: 'Silver', needs: '5 places' },
+      }),
     ]);
     expect(findForbiddenKeys(prof.body)).toEqual([]);
     const mine = await call(myMedalsGET as H, 'GET', { token: author.token });

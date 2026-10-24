@@ -4,6 +4,7 @@ import {
   milesToMeters,
   type DiscussionKind,
   type FeedSort,
+  type MedalBadge,
   type PostTypeFilter,
   type PostView,
 } from '@jax/shared';
@@ -42,7 +43,7 @@ interface PostRow {
   authorId: string;
   username: string;
   author_status: string;
-  medals: string[];
+  medals: MedalBadge[];
   author_color: string;
   avatar_photo_id: string | null;
   photos: { id: string; width: number; height: number }[] | null;

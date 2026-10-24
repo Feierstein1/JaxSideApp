@@ -324,13 +324,17 @@ checks. Tick each box when it looks right; note anything odd next to it.
       Delete) and a separate **Cancel**. On a friend's profile, every option shows (Android too).
 - [x] As a guest, try to vote: "Create a free account" with a gold person icon.
 
-### Medals (D95)
+### Medals (D95, D122)
 
-- [x] On an account with medals: next to the name on its posts, small badges: a teal circle with a
-      speech bubble (First Contribution), a gold hexagon with a pin (Approved Contributor), a gold
-      scalloped rosette with an up arrow (Well Received). Smaller beside comment names.
-- [x] Its profile (and Account → Medals): each medal drawn in full with ribbons, its name, what
-      it's for, and "Earned [date]". With no medals: a faded coin and "No medals yet…".
+- [ ] On an account with medals: next to the name on its posts, small badges in each medal's
+      shape (coin, rosette, hexagon, shield, diamond, star, arch) in its level's metal: bronze,
+      silver, gold or platinum (icy blue-white). Smaller beside comment names.
+- [ ] Its profile (and Account → Medals): each medal drawn in full with ribbons in its metal, its
+      name with a level chip (Silver…), what it's for, "Silver since [date]" (or "Earned [date]"),
+      and "Next: Gold at 100 posts" (or "Top level reached"). With no medals: a faded coin and
+      "No medals yet…".
+- [ ] Upvote someone's comment to +3 on 5 different posts: their Helpful Commenter medal appears
+      right away (no waiting for the nightly check).
 
 ## 9. Account settings
 

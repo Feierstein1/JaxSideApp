@@ -119,6 +119,19 @@ export const MEDAL = {
 } as const;
 
 /**
+ * D122: medal levels as metals, Bronze → Platinum (index = tier - 1). Each medal keeps its
+ * shape; the level sets the metal. `main` is the medal body, `rim` the inner ring and front
+ * ribbon, `deep` the back ribbon, `on` the symbol drawn directly on the metal (small badges).
+ * Platinum is a cool, blue-tinted white so it reads apart from silver. Tested in theme.test.ts.
+ */
+export const MEDAL_METALS = [
+  { name: 'Bronze', main: '#C98B4E', rim: '#8C5A2B', deep: '#6B4220', on: BRAND.black },
+  { name: 'Silver', main: '#BCC2CA', rim: '#7E858F', deep: '#5B6169', on: BRAND.black },
+  { name: 'Gold', main: BRAND.gold, rim: BRAND.oldGold, deep: '#7A5E22', on: BRAND.black },
+  { name: 'Platinum', main: '#D4EEF3', rim: '#6FAEBB', deep: '#47808C', on: BRAND.black },
+] as const;
+
+/**
  * P15.2 / P15.4: the app icon's colors (apps/mobile/assets/brand/icon-emblem.svg), for the
  * emblem drawn in the app (the animated loading screen) and the navy sign-in header.
  * Navy and blues only; the lit fins and the name use DARK.accent.

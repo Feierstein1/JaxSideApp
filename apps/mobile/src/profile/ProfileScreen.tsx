@@ -270,9 +270,7 @@ export function ProfileScreen({
               >
                 {profile.username}
               </Text>
-              {profile.medals.length ? (
-                <MedalIcons keys={profile.medals.map((m) => m.key)} size={18} />
-              ) : null}
+              {profile.medals.length ? <MedalIcons medals={profile.medals} size={18} /> : null}
             </View>
           </View>
           <Text

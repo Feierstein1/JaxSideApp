@@ -1,5 +1,5 @@
 import { medalKeysSql } from '../achievements';
-import { COMMENT_MAX, type CommentView, type DiscussionKind } from '@jax/shared';
+import { COMMENT_MAX, type CommentView, type DiscussionKind, type MedalBadge } from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
 import { getConfig } from '../config';
 import { db } from '../db';
@@ -26,7 +26,7 @@ interface CommentRow {
   authorGuestId: string | null;
   username: string | null;
   author_status: string | null;
-  medals: string[] | null;
+  medals: MedalBadge[] | null;
   score: number;
   my_vote: number | null;
 }

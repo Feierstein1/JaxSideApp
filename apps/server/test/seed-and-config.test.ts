@@ -4,7 +4,7 @@ import { db } from '@/server/db';
 import { getConfig, invalidateConfigCache } from '@/server/config';
 import { verifyPassword } from '@/server/auth/crypto';
 import { seed } from '../prisma/seed';
-import { DEV_PLACES } from '../prisma/seed-data';
+import { ACHIEVEMENTS, DEV_PLACES } from '../prisma/seed-data';
 import { resetDb } from './db-helpers';
 
 beforeEach(async () => {
@@ -27,7 +27,11 @@ describe('seed', { timeout: 20_000 }, () => {
       await db.businessPlace.count(),
     ];
     expect(second).toEqual(first);
-    expect(first).toEqual([Object.keys(CONFIG_DEFAULTS).length, 3, DEV_PLACES.length]);
+    expect(first).toEqual([
+      Object.keys(CONFIG_DEFAULTS).length,
+      ACHIEVEMENTS.length,
+      DEV_PLACES.length,
+    ]);
   });
 
   it('does not overwrite a config value an admin changed', async () => {

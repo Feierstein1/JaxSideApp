@@ -30,27 +30,93 @@ export const STARTER_SCREENING_RULES = [
   { term: 'kys', category: 'HARASSMENT', action: 'HOLD' },
 ] as const;
 
+/**
+ * Medals (D64, D122). `tiers` are the thresholds for Bronze, Silver, Gold and Platinum (a
+ * one-level medal has one); `tierLabels` say what each level takes, for the profile's
+ * "next level" line. Editable here (the seed updates definitions) or in the table.
+ */
 export const ACHIEVEMENTS = [
   {
     key: 'first_contribution',
     name: 'First Contribution',
     description: 'Made a first post or comment that stayed up.',
     icon: 'sparkles',
-    criteria: { type: 'first_visible_content' },
-  },
-  {
-    key: 'approved_contributor',
-    name: 'Approved Contributor',
-    description: 'Suggested a place that was approved for the directory.',
-    icon: 'map-pin',
-    criteria: { type: 'submission_approved' },
+    criteria: {
+      type: 'first_visible_content',
+      minAgeHours: 24,
+      tiers: [1],
+      tierLabels: ['1 post or comment'],
+    },
   },
   {
     key: 'well_received',
     name: 'Well Received',
-    description: 'Net-positive votes across several different posts.',
+    description: 'Different posts that neighbors voted up to +3 or more.',
     icon: 'thumbs-up',
-    criteria: { type: 'net_positive_distinct_posts', minPosts: 5, minScoreEach: 3 },
+    criteria: {
+      type: 'net_positive_distinct_posts',
+      minScoreEach: 3,
+      tiers: [5, 25, 100, 250],
+      tierLabels: ['5 posts', '25 posts', '100 posts', '250 posts'],
+    },
+  },
+  {
+    key: 'approved_contributor',
+    name: 'Approved Contributor',
+    description: 'Suggested places that were added to the directory.',
+    icon: 'map-pin',
+    criteria: {
+      type: 'approved_submissions',
+      tiers: [1, 5, 15, 40],
+      tierLabels: ['1 place', '5 places', '15 places', '40 places'],
+    },
+  },
+  {
+    key: 'helpful_commenter',
+    name: 'Helpful Commenter',
+    description: 'Comments that neighbors voted up to +3 or more, on different posts.',
+    icon: 'heart',
+    criteria: {
+      type: 'helpful_comments',
+      minScoreEach: 3,
+      tiers: [5, 25, 100, 250],
+      tierLabels: ['5 comments', '25 comments', '100 comments', '250 comments'],
+    },
+  },
+  {
+    key: 'place_verifier',
+    name: 'Place Verifier',
+    description: 'Votes on new or closed places that matched the final result.',
+    icon: 'check',
+    criteria: {
+      type: 'matched_place_votes',
+      tiers: [5, 25, 75, 200],
+      tierLabels: ['5 votes', '25 votes', '75 votes', '200 votes'],
+    },
+  },
+  {
+    key: 'neighborhood_explorer',
+    name: 'Neighborhood Explorer',
+    description: 'Posts voted up to +3 or more in different parts of town (ZIP areas).',
+    icon: 'compass',
+    criteria: {
+      type: 'zip_areas_with_good_posts',
+      minScoreEach: 3,
+      tiers: [3, 6, 12, 20],
+      tierLabels: ['3 areas', '6 areas', '12 areas', '20 areas'],
+    },
+  },
+  {
+    key: 'longtime_neighbor',
+    name: 'Longtime Neighbor',
+    description: 'A member in good standing (no suspension or ban in the last 90 days).',
+    icon: 'home',
+    criteria: {
+      type: 'good_standing_days',
+      cleanDays: 90,
+      tiers: [90, 180, 365, 730],
+      tierLabels: ['3 months', '6 months', '1 year', '2 years'],
+    },
   },
 ] as const;
 

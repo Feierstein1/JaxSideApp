@@ -58,7 +58,7 @@ import { recordAreaVisit } from '../stats/area-visits';
 import { holdFor, holdReport, screenText, type Hold } from '../moderation/screening';
 import { checkEdit, checkNewContent } from '../moderation/spam';
 import { castVote } from './votes';
-import { evaluateForPostAuthor } from '../achievements';
+import { evaluateForCommentAuthor, evaluateForPostAuthor } from '../achievements';
 
 export type IdCtx = { params: Promise<{ id: string }> };
 
@@ -386,7 +386,7 @@ export function postVote(kind: DiscussionKind) {
     await limits(user.id, ...VOTE_RULES);
     await checkPostAccess({ kind: 'user', user }, input.reading, kind, id, 'vote');
     const result = await castVote(user.id, { type: kind, id }, input.value);
-    if (input.value === 1) await evaluateForPostAuthor(kind, id); // P6.8 Well Received
+    if (input.value === 1) await evaluateForPostAuthor(kind, id); // P6.8, D122 medal levels
     return NextResponse.json(result);
   };
 }
@@ -401,7 +401,9 @@ export async function commentVote(req: Request, ctx: IdCtx) {
   await limits(user.id, ...VOTE_RULES);
   const { kind, postId } = await commentPost(id);
   await checkPostAccess({ kind: 'user', user }, input.reading, kind, postId, 'vote');
-  return NextResponse.json(await castVote(user.id, { type: 'comment', id }, input.value));
+  const result = await castVote(user.id, { type: 'comment', id }, input.value);
+  if (input.value === 1) await evaluateForCommentAuthor(id); // D122 Helpful Commenter
+  return NextResponse.json(result);
 }
 
 export async function commentEdit(req: Request, ctx: IdCtx) {

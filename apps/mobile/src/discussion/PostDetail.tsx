@@ -509,7 +509,7 @@ function CommentRow({
               >
                 {name}
               </Text>
-              {'medals' in c.author ? <MedalIcons keys={c.author.medals} size={14} /> : null}
+              {'medals' in c.author ? <MedalIcons medals={c.author.medals} size={14} /> : null}
               {`  ${timeAgo(c.createdAt)}${c.editedAt ? ' · edited' : ''}`}
             </Text>
           ) : null}

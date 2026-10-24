@@ -13,6 +13,7 @@ import { importOsmPlaces } from '@/server/directory/osm';
 import { readBoundaryFile } from '@/server/location/boundary-file';
 import { importServiceArea } from '@/server/location/service-area';
 import { invalidateScreeningCache } from '@/server/moderation/screening';
+import { ACHIEVEMENTS } from '../prisma/seed-data';
 import { adminHeaders } from './admin-helpers';
 import { resetDb } from './db-helpers';
 import { callRoute as call, type AnyHandler as H } from './route-call';
@@ -54,13 +55,14 @@ beforeEach(async () => {
       tags: { amenity: 'cafe', name: 'Bold Bean Coffee' },
     },
   ]);
+  const def = ACHIEVEMENTS.find((a) => a.key === 'approved_contributor')!;
   await db.achievement.create({
     data: {
-      key: 'approved_contributor',
-      name: 'Approved Contributor',
-      description: 'x',
-      icon: 'map-pin',
-      criteria: {},
+      key: def.key,
+      name: def.name,
+      description: def.description,
+      icon: def.icon,
+      criteria: def.criteria,
     },
   });
   ({ id: userId, token } = await user('suggester_s'));

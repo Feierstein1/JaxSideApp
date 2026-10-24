@@ -1,5 +1,6 @@
 import type { MySubmission, PlaceCandidate } from '@jax/shared';
 import type { Prisma, User } from '@/generated/prisma/client';
+import { evaluateAchievements } from '../achievements';
 import { audit } from '../admin/audit';
 import { getConfig } from '../config';
 import { db } from '../db';
@@ -269,9 +270,17 @@ type Decision =
   | { decision: 'reject'; reason: string }
   | { decision: 'merge'; placeId: string };
 
+async function approvedContributorTier(tx: Prisma.TransactionClient, userId: string) {
+  const r = await tx.userAchievement.findFirst({
+    where: { userId, achievement: { key: 'approved_contributor' } },
+    select: { tier: true },
+  });
+  return r?.tier ?? 0;
+}
+
 /**
  * Creates the place for an approved suggestion and gives the suggester the Approved
- * Contributor medal (once). Used by an admin's decision and by community votes (D94).
+ * Contributor medal (or its next level, D122). Used by an admin's decision and by community votes (D94).
  */
 export async function approveSubmissionTx(
   tx: Prisma.TransactionClient,
@@ -307,17 +316,12 @@ export async function approveSubmissionTx(
       ...(d.address ? { address: d.address } : {}),
     },
   });
-  // §9.3: the badge comes only with approval, and only once (primary key).
-  const badge = await tx.achievement.findUnique({ where: { key: 'approved_contributor' } });
-  let awarded = false;
-  if (badge) {
-    const r = await tx.userAchievement.createMany({
-      data: [{ userId: s.submitterId, achievementId: badge.id, awardedAt: now }],
-      skipDuplicates: true,
-    });
-    awarded = r.count === 1;
-  }
-  return { placeId: place.id, badge: awarded };
+  // §9.3: the medal comes only with approval. D122: `badge` is true when this approval
+  // earned the Approved Contributor medal or raised its level.
+  const before = await approvedContributorTier(tx, s.submitterId);
+  await evaluateAchievements(now, s.submitterId, tx);
+  const after = await approvedContributorTier(tx, s.submitterId);
+  return { placeId: place.id, badge: after > before };
 }
 
 /**

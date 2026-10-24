@@ -135,7 +135,7 @@ export function PostCard({
                   accessibilityLabel="Your post"
                 />
               ) : null}
-              {'medals' in author ? <MedalIcons keys={author.medals} size={16} /> : null}
+              {'medals' in author ? <MedalIcons medals={author.medals} size={16} /> : null}
               {/* D103: a verified owner of this place (its discussion only). */}
               {'owner' in author && author.owner ? (
                 <View

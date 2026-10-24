@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { MedalBadge } from './account';
 import { locationReadingSchema } from './location';
 
 export const POST_MAX = 2000;
@@ -104,11 +105,11 @@ export interface PostView {
   body: string;
   createdAt: string;
   editedAt: string | null;
-  /** `medals`: achievement keys earned (P6.9), shown as small icons by the name. */
+  /** `medals`: medals earned and their level (P6.9, D122), shown as small badges by the name. */
   author:
     | {
         username: string;
-        medals: string[];
+        medals: MedalBadge[];
         color: string;
         avatarUrl: string | null;
         /** D103: a verified owner of this place (place discussions only). */
@@ -166,7 +167,7 @@ export interface CommentView {
   status: 'visible' | 'deleted' | 'removed';
   createdAt: string;
   editedAt: string | null;
-  author: { username: string; medals: string[] } | { guest: true } | { deleted: true };
+  author: { username: string; medals: MedalBadge[] } | { guest: true } | { deleted: true };
   score: number;
   myVote: -1 | 0 | 1;
   isMine: boolean;

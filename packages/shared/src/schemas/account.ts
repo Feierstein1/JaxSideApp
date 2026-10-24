@@ -51,13 +51,32 @@ export interface PublicProfile {
   friendRequestId: string | null;
 }
 
-/** P6.9: an earned achievement as shown on a profile. */
+/** D122: medal levels, lowest first (`tier` 1 = Bronze). */
+export const MEDAL_TIER_NAMES = ['Bronze', 'Silver', 'Gold', 'Platinum'] as const;
+export type MedalTierName = (typeof MEDAL_TIER_NAMES)[number];
+
+/** P6.9 / D122: an earned achievement as shown on a profile. */
 export interface Medal {
   key: string;
   name: string;
   description: string;
   icon: string;
+  /** 1 Bronze … 4 Platinum. */
+  tier: number;
+  tierName: MedalTierName;
+  /** How many levels this medal has (1 for a one-time medal). */
+  levels: number;
+  /** The next level and what it takes, or null at the top. */
+  next: { tierName: MedalTierName; needs: string } | null;
   awardedAt: string;
+  /** When the current level was reached. */
+  tierAt: string;
+}
+
+/** D122: a medal next to a name on posts and comments: which one, at what level. */
+export interface MedalBadge {
+  key: string;
+  tier: number;
 }
 
 /** P5.7: appeal one strike. */

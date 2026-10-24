@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CATEGORY_COLORS, categoryColor } from './schemas/directory';
-import { BRAND, COLORS, DARK, EMBLEM, MEDAL } from './theme';
+import { BRAND, COLORS, DARK, EMBLEM, MEDAL, MEDAL_METALS } from './theme';
 
 /** WCAG 2 contrast ratio between two #RRGGBB colors. */
 function contrast(a: string, b: string): number {
@@ -146,5 +146,21 @@ describe('EMBLEM (sign-in header text on navy)', () => {
     ['accent on navy', DARK.accent, EMBLEM.navy],
   ] as const)('%s passes AA (4.5:1)', (_name, fg, bg) => {
     expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe('MEDAL_METALS (D122)', () => {
+  it.each(MEDAL_METALS.map((m) => [m.name, m] as const))(
+    '%s: the symbol on the metal passes AA, and the metal stands out on the dark center',
+    (_name, m) => {
+      expect(contrast(m.on, m.main)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(m.main, MEDAL.face)).toBeGreaterThanOrEqual(3);
+      expect(contrast(m.main, DARK.card)).toBeGreaterThanOrEqual(3);
+    },
+  );
+
+  it('the four metals are in order and distinct', () => {
+    expect(MEDAL_METALS.map((m) => m.name)).toEqual(['Bronze', 'Silver', 'Gold', 'Platinum']);
+    expect(new Set(MEDAL_METALS.map((m) => m.main)).size).toBe(4);
   });
 });
