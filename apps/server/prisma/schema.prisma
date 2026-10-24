@@ -179,6 +179,8 @@ model User {
   appeals         Appeal[]             @relation("Appellant")
   achievements    UserAchievement[]
   pollsCreated    Poll[]               @relation("PollCreator")
+  topicsSuggested CityTopic[]          @relation("TopicSuggester")
+  topicsCreated   CityTopic[]          @relation("TopicCreator")
   submissions     BusinessSubmission[] @relation("Submitter")
   reviewedSubs    BusinessSubmission[] @relation("Reviewer")
   reportsMade     Report[]             @relation("Reporter")
@@ -627,7 +629,10 @@ model GeneralPost {
   editedAt        DateTime?                              @db.Timestamptz(3)
   /// D107: when the status last changed (set by a database trigger); retention counts from it.
   statusChangedAt DateTime?                              @db.Timestamptz(3)
+  /// D125: set for a post in a citywide topic (kept out of the local feed).
+  topicId         String?                                @db.Uuid
   author          User                                   @relation(fields: [authorId], references: [id])
+  topic           CityTopic?                             @relation(fields: [topicId], references: [id], onDelete: Restrict)
 
   comments   Comment[]
   votes      Vote[]
@@ -636,6 +641,8 @@ model GeneralPost {
   modActions ModerationAction[]
 
   @@index([location], type: Gist)
+  /// D125: a topic's posts, newest first.
+  @@index([topicId, status, createdAt(sort: Desc), id(sort: Desc)], where: raw("\"topicId\" IS NOT NULL"))
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([authorId, createdAt(sort: Desc)])
   // P13.7: the retention purge of deleted / removed content
@@ -1445,4 +1452,39 @@ model PollVoterTally {
   poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
 
   @@id([pollId, zip])
+}
+
+/// D125: where a citywide topic stands.
+enum CityTopicStatus {
+  SUGGESTED // from a user, waiting for the admin
+  ACTIVE // shown (between opensAt and closesAt)
+  CLOSED // ended by the admin; readable, no new posts
+  REJECTED // a suggestion the admin turned down
+}
+
+/// D125: a citywide discussion topic (all of Duval, no radius).
+model CityTopic {
+  id             String          @id @default(uuid(7)) @db.Uuid
+  title          String          @db.VarChar(80)
+  description    String?         @db.VarChar(500)
+  status         CityTopicStatus @default(ACTIVE)
+  pinned         Boolean         @default(false)
+  /// Shown from this time (a scheduled topic, e.g. a game day).
+  opensAt        DateTime        @default(now()) @db.Timestamptz(3)
+  /// Ends automatically at this time (optional).
+  closesAt       DateTime?       @db.Timestamptz(3)
+  suggestedById  String?         @db.Uuid
+  createdById    String?         @db.Uuid
+  /// Why a suggestion was turned down (shown to the person who suggested it).
+  decisionReason String?         @db.VarChar(300)
+  decidedAt      DateTime?       @db.Timestamptz(3)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
+  suggestedBy    User?           @relation("TopicSuggester", fields: [suggestedById], references: [id], onDelete: SetNull)
+  createdBy      User?           @relation("TopicCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  posts          GeneralPost[]
+
+  @@index([status, pinned, opensAt])
+  @@index([suggestedById, createdAt])
+  @@index([createdById])
 }

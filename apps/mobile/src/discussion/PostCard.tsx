@@ -164,12 +164,16 @@ export function PostCard({
               <View
                 accessible
                 accessibilityLabel={
-                  post.place ? `Posted at ${post.place.name}` : `Posted near ${post.area ?? 'you'}`
+                  post.topic
+                    ? `Posted in the citywide topic ${post.topic.title}`
+                    : post.place
+                      ? `Posted at ${post.place.name}`
+                      : `Posted near ${post.area ?? 'you'}`
                 }
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}
               >
                 <Ionicons
-                  name={post.place ? 'storefront' : 'location'}
+                  name={post.topic ? 'globe-outline' : post.place ? 'storefront' : 'location'}
                   size={12}
                   color={DARK.tealText}
                 />
@@ -177,7 +181,11 @@ export function PostCard({
                   numberOfLines={1}
                   style={{ color: DARK.tealText, fontSize: 13, fontWeight: '700', flexShrink: 1 }}
                 >
-                  {post.place ? post.place.name : (post.area ?? 'Area post')}
+                  {post.topic
+                    ? `Citywide: ${post.topic.title}`
+                    : post.place
+                      ? post.place.name
+                      : (post.area ?? 'Area post')}
                 </Text>
               </View>
             ) : null}

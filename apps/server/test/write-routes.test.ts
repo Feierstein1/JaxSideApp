@@ -53,6 +53,8 @@ import * as chatHide from '@/app/api/v1/messages/conversations/[id]/hide/route';
 import * as placeChanges from '@/app/api/v1/places/changes/route';
 import * as placeVote from '@/app/api/v1/places/changes/vote/route';
 import * as pollVote from '@/app/api/v1/polls/[id]/vote/route';
+import * as topicList from '@/app/api/v1/topics/[id]/posts/list/route';
+import * as topicSuggest from '@/app/api/v1/topics/suggestions/route';
 import * as placeRemoval from '@/app/api/v1/places/[id]/removal/route';
 import * as friendRequests from '@/app/api/v1/friends/requests/route';
 import * as friendRequest from '@/app/api/v1/friends/requests/[id]/route';
@@ -92,7 +94,8 @@ const IN = { latitude: 30.315, longitude: -81.686, accuracyMeters: 10 };
 const OUT = { latitude: 30.1661, longitude: -81.7065, accuracyMeters: 10 }; // Orange Park
 const r = (p: typeof IN) => ({ ...p, timestamp: Date.now() - 2_000 });
 
-type Id = 'place' | 'post' | 'bizPost' | 'comment' | 'username' | 'friendRequest' | 'poll' | null;
+type Id =
+  'place' | 'post' | 'bizPost' | 'comment' | 'username' | 'friendRequest' | 'poll' | 'topic' | null;
 interface Row {
   route: string;
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -426,6 +429,25 @@ const ROWS: Row[] = [
     id: 'poll',
     location: false,
     body: (at) => ({ reading: r(at), choiceIds: ['00000000-0000-7000-8000-000000000000'] }),
+  },
+  // D125: citywide topics.
+  {
+    route: 'topics/[id]/posts/list',
+    method: 'POST',
+    handler: h(topicList, 'POST'),
+    auth: true,
+    id: 'topic',
+    location: true,
+    body: (at) => ({ reading: r(at) }),
+  },
+  {
+    route: 'topics/suggestions',
+    method: 'POST',
+    handler: h(topicSuggest, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ title: 'Best tacos in Riverside' }),
   },
   // D100: temporary phone error log (development only; no session, rate-limited per IP).
   {
@@ -859,6 +881,7 @@ const ids: Record<Exclude<Id, null>, string> = {
   username: 'owner_w',
   friendRequest: '',
   poll: '',
+  topic: '',
 };
 
 beforeAll(async () => {
@@ -910,6 +933,8 @@ beforeAll(async () => {
     },
   });
   ids.friendRequest = (await db.friendship.findFirstOrThrow()).id;
+  // D125: an open citywide topic.
+  ids.topic = (await db.cityTopic.create({ data: { title: 'Game day', status: 'ACTIVE' } })).id;
   // D123: an open poll.
   ids.poll = (
     await db.poll.create({

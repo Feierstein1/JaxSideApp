@@ -9,7 +9,7 @@ import { haptic } from '@/motion';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { Banner, FormError, Segmented, KeyboardSafeView } from '@/ui';
-import { createPost, markFeedsDirty } from './api';
+import { createPost, markFeedsDirty, type PostTarget } from './api';
 import { pickPhoto, uploadPhoto, type Uploaded } from './photos';
 import { sendScreened } from './screening';
 import { VideoPlayer } from './VideoPlayer';
@@ -31,13 +31,9 @@ type Mode = 'text' | 'voice' | 'video';
  * - Voice: the recorder first, with an optional caption.
  * Switching keeps what you made in the other mode, but only the chosen kind is posted.
  */
-export function Compose({
-  target,
-  placeName,
-}: {
-  target: { kind: 'general' } | { kind: 'business'; placeId: string };
-  placeName?: string;
-}) {
+export function Compose({ target, placeName }: { target: PostTarget; placeName?: string }) {
+  /** D125: posting into a citywide topic (everyone in Duval sees it). */
+  const topic = target.kind === 'general' && target.topicId ? target : null;
   const { state } = useAuth();
   const user = state.status === 'signedIn' ? state.user : undefined;
   const [mode, setMode] = useState<Mode>('text');
@@ -163,9 +159,11 @@ export function Compose({
         placeholder={
           mode !== 'text'
             ? 'Add a caption (optional)'
-            : target.kind === 'general'
-              ? 'What’s happening around here?'
-              : 'Share something about this place…'
+            : topic
+              ? 'Share your take with Jacksonville…'
+              : target.kind === 'general'
+                ? 'What’s happening around here?'
+                : 'Share something about this place…'
         }
         value={body}
         onChangeText={setBody}
@@ -278,7 +276,9 @@ export function Compose({
               }}
             >
               <Ionicons
-                name={target.kind === 'general' ? 'location' : 'storefront'}
+                name={
+                  topic ? 'globe-outline' : target.kind === 'general' ? 'location' : 'storefront'
+                }
                 size={13}
                 color={DARK.tealText}
               />
@@ -286,7 +286,11 @@ export function Compose({
                 numberOfLines={1}
                 style={{ color: DARK.tealText, fontWeight: '700', fontSize: 13 }}
               >
-                {target.kind === 'general' ? 'People near you' : (placeName ?? 'This place')}
+                {topic
+                  ? (topic.topicTitle ?? 'Citywide')
+                  : target.kind === 'general'
+                    ? 'People near you'
+                    : (placeName ?? 'This place')}
               </Text>
             </View>
           </View>
@@ -491,9 +495,11 @@ export function Compose({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: SPACE.xs }}>
           <Ionicons name="shield-checkmark-outline" size={14} color={DARK.textMuted} />
           <Text style={[TYPE.caption, { color: DARK.textMuted, flex: 1 }]}>
-            {target.kind === 'general'
-              ? 'People within about 500 yards will see this. Your exact location is never shown.'
-              : `Posting in ${placeName ?? 'this place'}’s discussion.`}{' '}
+            {topic
+              ? 'Everyone in Jacksonville can see this in the topic. Your location is never shown.'
+              : target.kind === 'general'
+                ? 'People within about 500 yards will see this. Your exact location is never shown.'
+                : `Posting in ${placeName ?? 'this place'}’s discussion.`}{' '}
             {mode === 'text'
               ? 'Photos are cleaned of location and camera details.'
               : mode === 'video'

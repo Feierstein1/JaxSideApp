@@ -358,6 +358,21 @@ checks. Tick each box when it looks right; note anything odd next to it.
       and the list filters by topic.
 - [ ] Privacy Policy has a **Polls** section.
 
+### Citywide topics (D125)
+
+- [ ] Home shows **Citywide** at the top: topic cards sideways (pinned first, with "PINNED"),
+      then **Suggest a topic**; **All topics** opens the full list (open, then closed).
+- [ ] Open a topic: its title and description, Latest / Top, and **Post in this topic**. The
+      post form says the topic's name and "Everyone in Jacksonville can see this".
+- [ ] A topic post shows **no distance**, and it does **not** appear in the local feed. On your
+      profile it shows "Citywide: [topic]".
+- [ ] From another part of town (still in Duval) you can comment on and vote for a topic post.
+- [ ] **Suggest a topic**: send one; it shows under "Your suggestions" as "Waiting for review".
+      Admin portal → **Topics**: approve it (change the title if you like) and it appears under
+      Citywide; or reject it with a reason, which shows under your suggestion.
+- [ ] Admin: create, pin, schedule an end, **Close** (the app shows "This topic is closed",
+      no post button) and **Reopen**.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

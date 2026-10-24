@@ -10,6 +10,7 @@ import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/de
 import { PostList } from '@/discussion/PostList';
 import { PostTypeTabs } from '@/discussion/PostTypeTabs';
 import { PollCard } from '@/polls/PollCard';
+import { CitywideStrip } from '@/topics/CitywideStrip';
 import { refreshLimiter } from '@/refresh-limit';
 import { Banner, FloatingButton, RefreshButton, SearchField, Segmented } from '@/ui';
 import { showAlert } from '@/dialog';
@@ -101,7 +102,8 @@ export default function HomeFeed() {
           Confirm your email to post, comment and vote. Tap to enter your code.
         </Banner>
       ) : null}
-      {/* D123: the poll of the week (hidden while searching). */}
+      {/* D125: citywide topics, then D123: the poll of the week (both hidden while searching). */}
+      {q ? null : <CitywideStrip reloadKey={String(reloads)} />}
       {q ? null : <PollCard reloadKey={String(reloads)} />}
       <Segmented
         options={[

@@ -68,6 +68,8 @@ export const createPostSchema = z
     voiceId: z.uuid().optional(),
     /** D102: a video uploaded first (`POST /videos`), attached by ID. */
     videoId: z.uuid().optional(),
+    /** D125: post into a citywide topic instead of the local area. */
+    topicId: z.uuid().optional(),
   })
   .refine((p) => [p.voiceId, p.videoId, p.photoIds?.length].filter(Boolean).length <= 1, {
     message: 'A post can have photos or a voice clip, not both',
@@ -125,6 +127,8 @@ export interface PostView {
   /** General posts: rounded distance from the reader. Business posts: null. */
   distanceMeters: number | null;
   place: { id: string; name: string } | null;
+  /** D125: the citywide topic this post is in (no distance is shown for these). */
+  topic: { id: string; title: string } | null;
   /** P6.4: short-lived signed links (relative to the API base URL). */
   photos: PhotoView[];
   /** D75: a voice post's clip (signed link), or null. */

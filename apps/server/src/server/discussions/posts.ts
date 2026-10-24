@@ -54,6 +54,8 @@ interface PostRow {
   distance: number | null;
   place_id: string | null;
   place_name: string | null;
+  topic_id: string | null;
+  topic_title: string | null;
 }
 
 function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
@@ -83,6 +85,7 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
     // Coarse point (~100 m grid, D7), rounded again: an approximate "how far".
     distanceMeters: r.distance === null ? null : Math.round(r.distance / 50) * 50,
     place: r.place_id ? { id: r.place_id, name: r.place_name! } : null,
+    topic: r.topic_id ? { id: r.topic_id, title: r.topic_title! } : null,
     photos: (r.photos ?? []).map((p) => ({ ...p, url: signedPhotoUrl(p.id) })),
     voice: r.voice ? { ...r.voice, url: signedPhotoUrl(r.voice.id) } : null,
     video: r.video
@@ -116,10 +119,15 @@ function notBlocked(viewerId: string, authorColumn: Prisma.Sql) {
 }
 
 function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
+  // D125: no distance on citywide topic posts (it could hint at where someone lives).
   const distance =
     kind === 'general' && from
-      ? Prisma.sql`ST_Distance(p.location, ${point(from)})`
+      ? Prisma.sql`CASE WHEN p."topicId" IS NULL THEN ST_Distance(p.location, ${point(from)}) END`
       : Prisma.sql`NULL::float8`;
+  const topic =
+    kind === 'general'
+      ? Prisma.sql`ct.id AS topic_id, ct.title AS topic_title`
+      : Prisma.sql`NULL::uuid AS topic_id, NULL::text AS topic_title`;
   const place =
     kind === 'business'
       ? Prisma.sql`pl.id AS place_id, pl.name AS place_name,
@@ -127,7 +135,9 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
                   AND oc."userId" = p."authorId" AND oc.status = 'VERIFIED') AS is_owner`
       : Prisma.sql`NULL::uuid AS place_id, NULL::text AS place_name, false AS is_owner`;
   const join =
-    kind === 'business' ? Prisma.sql`JOIN "BusinessPlace" pl ON pl.id = p."placeId"` : Prisma.empty;
+    kind === 'business'
+      ? Prisma.sql`JOIN "BusinessPlace" pl ON pl.id = p."placeId"`
+      : Prisma.sql`LEFT JOIN "CityTopic" ct ON ct.id = p."topicId"`;
   return Prisma.sql`
     SELECT p.id, p.body, p."createdAt", p."editedAt", p.score, p."upCount", p."downCount",
            p."commentCount", p."authorId", u.username, u.status::text AS author_status,
@@ -146,7 +156,7 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
             FROM "Photo" vd
             WHERE vd.${VOTE_COLUMN[kind]} = p.id AND vd.status = 'ACTIVE' AND vd.kind = 'VIDEO'
             LIMIT 1) AS video,
-           v.value AS my_vote, ${distance} AS distance, ${place}
+           v.value AS my_vote, ${distance} AS distance, ${place}, ${topic}
     FROM ${TABLE[kind]} p
     JOIN "User" u ON u.id = p."authorId"
     LEFT JOIN "Profile" pr ON pr."userId" = u.id
@@ -195,7 +205,8 @@ export async function listFeed(opts: {
   ]);
   const c = decodeCursor(opts.cursor);
   const base = Prisma.sql`${selectPosts('general', opts.viewer.id, opts.at)}
-    WHERE p.status = 'VISIBLE' AND ST_DWithin(p.location, ${point(opts.at)}, ${radius})
+    WHERE p.status = 'VISIBLE' AND p."topicId" IS NULL
+      AND ST_DWithin(p.location, ${point(opts.at)}, ${radius})
       ${notBlocked(opts.viewer.id, Prisma.sql`p."authorId"`)} ${searchFilter(opts.q)}
       ${typeFilter('general', opts.type)}`;
 
@@ -214,6 +225,36 @@ export async function listFeed(opts: {
   const rows = await db.$queryRaw<PostRow[]>`${base} ${after}
     ORDER BY p."createdAt" DESC, p.id DESC LIMIT ${size + 1}`;
   return page(rows, size, 'general', opts.viewer.id, (l) =>
+    encodeCursor({ t: l.createdAt.toISOString(), id: l.id }),
+  );
+}
+
+/** D125: a citywide topic's posts, newest or top (no radius; access checked by the caller). */
+export async function listTopicPosts(opts: {
+  viewerId: string;
+  topicId: string;
+  sort: FeedSort;
+  cursor?: string;
+  type?: PostTypeFilter;
+}) {
+  const size = await getConfig('feed.pageSize');
+  const c = decodeCursor(opts.cursor);
+  const base = Prisma.sql`${selectPosts('general', opts.viewerId)}
+    WHERE p.status = 'VISIBLE' AND p."topicId" = ${opts.topicId}::uuid
+      ${notBlocked(opts.viewerId, Prisma.sql`p."authorId"`)} ${typeFilter('general', opts.type)}`;
+  if (opts.sort === 'top') {
+    const offset = c && 'o' in c ? c.o : 0;
+    const rows = await db.$queryRaw<PostRow[]>`${base}
+      ORDER BY p.score DESC, p."createdAt" DESC, p.id DESC LIMIT ${size + 1} OFFSET ${offset}`;
+    return page(rows, size, 'general', opts.viewerId, () => encodeCursor({ o: offset + size }));
+  }
+  const after =
+    c && 't' in c
+      ? Prisma.sql`AND (p."createdAt", p.id) < (${new Date(c.t)}::timestamptz, ${c.id}::uuid)`
+      : Prisma.empty;
+  const rows = await db.$queryRaw<PostRow[]>`${base} ${after}
+    ORDER BY p."createdAt" DESC, p.id DESC LIMIT ${size + 1}`;
+  return page(rows, size, 'general', opts.viewerId, (l) =>
     encodeCursor({ t: l.createdAt.toISOString(), id: l.id }),
   );
 }
@@ -286,15 +327,27 @@ export async function getPostView(
  * (D20), or a business post's place (D19). Only visible posts.
  */
 export async function postAnchor(kind: DiscussionKind, id: string) {
+  type Anchor = {
+    authorId: string;
+    latitude: number;
+    longitude: number;
+    placeId?: string;
+    /** D125: set for a citywide topic post (no radius), with whether the topic is open. */
+    topicId: string | null;
+    topicOpen: boolean;
+  };
   const rows =
     kind === 'general'
-      ? await db.$queryRaw<{ authorId: string; latitude: number; longitude: number }[]>`
-          SELECT "authorId", ST_Y(location::geometry) AS latitude, ST_X(location::geometry) AS longitude
-          FROM "GeneralPost" WHERE id = ${id}::uuid AND status = 'VISIBLE'`
-      : await db.$queryRaw<
-          { authorId: string; latitude: number; longitude: number; placeId: string }[]
-        >`
-          SELECT p."authorId", pl.latitude, pl.longitude, p."placeId"
+      ? await db.$queryRaw<Anchor[]>`
+          SELECT p."authorId", ST_Y(p.location::geometry) AS latitude,
+                 ST_X(p.location::geometry) AS longitude, p."topicId",
+                 COALESCE(t.status = 'ACTIVE' AND t."opensAt" <= now()
+                          AND (t."closesAt" IS NULL OR t."closesAt" > now()), false) AS "topicOpen"
+          FROM "GeneralPost" p LEFT JOIN "CityTopic" t ON t.id = p."topicId"
+          WHERE p.id = ${id}::uuid AND p.status = 'VISIBLE'`
+      : await db.$queryRaw<Anchor[]>`
+          SELECT p."authorId", pl.latitude, pl.longitude, p."placeId",
+                 NULL::uuid AS "topicId", false AS "topicOpen"
           FROM "BusinessPost" p JOIN "BusinessPlace" pl ON pl.id = p."placeId"
           WHERE p.id = ${id}::uuid AND p.status = 'VISIBLE' AND pl.status = 'ACTIVE'`;
   if (!rows[0]) throw new ApiError(404, 'NOT_FOUND', 'Post not found');
@@ -310,14 +363,15 @@ export async function createGeneralPost(
   photoIds: string[] = [],
   voiceId?: string,
   videoId?: string,
+  topicId?: string,
 ) {
   // P5.4: a held post is stored hidden until a moderator reviews it.
   const status = held ? 'HELD_FOR_REVIEW' : 'VISIBLE';
   return db.$transaction(async (tx) => {
     const [row] = await tx.$queryRaw<{ id: string }[]>`
-    INSERT INTO "GeneralPost" (id, "authorId", body, location, status, "updatedAt")
+    INSERT INTO "GeneralPost" (id, "authorId", body, location, status, "topicId", "updatedAt")
     VALUES (uuid_v7(), ${authorId}::uuid, ${body}, ${point(at)},
-            ${status}::"ContentStatus", now())
+            ${status}::"ContentStatus", ${topicId ?? null}::uuid, now())
     RETURNING id`;
     await attachPhotos(tx, authorId, photoIds, { generalPostId: row!.id });
     await attachVoice(tx, authorId, voiceId, { generalPostId: row!.id });

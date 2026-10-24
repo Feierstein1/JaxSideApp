@@ -211,6 +211,8 @@ export const CONFIG_DEFAULTS = {
   /** D123: polls: who may vote, and how fast. */
   'polls.voterMinAccountDays': 3,
   'rateLimit.pollVote.perMinute': 10,
+  /** D125: citywide topic suggestions per person per day. */
+  'rateLimit.topicSuggest.perDay': 3,
   'rateLimit.placeRemoval.perDay': 5,
   /** Places within this distance with a similar name are shown as possible duplicates. */
   'submission.duplicateRadiusMeters': 300,

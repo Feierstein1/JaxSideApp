@@ -104,6 +104,21 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
     }
   }
 
+  // D125: two sample citywide topics in development (each added once, by its title).
+  if (opts.includeDevData) {
+    for (const t of [
+      {
+        title: 'Game day: Jaguars this Sunday',
+        description: 'Sample topic for development.',
+        pinned: true,
+      },
+      { title: 'Best tacos in Jax', description: 'Sample topic for development.', pinned: false },
+    ]) {
+      if (await db.cityTopic.findFirst({ where: { title: t.title } })) continue;
+      await db.cityTopic.create({ data: { ...t, status: 'ACTIVE' } });
+    }
+  }
+
   // D123 / D124: one sample poll of each type to try in development (each added once, by its
   // question, open for a week from the first seed).
   if (opts.includeDevData) {

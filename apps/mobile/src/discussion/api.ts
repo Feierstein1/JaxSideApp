@@ -72,8 +72,13 @@ export async function editPost(
   });
 }
 
+/** Where a new post goes: the local area (or a citywide topic, D125), or a place. */
+export type PostTarget =
+  | { kind: 'general'; topicId?: string; topicTitle?: string }
+  | { kind: 'business'; placeId: string };
+
 export async function createPost(
-  target: { kind: 'general' } | { kind: 'business'; placeId: string },
+  target: PostTarget,
   body: string,
   confirmWarning?: true,
   photoIds: string[] = [],
@@ -90,6 +95,7 @@ export async function createPost(
     ...(photoIds.length ? { photoIds } : {}),
     ...(voiceId ? { voiceId } : {}), // D75
     ...(videoId ? { videoId } : {}), // D102
+    ...(target.kind === 'general' && target.topicId ? { topicId: target.topicId } : {}), // D125
   });
 }
 
