@@ -24,8 +24,8 @@ export const POST = route<IdCtx>(async (req, ctx) => {
     },
   ]);
   await pollVoterAllowed(user);
-  await assertPollOpen(pollId, input.choiceId);
+  await assertPollOpen(pollId, input.choiceIds);
   const here = await assertLocationEligible({ kind: 'user', user }, input.reading, 'poll.vote');
-  const poll = await castPollVote(user.id, pollId, input.choiceId, here);
+  const poll = await castPollVote(user.id, pollId, input.choiceIds, here);
   return NextResponse.json({ poll });
 });

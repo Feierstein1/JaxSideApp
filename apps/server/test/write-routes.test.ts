@@ -425,7 +425,7 @@ const ROWS: Row[] = [
     auth: true,
     id: 'poll',
     location: false,
-    body: (at) => ({ reading: r(at), choiceId: '00000000-0000-7000-8000-000000000000' }),
+    body: (at) => ({ reading: r(at), choiceIds: ['00000000-0000-7000-8000-000000000000'] }),
   },
   // D100: temporary phone error log (development only; no session, rate-limited per IP).
   {

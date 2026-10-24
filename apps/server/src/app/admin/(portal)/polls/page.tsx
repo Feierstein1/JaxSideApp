@@ -1,4 +1,10 @@
-import { POLL_MIN_GROUP, type PollCounts } from '@jax/shared';
+import {
+  POLL_KINDS,
+  POLL_MIN_GROUP,
+  POLL_TOPICS,
+  type PollCounts,
+  type PollTopic,
+} from '@jax/shared';
 import { adminListPolls } from '@/server/polls';
 import { ui } from '../../admin-ui';
 import { PollActions, PollForm } from '../../poll-forms';
@@ -10,20 +16,23 @@ export const dynamic = 'force-dynamic';
 const STATUS = { upcoming: 'Scheduled', open: 'Open', closed: 'Closed' } as const;
 const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)}%` : '—');
 
-/** One row of counts per choice, with percentages. */
+/** One row of counts per answer, as a share of voters (plus the average for ratings). */
 function CountsRow({
   label,
   c,
   choices,
+  rated,
 }: {
   label: string;
   c: PollCounts;
   choices: { id: string }[];
+  rated: boolean;
 }) {
   return (
     <tr>
       <td style={td}>{label}</td>
       <td style={td}>{c.voters}</td>
+      {rated ? <td style={td}>{c.average ?? '—'}</td> : null}
       {choices.map((ch) => {
         const n = c.counts.find((x) => x.choiceId === ch.id)?.count ?? 0;
         return (
@@ -37,19 +46,21 @@ function CountsRow({
 }
 
 /**
- * D123: weekly polls. Write one (question, choices, dates), edit or delete it until it opens,
- * end it early. While open only the number of votes shows; totals appear when it closes,
- * by ZIP where at least 10 people voted.
+ * D123 / D124: weekly polls. Write one (type, topic, question, answers, dates), edit or delete
+ * it until it opens, end it early. While open only the number of voters shows; totals appear
+ * when it closes, by ZIP where at least 10 people voted. Filter by topic.
  */
 export default async function PollsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string; new?: string }>;
+  searchParams: Promise<{ edit?: string; new?: string; topic?: string }>;
 }) {
   await requireAdminPage();
   const q = await searchParams;
-  const polls = await adminListPolls();
-  const editing = q.edit ? polls.find((p) => p.id === q.edit && p.status === 'upcoming') : null;
+  const topic = q.topic && q.topic in POLL_TOPICS ? (q.topic as PollTopic) : null;
+  const all = await adminListPolls();
+  const polls = topic ? all.filter((p) => p.topic === topic) : all;
+  const editing = q.edit ? all.find((p) => p.id === q.edit && p.status === 'upcoming') : null;
 
   return (
     <>
@@ -66,9 +77,13 @@ export default async function PollsPage({
           <PollForm
             poll={{
               id: editing.id,
+              kind: editing.kind,
+              topic: editing.topic,
               question: editing.question,
               details: editing.details,
               choices: editing.choices.map((c) => c.label),
+              maxPicks: editing.maxPicks,
+              scale: editing.scale,
               opensAt: editing.opensAt,
               closesAt: editing.closesAt,
             }}
@@ -87,25 +102,74 @@ export default async function PollsPage({
         </p>
       )}
 
-      <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
+      <nav style={{ display: 'flex', gap: 14, flexWrap: 'wrap', margin: '20px 0 0' }}>
+        <a href="/admin/polls" style={{ fontWeight: topic ? 400 : 800 }}>
+          All topics
+        </a>
+        {(Object.keys(POLL_TOPICS) as PollTopic[]).map((t) => (
+          <a
+            key={t}
+            href={`/admin/polls?topic=${t}`}
+            style={{ fontWeight: t === topic ? 800 : 400 }}
+          >
+            {POLL_TOPICS[t]}
+          </a>
+        ))}
+      </nav>
+      <div style={{ display: 'grid', gap: 16, marginTop: 16 }}>
         {polls.length === 0 ? <p style={ui.muted}>No polls yet.</p> : null}
         {polls.map((p) => (
           <div key={p.id} style={ui.card}>
             <p style={{ marginTop: 0, ...ui.muted, fontSize: 14 }}>
-              <strong>{STATUS[p.status]}</strong> · {when(p.opensAt)} → {when(p.closesAt)}
+              <strong>{STATUS[p.status]}</strong> · {POLL_KINDS[p.kind].label} ·{' '}
+              {POLL_TOPICS[p.topic]} · {when(p.opensAt)} → {when(p.closesAt)}
               {p.createdBy ? ` · by @${p.createdBy}` : ''}
             </p>
             <h3 style={{ margin: '4px 0 8px' }}>{p.question}</h3>
             {p.details ? <p style={ui.muted}>{p.details}</p> : null}
+            {p.kind === 'multi' ? (
+              <p style={{ ...ui.muted, fontSize: 13 }}>
+                Pick several{p.maxPicks ? ` (up to ${p.maxPicks})` : ' (all that apply)'}: shares
+                are of voters, so they can add up to more than 100%.
+              </p>
+            ) : null}
+            {p.scale ? (
+              <p style={{ ...ui.muted, fontSize: 13 }}>
+                1 = {p.scale.low} … 5 = {p.scale.high}
+              </p>
+            ) : null}
             {p.results ? (
               <>
-                <Table head={['', 'Voters', ...p.choices.map((c) => c.label)]}>
-                  <CountsRow label="All of Duval" c={p.results} choices={p.choices} />
+                <Table
+                  head={[
+                    '',
+                    'Voters',
+                    ...(p.kind === 'scale' ? ['Average'] : []),
+                    ...p.choices.map((c) => c.label),
+                  ]}
+                >
+                  <CountsRow
+                    label="All of Duval"
+                    c={p.results}
+                    choices={p.choices}
+                    rated={p.kind === 'scale'}
+                  />
                   {p.results.areas.map((a) => (
-                    <CountsRow key={a.zip} label={`ZIP ${a.zip}`} c={a} choices={p.choices} />
+                    <CountsRow
+                      key={a.zip}
+                      label={`ZIP ${a.zip}`}
+                      c={a}
+                      choices={p.choices}
+                      rated={p.kind === 'scale'}
+                    />
                   ))}
                   {p.results.otherAreas ? (
-                    <CountsRow label="Other areas" c={p.results.otherAreas} choices={p.choices} />
+                    <CountsRow
+                      label="Other areas"
+                      c={p.results.otherAreas}
+                      choices={p.choices}
+                      rated={p.kind === 'scale'}
+                    />
                   ) : null}
                 </Table>
                 <p style={{ ...ui.muted, fontSize: 13 }}>
@@ -122,8 +186,8 @@ export default async function PollsPage({
                 </ol>
                 {p.status === 'open' ? (
                   <p style={ui.muted}>
-                    {p.votesSoFar} {p.votesSoFar === 1 ? 'vote' : 'votes'} so far. Totals appear
-                    when it closes.
+                    {p.votesSoFar} {p.votesSoFar === 1 ? 'person has' : 'people have'} voted so far.
+                    Totals appear when it closes.
                   </p>
                 ) : null}
               </>

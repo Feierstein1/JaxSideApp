@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK, POLL_MIN_GROUP, type PollCounts, type PollView } from '@jax/shared';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
+import { answerLabel } from './api';
 
 const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) : 0);
 
@@ -12,6 +13,12 @@ function Bars({ poll, c }: { poll: PollView; c: PollCounts }) {
   const top = Math.max(...c.counts.map((x) => x.count));
   return (
     <View style={{ gap: SPACE.md }}>
+      {c.average !== null ? (
+        <Text accessibilityRole="text" style={{ fontSize: 15 }}>
+          Average <Text style={{ fontWeight: '800', color: DARK.accent }}>{c.average}</Text> out of
+          5
+        </Text>
+      ) : null}
       {poll.choices.map((ch) => {
         const n = c.counts.find((x) => x.choiceId === ch.id)?.count ?? 0;
         const p = pct(n, c.voters);
@@ -20,11 +27,13 @@ function Bars({ poll, c }: { poll: PollView; c: PollCounts }) {
           <View
             key={ch.id}
             accessible
-            accessibilityLabel={`${ch.label}: ${p} percent, ${n} ${n === 1 ? 'vote' : 'votes'}`}
+            accessibilityLabel={`${answerLabel(poll, ch)}: ${p} percent, ${n} ${n === 1 ? 'vote' : 'votes'}`}
             style={{ gap: 5 }}
           >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-              <Text style={{ flex: 1, fontWeight: lead ? '800' : '600' }}>{ch.label}</Text>
+              <Text style={{ flex: 1, fontWeight: lead ? '800' : '600' }}>
+                {answerLabel(poll, ch)}
+              </Text>
               <Text style={{ fontWeight: '800', color: lead ? DARK.accent : DARK.text }}>{p}%</Text>
             </View>
             <View style={{ height: 10, borderRadius: 5, backgroundColor: DARK.raised }}>
@@ -107,6 +116,9 @@ export function PollResults({ poll }: { poll: PollView }) {
         </View>
       ) : null}
       <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
+        {poll.kind === 'multi'
+          ? 'People could pick more than one answer, so the percentages add up to more than 100%. '
+          : ''}
         Results show JaxSide users who voted from inside Duval County, not a scientific survey of
         Jacksonville. Areas with fewer than {POLL_MIN_GROUP} voters aren’t shown on their own.
       </Text>

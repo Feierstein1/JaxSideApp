@@ -104,24 +104,71 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
     }
   }
 
-  // D123: one sample poll to try in development (only while there are none).
-  if (opts.includeDevData && (await db.poll.count()) === 0) {
-    const opensAt = new Date();
-    await db.poll.create({
-      data: {
-        question: 'What’s your favorite Jacksonville-area beach?',
-        details: 'Sample poll for development.',
-        opensAt,
-        closesAt: new Date(opensAt.getTime() + 7 * 86_400_000),
-        choices: {
-          create: ['Jacksonville Beach', 'Neptune Beach', 'Atlantic Beach', 'Hanna Park'].map(
-            (label, position) => ({ label, position }),
-          ),
+  // D123 / D124: one sample poll of each type to try in development (each added once, by its
+  // question, open for a week from the first seed).
+  if (opts.includeDevData) {
+    for (const s of DEV_POLLS) {
+      if (await db.poll.findFirst({ where: { question: s.question } })) continue;
+      const opensAt = new Date();
+      await db.poll.create({
+        data: {
+          kind: s.kind,
+          topic: s.topic,
+          question: s.question,
+          details: 'Sample poll for development.',
+          maxPicks: s.maxPicks ?? null,
+          scaleLowLabel: s.scale?.[0] ?? null,
+          scaleHighLabel: s.scale?.[1] ?? null,
+          opensAt,
+          closesAt: new Date(opensAt.getTime() + 7 * 86_400_000),
+          choices: {
+            create: s.answers.map((label, position) => ({
+              label,
+              position,
+              value: s.kind === 'SCALE' ? position + 1 : null,
+            })),
+          },
         },
-      },
-    });
+      });
+    }
   }
 }
+
+const DEV_POLLS: {
+  kind: 'YES_NO' | 'SINGLE' | 'MULTI' | 'SCALE';
+  topic: string;
+  question: string;
+  answers: string[];
+  maxPicks?: number;
+  scale?: [string, string];
+}[] = [
+  {
+    kind: 'SINGLE',
+    topic: 'food_fun',
+    question: 'What’s your favorite Jacksonville-area beach?',
+    answers: ['Jacksonville Beach', 'Neptune Beach', 'Atlantic Beach', 'Hanna Park'],
+  },
+  {
+    kind: 'YES_NO',
+    topic: 'transport',
+    question: 'Would you ride a train between downtown and the Beaches?',
+    answers: ['Yes', 'No', 'Not sure'],
+  },
+  {
+    kind: 'MULTI',
+    topic: 'community',
+    question: 'What would you most like to see more of near you?',
+    answers: ['Parks', 'Restaurants', 'Sidewalks', 'Events', 'Grocery stores'],
+    maxPicks: 2,
+  },
+  {
+    kind: 'SCALE',
+    topic: 'transport',
+    question: 'How would you rate the roads in your area?',
+    answers: ['1', '2', '3', '4', '5'],
+    scale: ['Very poor', 'Excellent'],
+  },
+];
 
 async function main() {
   const url = process.env.DATABASE_URL;

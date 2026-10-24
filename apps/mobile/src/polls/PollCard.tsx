@@ -11,7 +11,7 @@ const WEEK = 7 * 86_400_000;
 
 /** The poll to feature: an open one, else one that closed in the last week. */
 function featured(open: PollView[], closed: PollView[], now = Date.now()) {
-  const unvoted = open.find((p) => !p.myChoiceId);
+  const unvoted = open.find((p) => !p.myChoiceIds.length);
   if (unvoted ?? open[0]) return unvoted ?? open[0]!;
   return closed.find((p) => now - Date.parse(p.closesAt) < WEEK) ?? null;
 }
@@ -34,16 +34,18 @@ export function PollCard({ reloadKey }: { reloadKey: string }) {
   if (!poll) return null;
 
   const closed = poll.status === 'closed';
-  const voted = !!poll.myChoiceId;
+  const voted = poll.myChoiceIds.length > 0;
   const leader =
     closed && poll.results?.voters
       ? [...poll.results.counts].sort((a, b) => b.count - a.count)[0]
       : undefined;
   const leaderLabel = poll.choices.find((c) => c.id === leader?.choiceId)?.label;
   const status = closed
-    ? leaderLabel && leader && poll.results
-      ? `Top answer: ${leaderLabel} (${Math.round((leader.count / poll.results.voters) * 100)}%)`
-      : 'See the results'
+    ? poll.kind === 'scale' && poll.results?.average
+      ? `Average rating: ${poll.results.average} out of 5`
+      : leaderLabel && leader && poll.results
+        ? `Top answer: ${leaderLabel} (${Math.round((leader.count / poll.results.voters) * 100)}%)`
+        : 'See the results'
     : voted
       ? `You voted · results when it closes`
       : `Tap to vote · ${pollWhen(poll)}`;

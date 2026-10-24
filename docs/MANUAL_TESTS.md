@@ -349,6 +349,13 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] End it (or wait until it closes): the app card says **Results are in** with the top answer;
       the poll shows bars per choice, "By area" for ZIP codes with 10+ voters, and the note that
       results are JaxSide users, not a scientific survey. **Past polls** lists it.
+- [ ] **Types (D124):** the dev seed has one of each. Yes / No: two big buttons (and "Not sure").
+      Pick several: checkboxes, "Pick up to 2", a third can't be ticked. Rating: five buttons 1–5
+      with "Very poor" / "Excellent" under the ends. Each poll shows its topic above the question.
+- [ ] After closing: a rating shows "Average 3.8 out of 5"; Pick several says the percentages can
+      add up to more than 100%. **Past polls** has topic chips that filter the list.
+- [ ] Admin portal: the form changes with the type (answers, "up to", the words for 1 and 5),
+      and the list filters by topic.
 - [ ] Privacy Policy has a **Polls** section.
 
 ## 9. Account settings
