@@ -14,6 +14,20 @@ import { uuidv7 } from '../src/server/crypto/uuid';
 import { readBoundaryFile } from '../src/server/location/boundary-file';
 import { importServiceArea } from '../src/server/location/service-area';
 import { importZipAreas } from '../src/server/stats/zip-areas';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { findRepoRoot } from '../src/server/repo-root';
+
+/** P15.9: the starter slur list (see data/screening/README.md for sources and licenses). */
+export function starterSlurTerms(): {
+  term: string;
+  match: 'WORD' | 'CONTAINS';
+  action: 'BLOCK' | 'HOLD' | 'WARN';
+  category: 'SLUR' | 'THREAT' | 'SEXUAL' | 'HARASSMENT' | 'DOXXING' | 'SPAM' | 'OTHER';
+}[] {
+  const file = path.join(findRepoRoot(), 'apps/server/data/screening/starter-terms.json');
+  return JSON.parse(readFileSync(file, 'utf8')).terms;
+}
 import {
   ACHIEVEMENTS,
   CONFIG_DESCRIPTIONS,
@@ -44,6 +58,15 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
     await db.screeningRule.upsert({
       where: { term_match: { term: r.term, match: 'WORD' } },
       create: { ...r, match: 'WORD' },
+      update: {},
+    });
+  }
+  // P15.9: the starter slur list (data/screening). Only missing terms are added, so a
+  // moderator's changes in the Screening page are kept.
+  for (const r of starterSlurTerms()) {
+    await db.screeningRule.upsert({
+      where: { term_match: { term: r.term, match: r.match } },
+      create: { term: r.term, match: r.match, action: r.action, category: r.category },
       update: {},
     });
   }

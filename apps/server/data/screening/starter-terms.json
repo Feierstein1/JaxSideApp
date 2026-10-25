@@ -1,0 +1,495 @@
+{
+  "_about": "D134 / P15.9: starter screening terms (slurs). BLOCK refuses the text; HOLD saves it hidden for a moderator (terms with innocent uses). Ordinary profanity is deliberately not here (D56). Loaded by the seed only when a term is missing, so changes made in the admin Screening page are kept. Sources and licenses: see README.md in this folder.",
+  "terms": [
+    {
+      "term": "beaner",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "beaners",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "bulldyke",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "caffre",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "caffres",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "carpet muncher",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "carpetmuncher",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "chinkerbell",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "coon",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "coons",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "darkie",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout) + LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "darkies",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "fag",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "faggot",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "fudge packer",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "fudgepacker",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "golliwog",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "golliwogs",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "gook",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "gooks",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "honkey",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "injun",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "injuns",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "jigaboo",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "jiggaboo",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "jiggerboo",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "kaffir",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "kaffirs",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "kike",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout) + LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "kikes",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "latrino",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "latrinos",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "migger",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "mong",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "negress",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "negro",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "nig nog",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "nigga",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout) + LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "niggas",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "nigger",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout) + LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "niggers",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "paki",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "pikey",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "poof",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "raghead",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout) + LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "ragheads",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "sambo",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "sambos",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "shemale",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "shitskin",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "shitskins",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "shvatsa",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "shvatsas",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "shvooga",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "shvoogas",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "slanteye",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "spastic",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "spic",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout) + LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "spics",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "squaw",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "squaws",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "towelhead",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout) + LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "towelheads",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "tranny",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "wetback",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout) + LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "wetbacks",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "white power",
+      "match": "WORD",
+      "action": "HOLD",
+      "category": "SLUR",
+      "source": "LDNOOBW English list (CC BY 4.0, Shutterstock and contributors)"
+    },
+    {
+      "term": "wog",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "wogs",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    },
+    {
+      "term": "yigger",
+      "match": "WORD",
+      "action": "BLOCK",
+      "category": "SLUR",
+      "source": "grawlix-racism 1.0.2 (MIT, Copyright (c) 2017 Jon Stout)"
+    }
+  ]
+}

@@ -67,9 +67,25 @@ export function TopicCard({ t: initial }: { t: TopicView }) {
           </Text>
           <Text style={[TYPE.caption, { color: DARK.textMuted }]}>{topicDate(t.createdAt)}</Text>
         </View>
-        <Text style={{ fontSize: 16, fontWeight: '800' }} numberOfLines={2}>
-          {t.title}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+          <Text style={{ flex: 1, fontSize: 16, fontWeight: '800' }} numberOfLines={2}>
+            {t.title}
+          </Text>
+          {/* D134: a star on topics you started (only you see it). */}
+          {t.isMine ? (
+            <Ionicons
+              name="star"
+              size={15}
+              color={DARK.accent}
+              accessibilityLabel="You started this"
+            />
+          ) : null}
+        </View>
+        {t.creator ? (
+          <Text style={[TYPE.caption, { color: DARK.textMuted, marginTop: -2 }]}>
+            by @{t.creator}
+          </Text>
+        ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Ionicons name="chatbubbles-outline" size={14} color={DARK.textMuted} />

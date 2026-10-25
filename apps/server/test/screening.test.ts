@@ -62,6 +62,7 @@ describe('normalization (P5.4)', () => {
     'i will k1ll you',
     'i will kiiiiill youuu',
     'i will k i l l you',
+    'ok a k i l l you', // P15.9: a leading "a" isn't glued to the spaced letters
     'i will k.i.l.l you',
     'i will kíll yöu', // accents
     'i will kіll you', // Cyrillic "і"

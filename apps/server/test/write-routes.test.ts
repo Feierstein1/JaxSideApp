@@ -58,6 +58,7 @@ import * as topicSuggest from '@/app/api/v1/topics/suggestions/route';
 import * as topicCreate from '@/app/api/v1/topics/route';
 import * as topicPage from '@/app/api/v1/topics/list/route';
 import * as topicFollow from '@/app/api/v1/topics/[id]/follow/route';
+import * as topicOne from '@/app/api/v1/topics/[id]/route';
 import * as pollSuggest from '@/app/api/v1/polls/suggestions/route';
 import * as placeRemoval from '@/app/api/v1/places/[id]/removal/route';
 import * as friendRequests from '@/app/api/v1/friends/requests/route';
@@ -475,6 +476,24 @@ const ROWS: Row[] = [
     route: 'topics/[id]/follow',
     method: 'DELETE',
     handler: h(topicFollow, 'DELETE'),
+    auth: true,
+    id: 'topic',
+    location: false,
+  },
+  // D134: the creator shows / hides their name, or deletes the topic.
+  {
+    route: 'topics/[id]',
+    method: 'PATCH',
+    handler: h(topicOne, 'PATCH'),
+    auth: true,
+    id: 'topic',
+    location: false,
+    body: () => ({ showCreator: true }),
+  },
+  {
+    route: 'topics/[id]',
+    method: 'DELETE',
+    handler: h(topicOne, 'DELETE'),
     auth: true,
     id: 'topic',
     location: false,
@@ -1089,7 +1108,7 @@ describe('write route table (P3.7)', () => {
         x.id !== 'place' &&
         x.id !== 'username' &&
         // D133: unfollowing removes your own follow, not someone else's content.
-        x.id !== 'topic',
+        x.route !== 'topics/[id]/follow',
     ).map((x) => [label(x), x] as const),
   )('%s → 404 for someone else’s content', async (_l, row) => {
     const res = await call(row, { token: other, body: row.body?.(IN) });

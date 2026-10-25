@@ -25,6 +25,9 @@ export default async function TopicsPage({
     (t) => t.status === 'ACTIVE' || t.status === 'CLOSED' || t.status === 'REMOVED',
   );
   const rejected = all.filter((t) => t.status === 'REJECTED').slice(0, 20);
+  // D134: hidden after many reports, and deleted by their creators (kept a week).
+  const held = all.filter((t) => t.status === 'HELD');
+  const deleted = all.filter((t) => t.status === 'DELETED');
   const editing = q.edit ? topics.find((t) => t.id === q.edit) : null;
 
   return (
@@ -72,6 +75,44 @@ export default async function TopicsPage({
           </div>
         ))}
       </div>
+
+      {held.length ? (
+        <>
+          <h2>Held for review ({held.length})</h2>
+          <p style={ui.muted}>
+            Hidden automatically after 15 or more people reported them. Decide them in{' '}
+            <a href="/admin/reports">Reports</a> (Approve brings one back, Remove takes it down).
+          </p>
+          <ul>
+            {held.map((t) => (
+              <li key={t.id}>
+                <a href={`/admin/cases/topic/${t.id}`}>{t.title}</a>
+                {t.createdBy ? ` · by @${t.createdBy}` : ''}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {deleted.length ? (
+        <>
+          <h2>Deleted by their creators ({deleted.length})</h2>
+          <p style={ui.muted}>
+            Hidden from everyone; kept here for a week after deletion, then removed with their
+            posts.
+          </p>
+          <ul>
+            {deleted.map((t) => (
+              <li key={t.id}>
+                <strong>{t.title}</strong>
+                {t.description ? ` · ${t.description}` : ''}
+                {t.createdBy ? ` · by @${t.createdBy}` : ''} · {t.posts}{' '}
+                {t.posts === 1 ? 'post' : 'posts'}
+                {t.deletedAt ? ` · deleted ${when(t.deletedAt)}` : ''}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
 
       <h2>Topics</h2>
       {topics.length === 0 ? <p style={ui.muted}>No topics yet.</p> : null}

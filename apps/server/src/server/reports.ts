@@ -175,8 +175,9 @@ export async function createReport(
  * reports count each other.
  */
 async function autoHide(tx: Prisma.TransactionClient, t: ResolvedTarget, threshold: number) {
+  if (t.data.cityTopicId) return autoHideTopic(tx, t, t.data.cityTopicId);
   const id = t.data.generalPostId ?? t.data.businessPostId;
-  if (!id) return; // posts only
+  if (!id) return; // posts and topics only
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'autohide:' + t.key}))`;
   const [row] = await tx.$queryRaw<{ n: number }[]>`
     SELECT count(DISTINCT "reporterUserId")::int AS n FROM "Report"
@@ -199,6 +200,23 @@ async function autoHide(tx: Prisma.TransactionClient, t: ResolvedTarget, thresho
       data: { postCount: { decrement: 1 } },
     });
   }
+}
+
+/**
+ * D134: a topic is held for review (hidden) once topics.autoHideReports different people
+ * have open reports on it (15 by default; posts use 3).
+ */
+async function autoHideTopic(tx: Prisma.TransactionClient, t: ResolvedTarget, id: string) {
+  const threshold = await getConfig('topics.autoHideReports');
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'autohide:' + t.key}))`;
+  const [row] = await tx.$queryRaw<{ n: number }[]>`
+    SELECT count(DISTINCT "reporterUserId")::int AS n FROM "Report"
+    WHERE status = 'OPEN' AND "reporterUserId" IS NOT NULL AND "cityTopicId" = ${id}::uuid`;
+  if ((row?.n ?? 0) < threshold) return;
+  await tx.cityTopic.updateMany({
+    where: { id, status: { in: ['ACTIVE', 'CLOSED'] } },
+    data: { status: 'HELD' },
+  });
 }
 
 /** Matches the report's target column (a user report has only `reportedUserId`). */

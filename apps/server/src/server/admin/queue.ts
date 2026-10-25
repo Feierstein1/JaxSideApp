@@ -179,7 +179,14 @@ async function subject(
     return (
       t && {
         body: `Topic: ${t.title}${t.description ? ` · ${t.description}` : ''}`,
-        status: t.status === 'REMOVED' ? 'REMOVED' : 'VISIBLE',
+        status:
+          t.status === 'REMOVED'
+            ? 'REMOVED'
+            : t.status === 'HELD'
+              ? 'HELD_FOR_REVIEW'
+              : t.status === 'DELETED'
+                ? 'DELETED'
+                : 'VISIBLE',
         author: t.createdBy,
       }
     );
@@ -472,6 +479,7 @@ async function setStatus(
   if (ref.type === 'topic') {
     // D133: a removed topic is hidden everywhere (its posts with it); restoring reopens it.
     const t = await tx.cityTopic.findUniqueOrThrow({ where: { id: ref.id } });
+    if (t.status === 'DELETED') throw new ApiError(409, 'DELETED', 'The creator deleted this');
     await tx.cityTopic.update({
       where: { id: ref.id },
       data: { status: to === 'VISIBLE' ? 'ACTIVE' : 'REMOVED' },

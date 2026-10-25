@@ -219,6 +219,10 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.topicCreate.perDay': 5,
   'rateLimit.topicFollow.perMinute': 30,
   'rateLimit.pollSuggest.perDay': 3,
+  /** D134: a topic is hidden for review once this many different people report it. */
+  'topics.autoHideReports': 15,
+  /** D134: a topic its creator deleted stays visible to the admin this long, then goes. */
+  'topics.deletedKeepDays': 7,
   'rateLimit.placeRemoval.perDay': 5,
   /** Places within this distance with a similar name are shown as possible duplicates. */
   'submission.duplicateRadiusMeters': 300,

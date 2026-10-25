@@ -48,6 +48,7 @@ export default function AllTopicsScreen() {
   const [q, setQ] = useState('');
   const [category, setCategory] = useState<TopicCategory | null>(null);
   const [following, setFollowing] = useState(false);
+  const [mine, setMine] = useState(false); // D134: My created discussions
   const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [topics, setTopics] = useState<TopicView[] | null>(null);
@@ -70,9 +71,10 @@ export default function AllTopicsScreen() {
         ...(q ? { q } : {}),
         ...(category ? { category } : {}),
         ...(following ? { following: true } : {}),
+        ...(mine ? { mine: true } : {}),
         ...(cursor ? { cursor } : {}),
       }),
-    [scope, sort, q, category, following],
+    [scope, sort, q, category, following, mine],
   );
 
   const load = useCallback(async () => {
@@ -106,7 +108,7 @@ export default function AllTopicsScreen() {
   }
 
   const local = scope === 'local';
-  const filterCount = (category ? 1 : 0) + (following ? 1 : 0);
+  const filterCount = (category ? 1 : 0) + (following || mine ? 1 : 0);
   return (
     <View style={{ flex: 1, backgroundColor: DARK.page }}>
       <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, paddingTop: 6, gap: 8 }}>
@@ -157,7 +159,7 @@ export default function AllTopicsScreen() {
           renderItem={({ item }) => <TopicCard t={item} />}
           ListEmptyComponent={
             <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
-              {q || category || following
+              {q || category || following || mine
                 ? 'No topics match.'
                 : local
                   ? 'No topics within half a mile yet.'
@@ -198,13 +200,32 @@ export default function AllTopicsScreen() {
         {isGuest ? null : (
           <>
             <Text style={[TYPE.label, { marginTop: SPACE.lg, marginBottom: SPACE.sm }]}>Show</Text>
-            <View style={{ flexDirection: 'row', gap: SPACE.sm }}>
-              <Chip label="All topics" active={!following} onPress={() => setFollowing(false)} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm }}>
               <Chip
-                label="Topics I follow"
+                label="All topics"
+                active={!following && !mine}
+                onPress={() => {
+                  setFollowing(false);
+                  setMine(false);
+                }}
+              />
+              <Chip
+                label="I follow"
                 icon="bookmark-outline"
                 active={following}
-                onPress={() => setFollowing(true)}
+                onPress={() => {
+                  setFollowing(true);
+                  setMine(false);
+                }}
+              />
+              <Chip
+                label="I started"
+                icon="star-outline"
+                active={mine}
+                onPress={() => {
+                  setMine(true);
+                  setFollowing(false);
+                }}
               />
             </View>
           </>
@@ -221,6 +242,7 @@ export default function AllTopicsScreen() {
             onPress={() => {
               setCategory(null);
               setFollowing(false);
+              setMine(false);
             }}
           />
         ) : null}
