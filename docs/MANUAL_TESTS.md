@@ -385,6 +385,9 @@ checks. Tick each box when it looks right; note anything odd next to it.
       pointed (arrow) ends; the active type tab sits in a teal arrow.
 - [ ] Section titles (e.g. on a profile, Account) are spaced capitals between ◆ diamonds.
 - [ ] Nothing is cut off: long button labels, large text size, small phone.
+- [ ] Home (D128): the poll / Citywide space is first, right under JAXSIDE, then your area,
+      search and the type tabs, evenly spaced. The refresh button sits right of a smaller
+      Latest / Top this week switch. A place's Discussion title has a small refresh button.
 
 ## 9. Account settings
 

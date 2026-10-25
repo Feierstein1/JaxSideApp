@@ -102,35 +102,39 @@ export default function HomeFeed() {
           Confirm your email to post, comment and vote. Tap to enter your code.
         </Banner>
       ) : null}
-      <Segmented
-        options={[
-          { key: 'new', label: 'Latest', icon: 'time-outline' },
-          { key: 'top', label: 'Top this week', icon: 'trending-up' },
-        ]}
-        value={sort}
-        onChange={(v) => setSort(v as FeedSort)}
-      />
+      {/* D128: the refresh button sits with the sort, since it updates the posts. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <Segmented
+            compact
+            options={[
+              { key: 'new', label: 'Latest', icon: 'time-outline' },
+              { key: 'top', label: 'Top this week', icon: 'trending-up' },
+            ]}
+            value={sort}
+            onChange={(v) => setSort(v as FeedSort)}
+          />
+        </View>
+        <RefreshButton size={34} onPress={() => void refresh()} busy={refreshing} />
+      </View>
     </View>
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: DARK.page }}>
-      {/* D79 / D126: one black block under the header: where you are, search, the poll or
-          Citywide, then the type tabs. */}
-      <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, gap: 6 }}>
-        <AreaStrip area={area} label="Your area" />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <SearchField
-            label="Search posts"
-            placeholder="Search posts or @username"
-            value={typed}
-            onChangeText={setTyped}
-            maxLength={50}
-          />
-          <RefreshButton onPress={() => void refresh()} busy={refreshing} />
-        </View>
+      {/* D79 / D126 / D128: one black block under the header: the poll or Citywide first
+          (right under JAXSIDE), then where you are, search and the type tabs, evenly spaced. */}
+      <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, paddingTop: 8, gap: 8 }}>
         {/* D126: the poll, or once answered Citywide topics (hidden while searching). */}
         {q ? null : <HomeSlot reloadKey={String(reloads)} />}
+        <AreaStrip area={area} label="Your area" />
+        <SearchField
+          label="Search posts"
+          placeholder="Search posts or @username"
+          value={typed}
+          onChangeText={setTyped}
+          maxLength={50}
+        />
         <PostTypeTabs value={type} onChange={setType} />
       </View>
       {/* D127: the icon's stepped edge. */}

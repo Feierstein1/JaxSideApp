@@ -722,6 +722,7 @@ export function Segmented({
   onChange,
   stretch = false,
   small = false,
+  compact = false,
 }: {
   options: { key: string; label: string; icon?: IconName }[];
   value: string;
@@ -730,6 +731,8 @@ export function Segmented({
   stretch?: boolean;
   /** Smaller text and icons, so longer labels fit their pill. */
   small?: boolean;
+  /** D128: shorter and smaller text (Latest / Top next to the refresh button). */
+  compact?: boolean;
   /** Kept for older call sites; every control is dark now. */
   dark?: boolean;
 }) {
@@ -765,15 +768,17 @@ export function Segmented({
               cut={10}
               fill={active ? DARK.accent : 'transparent'}
               style={{
-                minHeight: 36,
-                paddingHorizontal: small ? 10 : 16,
+                minHeight: compact ? 28 : 36,
+                paddingHorizontal: small || compact ? 10 : 16,
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexDirection: 'row',
                 gap: small ? 4 : 6,
               }}
             >
-              {o.icon ? <Ionicons name={o.icon} size={small ? 13 : 15} color={fg} /> : null}
+              {o.icon ? (
+                <Ionicons name={o.icon} size={compact ? 12 : small ? 13 : 15} color={fg} />
+              ) : null}
               <Text
                 numberOfLines={1}
                 style={{
@@ -781,7 +786,7 @@ export function Segmented({
                   fontFamily: FONT.deco,
                   textTransform: 'uppercase',
                   letterSpacing: 1,
-                  fontSize: small ? 11.5 : 12.5,
+                  fontSize: compact ? 10.5 : small ? 11.5 : 12.5,
                 }}
               >
                 {o.label}
@@ -835,7 +840,7 @@ export function IconButton({
       {busy ? (
         <ActivityIndicator color={color} />
       ) : (
-        <Ionicons name={icon} size={21} color={color} />
+        <Ionicons name={icon} size={Math.round(size * 0.48)} color={color} />
       )}
       {active ? (
         <View
@@ -856,9 +861,22 @@ export function IconButton({
   );
 }
 
-/** D73: refresh button for Home and Places. Shows a spinner while busy. */
-export function RefreshButton({ onPress, busy }: { onPress: () => void; busy?: boolean }) {
-  return <IconButton icon="refresh" label="Refresh" onPress={onPress} busy={busy} />;
+/**
+ * D73: refresh button. Shows a spinner while busy. D128: a small one sits next to the
+ * Latest / Top switch (Home) and on a place's Discussion title, since it updates the posts.
+ */
+export function RefreshButton({
+  onPress,
+  busy,
+  size = 44,
+}: {
+  onPress: () => void;
+  busy?: boolean;
+  size?: number;
+}) {
+  return (
+    <IconButton icon="refresh" label="Refresh posts" onPress={onPress} busy={busy} size={size} />
+  );
 }
 
 /** Search box: a raised pill with a magnifier and a clear (×) button once something is typed. */
