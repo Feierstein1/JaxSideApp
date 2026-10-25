@@ -3,7 +3,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
 import { DARK, type PostTypeFilter } from '@jax/shared';
 import { haptic } from '@/motion';
-import { Text } from '@/text';
+import { DecoBox } from '@/deco';
+import { FONT, Text } from '@/text';
 
 /** D75: shown types. Video joins when video posts are built (P8.9). */
 const TABS: {
@@ -19,9 +20,9 @@ const TABS: {
 ];
 
 /**
- * D75: the permanent post-type bar on Home and place pages, on the black bar: white
- * labels, the active one gold with a filled icon and a short gold bar under it (gold on
- * black only, D33).
+ * D75: the permanent post-type bar on Home and place pages, on the black bar. D127: labels
+ * in art deco capitals; the active one in the accent with a filled icon, inside an
+ * arrow-ended highlight.
  */
 export function PostTypeTabs({
   value,
@@ -53,31 +54,37 @@ export function PostTypeTabs({
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            {/* Five tabs: a little smaller so they don't crowd each other. */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            {/* D127: art deco: spaced capitals, the active tab in an arrow-ended highlight. */}
+            <DecoBox
+              shape="arrow"
+              cut={8}
+              fill={active ? DARK.tealSoft : 'transparent'}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                height: 30,
+                paddingHorizontal: 10,
+              }}
+            >
               <Ionicons
                 name={active ? (t.icon.replace('-outline', '') as typeof t.icon) : t.icon}
-                size={14}
+                size={13}
                 color={color}
               />
               <Text
                 numberOfLines={1}
-                style={{ color, fontWeight: active ? '800' : '600', fontSize: 12.5 }}
+                style={{
+                  color,
+                  fontFamily: FONT.deco,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.6,
+                  fontSize: 11,
+                }}
               >
                 {t.label}
               </Text>
-            </View>
-            {/* D78: a short rounded gold bar under the active tab. */}
-            <View
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                width: 44,
-                height: 3,
-                borderRadius: 2,
-                backgroundColor: active ? DARK.accent : 'transparent',
-              }}
-            />
+            </DecoBox>
           </Pressable>
         );
       })}

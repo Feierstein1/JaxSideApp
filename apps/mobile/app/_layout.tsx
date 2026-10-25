@@ -9,6 +9,7 @@ import {
   PlusJakartaSans_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/plus-jakarta-sans';
+import { JosefinSans_700Bold } from '@expo-google-fonts/josefin-sans/700Bold';
 import { RussoOne_400Regular } from '@expo-google-fonts/russo-one';
 import { DARK } from '@jax/shared';
 import { AuthProvider, useAuth } from '@/auth/AuthContext';
@@ -76,6 +77,7 @@ export default function RootLayout() {
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
     RussoOne_400Regular, // D120: the JaxSide name
+    JosefinSans_700Bold, // D127: art deco tabs and section titles
   });
   return (
     <ThemeProvider value={NAV_THEME}>

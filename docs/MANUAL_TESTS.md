@@ -376,6 +376,16 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Admin: create, pin, schedule an end, **Close** (the app shows "This topic is closed",
       no post button) and **Reopen**.
 
+### Art deco look (D127, branch `ui/art-deco`)
+
+- [ ] Home and Places: the black block ends in the icon's stepped edge; inner screens (Account,
+      a post, a place) have the same steps under the header.
+- [ ] Posts have their top corners clipped; the profile color stripe starts below the cut.
+- [ ] Buttons, the Latest / Top switch, chips, the type tabs and the vote / comment pills have
+      pointed (arrow) ends; the active type tab sits in a teal arrow.
+- [ ] Section titles (e.g. on a profile, Account) are spaced capitals between ◆ diamonds.
+- [ ] Nothing is cut off: long button labels, large text size, small phone.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

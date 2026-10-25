@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, ScrollView, View } from 'react-native';
+import { StepEdge } from '@/deco';
 import { router } from 'expo-router';
 import {
   CATEGORY_COLORS,
@@ -160,6 +161,8 @@ export default function PlacesScreen() {
           />
         </View>
       </View>
+      {/* D127: the icon's stepped edge. */}
+      <StepEdge />
 
       {view === 'map' ? (
         <PlacesMap places={places} me={me} />

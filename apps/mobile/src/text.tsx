@@ -22,6 +22,8 @@ export const FONT = {
   heavy: 'PlusJakartaSans_800ExtraBold',
   /** D120: the JaxSide name in the top bar only (Russo One, free, Open Font License). */
   brand: 'RussoOne_400Regular',
+  /** D127: art deco capitals for tabs and section titles (Josefin Sans, free, OFL). */
+  deco: 'JosefinSans_700Bold',
 } as const;
 
 const BY_WEIGHT: Record<string, string> = {

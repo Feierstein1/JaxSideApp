@@ -34,6 +34,7 @@ import { Bell } from './social/Bell';
 import { MessagesButton } from './social/MessagesButton';
 import { showMenu, type MenuItem } from './dialog';
 import { haptic, useReducedMotion } from './motion';
+import { DecoBox, StepEdge } from './deco';
 import { FONT, Text, TextInput } from './text';
 import { elevation, GUTTER, RADIUS, SPACE, TYPE } from './tokens';
 
@@ -164,11 +165,14 @@ export function Screen({
   keyboard = false,
   scroll = true,
   padded = true,
+  step = true,
 }: {
   children: ReactNode;
   keyboard?: boolean;
   scroll?: boolean;
   padded?: boolean;
+  /** D127: the icon's stepped edge under the black header. */
+  step?: boolean;
 }) {
   const pad = padded ? { padding: GUTTER, paddingBottom: 48 } : null;
   const body = scroll ? (
@@ -182,10 +186,18 @@ export function Screen({
   ) : (
     <View style={[{ flex: 1, backgroundColor: DARK.page }, pad]}>{children}</View>
   );
-  return keyboard ? (
-    <KeyboardSafeView style={{ backgroundColor: DARK.page }}>{body}</KeyboardSafeView>
+  const stepped = step ? (
+    <View style={{ flex: 1, backgroundColor: DARK.page }}>
+      <StepEdge />
+      {body}
+    </View>
   ) : (
     body
+  );
+  return keyboard ? (
+    <KeyboardSafeView style={{ backgroundColor: DARK.page }}>{stepped}</KeyboardSafeView>
+  ) : (
+    stepped
   );
 }
 
@@ -231,14 +243,13 @@ export function KeyboardSafeView({
   );
 }
 
-/** D79: a rounded card on the page. */
+/** D79 / D127: a card on the page, with clipped (art deco) corners. */
 export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const bg = (StyleSheet.flatten(style)?.backgroundColor as string | undefined) ?? DARK.card;
   return (
-    <View
-      style={[{ backgroundColor: DARK.card, borderRadius: RADIUS.lg, padding: SPACE.lg }, style]}
-    >
+    <DecoBox shape="chamfer" fill={bg} style={[{ padding: SPACE.lg }, style]}>
       {children}
-    </View>
+    </DecoBox>
   );
 }
 
@@ -501,14 +512,18 @@ export function Button({
       disabled={off}
       onPress={onPress}
       containerStyle={[{ marginTop: SPACE.sm }, style]}
-      style={[
-        styles.button,
-        size === 'sm' && { minHeight: 40, paddingHorizontal: SPACE.lg },
-        look.box,
-        disabled && !busy ? { opacity: 0.4 } : null,
-      ]}
+      style={disabled && !busy ? { opacity: 0.4 } : null}
     >
-      {content}
+      {/* D127: arrow-ended (art deco) instead of rounded. */}
+      <DecoBox
+        shape="arrow"
+        fill={(look.box.backgroundColor as string | undefined) ?? 'transparent'}
+        stroke={look.box.borderColor as string | undefined}
+        strokeWidth={(look.box.borderWidth as number | undefined) ?? 1}
+        style={[styles.button, size === 'sm' && { minHeight: 40, paddingHorizontal: SPACE.lg }]}
+      >
+        {content}
+      </DecoBox>
     </PressableScale>
   );
 }
@@ -677,22 +692,25 @@ export function Chip({
         (onRemove ?? onPress)();
       }}
       hitSlop={4}
-      style={({ pressed }) => ({
-        minHeight: 38,
-        paddingHorizontal: 14,
-        borderRadius: RADIUS.pill,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
-        borderWidth: 1,
-        borderColor: active ? DARK.accent : DARK.hairline,
-        backgroundColor: active ? DARK.accent : DARK.raised,
-        opacity: pressed ? 0.8 : 1,
-      })}
+      style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
     >
-      {icon ? <Ionicons name={icon} size={15} color={active ? fg : (iconColor ?? fg)} /> : null}
-      <Text style={{ color: fg, fontWeight: '700', fontSize: 14 }}>{label}</Text>
-      {onRemove ? <Ionicons name="close" size={15} color={fg} /> : null}
+      <DecoBox
+        shape="arrow"
+        cut={9}
+        fill={active ? DARK.accent : DARK.raised}
+        stroke={active ? DARK.accent : DARK.hairline}
+        style={{
+          minHeight: 38,
+          paddingHorizontal: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 7,
+        }}
+      >
+        {icon ? <Ionicons name={icon} size={15} color={active ? fg : (iconColor ?? fg)} /> : null}
+        <Text style={{ color: fg, fontWeight: '700', fontSize: 14 }}>{label}</Text>
+        {onRemove ? <Ionicons name="close" size={15} color={fg} /> : null}
+      </DecoBox>
     </Pressable>
   );
 }
@@ -716,13 +734,15 @@ export function Segmented({
   dark?: boolean;
 }) {
   return (
-    <View
+    <DecoBox
       accessibilityRole="tablist"
+      shape="arrow"
+      cut={12}
+      fill={DARK.raised}
       style={{
         flexDirection: 'row',
         padding: 3,
-        borderRadius: RADIUS.pill,
-        backgroundColor: DARK.raised,
+        paddingHorizontal: 8,
         alignSelf: stretch ? 'stretch' : 'flex-start',
       }}
     >
@@ -738,31 +758,39 @@ export function Segmented({
               if (!active) haptic.select();
               onChange(o.key);
             }}
-            style={[
-              {
-                flex: stretch ? 1 : undefined,
+            style={{ flex: stretch ? 1 : undefined }}
+          >
+            <DecoBox
+              shape="arrow"
+              cut={10}
+              fill={active ? DARK.accent : 'transparent'}
+              style={{
                 minHeight: 36,
-                paddingHorizontal: small ? 8 : 14,
-                borderRadius: RADIUS.pill,
+                paddingHorizontal: small ? 10 : 16,
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexDirection: 'row',
                 gap: small ? 4 : 6,
-              },
-              active && { backgroundColor: DARK.accent },
-            ]}
-          >
-            {o.icon ? <Ionicons name={o.icon} size={small ? 13 : 15} color={fg} /> : null}
-            <Text
-              numberOfLines={1}
-              style={{ color: fg, fontWeight: active ? '800' : '600', fontSize: small ? 12.5 : 14 }}
+              }}
             >
-              {o.label}
-            </Text>
+              {o.icon ? <Ionicons name={o.icon} size={small ? 13 : 15} color={fg} /> : null}
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: fg,
+                  fontFamily: FONT.deco,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                  fontSize: small ? 11.5 : 12.5,
+                }}
+              >
+                {o.label}
+              </Text>
+            </DecoBox>
           </Pressable>
         );
       })}
-    </View>
+    </DecoBox>
   );
 }
 
@@ -851,17 +879,18 @@ export function SearchField({
 }) {
   const [focused, setFocused] = useState(false);
   return (
-    <View
+    <DecoBox
+      shape="chamfer"
+      cut={9}
+      fill={DARK.raised}
+      stroke={focused ? DARK.accent : undefined}
+      strokeWidth={1.5}
       style={{
         flex: 1,
         height: 44,
-        borderRadius: 22,
-        backgroundColor: DARK.raised,
         flexDirection: 'row',
         alignItems: 'center',
         paddingLeft: 14,
-        borderWidth: 1.5,
-        borderColor: focused ? DARK.accent : DARK.raised,
       }}
     >
       <Ionicons name="search" size={18} color={focused ? DARK.accent : DARK.textMuted} />
@@ -896,7 +925,7 @@ export function SearchField({
           <Ionicons name="close-circle" size={19} color={DARK.textMuted} />
         </Pressable>
       ) : null}
-    </View>
+    </DecoBox>
   );
 }
 
@@ -1252,7 +1281,7 @@ export function ListGroup({
           {title}
         </Text>
       ) : null}
-      <View style={{ backgroundColor: DARK.card, borderRadius: RADIUS.lg, overflow: 'hidden' }}>
+      <DecoBox shape="chamfer" fill={DARK.card}>
         {rows.map((row, i) => (
           <View key={i}>
             {i > 0 ? (
@@ -1261,7 +1290,7 @@ export function ListGroup({
             {row}
           </View>
         ))}
-      </View>
+      </DecoBox>
       {footer ? (
         <Text
           style={[
@@ -1388,9 +1417,23 @@ export function SectionTitle({
         minHeight: 24,
       }}
     >
-      <Text accessibilityRole="header" style={[TYPE.overline, { color: DARK.textMuted, flex: 1 }]}>
-        {children}
-      </Text>
+      {/* D127: art deco section title: spaced capitals between small diamonds. */}
+      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text style={{ color: DARK.accent, fontSize: 8 }}>◆</Text>
+        <Text
+          accessibilityRole="header"
+          style={{
+            color: DARK.accent,
+            fontFamily: FONT.deco,
+            textTransform: 'uppercase',
+            letterSpacing: 2,
+            fontSize: 12.5,
+          }}
+        >
+          {children}
+        </Text>
+        <Text style={{ color: DARK.accent, fontSize: 8 }}>◆</Text>
+      </View>
       {action}
     </View>
   );

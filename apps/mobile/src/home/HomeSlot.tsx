@@ -6,7 +6,8 @@ import { DARK, type PollView, type TopicView } from '@jax/shared';
 import { fetchPolls, pollWhen } from '@/polls/api';
 import { Text } from '@/text';
 import { fetchTopics, topicActivity } from '@/topics/api';
-import { RADIUS, SPACE } from '@/tokens';
+import { DecoBox } from '@/deco';
+import { SPACE } from '@/tokens';
 
 /**
  * D126: one shared space on Home, between search and the post-type tabs.
@@ -50,38 +51,39 @@ function PollPrompt({ poll }: { poll: PollView }) {
       accessibilityRole="button"
       accessibilityLabel={`Poll of the week: ${poll.question}. Tap to vote. ${pollWhen(poll)}`}
       onPress={() => router.push(`/poll/${poll.id}`)}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: SPACE.sm,
-        height: 56,
-        paddingHorizontal: SPACE.md,
-        borderRadius: RADIUS.lg,
-        backgroundColor: DARK.card,
-        borderWidth: 1,
-        borderColor: DARK.accent,
-        opacity: pressed ? 0.8 : 1,
-      })}
+      style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
     >
-      <Ionicons name="checkbox-outline" size={20} color={DARK.accent} />
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: DARK.accent, fontSize: 11, fontWeight: '800', letterSpacing: 0.6 }}>
-          POLL OF THE WEEK
-        </Text>
-        <Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '700' }}>
-          {poll.question}
-        </Text>
-      </View>
-      <View
+      {/* D127: clipped corners, the accent outline, an arrow-ended Vote button. */}
+      <DecoBox
+        shape="chamfer"
+        fill={DARK.card}
+        stroke={DARK.accent}
         style={{
-          paddingHorizontal: 12,
-          paddingVertical: 6,
-          borderRadius: RADIUS.pill,
-          backgroundColor: DARK.accent,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: SPACE.sm,
+          height: 56,
+          paddingHorizontal: SPACE.md,
         }}
       >
-        <Text style={{ color: DARK.onAccent, fontWeight: '800', fontSize: 13 }}>Vote</Text>
-      </View>
+        <Ionicons name="checkbox-outline" size={20} color={DARK.accent} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: DARK.accent, fontSize: 11, fontWeight: '800', letterSpacing: 0.6 }}>
+            POLL OF THE WEEK
+          </Text>
+          <Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '700' }}>
+            {poll.question}
+          </Text>
+        </View>
+        <DecoBox
+          shape="arrow"
+          cut={8}
+          fill={DARK.accent}
+          style={{ paddingHorizontal: 15, paddingVertical: 6 }}
+        >
+          <Text style={{ color: DARK.onAccent, fontWeight: '800', fontSize: 13 }}>Vote</Text>
+        </DecoBox>
+      </DecoBox>
     </Pressable>
   );
 }
@@ -100,20 +102,15 @@ function CitywideRow({ topics }: { topics: TopicView[] }) {
         accessibilityLabel="Citywide topics, newest first"
       >
         {topics.length === 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/suggest-topic')}
-            style={{
-              height: ROW_HEIGHT,
-              justifyContent: 'center',
-              paddingHorizontal: SPACE.md,
-              borderRadius: RADIUS.lg,
-              borderWidth: 1,
-              borderStyle: 'dashed',
-              borderColor: DARK.border,
-            }}
-          >
-            <Text style={{ fontWeight: '700' }}>No citywide topics yet · Suggest one</Text>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/suggest-topic')}>
+            <DecoBox
+              shape="chamfer"
+              fill="transparent"
+              stroke={DARK.border}
+              style={{ height: ROW_HEIGHT, justifyContent: 'center', paddingHorizontal: SPACE.md }}
+            >
+              <Text style={{ fontWeight: '700' }}>No citywide topics yet · Suggest one</Text>
+            </DecoBox>
           </Pressable>
         ) : null}
         {topics.map((t) => (
@@ -122,24 +119,27 @@ function CitywideRow({ topics }: { topics: TopicView[] }) {
             accessibilityRole="button"
             accessibilityLabel={`Citywide topic: ${t.title}. ${topicActivity(t)}`}
             onPress={() => router.push(`/topic/${t.id}`)}
-            style={({ pressed }) => ({
-              width: 190,
-              height: ROW_HEIGHT,
-              justifyContent: 'center',
-              paddingHorizontal: SPACE.md,
-              borderRadius: RADIUS.lg,
-              backgroundColor: DARK.card,
-              borderWidth: 1,
-              borderColor: t.pinned ? DARK.accent : DARK.hairline,
-              opacity: pressed ? 0.8 : 1,
-            })}
+            style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
           >
-            <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '700' }}>
-              {t.title}
-            </Text>
-            <Text numberOfLines={1} style={{ fontSize: 11.5, color: DARK.textMuted }}>
-              {topicActivity(t)}
-            </Text>
+            <DecoBox
+              shape="chamfer"
+              cut={8}
+              fill={DARK.card}
+              stroke={t.pinned ? DARK.accent : DARK.hairline}
+              style={{
+                width: 190,
+                height: ROW_HEIGHT,
+                justifyContent: 'center',
+                paddingHorizontal: SPACE.md,
+              }}
+            >
+              <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '700' }}>
+                {t.title}
+              </Text>
+              <Text numberOfLines={1} style={{ fontSize: 11.5, color: DARK.textMuted }}>
+                {topicActivity(t)}
+              </Text>
+            </DecoBox>
           </Pressable>
         ))}
       </ScrollView>
@@ -147,19 +147,23 @@ function CitywideRow({ topics }: { topics: TopicView[] }) {
         accessibilityRole="button"
         accessibilityLabel="See all citywide topics"
         onPress={() => router.push('/topics')}
-        style={({ pressed }) => ({
-          height: ROW_HEIGHT,
-          minWidth: 64,
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingHorizontal: 10,
-          borderRadius: RADIUS.lg,
-          backgroundColor: DARK.accent,
-          opacity: pressed ? 0.8 : 1,
-        })}
+        style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
       >
-        <Ionicons name="globe-outline" size={17} color={DARK.onAccent} />
-        <Text style={{ color: DARK.onAccent, fontWeight: '800', fontSize: 12 }}>See all</Text>
+        <DecoBox
+          shape="chamfer"
+          cut={8}
+          fill={DARK.accent}
+          style={{
+            height: ROW_HEIGHT,
+            minWidth: 64,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 10,
+          }}
+        >
+          <Ionicons name="globe-outline" size={17} color={DARK.onAccent} />
+          <Text style={{ color: DARK.onAccent, fontWeight: '800', fontSize: 12 }}>See all</Text>
+        </DecoBox>
       </Pressable>
     </View>
   );

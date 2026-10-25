@@ -9,6 +9,7 @@ import { AreaStrip } from '@/location/AreaLabel';
 import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/device';
 import { PostList } from '@/discussion/PostList';
 import { PostTypeTabs } from '@/discussion/PostTypeTabs';
+import { StepEdge } from '@/deco';
 import { HomeSlot } from '@/home/HomeSlot';
 import { refreshLimiter } from '@/refresh-limit';
 import { Banner, FloatingButton, RefreshButton, SearchField, Segmented } from '@/ui';
@@ -132,6 +133,8 @@ export default function HomeFeed() {
         {q ? null : <HomeSlot reloadKey={String(reloads)} />}
         <PostTypeTabs value={type} onChange={setType} />
       </View>
+      {/* D127: the icon's stepped edge. */}
+      <StepEdge />
       <PostList
         load={load}
         reloadKey={`${sort}:${reloads}:${q}:${type}`}
