@@ -903,8 +903,12 @@ export function SearchField({
       fill={DARK.raised}
       stroke={focused ? DARK.accent : undefined}
       strokeWidth={1.5}
+      // Grows to fill a row, but keeps its own height when stacked (`flex: 1` would
+      // collapse it to nothing in a column).
       style={{
-        flex: 1,
+        flexGrow: 1,
+        flexShrink: 1,
+        flexBasis: 'auto',
         height: 44,
         flexDirection: 'row',
         alignItems: 'center',
