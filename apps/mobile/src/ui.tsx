@@ -1422,9 +1422,12 @@ export function ListRow({
 export function SectionTitle({
   children,
   action,
+  center = false,
 }: {
   children: ReactNode;
   action?: ReactNode;
+  /** D129: centered, with no outer margins (e.g. "Near you" on Home). */
+  center?: boolean;
   /** Kept for older call sites. */
   dark?: boolean;
 }) {
@@ -1433,14 +1436,22 @@ export function SectionTitle({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        marginHorizontal: SPACE.lg,
-        marginTop: SPACE.lg,
-        marginBottom: SPACE.sm,
+        marginHorizontal: center ? 0 : SPACE.lg,
+        marginTop: center ? 0 : SPACE.lg,
+        marginBottom: center ? 0 : SPACE.sm,
         minHeight: 24,
       }}
     >
       {/* D127: art deco section title: spaced capitals between small diamonds. */}
-      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View
+        style={{
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: center ? 'center' : 'flex-start',
+          gap: 8,
+        }}
+      >
         <Text style={{ color: DARK.accent, fontSize: 8 }}>◆</Text>
         <Text
           accessibilityRole="header"

@@ -388,6 +388,9 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Home (D128): the poll / Citywide space is first, right under JAXSIDE, then your area,
       search and the type tabs, evenly spaced. The refresh button sits right of a smaller
       Latest / Top this week switch. A place's Discussion title has a small refresh button.
+- [ ] Home (D129): a centered ◆ NEAR YOU ◆ above Latest / Top. Places list: search on the left,
+      filters and the map switch on the right, no refresh button; walk 50+ m with the app open
+      and the list reloads by itself.
 
 ## 9. Account settings
 

@@ -12,7 +12,7 @@ import { PostTypeTabs } from '@/discussion/PostTypeTabs';
 import { StepEdge } from '@/deco';
 import { HomeSlot } from '@/home/HomeSlot';
 import { refreshLimiter } from '@/refresh-limit';
-import { Banner, FloatingButton, RefreshButton, SearchField, Segmented } from '@/ui';
+import { Banner, FloatingButton, RefreshButton, SearchField, SectionTitle, Segmented } from '@/ui';
 import { showAlert } from '@/dialog';
 
 /** P3.11: the default landing screen, the feed for the area around you. */
@@ -102,6 +102,8 @@ export default function HomeFeed() {
           Confirm your email to post, comment and vote. Tap to enter your code.
         </Banner>
       ) : null}
+      {/* D129: the art deco heading for the local feed. */}
+      <SectionTitle center>Near you</SectionTitle>
       {/* D128: the refresh button sits with the sort, since it updates the posts. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <View style={{ flex: 1 }}>

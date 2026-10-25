@@ -17,7 +17,6 @@ import { PlacesMap } from '@/places/PlacesMap';
 import { AreaStrip } from '@/location/AreaLabel';
 import { OsmAttribution } from '@/places/Attribution';
 import { categoryIcon, PlaceRow, PlaceSkeleton } from '@/places/PlaceHeader';
-import { refreshLimiter } from '@/refresh-limit';
 import { Text } from '@/text';
 import { TYPE } from '@/tokens';
 import {
@@ -27,11 +26,9 @@ import {
   ErrorState,
   FloatingButton,
   IconButton,
-  RefreshButton,
   SearchField,
   Sheet,
 } from '@/ui';
-import { showAlert } from '@/dialog';
 
 interface SearchResponse {
   places: PlaceSummary[];
@@ -124,10 +121,19 @@ export default function PlacesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: DARK.page }}>
-      {/* D79: one black block under the header: where you are, then filters, search, refresh. */}
+      {/* D79 / D129: one black block under the header: where you are, then search, filters, map. */}
       <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, paddingBottom: 12, gap: 6 }}>
         <AreaStrip area={area} label="Places near you" />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {/* D129: search on the left, then filters and the list / map switch; no refresh
+              button (the list reloads on its own when you move, D73 / D77). */}
+          <SearchField
+            label="Search places"
+            placeholder="Search places nearby"
+            value={q}
+            onChangeText={setQ}
+            autoCapitalize="words"
+          />
           <IconButton
             icon="options-outline"
             label={filtered ? 'Filters (on)' : 'Filters'}
@@ -139,25 +145,6 @@ export default function PlacesScreen() {
             icon={view === 'list' ? 'map-outline' : 'list-outline'}
             label={view === 'list' ? 'Show map' : 'Show list'}
             onPress={() => setView(view === 'list' ? 'map' : 'list')}
-          />
-          <SearchField
-            label="Search places"
-            placeholder="Search places nearby"
-            value={q}
-            onChangeText={setQ}
-            autoCapitalize="words"
-          />
-          <RefreshButton
-            onPress={() => {
-              const wait = refreshLimiter.tap(); // D74: 30 a minute
-              if (wait)
-                showAlert('Slow down a little', `You can refresh again in ${wait} s.`, undefined, {
-                  icon: 'hourglass-outline',
-                  tone: 'warning',
-                });
-              else void load(0, true);
-            }}
-            busy={loading && places.length > 0}
           />
         </View>
       </View>
