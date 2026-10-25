@@ -9,6 +9,7 @@ import { useGuest } from '@/auth/guest';
 import { showAlert } from '@/dialog';
 import { haptic } from '@/motion';
 import { answerLabel, fetchPoll, pollWhen, votePoll } from '@/polls/api';
+import { markVoted } from '@/polls/voted';
 import { PollResults } from '@/polls/PollResults';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
@@ -251,8 +252,12 @@ export default function PollScreen() {
   async function send(choiceIds: string[]) {
     setBusy(true);
     try {
-      setPoll(await votePoll(poll!.id, choiceIds));
+      const updated = await votePoll(poll!.id, choiceIds);
       haptic.success();
+      // D130: Home hides the poll and says thanks; go back there if we came from a list.
+      markVoted(updated.id);
+      setPoll(updated);
+      if (router.canGoBack()) router.back();
     } catch (e) {
       showAlert(
         'Couldn’t vote',
@@ -296,12 +301,11 @@ export default function PollScreen() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="checkmark-circle" size={20} color={DARK.accent} />
-            <Text style={{ flex: 1, fontWeight: '800' }}>
-              You voted “{mine.map((c) => answerLabel(poll, c)).join('”, “')}”
-            </Text>
+            <Text style={{ flex: 1, fontWeight: '800' }}>Thanks for voting!</Text>
           </View>
           <Text style={[TYPE.callout, { color: DARK.textMuted }]}>
-            Results appear here when the poll closes. Until then, nobody can see the totals.
+            You picked “{mine.map((c) => answerLabel(poll, c)).join('”, “')}”. Results appear here
+            when the poll closes; until then, nobody can see the totals.
           </Text>
         </View>
       ) : null}

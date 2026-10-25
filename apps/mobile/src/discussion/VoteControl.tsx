@@ -3,6 +3,7 @@ import { Animated, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK, type DiscussionKind } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
+import { DECO, DecoBox } from '@/deco';
 import { useGuest } from '@/auth/guest';
 import { haptic, useReducedMotion } from '@/motion';
 import { Text } from '@/text';
@@ -72,15 +73,17 @@ export function VoteControl({
       : mine === -1
         ? DARK.accentSoft
         : DARK.raised;
+  // D127: arrow-ended like the other buttons.
   const pill = (
-    <View
+    <DecoBox
+      shape="arrow"
+      cut={compact ? 0 : DECO.point}
+      fill={bg}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
         height: compact ? 32 : 36,
-        borderRadius: 999,
-        backgroundColor: bg,
-        paddingHorizontal: compact ? 0 : 2,
+        paddingHorizontal: compact ? 0 : 7,
       }}
     >
       <VoteArrow
@@ -110,7 +113,7 @@ export function VoteControl({
         onPress={() => void press(-1)}
         color={mine === -1 ? DARK.accent : DARK.textMuted}
       />
-    </View>
+    </DecoBox>
   );
   if (!counts) return pill;
   return (

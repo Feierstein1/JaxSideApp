@@ -19,11 +19,12 @@ import { formatDistance } from '@/format';
 import { getFreshReading } from '@/location/device';
 import { haptic } from '@/motion';
 import { OsmAttribution } from '@/places/Attribution';
+import { refreshLimiter } from '@/refresh-limit';
 import { PlaceHero, PlaceSkeleton } from '@/places/PlaceHeader';
 import { social } from '@/social/api';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
-import { ErrorState, FloatingButton, SectionTitle, useToast } from '@/ui';
+import { ErrorState, FloatingButton, RefreshButton, SectionTitle, useToast } from '@/ui';
 import { showAlert } from '@/dialog';
 import { ensureGuide } from '@/guides/guide';
 
@@ -40,6 +41,28 @@ export default function PlaceScreen() {
   const [busy, setBusy] = useState(false);
   const toast = useToast(); // D70 / D78: "Added to favorites"
   const [type, setType] = useState<PostTypeFilter>('all'); // D75
+  // D128: refresh the discussion (a new location fix, then reload), 30 a minute like Home.
+  const [reloads, setReloads] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  async function refreshRoom() {
+    const wait = refreshLimiter.tap();
+    if (wait) {
+      showAlert('Slow down a little', `You can refresh again in ${wait} s.`, undefined, {
+        icon: 'hourglass-outline',
+        tone: 'warning',
+      });
+      return;
+    }
+    setRefreshing(true);
+    try {
+      await getFreshReading({ fresh: true });
+    } catch {
+      // the list shows the location error
+    } finally {
+      setRefreshing(false);
+      setReloads((n) => n + 1);
+    }
+  }
   // D76: which of your friends favorited this place (others see only the count).
   const [friendFans, setFriendFans] = useState<string[]>([]);
   useEffect(() => {
@@ -206,12 +229,18 @@ export default function PlaceScreen() {
         <>
           <PostList
             load={loadRoom}
-            reloadKey={type}
+            reloadKey={`${type}:${reloads}`}
             onOpen={(p) => router.push(`/places/post/${p.id}`)}
             header={
               <>
                 {hero}
-                <SectionTitle>Discussion</SectionTitle>
+                <SectionTitle
+                  action={
+                    <RefreshButton size={32} onPress={() => void refreshRoom()} busy={refreshing} />
+                  }
+                >
+                  Discussion
+                </SectionTitle>
                 {/* D75: the same post-type tabs as Home. */}
                 <View
                   style={{

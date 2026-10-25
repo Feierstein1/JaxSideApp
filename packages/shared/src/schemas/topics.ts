@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { locationReadingSchema } from './location';
+import { POLL_TOPICS, type PollTopic } from './polls';
 
 /*
  * D125: citywide discussion topics. Posts in a topic are ordinary area posts tagged with it
@@ -7,6 +8,15 @@ import { locationReadingSchema } from './location';
  */
 
 export const TOPIC_TITLE_MAX = 80;
+
+/**
+ * D131: citywide topics use the same categories as polls (D124), so both can be grouped
+ * and compared the same way.
+ */
+export const TOPIC_CATEGORIES = POLL_TOPICS;
+export type TopicCategory = PollTopic;
+const categoryKeys = Object.keys(TOPIC_CATEGORIES) as [TopicCategory, ...TopicCategory[]];
+const category = z.enum(categoryKeys);
 export const TOPIC_DESCRIPTION_MAX = 500;
 
 const text = (min: number, max: number) => z.string().trim().min(min).max(max);
@@ -14,6 +24,7 @@ const text = (min: number, max: number) => z.string().trim().min(min).max(max);
 /** A user's suggestion. */
 export const suggestTopicSchema = z.strictObject({
   title: text(4, TOPIC_TITLE_MAX),
+  category: category.default('other'),
   description: text(1, TOPIC_DESCRIPTION_MAX).optional(),
 });
 export type SuggestTopicRequest = z.infer<typeof suggestTopicSchema>;
@@ -30,6 +41,7 @@ export const topicPostsSchema = z.strictObject({
 export const adminTopicSchema = z
   .strictObject({
     title: text(4, TOPIC_TITLE_MAX),
+    category: category.default('other'),
     description: text(1, TOPIC_DESCRIPTION_MAX).optional(),
     pinned: z.boolean().default(false),
     opensAt: z.iso.datetime({ offset: true }).optional(),
@@ -46,6 +58,7 @@ export const adminTopicDecisionSchema = z.discriminatedUnion('action', [
   z.strictObject({
     action: z.literal('approve'),
     title: text(4, TOPIC_TITLE_MAX).optional(),
+    category: category.optional(),
     description: text(1, TOPIC_DESCRIPTION_MAX).optional(),
   }),
   z.strictObject({ action: z.literal('reject'), reason: text(3, 300) }),
@@ -58,6 +71,8 @@ export type TopicStatus = 'open' | 'closed';
 export interface TopicView {
   id: string;
   title: string;
+  /** D131: one of TOPIC_CATEGORIES. */
+  category: TopicCategory;
   description: string | null;
   pinned: boolean;
   status: TopicStatus;

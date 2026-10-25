@@ -64,6 +64,13 @@ Brand teal is too dark to read as text on these greys (2.1:1), so `tealText` is 
 it. Every text color is tested at 4.5:1 on `page`, `card` and `raised`, and input outlines
 (`border`) at 3:1 (`theme.test.ts`).
 
+**Art deco (D127, branch `ui/art-deco`):** shapes from the icon's stepped frame, all in
+`apps/mobile/src/deco.tsx`: `StepEdge` under black header blocks; `DecoBox` with `chamfer`
+(cards, list groups, search, Home's shared space), `chamferTop` (posts) or `arrow` (buttons,
+chips, segmented switches, type tabs, vote and comment pills). Section titles and tabs are
+spaced capitals in Josefin Sans (`FONT.deco`), section titles between ◆ diamonds. Other corners
+are nearly square (`RADIUS`); circles stay round.
+
 **Typeface:** Plus Jakarta Sans (free, Open Font License, `@expo-google-fonts`). Import `Text`
 and `TextInput` from `@/text`, not from `react-native`: they pick the right font file for
 `fontWeight` and default to the dark theme's text color. The one exception is the app's name in

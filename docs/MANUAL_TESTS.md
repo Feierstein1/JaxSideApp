@@ -376,6 +376,31 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Admin: create, pin, schedule an end, **Close** (the app shows "This topic is closed",
       no post button) and **Reopen**.
 
+### Art deco look (D127, branch `ui/art-deco`)
+
+- [ ] Home and Places: the black block ends in the icon's stepped edge; inner screens (Account,
+      a post, a place) have the same steps under the header.
+- [ ] Posts have their top corners clipped; the profile color stripe starts below the cut.
+- [ ] Buttons, the Latest / Top switch, chips, the type tabs and the vote / comment pills have
+      pointed (arrow) ends; the active type tab sits in a teal arrow.
+- [ ] Section titles (e.g. on a profile, Account) are spaced capitals between ◆ diamonds.
+- [ ] Nothing is cut off: long button labels, large text size, small phone.
+- [ ] Home (D128): the poll / Citywide space is first, right under JAXSIDE, then your area,
+      search and the type tabs, evenly spaced. The refresh button sits right of a smaller
+      Latest / Top this week switch. A place's Discussion title has a small refresh button.
+- [ ] Home (D129): a centered ◆ NEAR YOU ◆ above Latest / Top. Places list: search on the left,
+      filters and the map switch on the right, no refresh button; walk 50+ m with the app open
+      and the list reloads by itself.
+- [ ] D130: the bottom bar has five tabs: Home, Places, **Citywide** (middle), Friends, Account,
+      none cut off. Citywide lists every topic (search, sort, Suggest, Polls); open a topic, post
+      in it, open a post, back out; tapping the Citywide tab returns to the list.
+- [ ] D130: vote in the poll from Home: you're taken back to Home, the poll is gone and
+      "Thanks for voting!" shows for a few seconds, then the Citywide topics.
+- [ ] D131: the Citywide tab shows Suggest a topic and Polls at the top (labels on one line),
+      then ◆ NEWEST TOPICS ◆ with three topics, then View all topics. All topics: search and
+      category chips filter the list. Suggesting a topic asks for a category; the admin portal
+      shows it and can change it when approving.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { COLORS, TOPIC_DESCRIPTION_MAX, TOPIC_TITLE_MAX } from '@jax/shared';
+import {
+  COLORS,
+  TOPIC_CATEGORIES,
+  TOPIC_DESCRIPTION_MAX,
+  TOPIC_TITLE_MAX,
+  type TopicCategory,
+} from '@jax/shared';
 import { adminFetch, ui } from './admin-ui';
 
 /** D125: create or edit a citywide topic; decide suggestions; close or reopen topics. */
@@ -36,9 +42,36 @@ const ErrorText = ({ text }: { text?: string }) =>
     </p>
   ) : null;
 
+function CategorySelect({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: TopicCategory;
+  onChange: (c: TopicCategory) => void;
+}) {
+  return (
+    <select
+      id={id}
+      aria-label="Category"
+      style={{ ...ui.input, background: COLORS.background }}
+      value={value}
+      onChange={(e) => onChange(e.target.value as TopicCategory)}
+    >
+      {(Object.keys(TOPIC_CATEGORIES) as TopicCategory[]).map((c) => (
+        <option key={c} value={c}>
+          {TOPIC_CATEGORIES[c]}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export interface TopicFormValues {
   id?: string;
   title: string;
+  category: TopicCategory;
   description: string | null;
   pinned: boolean;
   opensAt: string | null;
@@ -49,6 +82,7 @@ export function TopicForm({ topic }: { topic?: TopicFormValues }) {
   const [title, setTitle] = useState(topic?.title ?? '');
   const [description, setDescription] = useState(topic?.description ?? '');
   const [pinned, setPinned] = useState(topic?.pinned ?? false);
+  const [category, setCategory] = useState<TopicCategory>(topic?.category ?? 'other');
   const [opens, setOpens] = useState(localInput(topic?.opensAt ?? null));
   const [closes, setCloses] = useState(localInput(topic?.closesAt ?? null));
   const { busy, error, run } = useRun();
@@ -57,6 +91,7 @@ export function TopicForm({ topic }: { topic?: TopicFormValues }) {
     run(async () => {
       const body = {
         title: title.trim(),
+        category,
         ...(description.trim() ? { description: description.trim() } : {}),
         pinned,
         ...(opens ? { opensAt: new Date(opens).toISOString() } : {}),
@@ -93,6 +128,10 @@ export function TopicForm({ topic }: { topic?: TopicFormValues }) {
         value={description}
         onChange={(e) => setDescription(e.target.value)}
       />
+      <label style={ui.label} htmlFor="topic-category">
+        Category
+      </label>
+      <CategorySelect id="topic-category" value={category} onChange={setCategory} />
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '0 0 14px' }}>
         <input
           id="topic-pinned"
@@ -137,8 +176,17 @@ export function TopicForm({ topic }: { topic?: TopicFormValues }) {
 }
 
 /** A suggestion: approve (optionally with a better title) or reject with a reason. */
-export function SuggestionActions({ id, title }: { id: string; title: string }) {
+export function SuggestionActions({
+  id,
+  title,
+  category: suggested,
+}: {
+  id: string;
+  title: string;
+  category: TopicCategory;
+}) {
   const [newTitle, setNewTitle] = useState(title);
+  const [category, setCategory] = useState<TopicCategory>(suggested);
   const [reason, setReason] = useState('');
   const { busy, error, run } = useRun();
   const decide = (body: Record<string, unknown>) =>
@@ -157,6 +205,13 @@ export function SuggestionActions({ id, title }: { id: string; title: string }) 
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
         />
+        <div style={{ minWidth: 200 }}>
+          <CategorySelect
+            id={`suggestion-category-${id}`}
+            value={category}
+            onChange={setCategory}
+          />
+        </div>
         <button
           style={ui.button}
           disabled={busy}
@@ -164,6 +219,7 @@ export function SuggestionActions({ id, title }: { id: string; title: string }) 
             void decide({
               action: 'approve',
               ...(newTitle.trim() !== title ? { title: newTitle.trim() } : {}),
+              ...(category !== suggested ? { category } : {}),
             })
           }
         >

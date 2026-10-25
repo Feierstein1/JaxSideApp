@@ -8,7 +8,13 @@ import { DARK } from '@jax/shared';
  */
 export const SPACE = { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
 
-export const RADIUS = { sm: 8, md: 12, lg: 16, xl: 24, pill: 999 } as const;
+/**
+ * D127 (art deco): corners are nearly square, so shapes read as geometric like the icon's
+ * frame; the main pieces (cards, buttons, tabs, posts) get clipped or pointed ends from
+ * `@/deco`. `pill` stays round for circles (photos, round buttons). Was sm 8 / md 12 /
+ * lg 16 / xl 24 before D127.
+ */
+export const RADIUS = { sm: 3, md: 4, lg: 4, xl: 6, pill: 999 } as const;
 
 export const TYPE = {
   display: { fontSize: 44, lineHeight: 50, fontWeight: '800', letterSpacing: -1.5 },

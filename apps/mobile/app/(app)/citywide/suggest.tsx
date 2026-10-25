@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import {
   DARK,
   suggestTopicSchema,
+  TOPIC_CATEGORIES,
   TOPIC_DESCRIPTION_MAX,
   TOPIC_TITLE_MAX,
   type MyTopicSuggestion,
+  type TopicCategory,
 } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
@@ -17,7 +19,7 @@ import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { fetchMySuggestions, suggestTopic } from '@/topics/api';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
-import { Button, Field, FormError, PageTitle, Screen, SectionTitle } from '@/ui';
+import { Button, Chip, Field, FormError, PageTitle, Screen, SectionTitle } from '@/ui';
 
 const STATUS = {
   waiting: { label: 'Waiting for review', icon: 'time-outline', color: DARK.textMuted },
@@ -35,6 +37,7 @@ export default function SuggestTopicScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [category, setCategory] = useState<TopicCategory>('other'); // D131
   const [busy, setBusy] = useState(false);
   const [mine, setMine] = useState<MyTopicSuggestion[]>([]);
   const signedIn = state.status === 'signedIn';
@@ -51,6 +54,7 @@ export default function SuggestTopicScreen() {
     if (isGuest) return promptAccount('suggest topics');
     const v = validate(suggestTopicSchema, {
       title,
+      category,
       ...(description.trim() ? { description } : {}),
     });
     if (!v.ok) return setErrors(v.errors);
@@ -58,6 +62,7 @@ export default function SuggestTopicScreen() {
     setBusy(true);
     try {
       await suggestTopic(v.data);
+      setCategory('other');
       setTitle('');
       setDescription('');
       void loadMine();
@@ -91,6 +96,22 @@ export default function SuggestTopicScreen() {
         placeholder="e.g. Best tacos in Jax"
         error={errors.title}
       />
+      {/* D131: the same categories as polls; the team can change it when approving. */}
+      <Text style={[TYPE.label, { marginBottom: SPACE.sm }]}>Category</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: SPACE.sm, paddingBottom: SPACE.lg }}
+      >
+        {(Object.keys(TOPIC_CATEGORIES) as TopicCategory[]).map((c) => (
+          <Chip
+            key={c}
+            label={TOPIC_CATEGORIES[c]}
+            active={category === c}
+            onPress={() => setCategory(c)}
+          />
+        ))}
+      </ScrollView>
       <Field
         label="Why it’s a good one (optional)"
         value={description}
@@ -139,7 +160,7 @@ export default function SuggestTopicScreen() {
       <Button
         variant="link"
         title="See all topics"
-        onPress={() => router.push('/topics')}
+        onPress={() => router.navigate('/citywide')}
         style={{ marginTop: SPACE.lg }}
       />
     </Screen>

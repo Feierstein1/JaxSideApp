@@ -1,8 +1,10 @@
-import type {
-  AdminTopicRequest,
-  MyTopicSuggestion,
-  SuggestTopicRequest,
-  TopicView,
+import {
+  TOPIC_CATEGORIES,
+  type AdminTopicRequest,
+  type MyTopicSuggestion,
+  type SuggestTopicRequest,
+  type TopicCategory,
+  type TopicView,
 } from '@jax/shared';
 import type { CityTopic } from '@/generated/prisma/client';
 import { Prisma } from '@/generated/prisma/client';
@@ -26,9 +28,14 @@ export function isTopicOpen(
   return t.status === 'ACTIVE' && t.opensAt <= now && (!t.closesAt || t.closesAt > now);
 }
 
+/** D131: a stored category, or "other" if the list changed. */
+const asCategory = (c: string): TopicCategory =>
+  c in TOPIC_CATEGORIES ? (c as TopicCategory) : 'other';
+
 type TopicRow = {
   id: string;
   title: string;
+  category: string;
   description: string | null;
   pinned: boolean;
   status: string;
@@ -42,6 +49,7 @@ type TopicRow = {
 const toView = (r: TopicRow): TopicView => ({
   id: r.id,
   title: r.title,
+  category: asCategory(r.category),
   description: r.description,
   pinned: r.pinned,
   status: r.open ? 'open' : 'closed',
@@ -53,7 +61,7 @@ const toView = (r: TopicRow): TopicView => ({
 
 function selectTopics(where: Prisma.Sql) {
   return db.$queryRaw<TopicRow[]>`
-    SELECT t.id, t.title, t.description, t.pinned, t.status::text, t."opensAt", t."closesAt",
+    SELECT t.id, t.title, t.category, t.description, t.pinned, t.status::text, t."opensAt", t."closesAt",
            ${topicOpenSql(Prisma.sql`t`)} AS open,
            (SELECT count(*)::int FROM "GeneralPost" p
              WHERE p."topicId" = t.id AND p.status = 'VISIBLE') AS post_count,
@@ -115,6 +123,7 @@ export async function suggestTopic(userId: string, input: SuggestTopicRequest) {
   const t = await db.cityTopic.create({
     data: {
       title: input.title,
+      category: input.category,
       description: input.description ?? null,
       status: 'SUGGESTED',
       suggestedById: userId,
@@ -157,6 +166,7 @@ export async function adminListTopics() {
   return rows.map((t) => ({
     id: t.id,
     title: t.title,
+    category: asCategory(t.category),
     description: t.description,
     status: t.status,
     open: isTopicOpen(t, now),
@@ -180,6 +190,7 @@ export async function createTopic(adminId: string, input: AdminTopicRequest) {
   const t = await db.cityTopic.create({
     data: {
       title: input.title,
+      category: input.category,
       description: input.description ?? null,
       pinned: input.pinned,
       status: 'ACTIVE',
@@ -205,6 +216,7 @@ export async function updateTopic(id: string, input: AdminTopicRequest) {
     where: { id },
     data: {
       title: input.title,
+      category: input.category,
       description: input.description ?? null,
       pinned: input.pinned,
       ...dates(input),
@@ -216,7 +228,7 @@ export async function updateTopic(id: string, input: AdminTopicRequest) {
 export async function decideTopic(
   id: string,
   d:
-    | { action: 'approve'; title?: string; description?: string }
+    | { action: 'approve'; title?: string; description?: string; category?: TopicCategory }
     | { action: 'reject'; reason: string }
     | { action: 'close' }
     | { action: 'reopen' },
@@ -236,6 +248,7 @@ export async function decideTopic(
               // made): "now" from this server's clock could be a moment ahead of the
               // database's and hide the topic briefly.
               ...(d.title ? { title: d.title } : {}),
+              ...(d.category ? { category: d.category } : {}),
               ...(d.description ? { description: d.description } : {}),
             }
           : { status: 'REJECTED', decidedAt: now, decisionReason: d.reason },

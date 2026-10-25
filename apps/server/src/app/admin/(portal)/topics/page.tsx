@@ -1,3 +1,4 @@
+import { TOPIC_CATEGORIES } from '@jax/shared';
 import { adminListTopics } from '@/server/topics';
 import { ui } from '../../admin-ui';
 import { requireAdminPage } from '../../require-admin-page';
@@ -65,7 +66,7 @@ export default async function TopicsPage({
             </p>
             <h3 style={{ margin: '0 0 6px' }}>{t.title}</h3>
             {t.description ? <p style={ui.muted}>{t.description}</p> : null}
-            <SuggestionActions id={t.id} title={t.title} />
+            <SuggestionActions id={t.id} title={t.title} category={t.category} />
           </div>
         ))}
       </div>
@@ -76,7 +77,7 @@ export default async function TopicsPage({
         {topics.map((t) => (
           <div key={t.id} style={ui.card}>
             <p style={{ marginTop: 0, ...ui.muted, fontSize: 14 }}>
-              <strong>{t.open ? 'Open' : 'Closed'}</strong>
+              <strong>{t.open ? 'Open' : 'Closed'}</strong> · {TOPIC_CATEGORIES[t.category]}
               {t.pinned ? ' · Pinned' : ''} · starts {when(t.opensAt)}
               {t.closesAt ? ` · ends ${when(t.closesAt)}` : ''} · {t.posts}{' '}
               {t.posts === 1 ? 'post' : 'posts'}

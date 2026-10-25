@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { DARK, type FeedSort, type TopicView } from '@jax/shared';
+import { DARK, TOPIC_CATEGORIES, type FeedSort, type TopicView } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { showAlert } from '@/dialog';
@@ -43,7 +43,10 @@ export default function TopicScreen() {
       ]);
       return;
     }
-    router.push({ pathname: '/compose', params: { topicId: id, topicTitle: topic?.title ?? '' } });
+    router.push({
+      pathname: '/citywide/compose',
+      params: { topicId: id, topicTitle: topic?.title ?? '' },
+    });
   }
 
   const header = (
@@ -54,7 +57,7 @@ export default function TopicScreen() {
           <Text
             style={[TYPE.caption, { color: DARK.accent, fontWeight: '800', letterSpacing: 0.6 }]}
           >
-            CITYWIDE
+            {topic ? `CITYWIDE · ${TOPIC_CATEGORIES[topic.category].toUpperCase()}` : 'CITYWIDE'}
           </Text>
         </View>
         <Text accessibilityRole="header" style={TYPE.title}>
@@ -96,7 +99,7 @@ export default function TopicScreen() {
       <PostList
         load={load}
         reloadKey={`${id}:${sort}`}
-        onOpen={(p) => router.push(`/post/${p.id}`)}
+        onOpen={(p) => router.push(`/citywide/post/${p.id}`)}
         header={header}
         emptyIcon="chatbubbles-outline"
         emptyTitle="No posts in this topic yet"
