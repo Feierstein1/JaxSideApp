@@ -391,6 +391,11 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Home (D129): a centered ◆ NEAR YOU ◆ above Latest / Top. Places list: search on the left,
       filters and the map switch on the right, no refresh button; walk 50+ m with the app open
       and the list reloads by itself.
+- [ ] D130: the bottom bar has five tabs: Home, Places, **Citywide** (middle), Friends, Account,
+      none cut off. Citywide lists every topic (search, sort, Suggest, Polls); open a topic, post
+      in it, open a post, back out; tapping the Citywide tab returns to the list.
+- [ ] D130: vote in the poll from Home: you're taken back to Home, the poll is gone and
+      "Thanks for voting!" shows for a few seconds, then the Citywide topics.
 
 ## 9. Account settings
 

@@ -43,7 +43,10 @@ export default function TopicScreen() {
       ]);
       return;
     }
-    router.push({ pathname: '/compose', params: { topicId: id, topicTitle: topic?.title ?? '' } });
+    router.push({
+      pathname: '/citywide/compose',
+      params: { topicId: id, topicTitle: topic?.title ?? '' },
+    });
   }
 
   const header = (
@@ -96,7 +99,7 @@ export default function TopicScreen() {
       <PostList
         load={load}
         reloadKey={`${id}:${sort}`}
-        onOpen={(p) => router.push(`/post/${p.id}`)}
+        onOpen={(p) => router.push(`/citywide/post/${p.id}`)}
         header={header}
         emptyIcon="chatbubbles-outline"
         emptyTitle="No posts in this topic yet"

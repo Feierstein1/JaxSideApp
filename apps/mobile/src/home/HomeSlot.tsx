@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { DARK, type PollView, type TopicView } from '@jax/shared';
 import { fetchPolls, pollWhen } from '@/polls/api';
+import { hasVoted, takeThanks, useVotedVersion } from '@/polls/voted';
 import { Text } from '@/text';
 import { fetchTopics, topicActivity } from '@/topics/api';
 import { DecoBox } from '@/deco';
@@ -20,10 +21,18 @@ import { SPACE } from '@/tokens';
 export function HomeSlot({ reloadKey }: { reloadKey: string }) {
   const [poll, setPoll] = useState<PollView | null>(null);
   const [topics, setTopics] = useState<TopicView[] | null>(null);
+  const [thanks, setThanks] = useState(false);
+  useVotedVersion(); // D130: hide a poll the moment you vote in it
 
   useFocusEffect(
     useCallback(() => {
       let live = true;
+      // D130: just voted? A short thank-you in the poll's place, then Citywide.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      if (takeThanks()) {
+        setThanks(true);
+        timer = setTimeout(() => setThanks(false), 3000);
+      }
       void Promise.all([fetchPolls().catch(() => null), fetchTopics().catch(() => null)]).then(
         ([polls, t]) => {
           if (!live) return;
@@ -35,13 +44,44 @@ export function HomeSlot({ reloadKey }: { reloadKey: string }) {
       );
       return () => {
         live = false;
+        if (timer) clearTimeout(timer);
       };
     }, [reloadKey]),
   );
 
-  if (poll) return <PollPrompt poll={poll} />;
+  if (thanks) return <ThanksBar />;
+  if (poll && !hasVoted(poll.id)) return <PollPrompt poll={poll} />;
   if (topics) return <CitywideRow topics={topics} />;
   return null;
+}
+
+/** D130: right after voting, in the poll's place for a few seconds. */
+function ThanksBar() {
+  return (
+    <DecoBox
+      accessible
+      accessibilityLiveRegion="polite"
+      accessibilityLabel="Thanks for voting. Results show when the poll closes."
+      shape="chamfer"
+      fill={DARK.tealSoft}
+      stroke={DARK.accent}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACE.sm,
+        height: 56,
+        paddingHorizontal: SPACE.md,
+      }}
+    >
+      <Ionicons name="checkmark-circle" size={22} color={DARK.accent} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 14.5, fontWeight: '800' }}>Thanks for voting!</Text>
+        <Text style={{ fontSize: 12, color: DARK.textMuted }}>
+          Results show when the poll closes.
+        </Text>
+      </View>
+    </DecoBox>
+  );
 }
 
 /** The poll in the shared space: one line of question, and a Vote button. */
@@ -102,7 +142,7 @@ function CitywideRow({ topics }: { topics: TopicView[] }) {
         accessibilityLabel="Citywide topics, newest first"
       >
         {topics.length === 0 ? (
-          <Pressable accessibilityRole="button" onPress={() => router.push('/suggest-topic')}>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/citywide/suggest')}>
             <DecoBox
               shape="chamfer"
               fill="transparent"
@@ -118,7 +158,7 @@ function CitywideRow({ topics }: { topics: TopicView[] }) {
             key={t.id}
             accessibilityRole="button"
             accessibilityLabel={`Citywide topic: ${t.title}. ${topicActivity(t)}`}
-            onPress={() => router.push(`/topic/${t.id}`)}
+            onPress={() => router.push(`/citywide/topic/${t.id}`)}
             style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
           >
             <DecoBox
@@ -146,7 +186,7 @@ function CitywideRow({ topics }: { topics: TopicView[] }) {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="See all citywide topics"
-        onPress={() => router.push('/topics')}
+        onPress={() => router.navigate('/citywide')}
         style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
       >
         <DecoBox

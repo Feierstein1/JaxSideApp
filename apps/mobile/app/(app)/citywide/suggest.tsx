@@ -139,7 +139,7 @@ export default function SuggestTopicScreen() {
       <Button
         variant="link"
         title="See all topics"
-        onPress={() => router.push('/topics')}
+        onPress={() => router.navigate('/citywide')}
         style={{ marginTop: SPACE.lg }}
       />
     </Screen>

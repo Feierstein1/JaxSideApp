@@ -21,7 +21,7 @@ function Row({ t }: { t: TopicView }) {
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={() => router.push(`/topic/${t.id}`)}
+      onPress={() => router.push(`/citywide/topic/${t.id}`)}
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',
@@ -140,7 +140,7 @@ export default function TopicsScreen() {
           variant="secondary"
           icon="add-circle-outline"
           title="Suggest a topic"
-          onPress={() => router.push('/suggest-topic')}
+          onPress={() => router.push('/citywide/suggest')}
           style={{ flex: 1 }}
         />
         <Button

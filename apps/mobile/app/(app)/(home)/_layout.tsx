@@ -16,9 +16,6 @@ export default function HomeLayout() {
       <Stack.Screen name="compose" options={{ title: 'New post', presentation: 'modal' }} />
       <Stack.Screen name="poll/[id]" options={{ title: 'Poll' }} />
       <Stack.Screen name="polls" options={{ title: 'Polls' }} />
-      <Stack.Screen name="topic/[id]" options={{ title: 'Topic' }} />
-      <Stack.Screen name="topics" options={{ title: 'Citywide topics' }} />
-      <Stack.Screen name="suggest-topic" options={{ title: 'Suggest a topic' }} />
     </Stack>
   );
 }

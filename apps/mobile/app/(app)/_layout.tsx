@@ -19,16 +19,17 @@ function tabIcon(name: string) {
   function TabIcon({ focused, color }: { focused: boolean; color: ColorValue }) {
     return (
       <View
+        // D130: a little smaller so five tabs fit (Citywide joined in the middle).
         style={{
-          width: 60,
-          height: 32,
-          borderRadius: 16,
+          width: 52,
+          height: 30,
+          borderRadius: 15,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: focused ? DARK.raised : 'transparent',
         }}
       >
-        <Ionicons name={(focused ? name : `${name}-outline`) as IconName} color={color} size={23} />
+        <Ionicons name={(focused ? name : `${name}-outline`) as IconName} color={color} size={21} />
       </View>
     );
   }
@@ -79,7 +80,7 @@ export default function AppLayout() {
         },
         tabBarActiveTintColor: DARK.accent,
         tabBarInactiveTintColor: DARK.textMuted,
-        tabBarLabelStyle: { fontSize: 11.5, fontFamily: FONT.bold, marginTop: 2 },
+        tabBarLabelStyle: { fontSize: 10.5, fontFamily: FONT.bold, marginTop: 2 },
       }}
     >
       <Tabs.Screen name="(home)" options={{ title: 'Home', tabBarIcon: tabIcon('home') }} />
@@ -97,6 +98,18 @@ export default function AppLayout() {
           tabPress: (e) => {
             e.preventDefault();
             navigation.navigate('places', { screen: 'index' });
+          },
+        })}
+      />
+      {/* D130: Citywide in the middle: topics for all of Duval that everyone can join
+          (guests can read them too). Tapping it always shows the topic list. */}
+      <Tabs.Screen
+        name="citywide"
+        options={{ title: 'Citywide', tabBarIcon: tabIcon('globe') }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('citywide', { screen: 'index' });
           },
         })}
       />
