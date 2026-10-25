@@ -11,6 +11,7 @@ export default function CitywideLayout() {
   return (
     <Stack screenOptions={headerOptions}>
       <Stack.Screen name="index" options={{ title: 'Citywide' }} />
+      <Stack.Screen name="all" options={{ title: 'All topics' }} />
       <Stack.Screen name="topic/[id]" options={{ title: 'Topic' }} />
       <Stack.Screen name="post/[id]" options={{ title: 'Post' }} />
       <Stack.Screen name="suggest" options={{ title: 'Suggest a topic' }} />

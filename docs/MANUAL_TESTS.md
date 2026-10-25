@@ -396,6 +396,10 @@ checks. Tick each box when it looks right; note anything odd next to it.
       in it, open a post, back out; tapping the Citywide tab returns to the list.
 - [ ] D130: vote in the poll from Home: you're taken back to Home, the poll is gone and
       "Thanks for voting!" shows for a few seconds, then the Citywide topics.
+- [ ] D131: the Citywide tab shows Suggest a topic and Polls at the top (labels on one line),
+      then ◆ NEWEST TOPICS ◆ with three topics, then View all topics. All topics: search and
+      category chips filter the list. Suggesting a topic asks for a category; the admin portal
+      shows it and can change it when approving.
 
 ## 9. Account settings
 

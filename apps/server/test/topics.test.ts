@@ -167,15 +167,15 @@ describe('suggestions', () => {
   beforeEach(async () => {
     admin = await adminHeaders((await createTestUser('topic_admin', { role: 'ADMIN' })).id);
   });
-  const suggest = (token: string, title: string) =>
-    call(suggestPOST as H, 'POST', { token, body: { title } });
+  const suggest = (token: string, title: string, category?: string) =>
+    call(suggestPOST as H, 'POST', { token, body: { title, ...(category ? { category } : {}) } });
   const decide = (id: string, body: Record<string, unknown>) =>
     call(adminDecidePOST as H, 'POST', { headers: admin, id, body });
   const mine = async (token: string) =>
     (await call(suggestionsGET as H, 'GET', { token })).body.suggestions;
 
   it('a suggestion waits, then the admin approves it (reworded) and it appears', async () => {
-    const s = await suggest(me.token, 'best tacos??');
+    const s = await suggest(me.token, 'best tacos??', 'food_fun');
     expect(s.status).toBe(201);
     expect(await mine(me.token)).toMatchObject([{ title: 'best tacos??', status: 'waiting' }]);
     let open = (await call(topicsGET as H, 'GET', { token: far.token })).body.open;
@@ -183,10 +183,20 @@ describe('suggestions', () => {
     expect((await postIn(far.token, s.body.id)).status).toBe(404); // not a topic yet
 
     expect(
-      (await decide(s.body.id, { action: 'approve', title: 'Best tacos in Jax' })).status,
+      (
+        await decide(s.body.id, {
+          action: 'approve',
+          title: 'Best tacos in Jax',
+          category: 'community',
+        })
+      ).status,
     ).toBe(200);
     open = (await call(topicsGET as H, 'GET', { token: far.token })).body.open;
-    expect(open.map((t: { title: string }) => t.title)).toContain('Best tacos in Jax');
+    // D131: the admin can move it to another category while approving.
+    expect(open.find((t: { title: string }) => t.title === 'Best tacos in Jax')).toMatchObject({
+      category: 'community',
+    });
+    expect(open.find((t: { id: string }) => t.id === topicId)).toMatchObject({ category: 'other' });
     expect(await mine(me.token)).toMatchObject([{ status: 'approved', reason: null }]);
     expect((await decide(s.body.id, { action: 'reject', reason: 'dup' })).body.error.code).toBe(
       'ALREADY_DECIDED',
@@ -221,10 +231,16 @@ describe('admin', () => {
   it('creates, edits, closes and reopens topics, all audited', async () => {
     const c = await call(adminCreatePOST as H, 'POST', {
       headers: admin,
-      body: { title: 'RAM weekend', description: 'Remote Area Medical clinic', pinned: true },
+      body: {
+        title: 'RAM weekend',
+        category: 'community',
+        description: 'Remote Area Medical clinic',
+        pinned: true,
+      },
     });
     expect(c.status).toBe(201);
     const id = c.body.id as string;
+    expect((await db.cityTopic.findUniqueOrThrow({ where: { id } })).category).toBe('community');
     const e = await call(adminPATCH as H, 'PATCH', {
       headers: admin,
       id,
@@ -251,6 +267,7 @@ describe('admin', () => {
       { title: 'x' },
       { title: 'Good title', closesAt: '2026-01-01T00:00:00Z', opensAt: '2026-02-01T00:00:00Z' },
       { title: 'Good title', role: 'ADMIN' },
+      { title: 'Good title', category: 'gossip' },
     ];
     for (const b of bad) {
       expect((await call(adminCreatePOST as H, 'POST', { headers: admin, body: b })).status).toBe(

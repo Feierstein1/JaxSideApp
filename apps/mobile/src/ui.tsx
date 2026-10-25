@@ -486,7 +486,13 @@ export function Button({
   ) : (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.sm }}>
       {icon ? <Ionicons name={icon} size={size === 'sm' ? 16 : 19} color={look.text} /> : null}
-      <Text style={{ color: look.text, fontWeight: '800', fontSize: size === 'sm' ? 14 : 16 }}>
+      {/* D131: one line; shrinks a little rather than wrapping in a narrow button. */}
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+        style={{ color: look.text, fontWeight: '800', fontSize: size === 'sm' ? 14 : 16 }}
+      >
         {title}
       </Text>
     </View>

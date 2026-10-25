@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { DARK, type FeedSort, type TopicView } from '@jax/shared';
+import { DARK, TOPIC_CATEGORIES, type FeedSort, type TopicView } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { showAlert } from '@/dialog';
@@ -57,7 +57,7 @@ export default function TopicScreen() {
           <Text
             style={[TYPE.caption, { color: DARK.accent, fontWeight: '800', letterSpacing: 0.6 }]}
           >
-            CITYWIDE
+            {topic ? `CITYWIDE · ${TOPIC_CATEGORIES[topic.category].toUpperCase()}` : 'CITYWIDE'}
           </Text>
         </View>
         <Text accessibilityRole="header" style={TYPE.title}>

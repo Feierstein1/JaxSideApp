@@ -104,18 +104,27 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
     }
   }
 
-  // D125: two sample citywide topics in development (each added once, by its title).
+  // D125 / D131: two sample citywide topics in development (each added once, by its title;
+  // the category is kept up to date).
   if (opts.includeDevData) {
     for (const t of [
       {
         title: 'Game day: Jaguars this Sunday',
+        category: 'sports',
         description: 'Sample topic for development.',
         pinned: true,
       },
-      { title: 'Best tacos in Jax', description: 'Sample topic for development.', pinned: false },
+      {
+        title: 'Best tacos in Jax',
+        category: 'food_fun',
+        description: 'Sample topic for development.',
+        pinned: false,
+      },
     ]) {
-      if (await db.cityTopic.findFirst({ where: { title: t.title } })) continue;
-      await db.cityTopic.create({ data: { ...t, status: 'ACTIVE' } });
+      const found = await db.cityTopic.findFirst({ where: { title: t.title } });
+      if (found)
+        await db.cityTopic.update({ where: { id: found.id }, data: { category: t.category } });
+      else await db.cityTopic.create({ data: { ...t, status: 'ACTIVE' } });
     }
   }
 

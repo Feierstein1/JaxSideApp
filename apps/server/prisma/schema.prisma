@@ -1466,6 +1466,8 @@ enum CityTopicStatus {
 model CityTopic {
   id             String          @id @default(uuid(7)) @db.Uuid
   title          String          @db.VarChar(80)
+  /// D131: a key from TOPIC_CATEGORIES in @jax/shared (the same list as poll topics).
+  category       String          @default("other") @db.VarChar(30)
   description    String?         @db.VarChar(500)
   status         CityTopicStatus @default(ACTIVE)
   pinned         Boolean         @default(false)
@@ -1485,6 +1487,7 @@ model CityTopic {
   posts          GeneralPost[]
 
   @@index([status, pinned, opensAt])
+  @@index([category, status])
   @@index([suggestedById, createdAt])
   @@index([createdById])
 }
