@@ -11,7 +11,16 @@ import { Text } from '@/text';
  * reaches. Tapping it opens Account, where the radius is set. The neighborhood part is
  * left out when none is close.
  */
-export function AreaStrip({ area, label }: { area: string | null | undefined; label: string }) {
+export function AreaStrip({
+  area,
+  label,
+  radiusLabel,
+}: {
+  area: string | null | undefined;
+  label: string;
+  /** D133: a fixed radius to show instead of your feed radius (local topics: 880 yd). */
+  radiusLabel?: string;
+}) {
   const { state } = useAuth();
   const miles =
     state.status === 'signedIn'
@@ -20,7 +29,7 @@ export function AreaStrip({ area, label }: { area: string | null | undefined; la
           CONFIG_DEFAULTS['radius.general.maxMiles'],
         )
       : CONFIG_DEFAULTS['radius.general.defaultMiles'];
-  const radius = yardsLabel(miles);
+  const radius = radiusLabel ?? yardsLabel(miles);
   const signedIn = state.status === 'signedIn';
   return (
     <Pressable

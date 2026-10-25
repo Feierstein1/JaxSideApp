@@ -181,6 +181,8 @@ model User {
   pollsCreated    Poll[]               @relation("PollCreator")
   topicsSuggested CityTopic[]          @relation("TopicSuggester")
   topicsCreated   CityTopic[]          @relation("TopicCreator")
+  topicFollows    TopicFollow[]
+  pollSuggestions PollSuggestion[]
   submissions     BusinessSubmission[] @relation("Submitter")
   reviewedSubs    BusinessSubmission[] @relation("Reviewer")
   reportsMade     Report[]             @relation("Reporter")
@@ -838,6 +840,8 @@ model Report {
   reportedUserId  String?       @db.Uuid
   /// D98: a reported private message (null once it's unsent or its sender deleted).
   messageId       String?       @db.Uuid
+  /// D133: a reported topic (its title or description).
+  cityTopicId     String?       @db.Uuid
   /// D98: snapshot of the reported message and the 10 around it, kept 1 year as evidence.
   messageEvidence Json?
   reason          ReportReason
@@ -853,6 +857,7 @@ model Report {
   comment         Comment?      @relation(fields: [commentId], references: [id], onDelete: Cascade)
   photo           Photo?        @relation(fields: [photoId], references: [id], onDelete: Cascade)
   message         Message?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  cityTopic       CityTopic?    @relation(fields: [cityTopicId], references: [id], onDelete: Cascade)
   reportedUser    User?         @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
   resolvedBy      User?         @relation("ReportResolver", fields: [resolvedById], references: [id])
 
@@ -866,6 +871,7 @@ model Report {
   @@index([reportedUserId])
   // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
   @@index([messageId])
+  @@index([cityTopicId])
   @@index([reporterUserId, createdAt])
   @@index([reporterGuestId])
   @@index([resolvedById])
@@ -1456,38 +1462,89 @@ model PollVoterTally {
 
 /// D125: where a citywide topic stands.
 enum CityTopicStatus {
-  SUGGESTED // from a user, waiting for the admin
+  SUGGESTED // from a user, waiting for the admin (D125; no longer used by the app, D133)
   ACTIVE // shown (between opensAt and closesAt)
   CLOSED // ended by the admin; readable, no new posts
   REJECTED // a suggestion the admin turned down
+  REMOVED // D133: taken down by a moderator (hidden; can be restored)
+}
+
+/// D133: a topic for all of Duval, or one tied to a spot (seen within half a mile of it).
+enum TopicScope {
+  CITY
+  LOCAL
 }
 
 /// D125: a citywide discussion topic (all of Duval, no radius).
 model CityTopic {
-  id             String          @id @default(uuid(7)) @db.Uuid
-  title          String          @db.VarChar(80)
+  id             String                                 @id @default(uuid(7)) @db.Uuid
+  title          String                                 @db.VarChar(80)
   /// D131: a key from TOPIC_CATEGORIES in @jax/shared (the same list as poll topics).
-  category       String          @default("other") @db.VarChar(30)
-  description    String?         @db.VarChar(500)
-  status         CityTopicStatus @default(ACTIVE)
-  pinned         Boolean         @default(false)
+  category       String                                 @default("other") @db.VarChar(30)
+  description    String?                                @db.VarChar(500)
+  /// D133: CITY (all of Duval) or LOCAL (within topics.localRadiusMiles of `location`).
+  scope          TopicScope                             @default(CITY)
+  /// D133: a local topic's spot (coarsened like posts, D7); null for city topics.
+  location       Unsupported("geography(Point, 4326)")?
+  status         CityTopicStatus                        @default(ACTIVE)
+  pinned         Boolean                                @default(false)
   /// Shown from this time (a scheduled topic, e.g. a game day).
-  opensAt        DateTime        @default(now()) @db.Timestamptz(3)
+  opensAt        DateTime                               @default(now()) @db.Timestamptz(3)
   /// Ends automatically at this time (optional).
-  closesAt       DateTime?       @db.Timestamptz(3)
-  suggestedById  String?         @db.Uuid
-  createdById    String?         @db.Uuid
+  closesAt       DateTime?                              @db.Timestamptz(3)
+  suggestedById  String?                                @db.Uuid
+  createdById    String?                                @db.Uuid
   /// Why a suggestion was turned down (shown to the person who suggested it).
-  decisionReason String?         @db.VarChar(300)
-  decidedAt      DateTime?       @db.Timestamptz(3)
-  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
-  suggestedBy    User?           @relation("TopicSuggester", fields: [suggestedById], references: [id], onDelete: SetNull)
-  createdBy      User?           @relation("TopicCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  decisionReason String?                                @db.VarChar(300)
+  decidedAt      DateTime?                              @db.Timestamptz(3)
+  createdAt      DateTime                               @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                               @updatedAt @db.Timestamptz(3)
+  suggestedBy    User?                                  @relation("TopicSuggester", fields: [suggestedById], references: [id], onDelete: SetNull)
+  createdBy      User?                                  @relation("TopicCreator", fields: [createdById], references: [id], onDelete: SetNull)
   posts          GeneralPost[]
+  follows        TopicFollow[]
+  reports        Report[]
 
+  @@index([location], type: Gist)
+  @@index([scope, status, opensAt])
   @@index([status, pinned, opensAt])
   @@index([category, status])
   @@index([suggestedById, createdAt])
   @@index([createdById])
+}
+
+/// D133: someone following a topic (shown in their Following list; no notifications yet).
+model TopicFollow {
+  userId    String    @db.Uuid
+  topicId   String    @db.Uuid
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic     CityTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([userId, topicId])
+  @@index([topicId])
+}
+
+enum PollSuggestionStatus {
+  WAITING
+  USED // the admin turned it into a poll
+  REJECTED
+}
+
+/// D133: a poll question suggested by a user; the admin uses it for a poll or turns it down.
+model PollSuggestion {
+  id             String               @id @default(uuid(7)) @db.Uuid
+  userId         String?              @db.Uuid
+  question       String               @db.VarChar(200)
+  details        String?              @db.VarChar(500)
+  /// A key from POLL_TOPICS.
+  topic          String               @default("other") @db.VarChar(30)
+  status         PollSuggestionStatus @default(WAITING)
+  decisionReason String?              @db.VarChar(300)
+  decidedAt      DateTime?            @db.Timestamptz(3)
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+  user           User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
 }

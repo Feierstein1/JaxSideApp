@@ -15,7 +15,6 @@ export default function HomeLayout() {
       <Stack.Screen name="user/[username]" options={{ title: 'Profile' }} />
       <Stack.Screen name="compose" options={{ title: 'New post', presentation: 'modal' }} />
       <Stack.Screen name="poll/[id]" options={{ title: 'Poll' }} />
-      <Stack.Screen name="polls" options={{ title: 'Polls' }} />
     </Stack>
   );
 }

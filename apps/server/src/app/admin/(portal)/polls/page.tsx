@@ -5,9 +5,9 @@ import {
   type PollCounts,
   type PollTopic,
 } from '@jax/shared';
-import { adminListPolls } from '@/server/polls';
+import { adminListPollSuggestions, adminListPolls } from '@/server/polls';
 import { ui } from '../../admin-ui';
-import { PollActions, PollForm } from '../../poll-forms';
+import { PollActions, PollForm, PollSuggestionActions } from '../../poll-forms';
 import { requireAdminPage } from '../../require-admin-page';
 import { Table, td, when } from '../admin-table';
 
@@ -53,12 +53,13 @@ function CountsRow({
 export default async function PollsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string; new?: string; topic?: string }>;
+  searchParams: Promise<{ edit?: string; new?: string; topic?: string; q?: string; t?: string }>;
 }) {
   await requireAdminPage();
   const q = await searchParams;
   const topic = q.topic && q.topic in POLL_TOPICS ? (q.topic as PollTopic) : null;
-  const all = await adminListPolls();
+  const [all, suggestions] = await Promise.all([adminListPolls(), adminListPollSuggestions()]);
+  const waiting = suggestions.filter((x) => x.status === 'WAITING');
   const polls = topic ? all.filter((p) => p.topic === topic) : all;
   const editing = q.edit ? all.find((p) => p.id === q.edit && p.status === 'upcoming') : null;
 
@@ -92,7 +93,16 @@ export default async function PollsPage({
       ) : q.new ? (
         <>
           <h2>New poll</h2>
-          <PollForm />
+          <PollForm
+            draft={
+              q.q
+                ? {
+                    question: q.q.slice(0, 200),
+                    topic: q.t && q.t in POLL_TOPICS ? (q.t as PollTopic) : 'other',
+                  }
+                : undefined
+            }
+          />
         </>
       ) : (
         <p>
@@ -101,6 +111,24 @@ export default async function PollsPage({
           </a>
         </p>
       )}
+
+      {/* D133: questions people suggested in the app. */}
+      <h2>Suggested questions ({waiting.length})</h2>
+      {waiting.length === 0 ? <p style={ui.muted}>None waiting.</p> : null}
+      <div style={{ display: 'grid', gap: 12 }}>
+        {waiting.map((x) => (
+          <div key={x.id} style={ui.card}>
+            <p style={{ marginTop: 0, ...ui.muted, fontSize: 14 }}>
+              {POLL_TOPICS[x.topic]} ·{' '}
+              {x.by ? <a href={`/admin/users/${x.by.id}`}>@{x.by.username}</a> : 'Deleted account'}{' '}
+              · {when(x.createdAt)}
+            </p>
+            <h3 style={{ margin: '0 0 6px' }}>{x.question}</h3>
+            {x.details ? <p style={ui.muted}>{x.details}</p> : null}
+            <PollSuggestionActions id={x.id} question={x.question} topic={x.topic} />
+          </div>
+        ))}
+      </div>
 
       <nav style={{ display: 'flex', gap: 14, flexWrap: 'wrap', margin: '20px 0 0' }}>
         <a href="/admin/polls" style={{ fontWeight: topic ? 400 : 800 }}>

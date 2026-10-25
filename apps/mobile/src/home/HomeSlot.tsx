@@ -1,26 +1,21 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
-import { DARK, type PollView, type TopicView } from '@jax/shared';
+import { DARK, type PollView } from '@jax/shared';
 import { fetchPolls, pollWhen } from '@/polls/api';
 import { hasVoted, takeThanks, useVotedVersion } from '@/polls/voted';
 import { Text } from '@/text';
-import { fetchTopics, topicActivity } from '@/topics/api';
 import { DecoBox } from '@/deco';
 import { SPACE } from '@/tokens';
 
 /**
- * D126: one shared space on Home, between search and the post-type tabs.
- * - While there's an open poll you can answer, the poll takes the space.
- * - Once you've voted (or there's no poll for you), Citywide topics appear in its place:
- *   a short sideways row, newest first, with "See all" for the full, searchable list.
- * Accounts that can't vote yet (guests, unconfirmed, brand new) go straight to Citywide.
- * Reloads whenever Home comes back into view, so voting swaps it right away.
+ * D126 / D133: the poll's space on Home, between search and the type tabs. While there's an
+ * open poll you can vote in, it shows the poll; right after you vote, a short thank-you; then
+ * nothing, so the posts get the room. City Topics live in the Topics tab.
  */
 export function HomeSlot({ reloadKey }: { reloadKey: string }) {
   const [poll, setPoll] = useState<PollView | null>(null);
-  const [topics, setTopics] = useState<TopicView[] | null>(null);
   const [thanks, setThanks] = useState(false);
   useVotedVersion(); // D130: hide a poll the moment you vote in it
 
@@ -33,15 +28,11 @@ export function HomeSlot({ reloadKey }: { reloadKey: string }) {
         setThanks(true);
         timer = setTimeout(() => setThanks(false), 3000);
       }
-      void Promise.all([fetchPolls().catch(() => null), fetchTopics().catch(() => null)]).then(
-        ([polls, t]) => {
-          if (!live) return;
-          setPoll(polls?.open.find((p) => p.canVote) ?? null);
-          setTopics(
-            t ? [...t.open].sort((a, b) => Date.parse(b.opensAt) - Date.parse(a.opensAt)) : null,
-          );
-        },
-      );
+      void fetchPolls()
+        .catch(() => null)
+        .then((polls) => {
+          if (live) setPoll(polls?.open.find((p) => p.canVote) ?? null);
+        });
       return () => {
         live = false;
         if (timer) clearTimeout(timer);
@@ -51,7 +42,6 @@ export function HomeSlot({ reloadKey }: { reloadKey: string }) {
 
   if (thanks) return <ThanksBar />;
   if (poll && !hasVoted(poll.id)) return <PollPrompt poll={poll} />;
-  if (topics) return <CitywideRow topics={topics} />;
   return null;
 }
 
@@ -125,86 +115,5 @@ function PollPrompt({ poll }: { poll: PollView }) {
         </DecoBox>
       </DecoBox>
     </Pressable>
-  );
-}
-
-const ROW_HEIGHT = 42;
-
-/** Citywide topics in the shared space: newest first, sideways, then "See all". */
-function CitywideRow({ topics }: { topics: TopicView[] }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.sm }}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ flex: 1 }}
-        contentContainerStyle={{ gap: SPACE.sm }}
-        accessibilityLabel="Citywide topics, newest first"
-      >
-        {topics.length === 0 ? (
-          <Pressable accessibilityRole="button" onPress={() => router.push('/citywide/suggest')}>
-            <DecoBox
-              shape="chamfer"
-              fill="transparent"
-              stroke={DARK.border}
-              style={{ height: ROW_HEIGHT, justifyContent: 'center', paddingHorizontal: SPACE.md }}
-            >
-              <Text style={{ fontWeight: '700' }}>No citywide topics yet · Suggest one</Text>
-            </DecoBox>
-          </Pressable>
-        ) : null}
-        {topics.map((t) => (
-          <Pressable
-            key={t.id}
-            accessibilityRole="button"
-            accessibilityLabel={`Citywide topic: ${t.title}. ${topicActivity(t)}`}
-            onPress={() => router.push(`/citywide/topic/${t.id}`)}
-            style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-          >
-            <DecoBox
-              shape="chamfer"
-              cut={8}
-              fill={DARK.card}
-              stroke={t.pinned ? DARK.accent : DARK.hairline}
-              style={{
-                width: 190,
-                height: ROW_HEIGHT,
-                justifyContent: 'center',
-                paddingHorizontal: SPACE.md,
-              }}
-            >
-              <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '700' }}>
-                {t.title}
-              </Text>
-              <Text numberOfLines={1} style={{ fontSize: 11.5, color: DARK.textMuted }}>
-                {topicActivity(t)}
-              </Text>
-            </DecoBox>
-          </Pressable>
-        ))}
-      </ScrollView>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="See all citywide topics"
-        onPress={() => router.navigate('/citywide')}
-        style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-      >
-        <DecoBox
-          shape="chamfer"
-          cut={8}
-          fill={DARK.accent}
-          style={{
-            height: ROW_HEIGHT,
-            minWidth: 64,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingHorizontal: 10,
-          }}
-        >
-          <Ionicons name="globe-outline" size={17} color={DARK.onAccent} />
-          <Text style={{ color: DARK.onAccent, fontWeight: '800', fontSize: 12 }}>See all</Text>
-        </DecoBox>
-      </Pressable>
-    </View>
   );
 }

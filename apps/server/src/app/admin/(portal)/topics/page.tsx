@@ -21,7 +21,9 @@ export default async function TopicsPage({
   const q = await searchParams;
   const all = await adminListTopics();
   const waiting = all.filter((t) => t.status === 'SUGGESTED');
-  const topics = all.filter((t) => t.status === 'ACTIVE' || t.status === 'CLOSED');
+  const topics = all.filter(
+    (t) => t.status === 'ACTIVE' || t.status === 'CLOSED' || t.status === 'REMOVED',
+  );
   const rejected = all.filter((t) => t.status === 'REJECTED').slice(0, 20);
   const editing = q.edit ? topics.find((t) => t.id === q.edit) : null;
 
@@ -77,7 +79,9 @@ export default async function TopicsPage({
         {topics.map((t) => (
           <div key={t.id} style={ui.card}>
             <p style={{ marginTop: 0, ...ui.muted, fontSize: 14 }}>
-              <strong>{t.open ? 'Open' : 'Closed'}</strong> · {TOPIC_CATEGORIES[t.category]}
+              <strong>{t.status === 'REMOVED' ? 'Removed' : t.open ? 'Open' : 'Closed'}</strong> ·{' '}
+              {t.scope === 'local' ? 'Near me (local)' : 'City'} · {TOPIC_CATEGORIES[t.category]}
+              {t.createdBy ? ` · by @${t.createdBy}` : ''}
               {t.pinned ? ' · Pinned' : ''} · starts {when(t.opensAt)}
               {t.closesAt ? ` · ends ${when(t.closesAt)}` : ''} · {t.posts}{' '}
               {t.posts === 1 ? 'post' : 'posts'}

@@ -105,7 +105,7 @@ export default function AppLayout() {
           (guests can read them too). Tapping it always shows the topic list. */}
       <Tabs.Screen
         name="citywide"
-        options={{ title: 'Citywide', tabBarIcon: tabIcon('globe') }}
+        options={{ title: 'Topics', tabBarIcon: tabIcon('globe') }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
             e.preventDefault();

@@ -1,0 +1,128 @@
+import { useEffect, useState } from 'react';
+import { View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import {
+  CONFIG_DEFAULTS,
+  createTopicSchema,
+  DARK,
+  TOPIC_CATEGORIES,
+  TOPIC_DESCRIPTION_MAX,
+  TOPIC_TITLE_MAX,
+  yardsLabel,
+  type TopicCategory,
+  type TopicScope,
+} from '@jax/shared';
+import { ApiRequestError } from '@/api/client';
+import { sendScreened } from '@/discussion/screening';
+import { serverErrors, validate, type FieldErrors } from '@/forms';
+import { ensureGuide } from '@/guides/guide';
+import { haptic } from '@/motion';
+import { createTopic } from '@/topics/api';
+import { Text } from '@/text';
+import { SPACE, TYPE } from '@/tokens';
+import { Button, Chip, Field, FormError, PageTitle, Screen, Segmented } from '@/ui';
+
+const LOCAL_RADIUS = yardsLabel(CONFIG_DEFAULTS['topics.localRadiusMiles']);
+
+/**
+ * D133: start a topic: City (all of Jacksonville) or Near me (people within half a mile of
+ * where you are now). The first time, the dos-and-don'ts guide comes first.
+ */
+export default function NewTopicScreen() {
+  const params = useLocalSearchParams<{ scope?: string }>();
+  const [scope, setScope] = useState<TopicScope>(params.scope === 'local' ? 'local' : 'city');
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState<TopicCategory>('other');
+  const [description, setDescription] = useState('');
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [busy, setBusy] = useState(false);
+
+  // D133: the first topic shows its guide; closing it leaves this screen.
+  useEffect(() => {
+    void ensureGuide('topicCreate').then((ok) => {
+      if (!ok) router.back();
+    });
+  }, []);
+
+  async function submit() {
+    const body = {
+      scope,
+      title,
+      category,
+      ...(description.trim() ? { description } : {}),
+    };
+    const v = validate(createTopicSchema.omit({ reading: true }), body);
+    if (!v.ok) return setErrors(v.errors);
+    setErrors({});
+    setBusy(true);
+    try {
+      const topic = await sendScreened((confirmWarning) =>
+        createTopic({ ...v.data, ...(confirmWarning ? { confirmWarning } : {}) }),
+      );
+      if (!topic) return; // chose to edit after a warning
+      haptic.success();
+      router.replace(`/citywide/topic/${topic.id}`);
+    } catch (e) {
+      setErrors(e instanceof ApiRequestError ? serverErrors(e) : { form: 'Try again.' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Screen keyboard>
+      <PageTitle icon="add-circle-outline" title="Start a topic" />
+      <Segmented
+        stretch
+        options={[
+          { key: 'city', label: 'City', icon: 'globe-outline' },
+          { key: 'local', label: 'Near me', icon: 'navigate-outline' },
+        ]}
+        value={scope}
+        onChange={(v) => setScope(v as TopicScope)}
+      />
+      <Text
+        style={[
+          TYPE.caption,
+          { color: DARK.textMuted, marginTop: SPACE.sm, marginBottom: SPACE.lg },
+        ]}
+      >
+        {scope === 'local'
+          ? `Only people within ${LOCAL_RADIUS} of where you are now can see it and join in.`
+          : 'Anyone in Jacksonville (Duval County) can see it and join in.'}
+      </Text>
+      <FormError>{errors.form}</FormError>
+      <Field
+        label="Title"
+        icon="chatbubbles-outline"
+        value={title}
+        onChangeText={setTitle}
+        maxLength={TOPIC_TITLE_MAX}
+        placeholder={scope === 'local' ? 'e.g. Road work on Park Street' : 'e.g. Best tacos in Jax'}
+        error={errors.title}
+      />
+      <Text style={[TYPE.label, { marginBottom: SPACE.sm }]}>Category</Text>
+      <View
+        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm, marginBottom: SPACE.lg }}
+      >
+        {(Object.keys(TOPIC_CATEGORIES) as TopicCategory[]).map((c) => (
+          <Chip
+            key={c}
+            label={TOPIC_CATEGORIES[c]}
+            active={category === c}
+            onPress={() => setCategory(c)}
+          />
+        ))}
+      </View>
+      <Field
+        label="What it’s about (optional)"
+        value={description}
+        onChangeText={setDescription}
+        maxLength={TOPIC_DESCRIPTION_MAX}
+        multiline
+        error={errors.description}
+      />
+      <Button title="Start topic" onPress={() => void submit()} busy={busy} />
+    </Screen>
+  );
+}
