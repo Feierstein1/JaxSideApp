@@ -401,6 +401,29 @@ checks. Tick each box when it looks right; note anything odd next to it.
       category chips filter the list. Suggesting a topic asks for a category; the admin portal
       shows it and can change it when approving.
 
+### City Topics (D133, branch `feature/city-topics`)
+
+- [ ] The tab is called **Topics**. City Topics: on black, **City / Near me** (City first) and
+      **Polls**; then the stepped edge; on grey, **View all city topics**, ◆ NEWEST TOPICS ◆ with
+      three cards, and the + button. Near me shows "Near [area] · within 880 yd".
+- [ ] Cards show the category, title, date started, posts and following count, and a
+      **Follow** button that switches to **Following** (count goes up).
+- [ ] **+** the first time shows the "Starting a topic" guide (dos, don'ts, and that Near me
+      topics are only for people within half a mile). Then: City / Near me, title, category,
+      description → Start topic → it opens.
+- [ ] A Near me topic: visible and postable within half a mile; from across town it isn't
+      listed and a direct link says you need to be within 880 yd.
+- [ ] **View all**: title City Topics or Local Topics; search, the filter button (category,
+      Topics I follow), Newest / Oldest; 20 at a time with Load more topics.
+- [ ] A topic: Follow · count, and ••• → Report this topic (not on your own). Reported topics
+      show in the admin Reports queue as "Topic"; Remove hides it, Approve brings it back.
+- [ ] **Polls** (from City Topics): search, topic filters (the highlight sits on the label),
+      grey list; a poll you haven't voted in says "Vote to see the results"; after voting you
+      see live results and how many voted; Back returns to City Topics. **+** → Suggest a poll;
+      the admin portal Polls page lists it under Suggested questions (Use / Decline).
+- [ ] Home: the poll shows until you vote, then "Thanks for voting!" for a few seconds, then
+      nothing (no City Topics row).
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

@@ -5,6 +5,7 @@ import { NO_USER } from '@/server/discussions/comments';
 import { route } from '@/server/http';
 import { assertLocationEligible } from '@/server/location/eligibility';
 import { enforce } from '@/server/rate-limit';
+import { nearestNeighborhood } from '@/server/location/neighborhood';
 import { listTopicPage } from '@/server/topics';
 import { parseBody } from '@/server/validate';
 
@@ -28,5 +29,9 @@ export const POST = route(async (req) => {
     'general.read',
   );
   const viewer = actor.kind === 'user' ? actor.user.id : NO_USER;
-  return NextResponse.json(await listTopicPage(viewer, at, input));
+  const page = await listTopicPage(viewer, at, input);
+  // D133: Local Topics shows where you are, like Home.
+  return NextResponse.json(
+    input.scope === 'local' ? { ...page, area: nearestNeighborhood(at) } : page,
+  );
 });

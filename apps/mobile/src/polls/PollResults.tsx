@@ -72,7 +72,8 @@ export function PollResults({ poll }: { poll: PollView }) {
         style={{ backgroundColor: DARK.card, borderRadius: RADIUS.lg, padding: SPACE.lg, gap: 14 }}
       >
         <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
-          All of Duval · {r.voters.toLocaleString('en-US')} {r.voters === 1 ? 'voter' : 'voters'}
+          {poll.status === 'open' ? 'So far' : 'All of Duval'} · {r.voters.toLocaleString('en-US')}{' '}
+          {r.voters === 1 ? 'voter' : 'voters'}
         </Text>
         {r.voters ? <Bars poll={poll} c={r} /> : <Text>No one voted in this poll.</Text>}
       </View>
@@ -118,6 +119,9 @@ export function PollResults({ poll }: { poll: PollView }) {
       <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
         {poll.kind === 'multi'
           ? 'People could pick more than one answer, so the percentages add up to more than 100%. '
+          : ''}
+        {poll.status === 'open'
+          ? 'Live totals while the poll is open; the breakdown by area comes when it closes. '
           : ''}
         Results show JaxSide users who voted from inside Duval County, not a scientific survey of
         Jacksonville. Areas with fewer than {POLL_MIN_GROUP} voters aren’t shown on their own.

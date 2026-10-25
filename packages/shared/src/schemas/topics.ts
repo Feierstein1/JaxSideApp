@@ -133,6 +133,8 @@ export interface TopicView {
 export interface TopicPage {
   topics: TopicView[];
   nextCursor: string | null;
+  /** Local topics: the closest named neighborhood to you (like Home's "Near Avondale"). */
+  area?: string | null;
 }
 
 /** Your own suggestion and what happened to it. */

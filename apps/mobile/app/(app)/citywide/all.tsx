@@ -1,99 +1,230 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
-import { DARK, TOPIC_CATEGORIES, type TopicCategory, type TopicView } from '@jax/shared';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import {
+  CONFIG_DEFAULTS,
+  DARK,
+  TOPIC_CATEGORIES,
+  yardsLabel,
+  type TopicCategory,
+  type TopicScope,
+  type TopicView,
+} from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
-import { fetchTopics } from '@/topics/api';
-import { TopicRow } from '@/topics/TopicRow';
+import { useGuest } from '@/auth/guest';
+import { StepEdge } from '@/deco';
+import { AreaStrip } from '@/location/AreaLabel';
+import { fetchTopicPage } from '@/topics/api';
+import { TopicCard } from '@/topics/TopicCard';
+import { useStartTopic } from '@/topics/useStartTopic';
 import { Text } from '@/text';
 import { SPACE, TYPE } from '@/tokens';
-import { Chip, ErrorState, PageTitle, Screen, SearchField, SectionTitle } from '@/ui';
+import {
+  Button,
+  Chip,
+  ErrorState,
+  FloatingButton,
+  IconButton,
+  PageTitle,
+  SearchField,
+  Segmented,
+  Sheet,
+} from '@/ui';
 
 const CATEGORIES = Object.keys(TOPIC_CATEGORIES) as TopicCategory[];
-const newestFirst = (a: TopicView, b: TopicView) => Date.parse(b.opensAt) - Date.parse(a.opensAt);
+const LOCAL_RADIUS = yardsLabel(CONFIG_DEFAULTS['topics.localRadiusMiles']);
 
 /**
- * D131: every citywide topic, newest first: search by words and filter by category. Open
- * topics first, then closed ones (still readable).
+ * D133: every topic of one kind, 20 at a time. On black: the title (City Topics or Local
+ * Topics, which also shows where you are), search, and a filter button (category,
+ * topics you follow); then Newest / Oldest. On grey: the cards, and + to start one.
  */
 export default function AllTopicsScreen() {
-  const [data, setData] = useState<{ open: TopicView[]; closed: TopicView[] } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const params = useLocalSearchParams<{ scope?: string }>();
+  const scope: TopicScope = params.scope === 'local' ? 'local' : 'city';
+  const { isGuest } = useGuest();
+  const start = useStartTopic();
+  const [typed, setTyped] = useState('');
   const [q, setQ] = useState('');
   const [category, setCategory] = useState<TopicCategory | null>(null);
+  const [following, setFollowing] = useState(false);
+  const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [topics, setTopics] = useState<TopicView[] | null>(null);
+  const [next, setNext] = useState<string | null>(null);
+  const [area, setArea] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Search waits a moment while typing.
+  useEffect(() => {
+    const t = setTimeout(() => setQ(typed.trim()), 400);
+    return () => clearTimeout(t);
+  }, [typed]);
+
+  const query = useCallback(
+    (cursor?: string) =>
+      fetchTopicPage({
+        scope,
+        sort,
+        ...(q ? { q } : {}),
+        ...(category ? { category } : {}),
+        ...(following ? { following: true } : {}),
+        ...(cursor ? { cursor } : {}),
+      }),
+    [scope, sort, q, category, following],
+  );
 
   const load = useCallback(async () => {
     setError(null);
+    setTopics(null);
     try {
-      setData(await fetchTopics());
+      const page = await query();
+      setTopics(page.topics);
+      setNext(page.nextCursor);
+      setArea(page.area ?? null);
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t load topics.');
     }
-  }, []);
+  }, [query]);
   useEffect(() => {
     void load();
   }, [load]);
 
-  const shown = useMemo(() => {
-    const words = q.trim().toLowerCase();
-    const match = (t: TopicView) =>
-      (!category || t.category === category) &&
-      (!words || `${t.title} ${t.description ?? ''}`.toLowerCase().includes(words));
-    return {
-      open: (data?.open ?? []).filter(match).sort(newestFirst),
-      closed: (data?.closed ?? []).filter(match).sort(newestFirst),
-    };
-  }, [data, q, category]);
+  async function loadMore() {
+    if (!next || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await query(next);
+      setTopics((cur) => [...(cur ?? []), ...page.topics]);
+      setNext(page.nextCursor);
+    } catch {
+      // keep what's shown; the button stays to try again
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
-  if (error) return <ErrorState message={error} onRetry={() => void load()} />;
-  const filtered = !!q.trim() || !!category;
+  const local = scope === 'local';
+  const filterCount = (category ? 1 : 0) + (following ? 1 : 0);
   return (
-    <Screen>
-      <PageTitle icon="list-outline" title="All topics" />
-      <View style={{ flexDirection: 'row' }}>
-        <SearchField
-          label="Search topics"
-          placeholder="Search topics"
-          value={q}
-          onChangeText={setQ}
-          maxLength={60}
+    <View style={{ flex: 1, backgroundColor: DARK.page }}>
+      <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, paddingTop: 6, gap: 8 }}>
+        <PageTitle
+          icon={local ? 'navigate-outline' : 'globe-outline'}
+          title={local ? 'Local Topics' : 'City Topics'}
         />
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: SPACE.sm, paddingVertical: SPACE.md }}
-      >
-        <Chip label="All" active={!category} onPress={() => setCategory(null)} />
-        {CATEGORIES.map((c) => (
-          <Chip
-            key={c}
-            label={TOPIC_CATEGORIES[c]}
-            active={category === c}
-            onPress={() => setCategory(category === c ? null : c)}
+        {local ? <AreaStrip area={area} label="Near you" radiusLabel={LOCAL_RADIUS} /> : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <SearchField
+            compact
+            label="Search topics"
+            placeholder="Search topics"
+            value={typed}
+            onChangeText={setTyped}
+            maxLength={60}
           />
-        ))}
-      </ScrollView>
-      {!data ? <ActivityIndicator color={DARK.accent} /> : null}
-      {data && shown.open.length === 0 && shown.closed.length === 0 ? (
-        <Text style={[TYPE.callout, { color: DARK.textMuted }]}>
-          {filtered ? 'No topics match.' : 'No topics yet.'}
-        </Text>
-      ) : null}
-      <View style={{ gap: SPACE.sm }}>
-        {shown.open.map((t) => (
-          <TopicRow key={t.id} t={t} />
-        ))}
+          <IconButton
+            icon="options-outline"
+            label={filterCount ? `Filters (${filterCount} on)` : 'Filters'}
+            active={filterCount > 0}
+            onPress={() => setFiltersOpen(true)}
+            size={38}
+          />
+        </View>
+        <View style={{ paddingBottom: 6 }}>
+          <Segmented
+            compact
+            options={[
+              { key: 'newest', label: 'Newest', icon: 'arrow-down' },
+              { key: 'oldest', label: 'Oldest', icon: 'arrow-up' },
+            ]}
+            value={sort}
+            onChange={(v) => setSort(v as 'newest' | 'oldest')}
+          />
+        </View>
       </View>
-      {shown.closed.length ? (
-        <>
-          <SectionTitle>Closed</SectionTitle>
-          <View style={{ gap: SPACE.sm }}>
-            {shown.closed.map((t) => (
-              <TopicRow key={t.id} t={t} />
-            ))}
-          </View>
-        </>
+      <StepEdge />
+      {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
+      {!topics && !error ? (
+        <ActivityIndicator color={DARK.accent} style={{ marginTop: SPACE.lg }} />
       ) : null}
-    </Screen>
+      {topics ? (
+        <FlatList
+          data={topics}
+          keyExtractor={(t) => t.id}
+          contentContainerStyle={{ padding: 12, paddingBottom: 110, gap: SPACE.sm }}
+          renderItem={({ item }) => <TopicCard t={item} />}
+          ListEmptyComponent={
+            <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
+              {q || category || following
+                ? 'No topics match.'
+                : local
+                  ? 'No topics within half a mile yet.'
+                  : 'No city topics yet.'}
+            </Text>
+          }
+          ListFooterComponent={
+            next ? (
+              <Button
+                variant="secondary"
+                title="Load more topics"
+                onPress={() => void loadMore()}
+                busy={loadingMore}
+              />
+            ) : null
+          }
+        />
+      ) : null}
+      <FloatingButton
+        label={local ? 'Start a topic near you' : 'Start a city topic'}
+        onPress={() => start(scope)}
+      />
+
+      {/* The filter window: category and (accounts) the topics you follow. */}
+      <Sheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filter topics">
+        <Text style={[TYPE.label, { marginBottom: SPACE.sm }]}>Category</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm }}>
+          <Chip label="All" active={!category} onPress={() => setCategory(null)} />
+          {CATEGORIES.map((c) => (
+            <Chip
+              key={c}
+              label={TOPIC_CATEGORIES[c]}
+              active={category === c}
+              onPress={() => setCategory(category === c ? null : c)}
+            />
+          ))}
+        </View>
+        {isGuest ? null : (
+          <>
+            <Text style={[TYPE.label, { marginTop: SPACE.lg, marginBottom: SPACE.sm }]}>Show</Text>
+            <View style={{ flexDirection: 'row', gap: SPACE.sm }}>
+              <Chip label="All topics" active={!following} onPress={() => setFollowing(false)} />
+              <Chip
+                label="Topics I follow"
+                icon="bookmark-outline"
+                active={following}
+                onPress={() => setFollowing(true)}
+              />
+            </View>
+          </>
+        )}
+        <Button
+          title="Show topics"
+          onPress={() => setFiltersOpen(false)}
+          style={{ marginTop: SPACE.xl }}
+        />
+        {filterCount ? (
+          <Button
+            variant="link"
+            title="Clear filters"
+            onPress={() => {
+              setCategory(null);
+              setFollowing(false);
+            }}
+          />
+        ) : null}
+      </Sheet>
+    </View>
   );
 }

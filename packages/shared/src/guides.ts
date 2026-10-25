@@ -36,6 +36,7 @@ export const GUIDE_KEYS = [
   'block',
   'guestWelcome',
   'message',
+  'topicCreate', // D133
 ] as const;
 export type GuideKey = (typeof GUIDE_KEYS)[number];
 
@@ -110,6 +111,40 @@ export const GUIDES: Record<GuideKey, Guide> = {
         items: [
           'Place discussions open only within about 530 yards of the place.',
           'Own or work at this place? Say so in your post. Owners can get a verified Owner tag (“I own this place” on the place page). Repeated promotions aren’t allowed.',
+        ],
+      },
+    ],
+  },
+  // D133: the first time someone starts a topic (city or near me).
+  topicCreate: {
+    key: 'topicCreate',
+    version: 1,
+    title: 'Starting a topic',
+    done: 'Got it, let’s start one',
+    pages: [
+      {
+        kind: 'do',
+        items: [
+          'Pick one clear subject people can add to over time: a game day, a new restaurant, a road project, a question for the city.',
+          'Write a title that says what it’s about, and choose the right category.',
+          'Choose City for things all of Jacksonville can join, or Near me for something happening right around you.',
+          'Search first: if a topic already exists, post in it instead of starting another.',
+        ],
+      },
+      {
+        kind: 'dont',
+        items: [
+          'Start a topic about a private person, or one meant to pile on someone.',
+          'Use a topic to advertise, or start the same one over and over.',
+          'Put personal details in a title or description: names, addresses, phone numbers.',
+          'Break any post rule: no harassment, hate, threats or explicit content.',
+        ],
+      },
+      {
+        kind: 'info',
+        items: [
+          'Near me topics are only for people within half a mile of where the topic was started. You have to be inside that area to see it, post in it, comment or vote.',
+          'Topics can be reported like posts; ones that break the rules are removed.',
         ],
       },
     ],

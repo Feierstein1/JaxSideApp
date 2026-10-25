@@ -20,6 +20,7 @@ const KIND: Record<MyReport['targetType'], string> = {
   comment: 'Comment',
   photo: 'Photo',
   user: 'Profile',
+  topic: 'Topic', // D133
 };
 
 /** P4.11 / P5.1: the reports you've sent and where they stand. */

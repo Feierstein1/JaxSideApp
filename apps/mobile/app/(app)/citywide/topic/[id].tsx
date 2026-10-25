@@ -2,19 +2,27 @@ import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { DARK, TOPIC_CATEGORIES, type FeedSort, type TopicView } from '@jax/shared';
+import {
+  DARK,
+  TOPIC_CATEGORIES,
+  type FeedSort,
+  type ReportTarget,
+  type TopicView,
+} from '@jax/shared';
+import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { showAlert } from '@/dialog';
 import { PostList } from '@/discussion/PostList';
-import { fetchTopicPosts, topicActivity } from '@/topics/api';
+import { ReportSheet } from '@/report/ReportSheet';
+import { fetchTopicPosts, setFollow, topicActivity } from '@/topics/api';
 import { Text } from '@/text';
-import { TYPE } from '@/tokens';
-import { Banner, FloatingButton, Segmented } from '@/ui';
+import { SPACE, TYPE } from '@/tokens';
+import { Banner, Button, FloatingButton, IconButton, Segmented, openMenu } from '@/ui';
 
 /**
- * D125: one citywide topic: its title and description, then its posts from all over
- * Jacksonville (Latest / Top), and a button to post in it. A closed topic is read-only.
+ * D125 / D133: one topic (city, or near me): its title and description, Follow and a menu
+ * to report it, then its posts (Latest / Top), and + to post in it. Closed: read-only.
  */
 export default function TopicScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,6 +30,22 @@ export default function TopicScreen() {
   const { isGuest, promptAccount } = useGuest();
   const [sort, setSort] = useState<FeedSort>('new');
   const [topic, setTopic] = useState<TopicView | null>(null);
+  const [reporting, setReporting] = useState<ReportTarget>();
+  const [followBusy, setFollowBusy] = useState(false);
+
+  async function toggleFollow() {
+    if (!topic) return;
+    if (isGuest) return promptAccount('follow topics');
+    setFollowBusy(true);
+    try {
+      const r = await setFollow(topic.id, !topic.following);
+      setTopic({ ...topic, ...r });
+    } catch (e) {
+      showAlert('Couldn’t update', e instanceof ApiRequestError ? e.message : 'Try again.');
+    } finally {
+      setFollowBusy(false);
+    }
+  }
 
   const load = useCallback(
     async (cursor?: string) => {
@@ -35,7 +59,7 @@ export default function TopicScreen() {
   const open = topic?.status === 'open';
 
   function compose() {
-    if (isGuest) return promptAccount('post in citywide topics');
+    if (isGuest) return promptAccount('post in topics');
     if (!verified) {
       showAlert('Confirm your email first', 'Enter the 6-digit code from your email in Account.', [
         { text: 'Not now', style: 'cancel' },
@@ -53,11 +77,17 @@ export default function TopicScreen() {
     <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10 }}>
       <View style={{ gap: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="globe-outline" size={14} color={DARK.accent} />
+          <Ionicons
+            name={topic?.scope === 'local' ? 'navigate' : 'globe-outline'}
+            size={14}
+            color={DARK.accent}
+          />
           <Text
             style={[TYPE.caption, { color: DARK.accent, fontWeight: '800', letterSpacing: 0.6 }]}
           >
-            {topic ? `CITYWIDE · ${TOPIC_CATEGORIES[topic.category].toUpperCase()}` : 'CITYWIDE'}
+            {topic
+              ? `${topic.scope === 'local' ? 'NEAR YOU' : 'CITY'} · ${TOPIC_CATEGORIES[topic.category].toUpperCase()}`
+              : 'TOPIC'}
           </Text>
         </View>
         <Text accessibilityRole="header" style={TYPE.title}>
@@ -78,6 +108,37 @@ export default function TopicScreen() {
           </Text>
         ) : null}
       </View>
+      {topic ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.sm }}>
+          <Button
+            size="sm"
+            variant={topic.following ? 'secondary' : 'primary'}
+            icon={topic.following ? 'checkmark' : 'add'}
+            title={`${topic.following ? 'Following' : 'Follow'} · ${topic.followerCount}`}
+            onPress={() => void toggleFollow()}
+            busy={followBusy}
+            style={{ marginTop: 0 }}
+          />
+          <View style={{ flex: 1 }} />
+          {topic.isMine ? null : (
+            <IconButton
+              icon="ellipsis-horizontal"
+              label="More options"
+              size={36}
+              onPress={() =>
+                openMenu('Topic', [
+                  {
+                    label: 'Report this topic',
+                    icon: 'flag-outline',
+                    destructive: true,
+                    onPress: () => setReporting({ type: 'topic', id: topic.id }),
+                  },
+                ])
+              }
+            />
+          )}
+        </View>
+      ) : null}
       {topic && !open ? (
         <Banner icon="lock-closed-outline" style={{ marginBottom: 0 }}>
           This topic is closed. You can still read it.
@@ -105,12 +166,15 @@ export default function TopicScreen() {
         emptyTitle="No posts in this topic yet"
         emptyBody={
           open
-            ? 'Start the conversation. Everyone in Jacksonville can join.'
+            ? topic?.scope === 'local'
+              ? 'Start the conversation. People within half a mile can join.'
+              : 'Start the conversation. Everyone in Jacksonville can join.'
             : 'Nothing was posted.'
         }
         emptyAction={open ? { label: 'Write the first post', onPress: compose } : undefined}
         fab={open ? <FloatingButton label="Post in this topic" onPress={compose} /> : undefined}
       />
+      <ReportSheet target={reporting} onClose={() => setReporting(undefined)} />
     </View>
   );
 }
