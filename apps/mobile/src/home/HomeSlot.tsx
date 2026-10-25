@@ -69,7 +69,7 @@ function ThanksBar() {
         flexDirection: 'row',
         alignItems: 'center',
         gap: SPACE.sm,
-        height: 56,
+        height: 48,
         paddingHorizontal: SPACE.md,
       }}
     >
@@ -102,7 +102,7 @@ function PollPrompt({ poll }: { poll: PollView }) {
           flexDirection: 'row',
           alignItems: 'center',
           gap: SPACE.sm,
-          height: 56,
+          height: 48,
           paddingHorizontal: SPACE.md,
         }}
       >
@@ -128,7 +128,7 @@ function PollPrompt({ poll }: { poll: PollView }) {
   );
 }
 
-const ROW_HEIGHT = 48;
+const ROW_HEIGHT = 42;
 
 /** Citywide topics in the shared space: newest first, sideways, then "See all". */
 function CitywideRow({ topics }: { topics: TopicView[] }) {

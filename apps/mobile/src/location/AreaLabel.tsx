@@ -28,13 +28,13 @@ export function AreaStrip({ area, label }: { area: string | null | undefined; la
       accessibilityLabel={`${label}${area ? ` near ${area}` : ''}, within ${radius}.${signedIn ? ' Change radius.' : ''}`}
       onPress={signedIn ? () => router.push('/account') : undefined}
       disabled={!signedIn}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 36 }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 28 }}
     >
       <View
         style={{
-          width: 26,
-          height: 26,
-          borderRadius: 13,
+          width: 22,
+          height: 22,
+          borderRadius: 11,
           backgroundColor: DARK.accentSoft,
           alignItems: 'center',
           justifyContent: 'center',

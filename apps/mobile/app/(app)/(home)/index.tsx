@@ -87,7 +87,7 @@ export default function HomeFeed() {
   // D78 / D79: sort and notices sit at the top of the list and scroll away with it, so
   // the feed gets the screen; where you are, search and the type tabs stay put.
   const listHeader = (
-    <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10 }}>
+    <View style={{ paddingHorizontal: 12, paddingTop: 4, paddingBottom: 2, gap: 6 }}>
       {guest?.expiringSoon ? (
         <Banner icon="time-outline" style={{ marginBottom: 0 }}>
           {`Your guest session ends in ${guest.daysLeft} ${guest.daysLeft === 1 ? 'day' : 'days'} unless you use JaxSide before then.`}
@@ -126,7 +126,8 @@ export default function HomeFeed() {
     <View style={{ flex: 1, backgroundColor: DARK.page }}>
       {/* D79 / D126 / D128: one black block under the header: the poll or Citywide first
           (right under JAXSIDE), then where you are, search and the type tabs, evenly spaced. */}
-      <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, paddingTop: 8, gap: 8 }}>
+      {/* D132: tighter spacing so the posts start higher. */}
+      <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, paddingTop: 4, gap: 5 }}>
         {/* D126: the poll, or once answered Citywide topics (hidden while searching). */}
         {q ? null : <HomeSlot reloadKey={String(reloads)} />}
         <AreaStrip area={area} label="Your area" />
@@ -136,6 +137,7 @@ export default function HomeFeed() {
           value={typed}
           onChangeText={setTyped}
           maxLength={50}
+          compact
         />
         <PostTypeTabs value={type} onChange={setType} />
       </View>

@@ -893,6 +893,7 @@ export function SearchField({
   label,
   maxLength,
   autoCapitalize = 'none',
+  compact = false,
 }: {
   value: string;
   onChangeText: (t: string) => void;
@@ -900,6 +901,8 @@ export function SearchField({
   label: string;
   maxLength?: number;
   autoCapitalize?: TextInputProps['autoCapitalize'];
+  /** D132: a shorter box (Home), so the posts start higher. */
+  compact?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   return (
@@ -915,7 +918,7 @@ export function SearchField({
         flexGrow: 1,
         flexShrink: 1,
         flexBasis: 'auto',
-        height: 44,
+        height: compact ? 38 : 44,
         flexDirection: 'row',
         alignItems: 'center',
         paddingLeft: 14,
@@ -948,7 +951,12 @@ export function SearchField({
           accessibilityRole="button"
           accessibilityLabel="Clear search"
           onPress={() => onChangeText('')}
-          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+          style={{
+            width: 44,
+            height: compact ? 38 : 44,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <Ionicons name="close-circle" size={19} color={DARK.textMuted} />
         </Pressable>

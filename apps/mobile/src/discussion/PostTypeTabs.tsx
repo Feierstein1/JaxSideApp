@@ -46,9 +46,10 @@ export function PostTypeTabs({
               if (!active) haptic.select();
               onChange(t.key);
             }}
+            hitSlop={{ top: 4, bottom: 4 }}
             style={({ pressed }) => ({
               flex: 1,
-              minHeight: 44,
+              minHeight: 34,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: pressed ? 0.7 : 1,
@@ -63,7 +64,7 @@ export function PostTypeTabs({
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 4,
-                height: 30,
+                height: 26,
                 paddingHorizontal: 10,
               }}
             >
