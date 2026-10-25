@@ -9,8 +9,7 @@ import { AreaStrip } from '@/location/AreaLabel';
 import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/device';
 import { PostList } from '@/discussion/PostList';
 import { PostTypeTabs } from '@/discussion/PostTypeTabs';
-import { PollCard } from '@/polls/PollCard';
-import { CitywideStrip } from '@/topics/CitywideStrip';
+import { HomeSlot } from '@/home/HomeSlot';
 import { refreshLimiter } from '@/refresh-limit';
 import { Banner, FloatingButton, RefreshButton, SearchField, Segmented } from '@/ui';
 import { showAlert } from '@/dialog';
@@ -102,9 +101,6 @@ export default function HomeFeed() {
           Confirm your email to post, comment and vote. Tap to enter your code.
         </Banner>
       ) : null}
-      {/* D125: citywide topics, then D123: the poll of the week (both hidden while searching). */}
-      {q ? null : <CitywideStrip reloadKey={String(reloads)} />}
-      {q ? null : <PollCard reloadKey={String(reloads)} />}
       <Segmented
         options={[
           { key: 'new', label: 'Latest', icon: 'time-outline' },
@@ -118,7 +114,8 @@ export default function HomeFeed() {
 
   return (
     <View style={{ flex: 1, backgroundColor: DARK.page }}>
-      {/* D79: one black block under the header: where you are, search, type tabs. */}
+      {/* D79 / D126: one black block under the header: where you are, search, the poll or
+          Citywide, then the type tabs. */}
       <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, gap: 6 }}>
         <AreaStrip area={area} label="Your area" />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -131,6 +128,8 @@ export default function HomeFeed() {
           />
           <RefreshButton onPress={() => void refresh()} busy={refreshing} />
         </View>
+        {/* D126: the poll, or once answered Citywide topics (hidden while searching). */}
+        {q ? null : <HomeSlot reloadKey={String(reloads)} />}
         <PostTypeTabs value={type} onChange={setType} />
       </View>
       <PostList

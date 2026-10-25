@@ -182,8 +182,35 @@ async function myAnswers(pollId: string, userId: string): Promise<string[]> {
 const scaleOf = (p: { scaleLowLabel: string | null; scaleHighLabel: string | null }) =>
   p.scaleLowLabel && p.scaleHighLabel ? { low: p.scaleLowLabel, high: p.scaleHighLabel } : null;
 
-async function view(p: PollRow, userId: string | null, now: Date): Promise<PollView> {
+/**
+ * Whether this person could vote at all right now: a confirmed, active account old enough
+ * (guests never). The vote route checks the same things, plus location.
+ */
+async function voterReady(userId: string | null, now: Date): Promise<boolean> {
+  if (!userId) return false;
+  const [u, days] = await Promise.all([
+    db.user.findUnique({
+      where: { id: userId },
+      select: { status: true, emailVerifiedAt: true, createdAt: true },
+    }),
+    getConfig('polls.voterMinAccountDays'),
+  ]);
+  return (
+    !!u &&
+    u.status === 'ACTIVE' &&
+    !!u.emailVerifiedAt &&
+    now.getTime() - u.createdAt.getTime() >= days * DAY_MS
+  );
+}
+
+async function view(
+  p: PollRow,
+  userId: string | null,
+  now: Date,
+  ready: boolean,
+): Promise<PollView> {
   const status = pollStatus(p, now);
+  const myChoiceIds = status === 'open' && userId ? await myAnswers(p.id, userId) : [];
   return {
     id: p.id,
     kind: fromDb(p.kind),
@@ -196,7 +223,8 @@ async function view(p: PollRow, userId: string | null, now: Date): Promise<PollV
     closesAt: p.closesAt.toISOString(),
     status,
     choices: p.choices,
-    myChoiceIds: status === 'open' && userId ? await myAnswers(p.id, userId) : [],
+    myChoiceIds,
+    canVote: status === 'open' && ready && myChoiceIds.length === 0,
     results:
       status === 'closed' && p.finalizedAt
         ? buildResults(p.choices, p.tallies, p.voterTallies)
@@ -219,9 +247,10 @@ export async function listPolls(
     loadPolls({ opensAt: { lte: now }, closesAt: { gt: now }, ...topic }),
     loadPolls({ closesAt: { lte: now }, ...topic }, opts.archive ?? 20),
   ]);
+  const ready = await voterReady(userId, now);
   return {
-    open: await Promise.all(open.map((p) => view(p, userId, now))),
-    closed: await Promise.all(closed.map((p) => view(p, userId, now))),
+    open: await Promise.all(open.map((p) => view(p, userId, now, ready))),
+    closed: await Promise.all(closed.map((p) => view(p, userId, now, ready))),
   };
 }
 
@@ -230,7 +259,7 @@ export async function getPoll(id: string, userId: string | null, now = new Date(
   await finalizeDuePolls(now);
   const [p] = await loadPolls({ id, opensAt: { lte: now } });
   if (!p) throw new ApiError(404, 'NOT_FOUND', 'Poll not found');
-  return view(p, userId, now);
+  return view(p, userId, now, await voterReady(userId, now));
 }
 
 /** Confirmed accounts a few days old (the route already checked the email). */

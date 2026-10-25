@@ -45,6 +45,7 @@ const toView = (r: TopicRow): TopicView => ({
   description: r.description,
   pinned: r.pinned,
   status: r.open ? 'open' : 'closed',
+  opensAt: r.opensAt.toISOString(),
   closesAt: r.closesAt?.toISOString() ?? null,
   postCount: r.post_count,
   lastPostAt: r.last_post_at?.toISOString() ?? null,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
@@ -7,7 +7,15 @@ import { ApiRequestError } from '@/api/client';
 import { fetchTopics, topicActivity } from '@/topics/api';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
-import { Button, ErrorState, PageTitle, Screen, SectionTitle } from '@/ui';
+import { Button, ErrorState, PageTitle, Screen, SearchField, SectionTitle, Segmented } from '@/ui';
+
+type Sort = 'newest' | 'active' | 'posts';
+
+const SORTERS: Record<Sort, (a: TopicView, b: TopicView) => number> = {
+  newest: (a, b) => Date.parse(b.opensAt) - Date.parse(a.opensAt),
+  active: (a, b) => Date.parse(b.lastPostAt ?? b.opensAt) - Date.parse(a.lastPostAt ?? a.opensAt),
+  posts: (a, b) => b.postCount - a.postCount,
+};
 
 function Row({ t }: { t: TopicView }) {
   return (
@@ -35,6 +43,11 @@ function Row({ t }: { t: TopicView }) {
         <Text style={{ fontWeight: '700' }} numberOfLines={2}>
           {t.title}
         </Text>
+        {t.description ? (
+          <Text numberOfLines={1} style={[TYPE.caption, { color: DARK.textMuted }]}>
+            {t.description}
+          </Text>
+        ) : null}
         <Text style={[TYPE.caption, { color: DARK.textMuted }]}>{topicActivity(t)}</Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={DARK.textMuted} />
@@ -42,10 +55,15 @@ function Row({ t }: { t: TopicView }) {
   );
 }
 
-/** D125: every citywide topic: open ones first, then closed ones; suggest a new one. */
+/**
+ * D125 / D126: every citywide topic, searchable and sortable (newest, most active, most
+ * posts): open ones first, then closed ones. Suggest a new topic; past polls are here too.
+ */
 export default function TopicsScreen() {
   const [data, setData] = useState<{ open: TopicView[]; closed: TopicView[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [q, setQ] = useState('');
+  const [sort, setSort] = useState<Sort>('newest');
   const load = useCallback(async () => {
     setError(null);
     try {
@@ -58,6 +76,16 @@ export default function TopicsScreen() {
     void load();
   }, [load]);
 
+  const shown = useMemo(() => {
+    const words = q.trim().toLowerCase();
+    const match = (t: TopicView) =>
+      !words || `${t.title} ${t.description ?? ''}`.toLowerCase().includes(words);
+    return {
+      open: (data?.open ?? []).filter(match).sort(SORTERS[sort]),
+      closed: (data?.closed ?? []).filter(match).sort(SORTERS[sort]),
+    };
+  }, [data, q, sort]);
+
   if (error) return <ErrorState message={error} onRetry={() => void load()} />;
   return (
     <Screen>
@@ -66,34 +94,63 @@ export default function TopicsScreen() {
         title="Citywide topics"
         subtitle="Conversations for all of Jacksonville. Anyone in Duval County can join."
       />
-      <Button
-        variant="secondary"
-        icon="add-circle-outline"
-        title="Suggest a topic"
-        onPress={() => router.push('/suggest-topic')}
-        style={{ marginBottom: SPACE.lg }}
-      />
+      <View style={{ gap: SPACE.sm, marginBottom: SPACE.lg }}>
+        <SearchField
+          label="Search topics"
+          placeholder="Search topics"
+          value={q}
+          onChangeText={setQ}
+          maxLength={60}
+        />
+        <Segmented
+          small
+          stretch
+          options={[
+            { key: 'newest', label: 'Newest', icon: 'sparkles-outline' },
+            { key: 'active', label: 'Most active', icon: 'flame-outline' },
+            { key: 'posts', label: 'Most posts', icon: 'chatbubbles-outline' },
+          ]}
+          value={sort}
+          onChange={(v) => setSort(v as Sort)}
+        />
+      </View>
       {!data ? <ActivityIndicator color={DARK.accent} /> : null}
-      {data && data.open.length === 0 ? (
-        <Text style={[TYPE.callout, { color: DARK.textMuted }]}>
-          No open topics right now. Suggest one!
+      {data && shown.open.length === 0 ? (
+        <Text style={[TYPE.callout, { color: DARK.textMuted, marginBottom: SPACE.md }]}>
+          {q.trim() ? `No open topics match “${q.trim()}”.` : 'No open topics right now.'}
         </Text>
       ) : null}
       <View style={{ gap: SPACE.sm }}>
-        {data?.open.map((t) => (
+        {shown.open.map((t) => (
           <Row key={t.id} t={t} />
         ))}
       </View>
-      {data?.closed.length ? (
+      {shown.closed.length ? (
         <>
           <SectionTitle>Closed</SectionTitle>
           <View style={{ gap: SPACE.sm }}>
-            {data.closed.map((t) => (
+            {shown.closed.map((t) => (
               <Row key={t.id} t={t} />
             ))}
           </View>
         </>
       ) : null}
+      <View style={{ flexDirection: 'row', gap: SPACE.sm, marginTop: SPACE.xl }}>
+        <Button
+          variant="secondary"
+          icon="add-circle-outline"
+          title="Suggest a topic"
+          onPress={() => router.push('/suggest-topic')}
+          style={{ flex: 1 }}
+        />
+        <Button
+          variant="secondary"
+          icon="stats-chart"
+          title="Polls"
+          onPress={() => router.push('/polls')}
+          style={{ flex: 1 }}
+        />
+      </View>
     </Screen>
   );
 }

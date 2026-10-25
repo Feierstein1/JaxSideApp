@@ -338,16 +338,18 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ### Polls (D123)
 
-- [ ] Home shows a **Poll of the week** card above Latest / Top this week (not while searching).
-      Tap it: the question, the choices, **Vote**. Pick one → "Vote “…”? Your vote is final" →
+- [ ] Home (D126): between search and the type tabs, a **Poll of the week** bar (question and a
+      Vote button) while there's a poll you haven't answered; not while searching. Tap it: the
+      question, the choices, **Vote**. Pick one → "Vote “…”? Your vote is final" →
       Vote. The screen then says "You voted “…”" and no totals.
 - [ ] Vote again from another phone with the same account: refused ("You already voted").
-- [ ] As a guest: the card shows; the poll's button says "Create an account to vote".
+- [ ] After voting, back on Home the same space shows **Citywide** instead (D126). As a guest,
+      or with an account under 3 days old, Home shows Citywide right away.
 - [ ] Admin portal → **Polls**: write a poll (question, 2–6 choices, opens / closes). Before it
       opens: Edit and Delete work, and the app doesn't show it. Once open: only "End now"; the
       card shows "N votes so far" but no totals.
-- [ ] End it (or wait until it closes): the app card says **Results are in** with the top answer;
-      the poll shows bars per choice, "By area" for ZIP codes with 10+ voters, and the note that
+- [ ] End it (or wait until it closes): open it from **See all → Polls**; the poll shows bars per
+      choice, "By area" for ZIP codes with 10+ voters, and the note that
       results are JaxSide users, not a scientific survey. **Past polls** lists it.
 - [ ] **Types (D124):** the dev seed has one of each. Yes / No: two big buttons (and "Not sure").
       Pick several: checkboxes, "Pick up to 2", a third can't be ticked. Rating: five buttons 1–5
@@ -360,8 +362,9 @@ checks. Tick each box when it looks right; note anything odd next to it.
 
 ### Citywide topics (D125)
 
-- [ ] Home shows **Citywide** at the top: topic cards sideways (pinned first, with "PINNED"),
-      then **Suggest a topic**; **All topics** opens the full list (open, then closed).
+- [ ] Home shows **Citywide** in the shared space (once you've answered the poll): a short row of
+      topics, newest first, scrolls sideways; **See all** beside it opens every topic with search
+      and sorting (Newest / Most active / Most posts), **Suggest a topic** and **Polls**.
 - [ ] Open a topic: its title and description, Latest / Top, and **Post in this topic**. The
       post form says the topic's name and "Everyone in Jacksonville can see this".
 - [ ] A topic post shows **no distance**, and it does **not** appear in the local feed. On your

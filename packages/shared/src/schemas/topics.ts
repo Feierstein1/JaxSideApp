@@ -61,6 +61,8 @@ export interface TopicView {
   description: string | null;
   pinned: boolean;
   status: TopicStatus;
+  /** When it started (newest first on Home). */
+  opensAt: string;
   /** When it ends on its own, if set. */
   closesAt: string | null;
   postCount: number;

@@ -118,6 +118,25 @@ describe('voting', () => {
     });
   });
 
+  it('canVote: true until you vote; false for new, unconfirmed and guest accounts', async () => {
+    const me = await voter('poll_me');
+    const fresh = await voter('poll_fresh', { days: 1 });
+    const unconfirmed = await voter('poll_unconf', { verified: false });
+    const canVote = async (token: string) =>
+      (await call(pollsGET as H, 'GET', { token })).body.open[0].canVote;
+    expect(await canVote(me.token)).toBe(true);
+    expect(await canVote(fresh.token)).toBe(false);
+    expect(await canVote(unconfirmed.token)).toBe(false);
+    await vote(me.token, pollId, [choices[0]!]);
+    expect(await canVote(me.token)).toBe(false);
+    const inst = (await call(installPOST as H, 'POST', { body: {} })).body.installationToken;
+    const guest = await call(guestsPOST as H, 'POST', {
+      body: {},
+      headers: { [INSTALLATION_HEADER]: inst },
+    });
+    expect(await canVote(guest.body.token)).toBe(false);
+  });
+
   it('a vote stores a code and a ZIP, never the account ID or the time', async () => {
     const me = await voter('poll_me');
     await vote(me.token, pollId, [choices[0]!]);

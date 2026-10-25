@@ -158,6 +158,11 @@ export interface PollView {
   choices: { id: string; label: string; value: number | null }[];
   /** Your answers while the poll is open (empty if you haven't voted, or for guests). */
   myChoiceIds: string[];
+  /**
+   * You can vote in it now: it's open, you haven't voted, and your account may vote
+   * (confirmed, a few days old; never guests). Home shows the poll before Citywide only then.
+   */
+  canVote: boolean;
   /** Totals, only once the poll has closed. */
   results: PollResults | null;
 }
