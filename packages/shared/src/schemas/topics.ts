@@ -34,9 +34,14 @@ export const createTopicSchema = z.strictObject({
   title: text(4, TOPIC_TITLE_MAX),
   category: category.default('other'),
   description: text(1, TOPIC_DESCRIPTION_MAX).optional(),
+  /** D134: show your username as the creator (off by default). */
+  showCreator: z.boolean().default(false),
   confirmWarning: z.literal(true).optional(),
 });
-export type CreateTopicRequest = z.infer<typeof createTopicSchema>;
+export type CreateTopicRequest = z.input<typeof createTopicSchema>;
+
+/** D134: the only thing a creator can change later: whether their username shows. */
+export const updateTopicSchema = z.strictObject({ showCreator: z.boolean() });
 
 /**
  * D133: topics of one kind, newest or oldest first, optionally filtered by words, category
@@ -48,6 +53,8 @@ export const topicListSchema = z.strictObject({
   q: z.string().trim().max(60).optional(),
   category: category.optional(),
   following: z.boolean().optional(),
+  /** D134: only topics you started ("My created discussions"). */
+  mine: z.boolean().optional(),
   sort: z.enum(['newest', 'oldest']).default('newest'),
   /** Open topics only (the City Topics page's newest three). */
   openOnly: z.boolean().optional(),
@@ -125,8 +132,12 @@ export interface TopicView {
   /** D133: how many follow it, and whether you do. */
   followerCount: number;
   following: boolean;
-  /** D133: you made it. */
+  /** D133: you made it (shown with a ★ to you only). */
   isMine: boolean;
+  /** D134: the creator's username, only if they chose to show it. */
+  creator: string | null;
+  /** D134: whether your username shows (only sent to the creator). */
+  showCreator?: boolean;
 }
 
 /** D133: one page of topics. */

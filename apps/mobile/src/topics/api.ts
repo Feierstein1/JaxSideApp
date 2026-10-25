@@ -47,6 +47,13 @@ export async function createTopic(input: Omit<CreateTopicRequest, 'reading'>) {
   return (await api.post<{ topic: TopicView }>('/api/v1/topics', { reading, ...input })).topic;
 }
 
+/** D134: show or hide your username on a topic you started (the only change allowed). */
+export const setShowCreator = async (id: string, show: boolean) =>
+  (await api.patch<{ topic: TopicView }>(`/api/v1/topics/${id}`, { showCreator: show })).topic;
+
+/** D134: delete a topic you started (hidden at once; gone for good after a week). */
+export const deleteTopic = (id: string) => api.delete<{ ok: true }>(`/api/v1/topics/${id}`);
+
 /** D133: follow or unfollow a topic. */
 export const setFollow = (id: string, follow: boolean) =>
   follow

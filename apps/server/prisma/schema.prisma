@@ -1467,6 +1467,8 @@ enum CityTopicStatus {
   CLOSED // ended by the admin; readable, no new posts
   REJECTED // a suggestion the admin turned down
   REMOVED // D133: taken down by a moderator (hidden; can be restored)
+  HELD // D134: hidden after many reports, waiting for a moderator
+  DELETED // D134: deleted by its creator; the admin sees it for a week, then it's purged
 }
 
 /// D133: a topic for all of Duval, or one tied to a spot (seen within half a mile of it).
@@ -1486,6 +1488,10 @@ model CityTopic {
   scope          TopicScope                             @default(CITY)
   /// D133: a local topic's spot (coarsened like posts, D7); null for city topics.
   location       Unsupported("geography(Point, 4326)")?
+  /// D134: the creator chose to show their username on the topic (off by default).
+  showCreator    Boolean                                @default(false)
+  /// D134: when the creator deleted it (purged with its posts after topics.deletedKeepDays).
+  deletedAt      DateTime?                              @db.Timestamptz(3)
   status         CityTopicStatus                        @default(ACTIVE)
   pinned         Boolean                                @default(false)
   /// Shown from this time (a scheduled topic, e.g. a game day).

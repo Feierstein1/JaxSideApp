@@ -424,6 +424,21 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Home: the poll shows until you vote, then "Thanks for voting!" for a few seconds, then
       nothing (no City Topics row).
 
+### Topic rules and screening (D134, P15.9–P15.10)
+
+- [ ] Start a topic: the **Show my username as the creator** switch is off by default. With it
+      on, others see "by @you" on the card and the topic; with it off, no name.
+- [ ] Your own topics have a ★ (only you see it). View all → filter → **I started** lists only
+      yours.
+- [ ] Your topic's ••• has **Show / Hide my name as the creator** and **Delete this topic**
+      (no Report, no edit). Delete asks first, then the topic is gone for everyone. The admin
+      Topics page lists it under "Deleted by their creators" for a week.
+- [ ] Someone else's topic's ••• has only Report. 15 reports from different people hide it;
+      the admin sees it under "Held for review" and in the Reports queue.
+- [ ] A topic or post with a slur (even spelled "k1ke" or "k i k e") is refused; a borderline
+      term (e.g. "coon hound") is held for review; ordinary swearing posts fine.
+- [ ] Admin **Screening** page: test a sentence, add a term, change its action, turn it off.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

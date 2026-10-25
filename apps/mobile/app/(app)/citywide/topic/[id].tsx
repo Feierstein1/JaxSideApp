@@ -15,14 +15,20 @@ import { useGuest } from '@/auth/guest';
 import { showAlert } from '@/dialog';
 import { PostList } from '@/discussion/PostList';
 import { ReportSheet } from '@/report/ReportSheet';
-import { fetchTopicPosts, setFollow, topicActivity } from '@/topics/api';
+import {
+  deleteTopic,
+  fetchTopicPosts,
+  setFollow,
+  setShowCreator,
+  topicActivity,
+} from '@/topics/api';
 import { Text } from '@/text';
 import { SPACE, TYPE } from '@/tokens';
 import { Banner, Button, FloatingButton, IconButton, Segmented, openMenu } from '@/ui';
 
 /**
  * D125 / D133: one topic (city, or near me): its title and description, Follow and a menu
- * to report it, then its posts (Latest / Top), and + to post in it. Closed: read-only.
+ * to report it (D134: for its creator, show/hide their name or delete it), then its posts (Latest / Top), and + to post in it. Closed: read-only.
  */
 export default function TopicScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,6 +38,41 @@ export default function TopicScreen() {
   const [topic, setTopic] = useState<TopicView | null>(null);
   const [reporting, setReporting] = useState<ReportTarget>();
   const [followBusy, setFollowBusy] = useState(false);
+
+  // D134: the creator's only change: show or hide their username.
+  async function toggleShowCreator() {
+    if (!topic) return;
+    try {
+      setTopic(await setShowCreator(topic.id, !topic.showCreator));
+    } catch (e) {
+      showAlert('Couldn’t update', e instanceof ApiRequestError ? e.message : 'Try again.');
+    }
+  }
+
+  // D134: deleting hides it for everyone right away; it can't be undone.
+  function confirmDelete() {
+    if (!topic) return;
+    showAlert(
+      'Delete this topic?',
+      'It disappears for everyone right away, along with the posts in it. This can’t be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () =>
+            void deleteTopic(topic.id).then(
+              () => router.back(),
+              (e) =>
+                showAlert(
+                  'Couldn’t delete',
+                  e instanceof ApiRequestError ? e.message : 'Try again.',
+                ),
+            ),
+        },
+      ],
+    );
+  }
 
   async function toggleFollow() {
     if (!topic) return;
@@ -90,9 +131,23 @@ export default function TopicScreen() {
               : 'TOPIC'}
           </Text>
         </View>
-        <Text accessibilityRole="header" style={TYPE.title}>
-          {topic?.title ?? ' '}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+          <Text accessibilityRole="header" style={[TYPE.title, { flex: 1 }]}>
+            {topic?.title ?? ' '}
+          </Text>
+          {topic?.isMine ? (
+            <Ionicons
+              name="star"
+              size={18}
+              color={DARK.accent}
+              accessibilityLabel="You started this"
+              style={{ marginTop: 4 }}
+            />
+          ) : null}
+        </View>
+        {topic?.creator ? (
+          <Text style={[TYPE.caption, { color: DARK.textMuted }]}>by @{topic.creator}</Text>
+        ) : null}
         {topic?.description ? (
           <Text style={[TYPE.callout, { color: DARK.textMuted }]}>{topic.description}</Text>
         ) : null}
@@ -120,23 +175,40 @@ export default function TopicScreen() {
             style={{ marginTop: 0 }}
           />
           <View style={{ flex: 1 }} />
-          {topic.isMine ? null : (
-            <IconButton
-              icon="ellipsis-horizontal"
-              label="More options"
-              size={36}
-              onPress={() =>
-                openMenu('Topic', [
-                  {
-                    label: 'Report this topic',
-                    icon: 'flag-outline',
-                    destructive: true,
-                    onPress: () => setReporting({ type: 'topic', id: topic.id }),
-                  },
-                ])
-              }
-            />
-          )}
+          <IconButton
+            icon="ellipsis-horizontal"
+            label="More options"
+            size={36}
+            onPress={() =>
+              openMenu(
+                'Topic',
+                topic.isMine
+                  ? [
+                      {
+                        label: topic.showCreator
+                          ? 'Hide my name as the creator'
+                          : 'Show my name as the creator',
+                        icon: topic.showCreator ? 'eye-off-outline' : 'person-outline',
+                        onPress: () => void toggleShowCreator(),
+                      },
+                      {
+                        label: 'Delete this topic',
+                        icon: 'trash-outline',
+                        destructive: true,
+                        onPress: confirmDelete,
+                      },
+                    ]
+                  : [
+                      {
+                        label: 'Report this topic',
+                        icon: 'flag-outline',
+                        destructive: true,
+                        onPress: () => setReporting({ type: 'topic', id: topic.id }),
+                      },
+                    ],
+              )
+            }
+          />
         </View>
       ) : null}
       {topic && !open ? (

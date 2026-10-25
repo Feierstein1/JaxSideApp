@@ -73,6 +73,8 @@ type TopicRow = {
   follower_count: number;
   following: boolean;
   is_mine: boolean;
+  show_creator: boolean;
+  creator_name: string | null;
 };
 
 const toView = (r: TopicRow): TopicView => ({
@@ -91,6 +93,9 @@ const toView = (r: TopicRow): TopicView => ({
   followerCount: r.follower_count,
   following: r.following,
   isMine: r.is_mine,
+  // D134: the creator's name only if they chose to show it (and their account is active).
+  creator: r.show_creator ? r.creator_name : null,
+  ...(r.is_mine ? { showCreator: r.show_creator } : {}),
 });
 
 /** `viewerId` may be a guest's placeholder ID (it never matches a user). */
@@ -106,7 +111,10 @@ function selectTopics(viewerId: string, where: Prisma.Sql, tail: Prisma.Sql = Pr
            (SELECT count(*)::int FROM "TopicFollow" f WHERE f."topicId" = t.id) AS follower_count,
            EXISTS (SELECT 1 FROM "TopicFollow" f
                    WHERE f."topicId" = t.id AND f."userId" = ${viewerId}::uuid) AS following,
-           (t."createdById" = ${viewerId}::uuid) IS TRUE AS is_mine
+           (t."createdById" = ${viewerId}::uuid) IS TRUE AS is_mine,
+           t."showCreator" AS show_creator,
+           (SELECT u.username FROM "User" u
+             WHERE u.id = t."createdById" AND u.status = 'ACTIVE') AS creator_name
     FROM "CityTopic" t
     WHERE ${where}
     ${tail}`;
@@ -139,6 +147,7 @@ export async function listTopicPage(
       WHERE f."topicId" = t.id AND f."userId" = ${viewerId}::uuid)`);
   }
   if (input.openOnly) filters.push(topicOpenSql(Prisma.sql`t`));
+  if (input.mine) filters.push(Prisma.sql`t."createdById" = ${viewerId}::uuid`);
   const newest = input.sort !== 'oldest';
   const c = decodeCursor(input.cursor);
   if (c && 't' in c) {
@@ -244,12 +253,64 @@ export async function createUserTopic(userId: string, input: CreateTopicRequest,
   });
   const [row] = await db.$queryRaw<{ id: string }[]>`
     INSERT INTO "CityTopic" (id, scope, title, category, description, location, status,
-                             "createdById", "updatedAt")
+                             "createdById", "showCreator", "updatedAt")
     VALUES (uuid_v7(), ${input.scope === 'local' ? 'LOCAL' : 'CITY'}::"TopicScope",
-            ${input.title}, ${input.category}, ${input.description ?? null},
-            ${input.scope === 'local' ? point(at) : null}, 'ACTIVE', ${userId}::uuid, now())
+            ${input.title}, ${input.category ?? 'other'}, ${input.description ?? null},
+            ${input.scope === 'local' ? point(at) : null}, 'ACTIVE', ${userId}::uuid,
+            ${input.showCreator ?? false}, now())
     RETURNING id`;
   return row!.id;
+}
+
+/** D134: a topic you started that people can still see (not removed, held or deleted). */
+async function ownTopic(userId: string, id: string) {
+  const t = await db.cityTopic.findFirst({
+    where: { id, createdById: userId, status: { in: ['ACTIVE', 'CLOSED'] } },
+    select: { id: true },
+  });
+  // Someone else's topic looks the same as a missing one (no hint it exists).
+  if (!t) throw new ApiError(404, 'NOT_FOUND', 'Topic not found');
+}
+
+/** D134: the only change a creator can make: show or hide their username. */
+export async function setShowCreator(userId: string, id: string, show: boolean) {
+  await ownTopic(userId, id);
+  await db.cityTopic.update({ where: { id }, data: { showCreator: show } });
+}
+
+/**
+ * D134: the creator deletes their topic. It's hidden at once for everyone; the admin sees it
+ * as "Deleted by creator" for topics.deletedKeepDays, then purgeDeletedTopics removes it.
+ */
+export async function deleteOwnTopic(userId: string, id: string, now = new Date()) {
+  await ownTopic(userId, id);
+  await db.cityTopic.update({ where: { id }, data: { status: 'DELETED', deletedAt: now } });
+}
+
+/**
+ * D134 (nightly): topics deleted by their creator more than topics.deletedKeepDays ago are
+ * removed. Their posts are marked deleted (and leave the topic), so the normal retention job
+ * removes them with their comments, votes and media; follows and reports go with the topic.
+ */
+export async function purgeDeletedTopics(now = new Date()): Promise<number> {
+  const days = await getConfig('topics.deletedKeepDays');
+  const before = new Date(now.getTime() - days * 86_400_000);
+  const due = await db.cityTopic.findMany({
+    where: { status: 'DELETED', deletedAt: { lt: before } },
+    select: { id: true },
+    take: 500,
+  });
+  if (!due.length) return 0;
+  const ids = due.map((t) => t.id);
+  await db.$transaction([
+    db.generalPost.updateMany({
+      where: { topicId: { in: ids }, status: { not: 'DELETED' } },
+      data: { status: 'DELETED' },
+    }),
+    db.generalPost.updateMany({ where: { topicId: { in: ids } }, data: { topicId: null } }),
+    db.cityTopic.deleteMany({ where: { id: { in: ids } } }),
+  ]);
+  return ids.length;
 }
 
 /** D133: follow or unfollow (idempotent). */
@@ -330,6 +391,8 @@ export async function adminListTopics() {
     suggestedBy: t.suggestedBy,
     createdBy: t.createdBy?.username ?? null,
     decisionReason: t.decisionReason,
+    deletedAt: t.deletedAt?.toISOString() ?? null,
+    showCreator: t.showCreator,
     createdAt: t.createdAt.toISOString(),
     posts: t._count.posts,
   }));

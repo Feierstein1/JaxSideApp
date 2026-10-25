@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, Switch, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   CONFIG_DEFAULTS,
@@ -20,7 +20,7 @@ import { haptic } from '@/motion';
 import { createTopic } from '@/topics/api';
 import { Text } from '@/text';
 import { SPACE, TYPE } from '@/tokens';
-import { Button, Chip, Field, FormError, PageTitle, Screen, Segmented } from '@/ui';
+import { Button, Chip, Field, FormError, PageTitle, Screen, Segmented, switchColors } from '@/ui';
 
 const LOCAL_RADIUS = yardsLabel(CONFIG_DEFAULTS['topics.localRadiusMiles']);
 
@@ -34,6 +34,7 @@ export default function NewTopicScreen() {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<TopicCategory>('other');
   const [description, setDescription] = useState('');
+  const [showCreator, setShowCreator] = useState(false); // D134: off by default
   const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
 
@@ -49,6 +50,7 @@ export default function NewTopicScreen() {
       scope,
       title,
       category,
+      showCreator,
       ...(description.trim() ? { description } : {}),
     };
     const v = validate(createTopicSchema.omit({ reading: true }), body);
@@ -122,6 +124,29 @@ export default function NewTopicScreen() {
         multiline
         error={errors.description}
       />
+      {/* D134: off by default; the only thing you can change after posting. */}
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityLabel="Show my username as the creator"
+        accessibilityState={{ checked: showCreator }}
+        onPress={() => setShowCreator(!showCreator)}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: SPACE.md,
+          paddingVertical: SPACE.sm,
+          marginBottom: SPACE.sm,
+        }}
+      >
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ fontWeight: '700' }}>Show my username as the creator</Text>
+          <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
+            You can turn this off later. The title and description can’t be changed after posting;
+            you can delete the topic.
+          </Text>
+        </View>
+        <Switch {...switchColors} value={showCreator} onValueChange={setShowCreator} />
+      </Pressable>
       <Button title="Start topic" onPress={() => void submit()} busy={busy} />
     </Screen>
   );
