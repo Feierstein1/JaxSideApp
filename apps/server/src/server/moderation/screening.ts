@@ -94,7 +94,7 @@ function baseFold(text: string): string {
 }
 
 /** Words of letters only, with leet decoded. `oneAs` picks how `1 | !` are read. */
-function words(folded: string, oneAs: 'i' | 'l'): string[] {
+function words(folded: string, oneAs: 'i' | 'l', splitLead = false): string[] {
   const out: string[] = [];
   for (const raw of folded.split(/\s+/)) {
     // Trailing "!" or "?" is punctuation, not a letter ("you!").
@@ -106,19 +106,29 @@ function words(folded: string, oneAs: 'i' | 'l'): string[] {
       .trim();
     if (mapped) out.push(...mapped.split(' '));
   }
-  // "k i l l" → "kill": join runs of 3+ single letters.
+  // "k i l l" → "kill": join runs of 3+ single letters. With `splitLead`, a run that starts
+  // with the words "a" or "i" keeps that word apart ("a k i l l" → "a kill"), since those are
+  // real one-letter words; the caller also checks the plain join.
   const joined: string[] = [];
   let run = '';
+  const flush = () => {
+    if (!run) return;
+    if (splitLead && run.length >= 4 && (run[0] === 'a' || run[0] === 'i')) {
+      joined.push(run[0]!, run.slice(1));
+    } else {
+      joined.push(...(run.length >= 3 ? [run] : [...run]));
+    }
+    run = '';
+  };
   for (const w of out) {
     if (w.length === 1) {
       run += w;
       continue;
     }
-    if (run) joined.push(...(run.length >= 3 ? [run] : [...run]));
-    run = '';
+    flush();
     joined.push(w);
   }
-  if (run) joined.push(...(run.length >= 3 ? [run] : [...run]));
+  flush();
   // "kiiill" → "kil" (rule terms get the same treatment, so "kill" → "kil").
   return joined.map((w) => w.replace(/(.)\1+/g, '$1'));
 }
@@ -126,7 +136,12 @@ function words(folded: string, oneAs: 'i' | 'l'): string[] {
 /** The forms a text is checked in. Exported for tests. */
 export function normalizedForms(text: string): { words: string[]; squashed: string[] } {
   const folded = baseFold(text);
-  const variants = [words(folded, 'i'), words(folded, 'l')];
+  const variants = [
+    words(folded, 'i'),
+    words(folded, 'l'),
+    words(folded, 'i', true),
+    words(folded, 'l', true),
+  ];
   return {
     words: variants.map((w) => ` ${w.join(' ')} `),
     squashed: variants.map((w) => w.join('')),
@@ -175,6 +190,22 @@ export async function strongestMatch(text: string): Promise<Rule | null> {
     if ((!best || STRENGTH[r.action] > STRENGTH[best.action]) && matches(r, forms)) best = r;
   }
   return best;
+}
+
+/**
+ * P15.9: every rule the text matches, strongest first (the admin Screening page's test box).
+ * `includeDisabled` also checks rules that are turned off.
+ */
+export async function allMatches(text: string, includeDisabled = false): Promise<Rule[]> {
+  const forms = normalizedForms(text);
+  const rules = includeDisabled
+    ? await db.screeningRule.findMany({
+        select: { id: true, term: true, match: true, action: true, category: true, message: true },
+      })
+    : await loadRules();
+  return rules
+    .filter((r) => matches(r, forms))
+    .sort((a, b) => STRENGTH[b.action] - STRENGTH[a.action]);
 }
 
 // ───────────────────────────── Decisions ─────────────────────────────

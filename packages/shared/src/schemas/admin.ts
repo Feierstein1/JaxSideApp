@@ -60,3 +60,40 @@ export const appealDecisionSchema = z.strictObject({
   accept: z.boolean(),
   note: z.string().trim().min(3).max(500),
 });
+
+// ───────────────────────── Screening rules (P15.9) ─────────────────────────
+
+export const SCREENING_ACTIONS = ['BLOCK', 'HOLD', 'WARN'] as const;
+export const SCREENING_CATEGORIES = [
+  'SLUR',
+  'THREAT',
+  'SEXUAL',
+  'HARASSMENT',
+  'DOXXING',
+  'SPAM',
+  'OTHER',
+] as const;
+export const SCREENING_MATCHES = ['WORD', 'CONTAINS'] as const;
+
+/** Add a screening term. */
+export const screeningRuleSchema = z.strictObject({
+  term: z.string().trim().min(2).max(100),
+  match: z.enum(SCREENING_MATCHES).default('WORD'),
+  action: z.enum(SCREENING_ACTIONS),
+  category: z.enum(SCREENING_CATEGORIES),
+  /** Shown to the person when it matches (optional). */
+  message: z.string().trim().min(1).max(300).optional(),
+});
+
+/** Change a term: turn it on or off, or change what it does. */
+export const screeningRuleUpdateSchema = z
+  .strictObject({
+    enabled: z.boolean().optional(),
+    action: z.enum(SCREENING_ACTIONS).optional(),
+    category: z.enum(SCREENING_CATEGORIES).optional(),
+    message: z.string().trim().max(300).nullable().optional(),
+  })
+  .refine((u) => Object.keys(u).length > 0, 'Nothing to change');
+
+/** Try a sentence against the rules. */
+export const screeningTestSchema = z.strictObject({ text: z.string().min(1).max(2000) });
