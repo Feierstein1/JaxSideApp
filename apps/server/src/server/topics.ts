@@ -232,7 +232,9 @@ export async function decideTopic(
           ? {
               status: 'ACTIVE',
               decidedAt: now,
-              opensAt: now,
+              // opensAt stays the suggestion's own time (set by the database when it was
+              // made): "now" from this server's clock could be a moment ahead of the
+              // database's and hide the topic briefly.
               ...(d.title ? { title: d.title } : {}),
               ...(d.description ? { description: d.description } : {}),
             }
