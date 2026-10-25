@@ -55,6 +55,10 @@ import * as placeVote from '@/app/api/v1/places/changes/vote/route';
 import * as pollVote from '@/app/api/v1/polls/[id]/vote/route';
 import * as topicList from '@/app/api/v1/topics/[id]/posts/list/route';
 import * as topicSuggest from '@/app/api/v1/topics/suggestions/route';
+import * as topicCreate from '@/app/api/v1/topics/route';
+import * as topicPage from '@/app/api/v1/topics/list/route';
+import * as topicFollow from '@/app/api/v1/topics/[id]/follow/route';
+import * as pollSuggest from '@/app/api/v1/polls/suggestions/route';
 import * as placeRemoval from '@/app/api/v1/places/[id]/removal/route';
 import * as friendRequests from '@/app/api/v1/friends/requests/route';
 import * as friendRequest from '@/app/api/v1/friends/requests/[id]/route';
@@ -439,6 +443,50 @@ const ROWS: Row[] = [
     id: 'topic',
     location: true,
     body: (at) => ({ reading: r(at) }),
+  },
+  // D133: create, list, follow; poll suggestions.
+  {
+    route: 'topics',
+    method: 'POST',
+    handler: h(topicCreate, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at), scope: 'city', title: 'Best sunsets in Jax' }),
+  },
+  {
+    route: 'topics/list',
+    method: 'POST',
+    handler: h(topicPage, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at), scope: 'city' }),
+  },
+  {
+    route: 'topics/[id]/follow',
+    method: 'PUT',
+    handler: h(topicFollow, 'PUT'),
+    auth: true,
+    id: 'topic',
+    location: false,
+  },
+  {
+    route: 'topics/[id]/follow',
+    method: 'DELETE',
+    handler: h(topicFollow, 'DELETE'),
+    auth: true,
+    id: 'topic',
+    location: false,
+  },
+  {
+    route: 'polls/suggestions',
+    method: 'POST',
+    handler: h(pollSuggest, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ question: 'Should the Riverwalk get more lights?' }),
   },
   {
     route: 'topics/suggestions',
@@ -1039,7 +1087,9 @@ describe('write route table (P3.7)', () => {
         (x.method === 'PATCH' || x.method === 'DELETE') &&
         x.id &&
         x.id !== 'place' &&
-        x.id !== 'username',
+        x.id !== 'username' &&
+        // D133: unfollowing removes your own follow, not someone else's content.
+        x.id !== 'topic',
     ).map((x) => [label(x), x] as const),
   )('%s → 404 for someone else’s content', async (_l, row) => {
     const res = await call(row, { token: other, body: row.body?.(IN) });

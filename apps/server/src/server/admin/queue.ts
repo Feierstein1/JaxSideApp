@@ -13,7 +13,7 @@ import { audit } from './audit';
  * (P5.15) and an audit entry (P5.16), and can add a strike to the author (P5.6).
  */
 
-export type CaseType = 'general' | 'business' | 'comment' | 'photo' | 'user' | 'message';
+export type CaseType = 'general' | 'business' | 'comment' | 'photo' | 'user' | 'message' | 'topic'; // D133
 export interface CaseRef {
   type: CaseType;
   id: string;
@@ -21,12 +21,13 @@ export interface CaseRef {
 
 const COLUMN: Record<
   Exclude<CaseType, 'user' | 'message'>,
-  'generalPostId' | 'businessPostId' | 'commentId' | 'photoId'
+  'generalPostId' | 'businessPostId' | 'commentId' | 'photoId' | 'cityTopicId'
 > = {
   general: 'generalPostId',
   business: 'businessPostId',
   comment: 'commentId',
   photo: 'photoId',
+  topic: 'cityTopicId',
 };
 
 function refOf(r: {
@@ -37,7 +38,9 @@ function refOf(r: {
   reportedUserId: string | null;
   messageId?: string | null;
   messageEvidence?: unknown;
+  cityTopicId?: string | null;
 }): CaseRef | null {
+  if (r.cityTopicId) return { type: 'topic', id: r.cityTopicId };
   // D98: a reported message (its snapshot keeps the case even after it's unsent).
   if (r.messageId) return { type: 'message', id: r.messageId };
   const ev = r.messageEvidence as { messageId?: string } | null | undefined;
@@ -85,6 +88,7 @@ export async function listCases(opts: { type?: CaseType } = {}) {
       reportedUserId: true,
       messageId: true,
       messageEvidence: true,
+      cityTopicId: true,
       reason: true,
       reporterUserId: true,
       reporterGuestId: true,
@@ -163,6 +167,20 @@ async function subject(
         body: c.body,
         status: c.status,
         author: c.authorUser ?? (c.authorKind === 'GUEST' ? { guest: true } : null),
+      }
+    );
+  }
+  if (ref.type === 'topic') {
+    // D133: a topic's title and description, and who made it.
+    const t = await db.cityTopic.findUnique({
+      where: { id: ref.id },
+      include: { createdBy: user },
+    });
+    return (
+      t && {
+        body: `Topic: ${t.title}${t.description ? ` · ${t.description}` : ''}`,
+        status: t.status === 'REMOVED' ? 'REMOVED' : 'VISIBLE',
+        author: t.createdBy,
       }
     );
   }
@@ -451,6 +469,15 @@ async function setStatus(
     }
     return true;
   }
+  if (ref.type === 'topic') {
+    // D133: a removed topic is hidden everywhere (its posts with it); restoring reopens it.
+    const t = await tx.cityTopic.findUniqueOrThrow({ where: { id: ref.id } });
+    await tx.cityTopic.update({
+      where: { id: ref.id },
+      data: { status: to === 'VISIBLE' ? 'ACTIVE' : 'REMOVED' },
+    });
+    return t.status !== 'REMOVED';
+  }
   if (ref.type === 'photo') {
     // The object stays in storage (evidence); a removed photo is never served (P6.4).
     await tx.photo.update({
@@ -558,7 +585,9 @@ export async function decideCase(input: {
         reason: input.reason,
         internalNote: input.internalNote ?? null,
         targetUserId: authorId,
-        ...(input.ref.type === 'user' || input.ref.type === 'message'
+        // A moderation action points at posts, comments and photos; topics and messages are
+        // identified through the report and the audit log.
+        ...(input.ref.type === 'user' || input.ref.type === 'message' || input.ref.type === 'topic'
           ? {}
           : { [COLUMN[input.ref.type]]: input.ref.id }),
         reportId: open[0]?.id ?? null,

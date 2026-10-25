@@ -21,7 +21,42 @@ export const TOPIC_DESCRIPTION_MAX = 500;
 
 const text = (min: number, max: number) => z.string().trim().min(min).max(max);
 
-/** A user's suggestion. */
+/** D133: a topic for all of Duval, or one tied to where it was made ("Near me"). */
+export const TOPIC_SCOPES = ['city', 'local'] as const;
+export type TopicScope = (typeof TOPIC_SCOPES)[number];
+/** D133: topics per page in View all topics. */
+export const TOPIC_PAGE_SIZE = 20;
+
+/** D133: create a topic (anyone with a confirmed account; screened like posts). */
+export const createTopicSchema = z.strictObject({
+  reading: locationReadingSchema,
+  scope: z.enum(TOPIC_SCOPES),
+  title: text(4, TOPIC_TITLE_MAX),
+  category: category.default('other'),
+  description: text(1, TOPIC_DESCRIPTION_MAX).optional(),
+  confirmWarning: z.literal(true).optional(),
+});
+export type CreateTopicRequest = z.infer<typeof createTopicSchema>;
+
+/**
+ * D133: topics of one kind, newest or oldest first, optionally filtered by words, category
+ * or the ones you follow. Local topics need the reading (within half a mile of you).
+ */
+export const topicListSchema = z.strictObject({
+  reading: locationReadingSchema,
+  scope: z.enum(TOPIC_SCOPES),
+  q: z.string().trim().max(60).optional(),
+  category: category.optional(),
+  following: z.boolean().optional(),
+  sort: z.enum(['newest', 'oldest']).default('newest'),
+  /** Open topics only (the City Topics page's newest three). */
+  openOnly: z.boolean().optional(),
+  limit: z.int().min(1).max(TOPIC_PAGE_SIZE).default(TOPIC_PAGE_SIZE),
+  cursor: z.string().max(200).optional(),
+});
+export type TopicListRequest = z.input<typeof topicListSchema>;
+
+/** A user's suggestion (D125; the app now creates topics directly, D133). */
 export const suggestTopicSchema = z.strictObject({
   title: text(4, TOPIC_TITLE_MAX),
   category: category.default('other'),
@@ -70,6 +105,8 @@ export type TopicStatus = 'open' | 'closed';
 
 export interface TopicView {
   id: string;
+  /** D133: city (all of Duval) or local (within half a mile of where it was made). */
+  scope: TopicScope;
   title: string;
   /** D131: one of TOPIC_CATEGORIES. */
   category: TopicCategory;
@@ -83,6 +120,19 @@ export interface TopicView {
   postCount: number;
   /** Newest post, for "active 5 min ago". */
   lastPostAt: string | null;
+  /** D133: when it was created (shown on cards). */
+  createdAt: string;
+  /** D133: how many follow it, and whether you do. */
+  followerCount: number;
+  following: boolean;
+  /** D133: you made it. */
+  isMine: boolean;
+}
+
+/** D133: one page of topics. */
+export interface TopicPage {
+  topics: TopicView[];
+  nextCursor: string | null;
 }
 
 /** Your own suggestion and what happened to it. */

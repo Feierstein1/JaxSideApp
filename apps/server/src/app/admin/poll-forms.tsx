@@ -47,11 +47,18 @@ export interface PollFormValues {
 
 const select = { ...ui.input, background: COLORS.background };
 
-export function PollForm({ poll }: { poll?: PollFormValues }) {
+export function PollForm({
+  poll,
+  draft,
+}: {
+  poll?: PollFormValues;
+  /** D133: a suggested question to start from. */
+  draft?: { question: string; topic: PollTopic };
+}) {
   const week = nextWeek();
   const [kind, setKind] = useState<PollKind>(poll?.kind ?? 'single');
-  const [topic, setTopic] = useState<PollTopic>(poll?.topic ?? 'community');
-  const [question, setQuestion] = useState(poll?.question ?? '');
+  const [topic, setTopic] = useState<PollTopic>(poll?.topic ?? draft?.topic ?? 'community');
+  const [question, setQuestion] = useState(poll?.question ?? draft?.question ?? '');
   const [details, setDetails] = useState(poll?.details ?? '');
   const [choices, setChoices] = useState<string[]>(
     poll && (poll.kind === 'single' || poll.kind === 'multi') ? poll.choices : ['', ''],
@@ -301,6 +308,64 @@ export function PollForm({ poll }: { poll?: PollFormValues }) {
           {error}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * D133: a suggested poll question: Use it (opens the new poll form with it, and marks it
+ * used) or Decline it with a reason.
+ */
+export function PollSuggestionActions({
+  id,
+  question,
+  topic,
+}: {
+  id: string;
+  question: string;
+  topic: PollTopic;
+}) {
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  async function decide(body: Record<string, unknown>) {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await adminFetch(`/api/v1/admin/poll-suggestions/${id}`, { method: 'POST', body });
+      if (body.action === 'use') {
+        const q = new URLSearchParams({ new: '1', q: question, t: topic });
+        window.location.href = `/admin/polls?${q.toString()}`;
+      } else {
+        window.location.reload();
+      }
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  }
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <button style={ui.button} disabled={busy} onClick={() => void decide({ action: 'use' })}>
+        Use for a poll
+      </button>
+      <input
+        id={`poll-suggestion-reason-${id}`}
+        aria-label="Reason for declining"
+        placeholder="Reason for declining"
+        style={{ ...ui.input, margin: 0, flex: 1, minWidth: 200 }}
+        maxLength={300}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+      />
+      <button
+        style={ui.buttonSecondary}
+        disabled={busy || reason.trim().length < 3}
+        onClick={() => void decide({ action: 'reject', reason: reason.trim() })}
+      >
+        Decline
+      </button>
+      {error ? <span style={ui.error}>{error}</span> : null}
     </div>
   );
 }

@@ -61,7 +61,7 @@ import { holdFor, holdReport, screenText, type Hold } from '../moderation/screen
 import { checkEdit, checkNewContent } from '../moderation/spam';
 import { castVote } from './votes';
 import { evaluateForCommentAuthor, evaluateForPostAuthor } from '../achievements';
-import { assertTopicOpen, getTopic } from '../topics';
+import { assertTopicOpen, getTopic, localRadiusMeters, topicAnchor } from '../topics';
 
 export type IdCtx = { params: Promise<{ id: string }> };
 
@@ -110,15 +110,25 @@ async function checkPostAccess(
 ) {
   const anchor = await postAnchor(kind, postId);
   const action = `${kind}.${verb}` as LocationAction;
-  // D125: a closed citywide topic stays readable but takes no new comments or votes.
-  if (anchor.topicId && verb !== 'read' && !anchor.topicOpen) {
-    throw new ApiError(409, 'TOPIC_CLOSED', 'This topic is closed.');
+  if (anchor.topicId) {
+    // D125 / D133: a post in a topic. A closed topic stays readable but takes no new
+    // comments or votes. A city topic needs only an in-Duval location; a local topic needs
+    // the reader within half a mile of where the topic was made, for reading too.
+    const topic = await topicAnchor(anchor.topicId);
+    if (verb !== 'read' && !topic.open) {
+      throw new ApiError(409, 'TOPIC_CLOSED', 'This topic is closed.');
+    }
+    return assertLocationEligible(
+      actor,
+      reading,
+      action,
+      topic.local ? { kind: 'topic', point: topic.local } : undefined,
+    );
   }
   // Reading a general post only needs an in-Duval location (D16); everything else is
-  // radius-bound: 1 mi of a general post (D20), 0.3 mi of a business (D19). D125: a citywide
-  // topic post needs only an in-Duval location for everything.
+  // radius-bound: 1 mi of a general post (D20), 0.3 mi of a business (D19).
   const target: LocationTarget | undefined =
-    (kind === 'general' && verb === 'read') || anchor.topicId
+    kind === 'general' && verb === 'read'
       ? undefined
       : { kind, point: { latitude: anchor.latitude, longitude: anchor.longitude } };
   return assertLocationEligible(actor, reading, action, target);
@@ -128,12 +138,20 @@ async function checkPostAccess(
 async function withinCommentRadius(kind: DiscussionKind, id: string, reading: LocationReading) {
   if (kind === 'business') return true; // reading a place's post already needs its radius
   const anchor = await postAnchor(kind, id);
-  if (anchor.topicId) return anchor.topicOpen; // D125: citywide, while the topic is open
-  const meters = milesToMeters(await getConfig('radius.general.maxMiles'));
+  let center = { latitude: anchor.latitude, longitude: anchor.longitude };
+  let meters = milesToMeters(await getConfig('radius.general.maxMiles'));
+  if (anchor.topicId) {
+    // D125 / D133: while the topic is open; city topics anywhere, local ones nearby.
+    const topic = await topicAnchor(anchor.topicId);
+    if (!topic.open) return false;
+    if (!topic.local) return true;
+    center = topic.local;
+    meters = await localRadiusMeters();
+  }
   const [row] = await db.$queryRaw<{ within: boolean }[]>`
     SELECT ST_DWithin(
       ST_SetSRID(ST_MakePoint(${reading.longitude}, ${reading.latitude}), 4326)::geography,
-      ST_SetSRID(ST_MakePoint(${anchor.longitude}, ${anchor.latitude}), 4326)::geography,
+      ST_SetSRID(ST_MakePoint(${center.longitude}, ${center.latitude}), 4326)::geography,
       ${meters}) AS within`;
   return !!row?.within;
 }
@@ -208,8 +226,16 @@ export async function topicPosts(req: Request, ctx: IdCtx) {
   const topicId = await idFrom(ctx);
   const input = await parseBody(req, topicPostsSchema);
   await limitsFor(actorKey(actor), READ);
-  const topic = await getTopic(topicId); // 404 for suggestions and unknown topics
-  await assertLocationEligible(locationActor(actor), input.reading, 'general.read');
+  const viewer = viewerOf(actor).userId ?? NO_USER;
+  const topic = await getTopic(topicId, viewer); // 404 for suggestions and unknown topics
+  // D133: a local topic is readable only within half a mile of where it was made.
+  const anchor = await topicAnchor(topicId);
+  await assertLocationEligible(
+    locationActor(actor),
+    input.reading,
+    'general.read',
+    anchor.local ? { kind: 'topic', point: anchor.local } : undefined,
+  );
   const page = await listTopicPosts({
     viewerId: viewerOf(actor).userId ?? NO_USER,
     topicId,
@@ -265,8 +291,14 @@ export async function createGeneral(req: Request) {
   const input = await parseBody(req, createPostSchema);
   await limits(user.id, ...POST_LIMITS);
   // D125: a post into a citywide topic: the topic must be open (inside Duval is enough).
-  if (input.topicId) await assertTopicOpen(input.topicId);
-  const at = await assertLocationEligible({ kind: 'user', user }, input.reading, 'general.post');
+  const topic = input.topicId ? await assertTopicOpen(input.topicId) : null;
+  // D133: posting in a local topic needs you within half a mile of it.
+  const at = await assertLocationEligible(
+    { kind: 'user', user },
+    input.reading,
+    'general.post',
+    topic?.local ? { kind: 'topic', point: topic.local } : undefined,
+  );
   const hold = await screenNew(user, input);
   const id = await createGeneralPost(
     user.id,

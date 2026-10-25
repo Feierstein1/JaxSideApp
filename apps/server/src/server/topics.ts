@@ -1,25 +1,43 @@
 import {
+  milesToMeters,
   TOPIC_CATEGORIES,
   type AdminTopicRequest,
+  type CreateTopicRequest,
   type MyTopicSuggestion,
   type SuggestTopicRequest,
   type TopicCategory,
+  type TopicListRequest,
+  type TopicPage,
   type TopicView,
 } from '@jax/shared';
 import type { CityTopic } from '@/generated/prisma/client';
 import { Prisma } from '@/generated/prisma/client';
+import { getConfig } from './config';
 import { db } from './db';
+import { decodeCursor, encodeCursor } from './discussions/cursor';
 import { ApiError } from './http';
+import type { GeoPoint } from './location/eligibility';
+import { screenText } from './moderation/screening';
 
 /**
- * D125: citywide discussion topics. A topic is "open" while it's ACTIVE, has started
- * (opensAt) and hasn't ended (closesAt); a CLOSED topic, or one past its end, is read-only.
- * Posts in a topic are general posts with topicId set (see discussions/posts.ts).
+ * Topics (D125, D133). A topic is an area for posts: posts in it are general posts with
+ * topicId set (see discussions/posts.ts). Two kinds:
+ * - CITY: for all of Duval (anyone inside the county can read and post).
+ * - LOCAL: tied to the (coarsened) spot where it was made; seen and posted in only within
+ *   topics.localRadiusMiles of it.
+ * A topic is "open" while it's ACTIVE, has started (opensAt) and hasn't ended (closesAt); a
+ * CLOSED topic, or one past its end, is read-only. REMOVED ones (moderation) are hidden.
+ * Anyone with a confirmed account can create one (D133); they're screened like posts and
+ * can be reported.
  */
 
 /** SQL: the topic `t` is open now. */
 export const topicOpenSql = (t: Prisma.Sql) => Prisma.sql`(${t}.status = 'ACTIVE'
   AND ${t}."opensAt" <= now() AND (${t}."closesAt" IS NULL OR ${t}."closesAt" > now()))`;
+
+/** SQL: the topic `t` is one people can see (started; not a suggestion, rejected or removed). */
+const visibleSql = (t: Prisma.Sql) =>
+  Prisma.sql`${t}.status IN ('ACTIVE', 'CLOSED') AND ${t}."opensAt" <= now()`;
 
 export function isTopicOpen(
   t: Pick<CityTopic, 'status' | 'opensAt' | 'closesAt'>,
@@ -32,8 +50,15 @@ export function isTopicOpen(
 const asCategory = (c: string): TopicCategory =>
   c in TOPIC_CATEGORIES ? (c as TopicCategory) : 'other';
 
+const point = (p: GeoPoint) =>
+  Prisma.sql`ST_SetSRID(ST_MakePoint(${p.longitude}, ${p.latitude}), 4326)::geography`;
+
+export const localRadiusMeters = async () =>
+  milesToMeters(await getConfig('topics.localRadiusMiles'));
+
 type TopicRow = {
   id: string;
+  scope: 'CITY' | 'LOCAL';
   title: string;
   category: string;
   description: string | null;
@@ -41,13 +66,18 @@ type TopicRow = {
   status: string;
   opensAt: Date;
   closesAt: Date | null;
+  createdAt: Date;
   open: boolean;
   post_count: number;
   last_post_at: Date | null;
+  follower_count: number;
+  following: boolean;
+  is_mine: boolean;
 };
 
 const toView = (r: TopicRow): TopicView => ({
   id: r.id,
+  scope: r.scope === 'LOCAL' ? 'local' : 'city',
   title: r.title,
   category: asCategory(r.category),
   description: r.description,
@@ -57,27 +87,93 @@ const toView = (r: TopicRow): TopicView => ({
   closesAt: r.closesAt?.toISOString() ?? null,
   postCount: r.post_count,
   lastPostAt: r.last_post_at?.toISOString() ?? null,
+  createdAt: r.createdAt.toISOString(),
+  followerCount: r.follower_count,
+  following: r.following,
+  isMine: r.is_mine,
 });
 
-function selectTopics(where: Prisma.Sql) {
+/** `viewerId` may be a guest's placeholder ID (it never matches a user). */
+function selectTopics(viewerId: string, where: Prisma.Sql, tail: Prisma.Sql = Prisma.empty) {
   return db.$queryRaw<TopicRow[]>`
-    SELECT t.id, t.title, t.category, t.description, t.pinned, t.status::text, t."opensAt", t."closesAt",
+    SELECT t.id, t.scope::text AS scope, t.title, t.category, t.description, t.pinned,
+           t.status::text, t."opensAt", t."closesAt", t."createdAt",
            ${topicOpenSql(Prisma.sql`t`)} AS open,
            (SELECT count(*)::int FROM "GeneralPost" p
              WHERE p."topicId" = t.id AND p.status = 'VISIBLE') AS post_count,
            (SELECT max(p."createdAt") FROM "GeneralPost" p
-             WHERE p."topicId" = t.id AND p.status = 'VISIBLE') AS last_post_at
+             WHERE p."topicId" = t.id AND p.status = 'VISIBLE') AS last_post_at,
+           (SELECT count(*)::int FROM "TopicFollow" f WHERE f."topicId" = t.id) AS follower_count,
+           EXISTS (SELECT 1 FROM "TopicFollow" f
+                   WHERE f."topicId" = t.id AND f."userId" = ${viewerId}::uuid) AS following,
+           (t."createdById" = ${viewerId}::uuid) IS TRUE AS is_mine
     FROM "CityTopic" t
-    WHERE ${where}`;
+    WHERE ${where}
+    ${tail}`;
 }
 
 /**
- * Open topics (pinned first, then the most recently active) and the closed ones that have
- * started (newest first). Suggestions and rejected ones never show here.
+ * D133: one page of topics of one kind, newest or oldest first (by when they were made),
+ * filtered by words, category, the ones you follow, or open only. Local topics: only those
+ * within the local radius of `at`.
  */
-export async function listTopics(closedLimit = 20) {
+export async function listTopicPage(
+  viewerId: string,
+  at: GeoPoint,
+  input: Omit<TopicListRequest, 'reading'> & { limit: number },
+): Promise<TopicPage> {
+  const filters: Prisma.Sql[] = [
+    visibleSql(Prisma.sql`t`),
+    Prisma.sql`t.scope = ${input.scope === 'local' ? 'LOCAL' : 'CITY'}::"TopicScope"`,
+  ];
+  if (input.scope === 'local') {
+    filters.push(Prisma.sql`ST_DWithin(t.location, ${point(at)}, ${await localRadiusMeters()})`);
+  }
+  if (input.q) {
+    const like = '%' + input.q.replace(/[\\%_]/g, (c) => `\\${c}`) + '%';
+    filters.push(Prisma.sql`(t.title ILIKE ${like} OR t.description ILIKE ${like})`);
+  }
+  if (input.category) filters.push(Prisma.sql`t.category = ${input.category}`);
+  if (input.following) {
+    filters.push(Prisma.sql`EXISTS (SELECT 1 FROM "TopicFollow" f
+      WHERE f."topicId" = t.id AND f."userId" = ${viewerId}::uuid)`);
+  }
+  if (input.openOnly) filters.push(topicOpenSql(Prisma.sql`t`));
+  const newest = input.sort !== 'oldest';
+  const c = decodeCursor(input.cursor);
+  if (c && 't' in c) {
+    filters.push(
+      newest
+        ? Prisma.sql`(t."createdAt", t.id) < (${new Date(c.t)}::timestamptz, ${c.id}::uuid)`
+        : Prisma.sql`(t."createdAt", t.id) > (${new Date(c.t)}::timestamptz, ${c.id}::uuid)`,
+    );
+  }
+  const order = newest
+    ? Prisma.sql`ORDER BY t."createdAt" DESC, t.id DESC`
+    : Prisma.sql`ORDER BY t."createdAt" ASC, t.id ASC`;
   const rows = await selectTopics(
-    Prisma.sql`t.status IN ('ACTIVE', 'CLOSED') AND t."opensAt" <= now()`,
+    viewerId,
+    Prisma.join(filters, ' AND '),
+    Prisma.sql`${order} LIMIT ${input.limit + 1}`,
+  );
+  const more = rows.length > input.limit;
+  const items = rows.slice(0, input.limit);
+  const last = items[items.length - 1];
+  return {
+    topics: items.map(toView),
+    nextCursor:
+      more && last ? encodeCursor({ t: last.createdAt.toISOString(), id: last.id }) : null,
+  };
+}
+
+/**
+ * The open topics of every kind (no location filter): the admin and old city lists. Local
+ * topics are left out; they're listed by place with listTopicPage.
+ */
+export async function listTopics(viewerId: string, closedLimit = 20) {
+  const rows = await selectTopics(
+    viewerId,
+    Prisma.sql`${visibleSql(Prisma.sql`t`)} AND t.scope = 'CITY'`,
   );
   const open = rows
     .filter((r) => r.open)
@@ -94,27 +190,84 @@ export async function listTopics(closedLimit = 20) {
   return { open: open.map(toView), closed: closed.map(toView) };
 }
 
-/** One topic people can see (it has started and isn't a suggestion or rejected). */
-export async function getTopic(id: string): Promise<TopicView> {
+/** Where a topic is and whether it's open (for location checks on its posts). */
+export async function topicAnchor(id: string) {
+  const [row] = await db.$queryRaw<
+    {
+      scope: 'CITY' | 'LOCAL';
+      latitude: number | null;
+      longitude: number | null;
+      open: boolean;
+      visible: boolean;
+    }[]
+  >`
+    SELECT scope::text AS scope, ST_Y(location::geometry) AS latitude,
+           ST_X(location::geometry) AS longitude, ${topicOpenSql(Prisma.sql`t`)} AS open,
+           ${visibleSql(Prisma.sql`t`)} AS visible
+    FROM "CityTopic" t WHERE id = ${id}::uuid`;
+  if (!row || !row.visible) throw new ApiError(404, 'NOT_FOUND', 'Topic not found');
+  return {
+    open: row.open,
+    /** D133: a local topic's spot (posts and reads must be within the local radius). */
+    local:
+      row.scope === 'LOCAL' && row.latitude !== null && row.longitude !== null
+        ? { latitude: row.latitude, longitude: row.longitude }
+        : null,
+  };
+}
+
+/** One topic people can see (it has started and isn't a suggestion, rejected or removed). */
+export async function getTopic(id: string, viewerId: string): Promise<TopicView> {
   const [row] = await selectTopics(
-    Prisma.sql`t.id = ${id}::uuid AND t.status IN ('ACTIVE', 'CLOSED') AND t."opensAt" <= now()`,
+    viewerId,
+    Prisma.sql`t.id = ${id}::uuid AND ${visibleSql(Prisma.sql`t`)}`,
   );
   if (!row) throw new ApiError(404, 'NOT_FOUND', 'Topic not found');
   return toView(row);
 }
 
 /** Before posting into a topic: it exists and is open. */
-export async function assertTopicOpen(id: string, now = new Date()) {
-  const t = await db.cityTopic.findUnique({
-    where: { id },
-    select: { status: true, opensAt: true, closesAt: true },
+export async function assertTopicOpen(id: string) {
+  const t = await topicAnchor(id);
+  if (!t.open) throw new ApiError(409, 'TOPIC_CLOSED', 'This topic is closed to new posts.');
+  return t;
+}
+
+/**
+ * D133: create a topic. Title and description are screened like posts (a blocked or held
+ * word refuses it; a warning needs confirmWarning). A local topic is placed at `at`
+ * (already coarsened by the caller).
+ */
+export async function createUserTopic(userId: string, input: CreateTopicRequest, at: GeoPoint) {
+  await screenText(`${input.title}\n${input.description ?? ''}`, 'edit', {
+    confirmWarning: input.confirmWarning,
   });
-  if (!t || t.status === 'SUGGESTED' || t.status === 'REJECTED' || t.opensAt > now) {
-    throw new ApiError(404, 'NOT_FOUND', 'Topic not found');
+  const [row] = await db.$queryRaw<{ id: string }[]>`
+    INSERT INTO "CityTopic" (id, scope, title, category, description, location, status,
+                             "createdById", "updatedAt")
+    VALUES (uuid_v7(), ${input.scope === 'local' ? 'LOCAL' : 'CITY'}::"TopicScope",
+            ${input.title}, ${input.category}, ${input.description ?? null},
+            ${input.scope === 'local' ? point(at) : null}, 'ACTIVE', ${userId}::uuid, now())
+    RETURNING id`;
+  return row!.id;
+}
+
+/** D133: follow or unfollow (idempotent). */
+export async function setFollow(userId: string, topicId: string, follow: boolean) {
+  await topicAnchor(topicId); // 404 for unknown, hidden or removed topics
+  if (follow) {
+    await db.topicFollow.createMany({ data: [{ userId, topicId }], skipDuplicates: true });
+  } else {
+    await db.topicFollow.deleteMany({ where: { userId, topicId } });
   }
-  if (!isTopicOpen(t, now)) {
-    throw new ApiError(409, 'TOPIC_CLOSED', 'This topic is closed to new posts.');
-  }
+  return { following: follow, followerCount: await db.topicFollow.count({ where: { topicId } }) };
+}
+
+/** D133: moderation: hide a topic (and with it, its posts from lists) or bring it back. */
+export async function setTopicRemoved(id: string, removed: boolean) {
+  const t = await db.cityTopic.findUnique({ where: { id }, select: { status: true } });
+  if (!t) throw new ApiError(404, 'NOT_FOUND', 'Topic not found');
+  await db.cityTopic.update({ where: { id }, data: { status: removed ? 'REMOVED' : 'ACTIVE' } });
 }
 
 // ─────────────────────────────── Suggestions ───────────────────────────────
@@ -167,6 +320,7 @@ export async function adminListTopics() {
     id: t.id,
     title: t.title,
     category: asCategory(t.category),
+    scope: t.scope === 'LOCAL' ? ('local' as const) : ('city' as const),
     description: t.description,
     status: t.status,
     open: isTopicOpen(t, now),

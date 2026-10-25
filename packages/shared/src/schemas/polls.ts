@@ -41,6 +41,14 @@ export const POLL_LIMITS = { single: { min: 2, max: 6 }, multi: { min: 2, max: 8
 /** Rating scales are 1 to SCALE_MAX. */
 export const POLL_SCALE_MAX = 5;
 
+/** D133: suggest a poll question; the admin turns it into a poll or declines it. */
+export const suggestPollSchema = z.strictObject({
+  question: z.string().trim().min(5).max(200),
+  details: z.string().trim().min(1).max(500).optional(),
+  topic: z.enum(Object.keys(POLL_TOPICS) as [PollTopic, ...PollTopic[]]).default('other'),
+});
+export type SuggestPollRequest = z.infer<typeof suggestPollSchema>;
+
 export const pollVoteSchema = z.strictObject({
   reading: locationReadingSchema,
   /** One answer, or several for Pick several (checked against the poll on the server). */
@@ -163,6 +171,9 @@ export interface PollView {
    * (confirmed, a few days old; never guests). Home shows the poll before Citywide only then.
    */
   canVote: boolean;
-  /** Totals, only once the poll has closed. */
+  /**
+   * Totals. D133: while open, only for people who voted (live, citywide, with how many voted);
+   * once closed, for everyone (with the ZIP breakdown).
+   */
   results: PollResults | null;
 }

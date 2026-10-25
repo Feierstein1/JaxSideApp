@@ -26,6 +26,8 @@ interface ResolvedTarget {
     reportedUserId?: string;
     /** D98: a private message, with its snapshot (evidence). */
     messageId?: string;
+    /** D133: a reported topic. */
+    cityTopicId?: string;
     messageEvidence?: Prisma.InputJsonValue;
   };
   authorUserId: string | null;
@@ -77,6 +79,21 @@ async function resolveTarget(target: ReportTarget, viewerUserId: string | null) 
       key: `message:${target.id}`,
       data: { messageId: target.id, messageEvidence: evidence },
       authorUserId,
+      authorGuestId: null,
+      business: false,
+    } satisfies ResolvedTarget;
+  }
+  if (target.type === 'topic') {
+    // D133: a topic's title or description; anyone who can see it can report it.
+    const t = await db.cityTopic.findFirst({
+      where: { id: target.id, status: { in: ['ACTIVE', 'CLOSED'] } },
+      select: { createdById: true },
+    });
+    if (!t) throw NOT_FOUND();
+    return {
+      key: `topic:${target.id}`,
+      data: { cityTopicId: target.id },
+      authorUserId: t.createdById,
       authorGuestId: null,
       business: false,
     } satisfies ResolvedTarget;
@@ -191,6 +208,7 @@ function targetWhere(t: ResolvedTarget) {
   if (t.data.commentId) return { commentId: t.data.commentId };
   if (t.data.photoId) return { photoId: t.data.photoId };
   if (t.data.messageId) return { messageId: t.data.messageId };
+  if (t.data.cityTopicId) return { cityTopicId: t.data.cityTopicId };
   // A report has exactly one target column (DB check `Report_one_target`).
   return { reportedUserId: t.data.reportedUserId };
 }
@@ -220,6 +238,7 @@ export async function listMyReports(userId: string): Promise<MyReport[]> {
       comment: { select: { body: true, status: true } },
       photo: { select: { status: true } },
       reportedUser: { select: { username: true, status: true } },
+      cityTopic: { select: { title: true, status: true } },
     },
   });
   return rows.map((r) => {
@@ -232,7 +251,9 @@ export async function listMyReports(userId: string): Promise<MyReport[]> {
           ? 'comment'
           : r.photo
             ? 'photo'
-            : 'user';
+            : r.cityTopic
+              ? 'topic'
+              : 'user';
     return {
       id: r.id,
       targetType,
@@ -240,11 +261,15 @@ export async function listMyReports(userId: string): Promise<MyReport[]> {
         ? r.photo.status === 'ACTIVE'
           ? '[photo]'
           : '[no longer visible]'
-        : content
-          ? preview(content.body, content.status)
-          : r.reportedUser && r.reportedUser.status !== 'DELETED'
-            ? r.reportedUser.username
-            : '[no longer visible]',
+        : r.cityTopic
+          ? r.cityTopic.status === 'REMOVED'
+            ? '[no longer visible]'
+            : r.cityTopic.title
+          : content
+            ? preview(content.body, content.status)
+            : r.reportedUser && r.reportedUser.status !== 'DELETED'
+              ? r.reportedUser.username
+              : '[no longer visible]',
       reason: r.reason,
       status: r.status,
       createdAt: r.createdAt.toISOString(),

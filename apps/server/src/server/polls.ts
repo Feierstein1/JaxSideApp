@@ -10,6 +10,7 @@ import {
   type PollStatus,
   type PollTopic,
   type PollView,
+  type SuggestPollRequest,
 } from '@jax/shared';
 import type { PollKind as DbPollKind, Prisma, User } from '@/generated/prisma/client';
 import { getConfig } from './config';
@@ -96,6 +97,23 @@ export async function finalizeDuePolls(now = new Date()): Promise<number> {
 }
 
 type Choice = { id: string; value: number | null };
+
+/**
+ * D133: an open poll's running totals (citywide only; the ZIP breakdown comes when it
+ * closes). Counted from the coded votes; nothing about who voted.
+ */
+async function liveResults(pollId: string, choices: Choice[]): Promise<PollResults> {
+  const [voters, picks] = await Promise.all([
+    db.pollVoter.count({ where: { pollId } }),
+    db.pollSelection.groupBy({ by: ['choiceId'], where: { pollId }, _count: { _all: true } }),
+  ]);
+  const tallies = picks.map((x) => ({ choiceId: x.choiceId, zip: '', count: x._count._all }));
+  return {
+    ...countsFor(choices, voters, tallies),
+    areas: [],
+    otherAreas: null,
+  };
+}
 type Tally = { choiceId: string; zip: string; count: number };
 type VoterTally = { zip: string; voters: number };
 
@@ -225,10 +243,14 @@ async function view(
     choices: p.choices,
     myChoiceIds,
     canVote: status === 'open' && ready && myChoiceIds.length === 0,
+    // D133: closed: everyone sees the final results (with ZIPs). Open: only people who
+    // voted, live and citywide (so seeing results never sways anyone who hasn't voted).
     results:
       status === 'closed' && p.finalizedAt
         ? buildResults(p.choices, p.tallies, p.voterTallies)
-        : null,
+        : status === 'open' && myChoiceIds.length
+          ? await liveResults(p.id, p.choices)
+          : null,
   };
 }
 
@@ -432,4 +454,59 @@ export async function endPollNow(id: string, now = new Date()) {
   const closesAt = new Date(Math.max(now.getTime(), p.opensAt.getTime() + 1));
   await db.poll.update({ where: { id }, data: { closesAt } });
   await finalizeDuePolls(now);
+}
+
+// ─────────────────────────────── Suggestions (D133) ───────────────────────────────
+
+/** A user suggests a poll question; it waits for the admin. */
+export async function suggestPoll(userId: string, input: SuggestPollRequest) {
+  const row = await db.pollSuggestion.create({
+    data: {
+      userId,
+      question: input.question,
+      details: input.details ?? null,
+      topic: input.topic,
+    },
+  });
+  return row.id;
+}
+
+/** Admin: suggestions waiting (oldest first), then the most recent decided ones. */
+export async function adminListPollSuggestions() {
+  const rows = await db.pollSuggestion.findMany({
+    orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
+    take: 100,
+    include: { user: { select: { id: true, username: true } } },
+  });
+  return rows.map((s) => ({
+    id: s.id,
+    question: s.question,
+    details: s.details,
+    topic: asTopic(s.topic),
+    status: s.status,
+    reason: s.decisionReason,
+    by: s.user,
+    createdAt: s.createdAt.toISOString(),
+  }));
+}
+
+/** Admin: mark a suggestion used (the admin writes the poll) or decline it with a reason. */
+export async function decidePollSuggestion(
+  id: string,
+  d: { action: 'use' } | { action: 'reject'; reason: string },
+  now = new Date(),
+) {
+  const claimed = await db.pollSuggestion.updateMany({
+    where: { id, status: 'WAITING' },
+    data:
+      d.action === 'use'
+        ? { status: 'USED', decidedAt: now }
+        : { status: 'REJECTED', decidedAt: now, decisionReason: d.reason },
+  });
+  if (claimed.count !== 1) {
+    const exists = await db.pollSuggestion.count({ where: { id } });
+    throw exists
+      ? new ApiError(409, 'ALREADY_DECIDED', 'Already decided')
+      : new ApiError(404, 'NOT_FOUND', 'Suggestion not found');
+  }
 }

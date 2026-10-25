@@ -14,7 +14,15 @@ export const adminLoginVerifySchema = z.strictObject({
 });
 
 /** P5.14: what an admin decides on a reported item. */
-export const CASE_TYPES = ['general', 'business', 'comment', 'photo', 'user', 'message'] as const;
+export const CASE_TYPES = [
+  'general',
+  'business',
+  'comment',
+  'photo',
+  'user',
+  'message',
+  'topic', // D133
+] as const;
 export const CASE_DECISIONS = ['remove', 'approve', 'dismiss', 'escalate'] as const;
 
 const reasonText = z.string().trim().min(3, 'Give a short reason').max(1000);

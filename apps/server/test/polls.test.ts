@@ -96,7 +96,7 @@ beforeEach(async () => {
 }, 60_000); // the county and ZIP outlines take a while to load
 
 describe('voting', () => {
-  it('one final vote; you see your own answer while open, but no totals', async () => {
+  it('one final vote; then your answer and (D133) the live totals', async () => {
     const me = await voter('poll_me');
     const r = await vote(me.token, pollId, [choices[1]!]);
     expect(r.status).toBe(200);
@@ -105,7 +105,7 @@ describe('voting', () => {
       kind: 'single',
       topic: 'transport',
       myChoiceIds: [choices[1]],
-      results: null,
+      results: { voters: 1, areas: [], otherAreas: null },
     });
     const again = await vote(me.token, pollId, [choices[0]!]);
     expect(again.status).toBe(409);
@@ -114,7 +114,7 @@ describe('voting', () => {
     expect(list.body.open[0]).toMatchObject({
       id: pollId,
       myChoiceIds: [choices[1]],
-      results: null,
+      results: { voters: 1 },
     });
   });
 

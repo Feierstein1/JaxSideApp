@@ -1,10 +1,34 @@
 import { NextResponse } from 'next/server';
-import { requireActor } from '@/server/auth/require-actor';
+import { createTopicSchema } from '@jax/shared';
+import { requireActor, requireUser } from '@/server/auth/require-actor';
+import { NO_USER } from '@/server/discussions/comments';
 import { route } from '@/server/http';
-import { listTopics } from '@/server/topics';
+import { assertLocationEligible, coarsenPoint } from '@/server/location/eligibility';
+import { enforce } from '@/server/rate-limit';
+import { createUserTopic, getTopic, listTopics } from '@/server/topics';
+import { parseBody } from '@/server/validate';
 
-/** D125: open citywide topics (pinned first) and closed ones. Accounts and guests. */
+/** D125: open city topics (pinned first) and closed ones. Accounts and guests. */
 export const GET = route(async (req) => {
-  await requireActor(req);
-  return NextResponse.json(await listTopics());
+  const actor = await requireActor(req);
+  return NextResponse.json(await listTopics(actor.kind === 'user' ? actor.user.id : NO_USER));
+});
+
+/**
+ * D133: create a topic: city (anywhere in Duval) or local (placed at your coarsened
+ * location; seen and posted in within half a mile). Confirmed accounts; screened like posts.
+ */
+export const POST = route(async (req) => {
+  const { user } = await requireUser(req, { requireVerifiedEmail: true });
+  const input = await parseBody(req, createTopicSchema);
+  await enforce([
+    {
+      key: `topic-create:user:${user.id}`,
+      limitKey: 'rateLimit.topicCreate.perDay',
+      windowSeconds: 86_400,
+    },
+  ]);
+  const at = await assertLocationEligible({ kind: 'user', user }, input.reading, 'general.post');
+  const id = await createUserTopic(user.id, input, coarsenPoint(at));
+  return NextResponse.json({ topic: await getTopic(id, user.id) }, { status: 201 });
 });

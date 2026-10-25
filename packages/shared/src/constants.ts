@@ -213,6 +213,12 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.pollVote.perMinute': 10,
   /** D125: citywide topic suggestions per person per day. */
   'rateLimit.topicSuggest.perDay': 3,
+  /** D133: local topics are seen and posted in within this distance of where they were made. */
+  'topics.localRadiusMiles': 0.5,
+  /** D133: new topics per person per day, follows per minute, poll suggestions per day. */
+  'rateLimit.topicCreate.perDay': 5,
+  'rateLimit.topicFollow.perMinute': 30,
+  'rateLimit.pollSuggest.perDay': 3,
   'rateLimit.placeRemoval.perDay': 5,
   /** Places within this distance with a similar name are shown as possible duplicates. */
   'submission.duplicateRadiusMeters': 300,

@@ -67,7 +67,10 @@ export interface GeoPoint {
  * - general.read / general.post: no target; inside the service area is enough
  */
 export type LocationTarget =
-  { kind: 'general'; point: GeoPoint } | { kind: 'business'; point: GeoPoint };
+  | { kind: 'general'; point: GeoPoint }
+  | { kind: 'business'; point: GeoPoint }
+  /** D133: a local topic: within topics.localRadiusMiles of where it was made. */
+  | { kind: 'topic'; point: GeoPoint };
 
 export interface EligibilityResult {
   latitude: number;
@@ -204,7 +207,11 @@ async function check(
   // 7. Within the radius of the post or place.
   if (target) {
     const miles = await getConfig(
-      target.kind === 'business' ? 'radius.business.maxMiles' : 'radius.general.maxMiles',
+      target.kind === 'business'
+        ? 'radius.business.maxMiles'
+        : target.kind === 'topic'
+          ? 'topics.localRadiusMiles'
+          : 'radius.general.maxMiles',
     );
     const maxMeters = milesToMeters(miles);
     const rows = await db.$queryRaw<{ within: boolean }[]>`
@@ -218,7 +225,9 @@ async function check(
         'LOCATION_TOO_FAR',
         target.kind === 'business'
           ? `Get within ${yardsLabel(miles)} of this place to join its discussion.`
-          : `Get within ${yardsLabel(miles)} of this post to take part.`,
+          : target.kind === 'topic'
+            ? `This topic is for people within ${yardsLabel(miles)} of where it started.`
+            : `Get within ${yardsLabel(miles)} of this post to take part.`,
         { maxMiles: miles },
       );
     }
