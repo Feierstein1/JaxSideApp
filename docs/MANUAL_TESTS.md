@@ -439,6 +439,17 @@ checks. Tick each box when it looks right; note anything odd next to it.
       term (e.g. "coon hound") is held for review; ordinary swearing posts fine.
 - [ ] Admin **Screening** page: test a sentence, add a term, change its action, turn it off.
 
+### SDK 58 (D136, D137, P15.11)
+
+- [ ] Expo Go on SDK 58 opens the app; Home, Places, Topics, Friends and Account all work.
+- [ ] The top-bar **Messages** button opens Messages and the **bell** opens Notifications
+      (from every tab, not sent to Home); back returns to where you were. A friend's
+      **Message** button opens the chat.
+- [ ] New post: **Text & photos** is a larger option on its own line (picked by default),
+      **Voice** and **Video** side by side under it; only one is highlighted at a time and
+      every label fits.
+- [ ] Places map still loads and its pins open.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

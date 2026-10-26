@@ -96,7 +96,7 @@ function watchAppState() {
   if (state === 'active') void startWatch();
   AppState.addEventListener('change', (next) => {
     if (next === 'active') {
-      if (state.match(/inactive|background/)) void checkMoved();
+      if (state?.match(/inactive|background/)) void checkMoved();
       void startWatch();
     } else {
       stopWatch();

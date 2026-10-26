@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { WebView as RNWebView, type WebViewMessageEvent } from 'react-native-webview';
 import { router } from 'expo-router';
 import { categoryGroup, DARK, type PlaceSummary } from '@jax/shared';
 import { API_BASE_URL, api } from '@/api';
 import { remoteLog } from '@/debug/remote-log';
 import { Text } from '@/text';
 import { SPACE, TYPE } from '@/tokens';
+
+// react-native-webview 14 types default the props generic to `undefined`, which turns
+// every prop into `never`; pin it to "no extra props".
+const WebView = RNWebView<object>;
 
 /**
  * D99: the Places map. A free MapLibre map of Duval (Protomaps / OpenStreetMap tiles from
@@ -25,7 +29,7 @@ export function PlacesMap({
   const [pageUrl, setPageUrl] = useState<string | null>();
   const [error, setError] = useState<string>();
   const [ready, setReady] = useState(false);
-  const web = useRef<WebView>(null);
+  const web = useRef<InstanceType<typeof WebView>>(null);
   const fitted = useRef(false);
 
   useEffect(() => {

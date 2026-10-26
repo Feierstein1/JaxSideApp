@@ -57,6 +57,15 @@ periods, so the first months may cost less. Check the current offers when you si
 **Monthly total to plan for: about $30–35 on AWS + about $8 for Apple (yearly fee spread out)**,
 plus $25 once for Google and ~$15/year for the domain.
 
+## Chosen start (D135, 2026-10-26)
+
+Budget approved up to $30–35/month, lower preferred, a few hundred people expected at first.
+So we **start on one Lightsail server** (2 GB, ~$12): the API and Postgres + PostGIS in
+Docker, photos in S3, email via SES, secrets in Parameter Store, a **nightly encrypted
+database dump to S3** and weekly snapshots, about **$15–20/month**. The database moves to RDS
+(the table above) when the app passes about 1,000 people, the server gets slow, or before the
+store launch if managed backups are wanted by then. No code changes either way.
+
 ## Cheaper or bigger alternatives
 
 - **All on one Lightsail server (~$12–24/mo):** Postgres + PostGIS in Docker on the same machine.

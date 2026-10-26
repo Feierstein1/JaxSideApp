@@ -124,7 +124,7 @@ export function PostList({
               <PostSkeleton />
               <PostSkeleton />
             </View>
-          ) : null
+          ) : undefined
         }
         ListFooterComponent={
           state === 'more' ? (
@@ -147,7 +147,7 @@ export function PostList({
               <Ionicons name="checkmark-circle-outline" size={22} color={DARK.textMuted} />
               <Text style={{ color: DARK.textMuted, fontWeight: '600' }}>You’re all caught up</Text>
             </View>
-          ) : null
+          ) : undefined
         }
 
         refreshControl={

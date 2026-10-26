@@ -116,7 +116,7 @@ export default function FriendsFeed() {
           }
           ListEmptyComponent={
             !items ? (
-              error ? null : (
+              error ? undefined : (
                 <View style={{ paddingTop: SPACE.md }}>
                   <ActivitySkeleton />
                   <ActivitySkeleton />
@@ -147,7 +147,7 @@ export default function FriendsFeed() {
           ListFooterComponent={
             loading && items?.length ? (
               <ActivityIndicator style={{ margin: 16 }} color={DARK.accent} />
-            ) : null
+            ) : undefined
           }
           renderItem={({ item }) => <ActivityRow item={item} />}
         />

@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type ComponentProps,
+  type ComponentRef,
   type ReactNode,
 } from 'react';
 import {
@@ -215,7 +216,7 @@ export function KeyboardSafeView({
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
-  const ref = useRef<View>(null);
+  const ref = useRef<ComponentRef<typeof View>>(null);
   const [inset, setInset] = useState(0);
   useEffect(() => {
     const ios = Platform.OS === 'ios';

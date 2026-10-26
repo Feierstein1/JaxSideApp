@@ -224,7 +224,7 @@ export default function PlacesScreen() {
                   onPress: () => router.push('/places/suggest'),
                 }}
               />
-            ) : null
+            ) : undefined
           }
           ListFooterComponent={
             <>

@@ -56,7 +56,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#000000"
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "backgroundColor": "#1E1F22"
   }
