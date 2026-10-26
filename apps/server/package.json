@@ -30,6 +30,7 @@
     "import:places": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/directory/import-osm.ts",
     "fetch:neighborhoods": "tsx scripts/neighborhoods/fetch-neighborhoods.ts",
     "demo:data": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/dev/demo-data.ts",
+    "demo:moderation": "tsx --env-file=../../.env --tsconfig tsconfig.json scripts/dev/moderation-cases.ts",
     "fetch:map": "tsx --tsconfig tsconfig.json scripts/map/fetch-map.ts"
   },
   "dependencies": {
