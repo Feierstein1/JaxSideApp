@@ -30,7 +30,6 @@ export const social = {
     );
   },
   notifications: () => api.get<{ notifications: NotificationView[] }>('/api/v1/notifications'),
-  unread: () => api.get<{ unread: number }>('/api/v1/notifications/unread'),
   markRead: () => api.post('/api/v1/notifications/read', {}),
   friendsFavorited: (placeId: string) =>
     api.get<{ friends: FriendUser[] }>(`/api/v1/places/${placeId}/friends-favorited`),
