@@ -71,7 +71,7 @@ export default function Messages() {
             title="No chats yet"
             body="Message a friend from their profile or from Friends → Your friends."
           />
-        ) : null
+        ) : undefined
       }
       renderItem={({ item }) => (
         <Pressable

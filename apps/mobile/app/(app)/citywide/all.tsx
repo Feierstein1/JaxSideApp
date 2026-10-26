@@ -174,7 +174,7 @@ export default function AllTopicsScreen() {
                 onPress={() => void loadMore()}
                 busy={loadingMore}
               />
-            ) : null
+            ) : undefined
           }
         />
       ) : null}

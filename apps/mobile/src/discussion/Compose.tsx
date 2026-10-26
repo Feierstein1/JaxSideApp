@@ -8,14 +8,15 @@ import { useAuth } from '@/auth/AuthContext';
 import { haptic } from '@/motion';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
-import { Banner, FormError, Segmented, KeyboardSafeView } from '@/ui';
+import { DecoBox } from '@/deco';
+import { Banner, FormError, KeyboardSafeView, type IconName } from '@/ui';
 import { createPost, markFeedsDirty, type PostTarget } from './api';
 import { pickPhoto, uploadPhoto, type Uploaded } from './photos';
 import { sendScreened } from './screening';
 import { VideoPlayer } from './VideoPlayer';
 import { pickVideo, uploadVideo, VIDEO_MAX_SECONDS, type UploadedVideo } from './videos';
 import { VoiceRecorder, type UploadedVoice } from './VoiceRecorder';
-import { Text, TextInput } from '@/text';
+import { FONT, Text, TextInput } from '@/text';
 import { showAlert } from '@/dialog';
 import { ensureGuide, reviewGuide } from '@/guides/guide';
 
@@ -297,17 +298,7 @@ export function Compose({ target, placeName }: { target: PostTarget; placeName?:
         </View>
 
         {/* D80: pick the kind of post first. */}
-        <Segmented
-          stretch
-          small
-          options={[
-            { key: 'text', label: 'Text & photos', icon: 'create-outline' },
-            { key: 'voice', label: 'Voice', icon: 'mic-outline' },
-            { key: 'video', label: 'Video', icon: 'videocam-outline' },
-          ]}
-          value={mode}
-          onChange={(m) => setMode(m as Mode)}
-        />
+        <PostKindPicker value={mode} onChange={setMode} />
 
         {mode === 'text' ? (
           <>
@@ -517,5 +508,71 @@ export function Compose({ target, placeName }: { target: PostTarget; placeName?:
         </Pressable>
       </ScrollView>
     </KeyboardSafeView>
+  );
+}
+
+/**
+ * D136: the kind of post. Text & photos (the default) is the big option on its own line;
+ * Voice and Video sit side by side under it. One is picked at a time.
+ */
+function PostKindPicker({ value, onChange }: { value: Mode; onChange: (m: Mode) => void }) {
+  const option = (key: Mode, label: string, icon: IconName, big = false) => {
+    const active = key === value;
+    const fg = active ? DARK.onAccent : DARK.textMuted;
+    return (
+      <Pressable
+        key={key}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: active }}
+        onPress={() => {
+          if (!active) haptic.select();
+          onChange(key);
+        }}
+        style={{ flex: 1 }}
+      >
+        <DecoBox
+          shape="arrow"
+          cut={10}
+          fill={active ? DARK.accent : 'transparent'}
+          style={{
+            minHeight: big ? 44 : 36,
+            paddingHorizontal: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'row',
+            gap: 6,
+          }}
+        >
+          <Ionicons name={icon} size={big ? 17 : 14} color={fg} />
+          <Text
+            numberOfLines={1}
+            style={{
+              color: fg,
+              fontFamily: FONT.deco,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+              fontSize: big ? 14 : 12,
+            }}
+          >
+            {label}
+          </Text>
+        </DecoBox>
+      </Pressable>
+    );
+  };
+  return (
+    <DecoBox
+      accessibilityRole="tablist"
+      shape="arrow"
+      cut={12}
+      fill={DARK.raised}
+      style={{ padding: 4, paddingHorizontal: 8, gap: 2 }}
+    >
+      {option('text', 'Text & photos', 'create-outline', true)}
+      <View style={{ flexDirection: 'row', gap: 2 }}>
+        {option('voice', 'Voice', 'mic-outline')}
+        {option('video', 'Video', 'videocam-outline')}
+      </View>
+    </DecoBox>
   );
 }

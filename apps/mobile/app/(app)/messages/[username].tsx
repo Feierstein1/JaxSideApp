@@ -198,7 +198,7 @@ export default function Chat() {
               >
                 Say hi to {username}. Only the two of you see this chat.
               </Text>
-            ) : null
+            ) : undefined
           }
           renderItem={({ item }) => <Bubble m={item} onLongPress={() => actions(item)} />}
         />

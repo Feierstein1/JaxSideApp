@@ -29,12 +29,23 @@ function tabIcon(name: string) {
           backgroundColor: focused ? DARK.raised : 'transparent',
         }}
       >
-        <Ionicons name={(focused ? name : `${name}-outline`) as IconName} color={color} size={21} />
+        <Ionicons
+          name={(focused ? name : `${name}-outline`) as IconName}
+          color={color as string}
+          size={21}
+        />
       </View>
     );
   }
   return TabIcon;
 }
+
+/**
+ * Screens opened from the top bar (Messages, the bell), not from a tab. They stay declared as
+ * tabs but with no tab button: expo-router redirects away from `href: null` tabs to the first
+ * tab, which sent these to Home.
+ */
+const noTabButton = { tabBarButton: () => null, tabBarItemStyle: { display: 'none' as const } };
 
 /**
  * Signed-in area. Location-based screens need foreground permission (D16); until it's
@@ -126,13 +137,13 @@ export default function AppLayout() {
       {/* D98: opened from the Messages button, not a tab. */}
       <Tabs.Screen
         name="messages"
-        options={{ href: null, headerShown: false, title: 'Messages' }}
+        options={{ ...noTabButton, headerShown: false, title: 'Messages' }}
       />
       {/* D76: opened from the bell, not a tab. */}
       <Tabs.Screen
         name="notifications"
         options={{
-          href: null,
+          ...noTabButton,
           title: 'Notifications',
           // D79: a hidden tab has no stack, so it gets the app header and its own back arrow.
           ...headerOptions,
