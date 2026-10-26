@@ -66,6 +66,9 @@ database dump to S3** and weekly snapshots, about **$15–20/month**. The databa
 (the table above) when the app passes about 1,000 people, the server gets slow, or before the
 store launch if managed backups are wanted by then. No code changes either way.
 
+**Domain:** jaxside.com is registered at **GoDaddy** and its DNS stays there (records for the
+server and for SES email are added in GoDaddy), so no Route 53 hosted zone is needed.
+
 ## Cheaper or bigger alternatives
 
 - **All on one Lightsail server (~$12–24/mo):** Postgres + PostGIS in Docker on the same machine.

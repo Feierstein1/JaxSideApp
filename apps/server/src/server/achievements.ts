@@ -114,6 +114,8 @@ export async function evaluateAchievements(
   now = new Date(),
   userId?: string,
   client: Prisma.TransactionClient = db,
+  /** P15.12: only the rules of these types (what one upvote can change); default all. */
+  types?: string[],
 ): Promise<number> {
   const defs = await client.achievement.findMany({ where: { active: true } });
   const onlyUser = userId ? Prisma.sql`AND u.id = ${userId}::uuid` : Prisma.empty;
@@ -121,6 +123,7 @@ export async function evaluateAchievements(
   for (const def of defs) {
     const c = def.criteria as Criteria;
     if (!KNOWN_TYPES.has(c?.type)) continue; // an unknown or empty rule awards nothing
+    if (types && !types.includes(c.type)) continue;
     const tiers = tiersOf(c);
     changed += await client.$executeRaw`
       INSERT INTO "UserAchievement" ("userId", "achievementId", "awardedAt", tier, "tierAt")
@@ -142,7 +145,13 @@ export async function evaluateForPostAuthor(kind: 'general' | 'business', postId
     kind === 'general'
       ? await db.generalPost.findUnique({ where: { id: postId }, select: { authorId: true } })
       : await db.businessPost.findUnique({ where: { id: postId }, select: { authorId: true } });
-  if (post) await evaluateAchievements(new Date(), post.authorId);
+  // P15.12: only the medals an upvote can move (each rule is a query; votes are the busiest write).
+  if (post) {
+    await evaluateAchievements(new Date(), post.authorId, db, [
+      'net_positive_distinct_posts',
+      'zip_areas_with_good_posts',
+    ]);
+  }
 }
 
 /** After an upvote on a comment: its author may now qualify for Helpful Commenter. */
@@ -151,7 +160,9 @@ export async function evaluateForCommentAuthor(commentId: string) {
     where: { id: commentId },
     select: { authorUserId: true },
   });
-  if (c?.authorUserId) await evaluateAchievements(new Date(), c.authorUserId);
+  if (c?.authorUserId) {
+    await evaluateAchievements(new Date(), c.authorUserId, db, ['helpful_comments']);
+  }
 }
 
 /** P6.9 / D122: a person's medals for their profile, with the level and what's next. */
