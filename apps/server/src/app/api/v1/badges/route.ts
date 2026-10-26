@@ -15,9 +15,6 @@ export const dynamic = 'force-dynamic';
 export const GET = route(async (req) => {
   const { user } = await requireUser(req);
   await notificationLimit(user.id);
-  const [messages, notifications] = await Promise.all([
-    unreadChats(user.id),
-    unreadCount(user.id),
-  ]);
+  const [messages, notifications] = await Promise.all([unreadChats(user.id), unreadCount(user.id)]);
   return NextResponse.json({ messages, notifications });
 });
