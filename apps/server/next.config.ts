@@ -22,6 +22,12 @@ function lanAddresses(): string[] {
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: lanAddresses(),
+  experimental: {
+    // Dev only: Next's built-in MCP endpoint copies browser console output into
+    // .next/dev/logs, and on Windows the dev watcher picks that file up as a change, so an
+    // open page reloaded itself in a loop (the admin portal). We don't use the endpoint.
+    mcpServer: false,
+  },
   transpilePackages: ['@jax/shared'],
   serverExternalPackages: ['pino'],
   poweredByHeader: false,
