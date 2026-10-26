@@ -49,7 +49,7 @@ const RUN = Date.now().toString(36).slice(-4);
 /**
  * A busy day, per active person. Reads follow how the app is used: the feed on open and on
  * refresh, a few posts opened, photos loading as they scroll, and the Messages and bell
- * badges checked every 30 s while the app is open (about 20 minutes a day).
+ * badges checked every 30 s while the app is open (about 20 minutes a day; one request, Q26).
  */
 const PER_PERSON: Record<Action, number> = {
   feed: 12,
@@ -58,8 +58,7 @@ const PER_PERSON: Record<Action, number> = {
   topicList: 2,
   topicPosts: 2,
   pollList: 1,
-  unreadMessages: 40,
-  unreadNotifications: 40,
+  badges: 40,
   notifications: 2,
   chats: 1,
   photoDownload: 20,
@@ -83,8 +82,7 @@ type Action =
   | 'topicList'
   | 'topicPosts'
   | 'pollList'
-  | 'unreadMessages'
-  | 'unreadNotifications'
+  | 'badges'
   | 'notifications'
   | 'chats'
   | 'photoDownload'
@@ -116,7 +114,7 @@ const WRITES = new Set<Action>([
 const QUIET_ACTIONS: Action[] = [
   'feed',
   'openPost',
-  'unreadMessages',
+  'badges',
   'photoDownload',
   'topicList',
   'votePost',
@@ -302,8 +300,7 @@ const ACTIONS: Record<Action, (p: Person) => Promise<unknown>> = {
       : ACTIONS.topicList(p);
   },
   pollList: (p) => call('pollList', p, 'GET', '/api/v1/polls'),
-  unreadMessages: (p) => call('unreadMessages', p, 'GET', '/api/v1/messages/unread'),
-  unreadNotifications: (p) => call('unreadNotifications', p, 'GET', '/api/v1/notifications/unread'),
+  badges: (p) => call('badges', p, 'GET', '/api/v1/badges'),
   notifications: (p) => call('notifications', p, 'GET', '/api/v1/notifications'),
   chats: (p) => call('chats', p, 'GET', '/api/v1/messages'),
   photoDownload: (p) => {

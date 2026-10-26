@@ -5,7 +5,6 @@ import { getFreshReading } from '@/location/device';
 /** D98: private messages (mutual friends only). */
 export const messagesApi = {
   list: () => api.get<{ conversations: ConversationSummary[] }>('/api/v1/messages'),
-  unread: () => api.get<{ unread: number }>('/api/v1/messages/unread'),
   chat: (username: string, before?: string) =>
     api.get<{
       with: FriendUser;
