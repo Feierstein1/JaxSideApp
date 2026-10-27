@@ -58,7 +58,10 @@ function RootStack() {
   const signedIn = state.status === 'signedIn' || state.status === 'guest';
   return (
     <Stack screenOptions={{ contentStyle: { backgroundColor: DARK.page } }}>
-      <Stack.Protected guard={signedIn}>
+      {/* D137: expo-router 58 redirects a blocked route to the navigator's first open group,
+          and (auth) has no index of its own, so a signed-out start landed on "/" (Unmatched
+          Route). Send signed-out people to sign-in explicitly. */}
+      <Stack.Protected guard={signedIn} redirectTo="/sign-in">
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>
