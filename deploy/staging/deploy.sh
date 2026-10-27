@@ -33,6 +33,10 @@ $SSH bash -s <<'REMOTE'
 set -euo pipefail
 cd /opt/jaxside
 test -f .env || { echo "No /opt/jaxside/.env (run with --env)"; exit 1; }
+# The Places map's tiles aren't in git (41 MB); upload once:
+#   scp -i ~/.ssh/jaxside-staging.pem apps/server/data/map/duval.pmtiles ubuntu@<ip>:/opt/jaxside/data/map/
+mkdir -p data/map
+test -f data/map/duval.pmtiles || echo "WARNING: no data/map/duval.pmtiles: the Places map won't load"
 rm -rf src.old && { [ -d src ] && mv src src.old || true; } && mv src.new src
 docker compose build app
 docker compose up -d postgres
