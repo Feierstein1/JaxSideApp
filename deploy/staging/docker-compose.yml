@@ -1,0 +1,78 @@
+# JaxSide staging server (D139): Postgres + PostGIS, the API, and Caddy for HTTPS, on one
+# Lightsail box. Lives in /opt/jaxside with the settings in /opt/jaxside/.env (never in git)
+# and the source in /opt/jaxside/src (sent by deploy.sh). Nothing but Caddy is reachable
+# from outside: the database and the API only listen on the internal network.
+name: jaxside
+
+services:
+  postgres:
+    image: postgis/postgis:17-3.5
+    env_file: .env
+    command:
+      # Sized for a 2 GB server shared with the API (docs/PRODUCTION_DATABASE.md).
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - max_connections=50
+      - -c
+      - statement_timeout=30s
+      - -c
+      - idle_in_transaction_session_timeout=60s
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  app:
+    build:
+      context: ./src
+      dockerfile: apps/server/Dockerfile
+    image: jaxside-server:latest
+    env_file: .env
+    volumes:
+      # The server, migrations, seed and jobs all read the settings from the repo root.
+      - ./.env:/app/.env:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.10
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

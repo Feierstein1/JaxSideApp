@@ -1,0 +1,49 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Sid": "WhoAmI", "Effect": "Allow", "Action": "sts:GetCallerIdentity", "Resource": "*" },
+    { "Sid": "Server", "Effect": "Allow", "Action": "lightsail:*", "Resource": "*" },
+    {
+      "Sid": "ListBuckets",
+      "Effect": "Allow",
+      "Action": ["s3:ListAllMyBuckets", "s3:GetBucketLocation"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "JaxSideBuckets",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": ["arn:aws:s3:::jaxside-*", "arn:aws:s3:::jaxside-*/*"]
+    },
+    { "Sid": "Email", "Effect": "Allow", "Action": "ses:*", "Resource": "*" },
+    {
+      "Sid": "AppStorageUser",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateUser",
+        "iam:GetUser",
+        "iam:TagUser",
+        "iam:PutUserPolicy",
+        "iam:GetUserPolicy",
+        "iam:CreateAccessKey",
+        "iam:ListAccessKeys",
+        "iam:DeleteAccessKey"
+      ],
+      "Resource": "arn:aws:iam::*:user/jaxside/*"
+    },
+    {
+      "Sid": "SecretsBackup",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:PutParameter",
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath",
+        "ssm:DeleteParameter",
+        "ssm:AddTagsToResource"
+      ],
+      "Resource": "arn:aws:ssm:us-east-1:*:parameter/jaxside/*"
+    },
+    { "Sid": "SeeBudget", "Effect": "Allow", "Action": "budgets:ViewBudget", "Resource": "*" }
+  ]
+}

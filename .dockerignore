@@ -1,0 +1,15 @@
+# Build context for apps/server/Dockerfile (D139). Secrets and local data never go in.
+**/node_modules
+**/.next
+.git
+.env
+.env.*
+!.env.example
+**/*.log
+**/.vitest-cache
+coverage
+docs
+deploy/staging/secrets
+# The phone app isn't part of the server image; npm needs its package.json for the lockfile.
+apps/mobile
+!apps/mobile/package.json

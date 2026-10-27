@@ -66,6 +66,9 @@ export const envSchema = z
     SMTP_HOST: z.string().min(1),
     SMTP_PORT: z.coerce.number().int().positive(),
     SMTP_FROM: z.string().min(3),
+    /** D139: login for a hosted mail service (Amazon SES). Unset for Mailpit in dev. */
+    SMTP_USER: z.string().min(1).optional(),
+    SMTP_PASS: secret(16).optional(),
     /** D90: optional inbox that gets a copy of each Contact us message. */
     SUPPORT_INBOX: z.string().email().optional(),
   })

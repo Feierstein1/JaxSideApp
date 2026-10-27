@@ -50,3 +50,6 @@ apps/server/data/osm/
 
 # D99: the Duval map tiles (downloaded by npm run fetch:map, ~41 MB)
 apps/server/data/map/
+
+# D139: staging secrets (server settings, keys); never committed
+deploy/staging/secrets/

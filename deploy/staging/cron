@@ -1,0 +1,9 @@
+# D139: JaxSide staging jobs (installed to /etc/cron.d/jaxside by deploy.sh). Times are Eastern.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Database backup to S3, 3:15 am.
+15 3 * * * ubuntu /opt/jaxside/backup.sh >> /opt/jaxside/backup.log 2>&1
+# Maintenance (retention, medals, partitions, suspensions…), 4 am (docs/OPERATIONS.md §4).
+0 4 * * * ubuntu cd /opt/jaxside && docker compose exec -T app npm run jobs:maintenance >> /opt/jaxside/jobs.log 2>&1
+# Expired rate-limit counters, every 10 minutes (P13.3).
+*/10 * * * * ubuntu cd /opt/jaxside && docker compose exec -T app npm run jobs:counters >> /opt/jaxside/jobs.log 2>&1

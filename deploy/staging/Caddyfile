@@ -1,0 +1,17 @@
+# D139: HTTPS for the staging API. Caddy gets and renews the certificate itself.
+staging-api.jaxside.com {
+	encode zstd gzip
+	# Videos are up to 25 MB (video.maxUploadMB); leave a little room.
+	request_body {
+		max_size 30MB
+	}
+	# The admin portal stays off the internet (D62); it's also a 404 in the app.
+	@admin path /admin /admin/* /api/v1/admin/*
+	respond @admin 404
+	reverse_proxy app:3000 {
+		# The app trusts the first X-Forwarded-For address (TRUST_PROXY), so replace whatever
+		# the client sent with the address Caddy actually saw.
+		header_up X-Forwarded-For {remote_host}
+	}
+	# No access log: email links carry one-time tokens in their URLs.
+}
