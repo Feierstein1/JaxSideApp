@@ -15,13 +15,18 @@ export interface Mailer {
   send(mail: OutgoingMail): Promise<void>;
 }
 
-/** SMTP mailer. In development this is Mailpit (Q6); a production provider is still open. */
+/**
+ * SMTP mailer: Mailpit in development (Q6); Amazon SES on staging (D139), which needs a
+ * login and an encrypted connection (STARTTLS on port 587).
+ */
 function smtpMailer(): Mailer {
   const env = getEnv();
+  const login = env.SMTP_USER && env.SMTP_PASS;
   const transport = nodemailer.createTransport({
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
     secure: false,
+    ...(login ? { auth: { user: env.SMTP_USER, pass: env.SMTP_PASS }, requireTLS: true } : {}),
   });
   return {
     async send(mail) {

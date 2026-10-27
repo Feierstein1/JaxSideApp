@@ -59,6 +59,12 @@
       ],
       "expo-status-bar"
     ],
-    "backgroundColor": "#1E1F22"
+    "backgroundColor": "#1E1F22",
+    "extra": {
+      "eas": {
+        "projectId": "deeb8830-0fa8-4998-b4c2-ca703c18913a"
+      }
+    },
+    "owner": "kenfeier"
   }
 }
