@@ -216,8 +216,8 @@ async function main() {
   });
   await report(reps[1]!, { type: 'message', id: msg.id }, 'HARASSMENT');
 
-  // 7. A spam topic.
-  const topic = await createUserTopic(
+  // 7. A spam topic: the spam phrases (D142) hold it for review by themselves.
+  const { held } = await createUserTopic(
     spammer.id,
     {
       reading: { ...DOWNTOWN, accuracyMeters: 10, timestamp: Date.now() },
@@ -229,7 +229,7 @@ async function main() {
     },
     DOWNTOWN,
   );
-  await report(reps[2]!, { type: 'topic', id: topic }, 'SCAM');
+  if (!held) throw new Error('Expected the spam topic to be held by screening');
 
   // 8. A profile pretending to be the Sheriff's Office (username and bio).
   await report(
@@ -273,7 +273,7 @@ async function main() {
 
   console.log(`Moderation cases ready (place: ${place.name}).`);
   console.log(
-    'Reports queue: 8 cases (area post ×2, place post, comment, photo, message, topic, profile)',
+    'Reports queue: 8 cases (area post ×2, place post, comment, photo, message, topic held by screening, profile)',
   );
   console.log('Held for review: 1 post · Appeals: 1 · Suspended: mod_suspended');
   console.log(`Every mod_ account's password: ${PASSWORD}`);

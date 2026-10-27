@@ -143,6 +143,9 @@ model User {
   /// argon2id hash. Never in any response.
   passwordHash       String
   role               Role          @default(USER)
+  /// D141: shows ADMIN under the name on posts, comments and the profile. Set in the admin
+  /// portal; it gives no admin access (that's `role`, set only by the promote command).
+  staffBadge         Boolean       @default(false)
   status             AccountStatus @default(ACTIVE)
   suspendedUntil     DateTime?     @db.Timestamptz(3)
   deletedAt          DateTime?     @db.Timestamptz(3)

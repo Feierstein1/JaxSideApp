@@ -13,6 +13,7 @@ import { getFreshReading } from '@/location/device';
 import { ReportSheet } from '@/report/ReportSheet';
 import { social } from '@/social/api';
 import { refreshUnread } from '@/social/unread';
+import { AdminTag } from './AdminTag';
 import { MedalIcons, MedalList } from './Medals';
 import { ProfileAvatar } from './ProfileAvatar';
 
@@ -270,6 +271,7 @@ export function ProfileScreen({
               >
                 {profile.username}
               </Text>
+              {profile.admin ? <AdminTag /> : null}
               {profile.medals.length ? <MedalIcons medals={profile.medals} size={18} /> : null}
             </View>
           </View>

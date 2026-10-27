@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { contrastRatio, DARK, profileColor, type PostView } from '@jax/shared';
 import { formatDistance, postTime } from '@/format';
+import { AdminTag } from '@/profile/AdminTag';
 import { MedalIcons } from '@/profile/Medals';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { Text } from '@/text';
@@ -31,6 +32,8 @@ export function openAuthor(a: AnyAuthor) {
 const CLAMP = 8;
 /** D79: a post this well received gets a small "Popular" tag. */
 const POPULAR = 10;
+/** D140: posts from the last 24 hours get a NEW tag in the top-right corner. */
+const NEW_FOR_MS = 24 * 3_600_000;
 
 /**
  * A post (D69, D79): a dark card with a thick stripe down the left in the author's
@@ -66,6 +69,7 @@ export function PostCard({
   const [clamped, setClamped] = useState(false);
   const faint = contrastRatio(color.hex, DARK.card) < 2;
   const isUser = 'username' in author;
+  const isNew = Date.now() - Date.parse(post.createdAt) < NEW_FOR_MS;
   const meta = [
     postTime(post.createdAt),
     post.distanceMeters !== null ? formatDistance(post.distanceMeters) : null,
@@ -85,6 +89,35 @@ export function PostCard({
       {({ pressed }) => (
         // D127: the top corners clipped like the icon's stepped frame.
         <DecoBox shape="chamferTop" cut={14} fill={pressed ? DARK.raised : DARK.card}>
+          {isNew ? (
+            // D140: just inside the clipped top-right corner, above the name row.
+            <View
+              accessible
+              accessibilityLabel="New, posted in the last day"
+              style={{
+                position: 'absolute',
+                top: 3,
+                right: 18,
+                paddingHorizontal: 6,
+                height: 15,
+                borderRadius: 3,
+                justifyContent: 'center',
+                backgroundColor: DARK.accent,
+                zIndex: 1,
+              }}
+            >
+              <Text
+                style={{
+                  color: DARK.onAccent,
+                  fontSize: 9.5,
+                  fontWeight: '800',
+                  letterSpacing: 1,
+                }}
+              >
+                NEW
+              </Text>
+            </View>
+          ) : null}
           {/* The author's color as a stripe down the left edge (below the clipped corner). */}
           <View
             style={{
@@ -157,6 +190,7 @@ export function PostCard({
                     </View>
                   ) : null}
                 </View>
+                {'admin' in author && author.admin ? <AdminTag /> : null}
                 <Text
                   style={{ color: DARK.textMuted, fontSize: 13, fontWeight: '500', marginTop: 1 }}
                 >

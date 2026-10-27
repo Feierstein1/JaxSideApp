@@ -1,7 +1,7 @@
 import { uuidParam } from '@/server/admin/params';
 import { getUserRecord } from '@/server/admin/users';
 import { ui } from '../../../admin-ui';
-import { UserActions, VoidStrike } from '../../../forms';
+import { StaffBadge, UserActions, VoidStrike } from '../../../forms';
 import { requireAdminPage } from '../../../require-admin-page';
 import { Pill, Table, td, when, words } from '../../admin-table';
 
@@ -26,6 +26,7 @@ export default async function UserPage(ctx: { params: Promise<{ id: string }> })
           <Pill tone={u.status === 'ACTIVE' ? 'ok' : 'alert'}>{words(u.status)}</Pill>
           {u.suspendedUntil ? `until ${when(u.suspendedUntil)} · ` : ''}
           {u.role === 'ADMIN' ? <Pill>admin</Pill> : null}
+          {u.staffBadge ? <Pill>ADMIN badge</Pill> : null}
           {u.legalHold ? <Pill tone="alert">legal hold</Pill> : null}
           joined {when(u.joinedAt)} · email {u.emailVerified ? 'confirmed' : 'not confirmed'}
         </p>
@@ -42,6 +43,7 @@ export default async function UserPage(ctx: { params: Promise<{ id: string }> })
       </div>
 
       {u.role !== 'ADMIN' ? <UserActions userId={u.id} status={u.status} /> : null}
+      <StaffBadge userId={u.id} on={u.staffBadge} />
 
       <h2 style={{ marginBottom: 0 }}>Moderation history</h2>
       {u.history.actions.length === 0 ? (

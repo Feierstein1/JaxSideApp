@@ -68,6 +68,7 @@ export async function getPublicProfile(username: string, viewerUserId: string | 
     medals: await medalsFor(user.id),
     avatarUrl: user.profile?.avatarPhotoId ? signedPhotoUrl(user.profile.avatarPhotoId) : null,
     color: user.profile?.color ?? 'teal',
+    ...(user.staffBadge ? { admin: true as const } : {}), // D141
 
     // D76: your relationship with them (none for guests or your own profile).
     ...(viewerUserId
