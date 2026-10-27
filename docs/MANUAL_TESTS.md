@@ -472,6 +472,15 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Admin portal → **Ratings**: the place is listed with its votes; Lock voting greys the
       buttons ("Rating is paused"); Clear votes resets it; each asks for a reason.
 
+### Photos and the map (D145)
+
+- [ ] Tap a photo on a post (in the feed or opened): it opens full screen; swipe through every
+      photo; "2 / 3" and the dots follow; × and Back close it. Long-press still offers Report.
+- [ ] A post with 2+ photos shows "3 photos · tap to view" above them, inside the card.
+- [ ] Places → map: pan and zoom away, tap **Re-center**: back to you and the places around you.
+- [ ] With the map open, close the app, go somewhere else (more than ~200 m), reopen: the map
+      shows the new area without switching to the list and back.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,
