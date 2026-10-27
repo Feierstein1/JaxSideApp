@@ -4,6 +4,7 @@ import { getConfig } from '../config';
 import { db } from '../db';
 import { ApiError } from '../http';
 import { normalizeName } from './osm';
+import { ratingFromCounts } from './ratings';
 
 interface Row {
   id: string;
@@ -16,10 +17,15 @@ interface Row {
   is_favorite: boolean;
   post_count: number;
   favorite_count: number;
+  like_count: number;
+  dislike_count: number;
+  ratings_locked: boolean;
+  my_rating: number | null;
 }
 
 async function toSummaries(rows: Row[]): Promise<PlaceSummary[]> {
   const roomMeters = milesToMeters(await getConfig('radius.business.maxMiles'));
+  const minVotes = await getConfig('places.ratingMinVotes');
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
@@ -33,8 +39,19 @@ async function toSummaries(rows: Row[]): Promise<PlaceSummary[]> {
     withinRoomRadius: r.distance <= roomMeters,
     postCount: r.post_count,
     favoriteCount: r.favorite_count,
+    // D144: % liked once enough people voted (counts kept on the place, one vote each).
+    rating: ratingFromCounts(r.like_count, r.dislike_count, minVotes),
+    myRating: (r.my_rating ?? 0) as -1 | 0 | 1,
+    ratingsLocked: r.ratings_locked,
   }));
 }
+
+/** D144: the place columns and your own vote, shared by the list and the place page. */
+const ratingColumns = (userId: string) => Prisma.sql`
+  p."likeCount" AS like_count, p."dislikeCount" AS dislike_count,
+  (p."ratingsLockedAt" IS NOT NULL) AS ratings_locked,
+  (SELECT pr.value FROM "PlaceRating" pr
+    WHERE pr."placeId" = p.id AND pr."userId" = ${userId}::uuid) AS my_rating`;
 
 /**
  * Directory search (P2.13, D40).
@@ -57,11 +74,12 @@ export async function searchPlaces(opts: {
   /** D71: the person's radius; the list never reaches past it (or the server maximum). */
   radiusMiles?: number | null;
 }): Promise<{ places: PlaceSummary[]; nextOffset: number | null }> {
-  const [defaultPageSize, favFactor, maxMiles, maxName] = await Promise.all([
+  const [defaultPageSize, favFactor, maxMiles, maxName, minVotes] = await Promise.all([
     getConfig('directory.pageSize'),
     getConfig('directory.favoriteDistanceFactor'),
     getConfig('directory.maxListMiles'),
     getConfig('directory.maxNameLength'),
+    getConfig('places.ratingMinVotes'),
   ]);
   const pageSize = opts.limit ?? defaultPageSize;
   const me = Prisma.sql`ST_SetSRID(ST_MakePoint(${opts.longitude}, ${opts.latitude}), 4326)::geography`;
@@ -85,12 +103,16 @@ export async function searchPlaces(opts: {
     favorites: Prisma.sql`ORDER BY (f."userId" IS NULL) ASC, ${distance} ASC, p.id`,
     // D74: most favorited first; ties nearest first.
     popular: Prisma.sql`ORDER BY favorite_count DESC, ${distance} ASC, p.id`,
+    // D144: places with a shown rating first, highest % liked, then most votes, then nearest.
+    liked: Prisma.sql`ORDER BY (p."likeCount" + p."dislikeCount" >= ${minVotes}) DESC,
+      p."likeCount"::float8 / NULLIF(p."likeCount" + p."dislikeCount", 0) DESC NULLS LAST,
+      p."likeCount" + p."dislikeCount" DESC, ${distance} ASC, p.id`,
   }[sort];
 
   const rows = await db.$queryRaw<Row[]>`
     SELECT p.id, p.name, p.category, p.address, p.latitude, p.longitude, p."postCount" AS post_count,
            (SELECT count(*)::int FROM "FavoritePlace" fc WHERE fc."placeId" = p.id) AS favorite_count,
-           ${distance} AS distance,
+           ${distance} AS distance, ${ratingColumns(opts.userId)},
            (f."userId" IS NOT NULL) AS is_favorite
     FROM "BusinessPlace" p
     LEFT JOIN "FavoritePlace" f ON f."placeId" = p.id AND f."userId" = ${opts.userId}::uuid
@@ -119,7 +141,7 @@ export async function getPlace(opts: {
   const rows = await db.$queryRaw<Row[]>`
     SELECT p.id, p.name, p.category, p.address, p.latitude, p.longitude, p."postCount" AS post_count,
            (SELECT count(*)::int FROM "FavoritePlace" fc WHERE fc."placeId" = p.id) AS favorite_count,
-           ST_Distance(p.location, ${me}) AS distance,
+           ST_Distance(p.location, ${me}) AS distance, ${ratingColumns(opts.userId)},
            (f."userId" IS NOT NULL) AS is_favorite
     FROM "BusinessPlace" p
     LEFT JOIN "FavoritePlace" f ON f."placeId" = p.id AND f."userId" = ${opts.userId}::uuid

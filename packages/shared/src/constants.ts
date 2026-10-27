@@ -208,6 +208,12 @@ export const CONFIG_DEFAULTS = {
   /** D101: a removed place's posts stay archived (hidden, restorable) this long, then go. */
   'places.removedPostDays': 90,
   'rateLimit.placeVote.perMinute': 20,
+  /** D144: liking or disliking places. */
+  'rateLimit.placeRating.perMinute': 20,
+  /** D144: a place's % liked shows once this many people voted. */
+  'places.ratingMinVotes': 10,
+  /** D144: accounts this new can't vote on places yet (like polls). */
+  'places.ratingMinAccountDays': 3,
   /** D123: polls: who may vote, and how fast. */
   'polls.voterMinAccountDays': 3,
   'rateLimit.pollVote.perMinute': 10,

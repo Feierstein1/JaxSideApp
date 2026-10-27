@@ -78,6 +78,7 @@ import * as restrictedAppeal from '@/app/api/v1/appeals/restricted/route';
 import * as restrictedStanding from '@/app/api/v1/appeals/restricted/standing/route';
 import * as profile from '@/app/api/v1/me/profile/route';
 import * as favorite from '@/app/api/v1/places/[id]/favorite/route';
+import * as placeRating from '@/app/api/v1/places/[id]/rating/route';
 import * as roomList from '@/app/api/v1/places/[id]/posts/list/route';
 import * as roomPosts from '@/app/api/v1/places/[id]/posts/route';
 import * as place from '@/app/api/v1/places/[id]/route';
@@ -838,6 +839,16 @@ const ROWS: Row[] = [
     id: 'place',
     location: true,
     body: (at) => ({ reading: r(at), body: 'x' }),
+  },
+  // D144: like or dislike a place, only while there.
+  {
+    route: 'places/[id]/rating',
+    method: 'PUT',
+    handler: h(placeRating, 'PUT'),
+    auth: true,
+    id: 'place',
+    location: true,
+    body: (at) => ({ reading: r(at), value: 1 }),
   },
   {
     route: 'posts/[id]/comments',
