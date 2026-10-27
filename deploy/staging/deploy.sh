@@ -36,8 +36,8 @@ test -f .env || { echo "No /opt/jaxside/.env (run with --env)"; exit 1; }
 rm -rf src.old && { [ -d src ] && mv src src.old || true; } && mv src.new src
 docker compose build app
 docker compose up -d postgres
-docker compose run --rm -T app ../../node_modules/.bin/prisma migrate deploy </dev/null
-docker compose run --rm -T app ../../node_modules/.bin/prisma db seed </dev/null
+docker compose run --rm -T app npm run db:deploy </dev/null
+docker compose run --rm -T app npm run db:seed </dev/null
 docker compose up -d
 sudo install -m 644 cron /etc/cron.d/jaxside
 chmod 755 backup.sh
