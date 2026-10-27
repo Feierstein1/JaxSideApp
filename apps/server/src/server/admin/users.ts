@@ -69,6 +69,7 @@ export async function getUserRecord(userId: string) {
     id: u.id,
     username: u.username,
     role: u.role,
+    staffBadge: u.staffBadge,
     status: u.status,
     suspendedUntil: u.suspendedUntil?.toISOString() ?? null,
     emailVerified: !!u.emailVerifiedAt,
@@ -120,6 +121,13 @@ export async function userAction(
       });
       break;
     }
+    case 'staffBadge': {
+      const target = await db.user.findUnique({ where: { id: userId }, select: { status: true } });
+      if (!target || target.status === 'DELETED')
+        throw new ApiError(404, 'NOT_FOUND', 'User not found');
+      await db.user.update({ where: { id: userId }, data: { staffBadge: input.on } });
+      break;
+    }
     case 'void': {
       const strike = await db.moderationAction.findUnique({ where: { id: input.strikeId } });
       if (!strike || strike.targetUserId !== userId)
@@ -135,6 +143,7 @@ export async function userAction(
     {
       reason: input.reason,
       ...(input.action === 'suspend' ? { hours: input.hours } : {}),
+      ...(input.action === 'staffBadge' ? { on: input.on } : {}),
     },
   );
   return result;

@@ -46,6 +46,8 @@ export interface PublicProfile {
   avatarUrl: string | null;
   /** D69: account color key. */
   color: string;
+  /** D141: a JaxSide staff member (shown as ADMIN under the name). */
+  admin?: true;
   /** D76: your relationship with them, and the pending request's ID if any. */
   friendship: 'none' | 'requested' | 'incoming' | 'friends';
   friendRequestId: string | null;

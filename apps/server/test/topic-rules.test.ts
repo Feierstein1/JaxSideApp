@@ -49,6 +49,8 @@ const list = async (token: string, extra: Record<string, unknown> = {}) =>
 beforeEach(async () => {
   await resetDb();
   await relaxBurstLimits();
+  // D143's one-topic-a-month limit is tested in topic-limits.test.ts.
+  await db.appConfiguration.create({ data: { key: 'topics.newEveryDays', value: 0 } });
   await importServiceArea(db, readBoundaryFile());
   invalidateConfigCache();
   me = await person('tr_me');

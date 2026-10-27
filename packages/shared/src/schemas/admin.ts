@@ -53,6 +53,8 @@ export const userActionSchema = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('lift'), reason: reasonText, internalNote }),
   z.strictObject({ action: z.literal('note'), reason: reasonText, internalNote }),
   z.strictObject({ action: z.literal('void'), strikeId: z.uuid(), reason: reasonText }),
+  /** D141: show or hide the ADMIN badge (no admin access; that's the promote command). */
+  z.strictObject({ action: z.literal('staffBadge'), on: z.boolean(), reason: reasonText }),
 ]);
 
 /** P5.7: deciding an appeal. The note is shown to the person. */

@@ -8,6 +8,7 @@ import type {
 } from '@jax/shared';
 import { api } from '@/api';
 import type { PostPage } from '@/discussion/api';
+import type { HeldResponse } from '@/discussion/screening';
 import { getFreshReading } from '@/location/device';
 
 /** D125: citywide topics. */
@@ -41,10 +42,13 @@ export async function fetchTopicPage(
   return api.post<TopicPage>('/api/v1/topics/list', { reading, ...params });
 }
 
-/** D133: start a topic (city, or local at where you are now). */
+/**
+ * D133: start a topic (city, or local at where you are now). D142: a topic screening holds
+ * comes back as `{ held, message }` (saved, hidden until a moderator reviews it).
+ */
 export async function createTopic(input: Omit<CreateTopicRequest, 'reading'>) {
   const reading = await getFreshReading({ fresh: true });
-  return (await api.post<{ topic: TopicView }>('/api/v1/topics', { reading, ...input })).topic;
+  return api.post<{ topic: TopicView } | HeldResponse>('/api/v1/topics', { reading, ...input });
 }
 
 /** D134: show or hide your username on a topic you started (the only change allowed). */

@@ -223,6 +223,8 @@ export const CONFIG_DEFAULTS = {
   'topics.autoHideReports': 15,
   /** D134: a topic its creator deleted stays visible to the admin this long, then goes. */
   'topics.deletedKeepDays': 7,
+  /** D143: one new topic of each kind (City, Near me) per this many days, per person. */
+  'topics.newEveryDays': 30,
   'rateLimit.placeRemoval.perDay': 5,
   /** Places within this distance with a similar name are shown as possible duplicates. */
   'submission.duplicateRadiusMeters': 300,

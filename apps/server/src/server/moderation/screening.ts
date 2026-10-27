@@ -278,7 +278,11 @@ const REPORT_REASON_FOR: Record<ScreeningCategory, ReportReason> = {
  */
 export async function holdReport(
   hold: Hold,
-  target: { generalPostId: string } | { businessPostId: string } | { commentId: string },
+  target:
+    | { generalPostId: string }
+    | { businessPostId: string }
+    | { commentId: string }
+    | { cityTopicId: string }, // D142
 ) {
   await db.report.create({ data: { ...target, reason: hold.reason, details: hold.details } });
 }

@@ -23,6 +23,7 @@ import { EditPostSheet } from './EditPostSheet';
 import { sendScreened } from './screening';
 import { authorName, openAuthor, PostCard, PostSkeleton } from './PostCard';
 import { useGuest } from '@/auth/guest';
+import { AdminTag } from '@/profile/AdminTag';
 import { MedalIcons } from '@/profile/Medals';
 import { ReportSheet } from '@/report/ReportSheet';
 import { VoteControl } from './VoteControl';
@@ -513,6 +514,7 @@ function CommentRow({
               {`  ${timeAgo(c.createdAt)}${c.editedAt ? ' · edited' : ''}`}
             </Text>
           ) : null}
+          {visible && 'admin' in c.author && c.author.admin ? <AdminTag small /> : null}
           <Text
             style={[
               TYPE.callout,

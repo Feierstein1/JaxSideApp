@@ -26,6 +26,7 @@ interface CommentRow {
   authorGuestId: string | null;
   username: string | null;
   author_status: string | null;
+  staff_badge: boolean | null;
   medals: MedalBadge[] | null;
   score: number;
   my_vote: number | null;
@@ -48,7 +49,11 @@ function toView(r: CommentRow, viewer: CommentViewer): CommentView {
         ? { guest: true }
         : r.author_status === 'DELETED' || !r.username
           ? { deleted: true }
-          : { username: r.username, medals: r.medals ?? [] },
+          : {
+              username: r.username,
+              medals: r.medals ?? [],
+              ...(r.staff_badge ? { admin: true as const } : {}), // D141
+            },
     score: r.score,
     myVote: (r.my_vote ?? 0) as -1 | 0 | 1,
     isMine:
@@ -87,7 +92,8 @@ export async function listComments(kind: DiscussionKind, postId: string, viewer:
     )
     SELECT t.id, t."parentCommentId", t.depth, t.body, t.status::text, t."createdAt", t."editedAt",
            t."authorKind"::text AS "authorKind", t."authorUserId", t."authorGuestId", u.username,
-           u.status::text AS author_status, t.score, v.value AS my_vote,
+           u.status::text AS author_status, u."staffBadge" AS staff_badge, t.score,
+           v.value AS my_vote,
            ${medalKeysSql(Prisma.sql`t."authorUserId"`)} AS medals
     FROM thread t
     LEFT JOIN "User" u ON u.id = t."authorUserId"

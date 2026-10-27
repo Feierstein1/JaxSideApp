@@ -124,7 +124,12 @@ describe('creating topics', () => {
       403,
     );
 
-    await db.appConfiguration.create({ data: { key: 'rateLimit.topicCreate.perDay', value: 2 } });
+    await db.appConfiguration.createMany({
+      data: [
+        { key: 'rateLimit.topicCreate.perDay', value: 2 },
+        { key: 'topics.newEveryDays', value: 0 }, // the monthly limit has its own tests
+      ],
+    });
     invalidateConfigCache();
     expect((await create(near.token, { scope: 'city', title: 'Topic one' })).status).toBe(201);
     expect((await create(near.token, { scope: 'city', title: 'Topic two' })).status).toBe(201);

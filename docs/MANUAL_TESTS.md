@@ -450,6 +450,18 @@ checks. Tick each box when it looks right; note anything odd next to it.
       every label fits.
 - [ ] Places map still loads and its pins open.
 
+### Home, ADMIN badge, spam and topic limits (D140–D143)
+
+- [ ] Home: no Latest / Top switch; ◆ NEAR YOU ◆ is centered with the refresh button at the far
+      right of the same line; posts start a little higher.
+- [ ] A post from the last 24 hours has a small NEW tag in its top-right corner; older posts don't.
+- [ ] Admin portal → Users → an account → **Show ADMIN badge**: their posts, comments and profile
+      show a gold ADMIN tag under the name. **Remove** takes it away. They get no portal access.
+- [ ] A post or topic like "crypto giveaway, send btc" says "Sent for review" and appears in the
+      admin queue, not in the app; an ordinary post goes up as usual.
+- [ ] Start a City topic, then try another: refused with the date you can start the next one. A
+      Near me topic still works once. Deleting your topic doesn't free the slot.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

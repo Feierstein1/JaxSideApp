@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
-import { DARK, type FeedSort, type PostTypeFilter } from '@jax/shared';
+import { DARK, type PostTypeFilter } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { fetchFeed } from '@/discussion/api';
@@ -12,13 +12,12 @@ import { PostTypeTabs } from '@/discussion/PostTypeTabs';
 import { StepEdge } from '@/deco';
 import { HomeSlot } from '@/home/HomeSlot';
 import { refreshLimiter } from '@/refresh-limit';
-import { Banner, FloatingButton, RefreshButton, SearchField, SectionTitle, Segmented } from '@/ui';
+import { Banner, FloatingButton, RefreshButton, SearchField, SectionTitle } from '@/ui';
 import { showAlert } from '@/dialog';
 
 /** P3.11: the default landing screen, the feed for the area around you. */
 export default function HomeFeed() {
   const { state } = useAuth();
-  const [sort, setSort] = useState<FeedSort>('new');
   const [type, setType] = useState<PostTypeFilter>('all'); // D75
   const [area, setArea] = useState<string | null>(null);
   // D73: reload on the refresh button, or when the app is reopened somewhere new.
@@ -54,14 +53,15 @@ export default function HomeFeed() {
   }, [typed]);
   const load = useCallback(
     async (cursor?: string) => {
-      const page = await fetchFeed(sort, cursor, q || undefined, type);
+      // D140: Home is always newest first (no Latest / Top switch).
+      const page = await fetchFeed('new', cursor, q || undefined, type);
       if (!cursor) {
         setArea(page.area ?? null); // D72: refreshed with the first page
         noteListLoad(); // D77: where this list is from
       }
       return page;
     },
-    [sort, q, type],
+    [q, type],
   );
   const verified = state.status === 'signedIn' && state.user.emailVerified;
   const { isGuest, promptAccount } = useGuest();
@@ -84,10 +84,10 @@ export default function HomeFeed() {
     router.push('/compose');
   }
 
-  // D78 / D79: sort and notices sit at the top of the list and scroll away with it, so
-  // the feed gets the screen; where you are, search and the type tabs stay put.
+  // D78 / D79: notices and the NEAR YOU line sit at the top of the list and scroll away with
+  // it, so the feed gets the screen; where you are, search and the type tabs stay put.
   const listHeader = (
-    <View style={{ paddingHorizontal: 12, paddingTop: 4, paddingBottom: 2, gap: 6 }}>
+    <View style={{ paddingHorizontal: 12, paddingTop: 0, paddingBottom: 2, gap: 6 }}>
       {guest?.expiringSoon ? (
         <Banner icon="time-outline" style={{ marginBottom: 0 }}>
           {`Your guest session ends in ${guest.daysLeft} ${guest.daysLeft === 1 ? 'day' : 'days'} unless you use JaxSide before then.`}
@@ -102,22 +102,14 @@ export default function HomeFeed() {
           Confirm your email to post, comment and vote. Tap to enter your code.
         </Banner>
       ) : null}
-      {/* D129: the art deco heading for the local feed. */}
-      <SectionTitle center>Near you</SectionTitle>
-      {/* D128: the refresh button sits with the sort, since it updates the posts. */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      {/* D129 / D140: the art deco heading, centered, with the refresh button at the far
+          right of the same line (an equal space on the left keeps the title centered). */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -2 }}>
+        <View style={{ width: 30 }} />
         <View style={{ flex: 1 }}>
-          <Segmented
-            compact
-            options={[
-              { key: 'new', label: 'Latest', icon: 'time-outline' },
-              { key: 'top', label: 'Top this week', icon: 'trending-up' },
-            ]}
-            value={sort}
-            onChange={(v) => setSort(v as FeedSort)}
-          />
+          <SectionTitle center>Near you</SectionTitle>
         </View>
-        <RefreshButton size={34} onPress={() => void refresh()} busy={refreshing} />
+        <RefreshButton size={30} onPress={() => void refresh()} busy={refreshing} />
       </View>
     </View>
   );
@@ -145,7 +137,7 @@ export default function HomeFeed() {
       <StepEdge />
       <PostList
         load={load}
-        reloadKey={`${sort}:${reloads}:${q}:${type}`}
+        reloadKey={`${reloads}:${q}:${type}`}
         onOpen={(p) => router.push(`/post/${p.id}`)}
         header={listHeader}
         emptyIcon={q ? 'search-outline' : type === 'voice' ? 'mic-outline' : 'chatbubbles-outline'}

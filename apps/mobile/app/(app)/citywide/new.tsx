@@ -13,7 +13,7 @@ import {
   type TopicScope,
 } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
-import { sendScreened } from '@/discussion/screening';
+import { isHeld, sendScreened } from '@/discussion/screening';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { ensureGuide } from '@/guides/guide';
 import { haptic } from '@/motion';
@@ -58,12 +58,14 @@ export default function NewTopicScreen() {
     setErrors({});
     setBusy(true);
     try {
-      const topic = await sendScreened((confirmWarning) =>
+      const r = await sendScreened((confirmWarning) =>
         createTopic({ ...v.data, ...(confirmWarning ? { confirmWarning } : {}) }),
       );
-      if (!topic) return; // chose to edit after a warning
+      if (!r) return; // chose to edit after a warning
       haptic.success();
-      router.replace(`/citywide/topic/${topic.id}`);
+      // D142: held for review: sendScreened already said so; nothing to open yet.
+      if (isHeld(r)) return router.back();
+      router.replace(`/citywide/topic/${r.topic.id}`);
     } catch (e) {
       setErrors(e instanceof ApiRequestError ? serverErrors(e) : { form: 'Try again.' });
     } finally {

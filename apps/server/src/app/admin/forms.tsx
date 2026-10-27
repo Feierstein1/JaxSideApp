@@ -212,6 +212,47 @@ export function UserActions({ userId, status }: { userId: string; status: string
   );
 }
 
+/**
+ * D141: the ADMIN badge under someone's name on posts, comments and their profile. Only a
+ * label for the community; admin access is still only given with the promote command.
+ */
+export function StaffBadge({ userId, on }: { userId: string; on: boolean }) {
+  const [reason, setReason] = useState('');
+  const { busy, error, done, run } = useSubmit();
+  const toggle = () =>
+    run(async () => {
+      await adminFetch(`/api/v1/admin/users/${userId}/actions`, {
+        method: 'POST',
+        body: { action: 'staffBadge', on: !on, reason },
+      });
+      setTimeout(() => window.location.reload(), 600);
+      return on ? 'Badge removed.' : 'Badge added.';
+    });
+  return (
+    <div style={ui.card}>
+      <h2 style={{ marginTop: 0 }}>ADMIN badge</h2>
+      <p style={ui.muted}>
+        {on
+          ? 'Their posts, comments and profile show ADMIN under the name.'
+          : 'Shows ADMIN under their name on posts, comments and their profile, so people know a staff member is speaking. It gives no access to this portal.'}
+      </p>
+      <label style={ui.label}>
+        Reason (kept in the audit log)
+        <input style={ui.input} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </label>
+      <button style={on ? ui.buttonSecondary : ui.button} disabled={busy} onClick={toggle}>
+        {on ? 'Remove ADMIN badge' : 'Show ADMIN badge'}
+      </button>
+      {error ? (
+        <p role="alert" style={ui.error}>
+          {error}
+        </p>
+      ) : null}
+      {done ? <p role="status">{done}</p> : null}
+    </div>
+  );
+}
+
 export function VoidStrike({ userId, strikeId }: { userId: string; strikeId: string }) {
   const { busy, error, run } = useSubmit();
   return (

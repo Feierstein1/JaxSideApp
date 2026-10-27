@@ -1,4 +1,5 @@
 import {
+  APP_TIME_ZONE,
   milesToMeters,
   TOPIC_CATEGORIES,
   type AdminTopicRequest,
@@ -17,7 +18,7 @@ import { db } from './db';
 import { decodeCursor, encodeCursor } from './discussions/cursor';
 import { ApiError } from './http';
 import type { GeoPoint } from './location/eligibility';
-import { screenText } from './moderation/screening';
+import { holdFor, holdReport, screenText } from './moderation/screening';
 
 /**
  * Topics (D125, D133). A topic is an area for posts: posts in it are general posts with
@@ -247,19 +248,63 @@ export async function assertTopicOpen(id: string) {
  * word refuses it; a warning needs confirmWarning). A local topic is placed at `at`
  * (already coarsened by the caller).
  */
-export async function createUserTopic(userId: string, input: CreateTopicRequest, at: GeoPoint) {
-  await screenText(`${input.title}\n${input.description ?? ''}`, 'edit', {
+export async function createUserTopic(
+  userId: string,
+  input: CreateTopicRequest,
+  at: GeoPoint,
+): Promise<{ id: string; held: boolean }> {
+  // D142: screened like a new post: a hold rule (spam, scams, borderline words) saves the
+  // topic hidden for a moderator instead of refusing it.
+  const screen = await screenText(`${input.title}\n${input.description ?? ''}`, 'new-content', {
     confirmWarning: input.confirmWarning,
   });
+  const status = screen.held ? 'HELD' : 'ACTIVE';
   const [row] = await db.$queryRaw<{ id: string }[]>`
     INSERT INTO "CityTopic" (id, scope, title, category, description, location, status,
                              "createdById", "showCreator", "updatedAt")
     VALUES (uuid_v7(), ${input.scope === 'local' ? 'LOCAL' : 'CITY'}::"TopicScope",
             ${input.title}, ${input.category ?? 'other'}, ${input.description ?? null},
-            ${input.scope === 'local' ? point(at) : null}, 'ACTIVE', ${userId}::uuid,
-            ${input.showCreator ?? false}, now())
+            ${input.scope === 'local' ? point(at) : null}, ${status}::"CityTopicStatus",
+            ${userId}::uuid, ${input.showCreator ?? false}, now())
     RETURNING id`;
-  return row!.id;
+  if (screen.held) await holdReport(holdFor(screen.rule), { cityTopicId: row!.id });
+  return { id: row!.id, held: screen.held };
+}
+
+/**
+ * D143: one new topic of each kind (City, Near me) every topics.newEveryDays per person.
+ * Every topic they started counts, deleted, held or removed ones too, so deleting one doesn't
+ * free the slot. Admins aren't limited.
+ */
+export async function assertTopicAllowance(
+  user: { id: string; role: string },
+  scope: 'city' | 'local',
+  now = new Date(),
+) {
+  if (user.role === 'ADMIN') return;
+  const days = await getConfig('topics.newEveryDays');
+  const last = await db.cityTopic.findFirst({
+    where: {
+      createdById: user.id,
+      scope: scope === 'local' ? 'LOCAL' : 'CITY',
+      createdAt: { gt: new Date(now.getTime() - days * 86_400_000) },
+    },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true },
+  });
+  if (!last) return;
+  const next = new Date(last.createdAt.getTime() + days * 86_400_000);
+  const when = next.toLocaleDateString('en-US', {
+    timeZone: APP_TIME_ZONE,
+    month: 'short',
+    day: 'numeric',
+  });
+  throw new ApiError(
+    429,
+    'TOPIC_LIMIT',
+    `You can start one ${scope === 'local' ? 'Near me' : 'City'} topic every ${days} days. Your next one: ${when}.`,
+    { next: next.toISOString() },
+  );
 }
 
 /** D134: a topic you started that people can still see (not removed, held or deleted). */

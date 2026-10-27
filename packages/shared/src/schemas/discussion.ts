@@ -116,6 +116,8 @@ export interface PostView {
         avatarUrl: string | null;
         /** D103: a verified owner of this place (place discussions only). */
         owner?: true;
+        /** D141: a JaxSide staff member (shown as ADMIN under the name). */
+        admin?: true;
       }
     | { deleted: true };
   score: number;
@@ -171,7 +173,9 @@ export interface CommentView {
   status: 'visible' | 'deleted' | 'removed';
   createdAt: string;
   editedAt: string | null;
-  author: { username: string; medals: MedalBadge[] } | { guest: true } | { deleted: true };
+  /** D141: `admin` marks a JaxSide staff member (ADMIN under the name). */
+  author:
+    { username: string; medals: MedalBadge[]; admin?: true } | { guest: true } | { deleted: true };
   score: number;
   myVote: -1 | 0 | 1;
   isMine: boolean;

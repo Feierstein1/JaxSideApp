@@ -43,6 +43,7 @@ interface PostRow {
   authorId: string;
   username: string;
   author_status: string;
+  staff_badge: boolean;
   medals: MedalBadge[];
   author_color: string;
   avatar_photo_id: string | null;
@@ -75,6 +76,8 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
             avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
             // D103: a verified owner, in their own place's discussion only.
             ...(r.is_owner ? { owner: true } : {}),
+            // D141: staff, so people can tell when an admin is speaking.
+            ...(r.staff_badge ? { admin: true } : {}),
           },
     score: r.score,
     upCount: r.upCount,
@@ -141,6 +144,7 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
   return Prisma.sql`
     SELECT p.id, p.body, p."createdAt", p."editedAt", p.score, p."upCount", p."downCount",
            p."commentCount", p."authorId", u.username, u.status::text AS author_status,
+           u."staffBadge" AS staff_badge,
            coalesce(pr.color, 'teal') AS author_color, pr."avatarPhotoId" AS avatar_photo_id,
            ${medalKeysSql(Prisma.sql`p."authorId"`)} AS medals,
            (SELECT json_agg(json_build_object('id', ph.id, 'width', ph.width, 'height', ph.height)
