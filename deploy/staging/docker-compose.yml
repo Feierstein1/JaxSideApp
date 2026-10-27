@@ -43,6 +43,8 @@ services:
     volumes:
       # The server, migrations, seed and jobs all read the settings from the repo root.
       - ./.env:/app/.env:ro
+      # The Places map's tiles (41 MB, not in git): uploaded once to /opt/jaxside/data/map.
+      - ./data/map:/app/apps/server/data/map:ro
     depends_on:
       postgres:
         condition: service_healthy
