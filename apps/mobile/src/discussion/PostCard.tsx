@@ -334,12 +334,7 @@ export function PostCard({
               <View style={{ flex: 1 }} />
               {post.voice ? <Kind icon="mic" label="Voice" /> : null}
               {post.video ? <Kind icon="videocam" label="Video" /> : null}
-              {post.photos.length ? (
-                <Kind
-                  icon="images"
-                  label={post.photos.length === 1 ? 'Photo' : `${post.photos.length} photos`}
-                />
-              ) : null}
+              {/* D145: the photo count moved above the photos (it overflowed the card here). */}
             </View>
           </View>
         </DecoBox>
@@ -349,7 +344,7 @@ export function PostCard({
 }
 
 /** A small "what's in it" tag at the right of the action row. */
-function Kind({ icon, label }: { icon: 'mic' | 'images' | 'videocam'; label: string }) {
+function Kind({ icon, label }: { icon: 'mic' | 'videocam'; label: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
       <Ionicons name={icon} size={14} color={DARK.textMuted} />
