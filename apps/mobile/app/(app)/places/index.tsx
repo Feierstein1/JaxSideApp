@@ -42,6 +42,7 @@ const SORTS: { key: PlaceSort; label: string }[] = [
   { key: 'name', label: 'A–Z' },
   { key: 'favorites', label: 'Favorites first' },
   { key: 'popular', label: 'Most favorited' },
+  { key: 'liked', label: 'Most liked' }, // D144
 ];
 
 /**

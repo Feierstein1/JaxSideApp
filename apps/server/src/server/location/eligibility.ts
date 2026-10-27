@@ -40,6 +40,8 @@ export const LOCATION_ACTIONS = {
   'message.send': ['user'],
   /** D123: voting in a poll: inside Duval, no radius. */
   'poll.vote': ['user'],
+  /** D144: liking or disliking a place: only within the place radius (you're there). */
+  'place.rate': ['user'],
 } as const satisfies Record<string, readonly LocationActor['kind'][]>;
 export type LocationAction = keyof typeof LOCATION_ACTIONS;
 

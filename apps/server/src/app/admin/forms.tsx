@@ -253,6 +253,40 @@ export function StaffBadge({ userId, on }: { userId: string; on: boolean }) {
   );
 }
 
+/** D144: lock or unlock voting on a place, or clear its votes (asks for a reason). */
+export function PlaceRatingControls({ placeId, locked }: { placeId: string; locked: boolean }) {
+  const { busy, error, done, run } = useSubmit();
+  const act = (action: 'lock' | 'unlock' | 'clear') =>
+    run(async () => {
+      if (action === 'clear' && !confirm('Delete every vote on this place? This can’t be undone.'))
+        return 'Cancelled.';
+      const reason = prompt('Reason (kept in the audit log)');
+      if (!reason || reason.trim().length < 3) return 'Cancelled: give a short reason.';
+      await adminFetch(`/api/v1/admin/places/${placeId}/ratings`, {
+        method: 'POST',
+        body: { action, reason },
+      });
+      setTimeout(() => window.location.reload(), 500);
+      return 'Done.';
+    });
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+      <button
+        style={ui.buttonSecondary}
+        disabled={busy}
+        onClick={() => act(locked ? 'unlock' : 'lock')}
+      >
+        {locked ? 'Unlock voting' : 'Lock voting'}
+      </button>
+      <button style={ui.buttonDanger} disabled={busy} onClick={() => act('clear')}>
+        Clear votes
+      </button>
+      {error ? <span style={ui.error}>{error}</span> : null}
+      {done ? <span role="status">{done}</span> : null}
+    </span>
+  );
+}
+
 export function VoidStrike({ userId, strikeId }: { userId: string; strikeId: string }) {
   const { busy, error, run } = useSubmit();
   return (

@@ -179,6 +179,7 @@ model User {
   votes           Vote[]
   photos          Photo[]
   favorites       FavoritePlace[]
+  placeRatings    PlaceRating[]
   appeals         Appeal[]             @relation("Appellant")
   achievements    UserAchievement[]
   pollsCreated    Poll[]               @relation("PollCreator")
@@ -433,29 +434,35 @@ model LocationFlag {
 // ──────────────────────────── Directory ────────────────────────────
 
 model BusinessPlace {
-  id             String                                 @id @default(uuid(7)) @db.Uuid
-  name           String                                 @db.VarChar(200)
-  nameNormalized String                                 @db.VarChar(200)
-  category       String                                 @db.VarChar(60)
-  address        String?                                @db.VarChar(300)
+  id              String                                 @id @default(uuid(7)) @db.Uuid
+  name            String                                 @db.VarChar(200)
+  nameNormalized  String                                 @db.VarChar(200)
+  category        String                                 @db.VarChar(60)
+  address         String?                                @db.VarChar(300)
   /// D103: the business's public website and phone from the map data (owner verification).
-  website        String?                                @db.VarChar(300)
-  phone          String?                                @db.VarChar(40)
-  latitude       Float
-  longitude      Float
+  website         String?                                @db.VarChar(300)
+  phone           String?                                @db.VarChar(40)
+  latitude        Float
+  longitude       Float
   /// Generated from latitude/longitude in raw SQL on write.
-  location       Unsupported("geography(Point, 4326)")?
-  status         PlaceStatus                            @default(ACTIVE)
+  location        Unsupported("geography(Point, 4326)")?
+  status          PlaceStatus                            @default(ACTIVE)
   /// Visible business-room posts, maintained in the same transaction as each post (D41).
-  postCount      Int                                    @default(0)
-  sourceName     String                                 @db.VarChar(40)
-  sourceId       String                                 @db.VarChar(100)
-  attribution    String?                                @db.VarChar(200)
-  createdAt      DateTime                               @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime                               @updatedAt @db.Timestamptz(3)
+  postCount       Int                                    @default(0)
+  /// D144: likes and dislikes (PlaceRating), maintained in the same transaction as each vote.
+  likeCount       Int                                    @default(0)
+  dislikeCount    Int                                    @default(0)
+  /// D144: an admin locked voting here (abuse); existing votes stay unless cleared.
+  ratingsLockedAt DateTime?                              @db.Timestamptz(3)
+  sourceName      String                                 @db.VarChar(40)
+  sourceId        String                                 @db.VarChar(100)
+  attribution     String?                                @db.VarChar(200)
+  createdAt       DateTime                               @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                               @updatedAt @db.Timestamptz(3)
 
   posts       BusinessPost[]
   favorites   FavoritePlace[]
+  ratings     PlaceRating[]
   submissions BusinessSubmission[]
 
   removals    PlaceRemoval[]
@@ -602,6 +609,24 @@ model BusinessSubmission {
   // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
   @@index([placeId])
   @@index([reviewerId])
+}
+
+/// D144: one like or dislike per person per place, given only while there. Changing it
+/// updates this row; the place's likeCount / dislikeCount move in the same transaction.
+model PlaceRating {
+  placeId   String        @db.Uuid
+  userId    String        @db.Uuid
+  /// +1 liked, -1 didn't (a CHECK constraint keeps it to those).
+  value     Int           @db.SmallInt
+  createdAt DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime      @updatedAt @db.Timestamptz(3)
+  place     BusinessPlace @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([placeId, userId])
+  @@index([userId])
+  /// The admin Ratings page: recent votes per place (abuse spikes).
+  @@index([updatedAt])
 }
 
 model FavoritePlace {

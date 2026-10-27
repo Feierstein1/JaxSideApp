@@ -21,6 +21,7 @@ import { haptic } from '@/motion';
 import { OsmAttribution } from '@/places/Attribution';
 import { refreshLimiter } from '@/refresh-limit';
 import { PlaceHero, PlaceSkeleton } from '@/places/PlaceHeader';
+import { PlaceRatingCard } from '@/places/PlaceRating';
 import { social } from '@/social/api';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
@@ -186,6 +187,8 @@ export default function PlaceScreen() {
         favoriteBusy={busy}
         friendFans={friendFans}
       />
+      {/* D144: like or dislike, only while you're here. */}
+      <PlaceRatingCard place={place} onChange={(r) => setPlace({ ...place, ...r })} />
       <View
         style={{
           flexDirection: 'row',

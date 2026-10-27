@@ -6,6 +6,7 @@ import { haptic } from '@/motion';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { Bone, PressableScale, Pulse, StatTile, type IconName } from '@/ui';
+import { LikedBadge } from './PlaceRating';
 
 /** D78: an icon per category group (pill, tile, favorites list, filter chips, D113 the map). */
 export function categoryIcon(category: string): IconName {
@@ -60,7 +61,7 @@ export function PlaceRow({ place, onPress }: { place: PlaceSummary; onPress: () 
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={`${place.name}, ${categoryLabel(place.category)}, ${formatDistance(place.distanceMeters)} away, ${plural(place.postCount, 'post')}, ${plural(place.favoriteCount, 'favorite')}${place.isFavorite ? ', one of your favorites' : ''}`}
+      accessibilityLabel={`${place.name}, ${categoryLabel(place.category)}, ${formatDistance(place.distanceMeters)} away, ${plural(place.postCount, 'post')}, ${plural(place.favoriteCount, 'favorite')}${place.rating ? `, ${place.rating.likedPercent}% liked` : ''}${place.isFavorite ? ', one of your favorites' : ''}`}
       onPress={onPress}
       scaleTo={0.98}
       containerStyle={{ marginHorizontal: SPACE.md, marginVertical: 6 }}
@@ -110,7 +111,9 @@ export function PlaceRow({ place, onPress }: { place: PlaceSummary; onPress: () 
             ) : null}
           </View>
         </View>
+        {/* D144: % liked, top right, once enough people rated it. */}
         <View style={{ alignItems: 'flex-end', gap: 8 }}>
+          {place.rating ? <LikedBadge rating={place.rating} /> : null}
           <Ionicons name="chevron-forward" size={18} color={DARK.textMuted} />
         </View>
       </View>

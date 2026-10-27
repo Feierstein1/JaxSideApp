@@ -57,6 +57,12 @@ export const userActionSchema = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('staffBadge'), on: z.boolean(), reason: reasonText }),
 ]);
 
+/** D144: an admin locks or unlocks voting on a place, or clears its votes (abuse). */
+export const placeRatingsAdminSchema = z.strictObject({
+  action: z.enum(['lock', 'unlock', 'clear']),
+  reason: reasonText,
+});
+
 /** P5.7: deciding an appeal. The note is shown to the person. */
 export const appealDecisionSchema = z.strictObject({
   accept: z.boolean(),

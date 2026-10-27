@@ -83,7 +83,15 @@ export function categoryColor(category: string): string {
 }
 
 // D74: 'popular' = most favorited by everyone.
-export const PLACE_SORTS = ['relevance', 'distance', 'name', 'favorites', 'popular'] as const;
+/** D144: `liked` is the highest % liked first (places with a shown rating). */
+export const PLACE_SORTS = [
+  'relevance',
+  'distance',
+  'name',
+  'favorites',
+  'popular',
+  'liked',
+] as const;
 export type PlaceSort = (typeof PLACE_SORTS)[number];
 
 /** P2.13: search the directory by name, or list nearby places when `q` is empty. */
@@ -123,7 +131,19 @@ export interface PlaceSummary {
   postCount: number;
   /** D74: how many people have this place as a favorite (who they are is never shown here). */
   favoriteCount: number;
+  /** D144: % of votes that liked it, once places.ratingMinVotes people voted; else null. */
+  rating: { likedPercent: number; votes: number } | null;
+  /** D144: your vote here (+1 liked, -1 didn't, 0 none). */
+  myRating: -1 | 0 | 1;
+  /** D144: an admin paused voting on this place. */
+  ratingsLocked: boolean;
 }
+
+/** D144: like (+1), dislike (-1) or take back your vote (0); only while at the place. */
+export const placeRatingSchema = z.strictObject({
+  reading: locationReadingSchema,
+  value: z.union([z.literal(1), z.literal(-1), z.literal(0)]),
+});
 
 // ───────────── D94: community place voting ─────────────
 

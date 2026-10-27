@@ -462,6 +462,16 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Start a City topic, then try another: refused with the date you can start the next one. A
       Near me topic still works once. Deleting your topic doesn't free the slot.
 
+### Place ratings (D144)
+
+- [ ] At a place (within 0.3 mi), its page shows **Rate this place**: tap 👍 Liked it or 👎 Not for
+      me; it highlights; tapping it again takes it back; switching changes it (still one vote).
+- [ ] Away from the place the buttons are greyed with "You can rate it while you're here."
+- [ ] After 10 people rate a place, the Places list shows a teal 👍 88% badge on its card, and
+      Sort → **Most liked** puts it first.
+- [ ] Admin portal → **Ratings**: the place is listed with its votes; Lock voting greys the
+      buttons ("Rating is paused"); Clear votes resets it; each asks for a reason.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,
