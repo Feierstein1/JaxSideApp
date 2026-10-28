@@ -8,6 +8,10 @@ services:
   postgres:
     image: postgis/postgis:17-3.5
     env_file: .env
+    # D153: reachable only from the server itself (127.0.0.1), so the admin portal on the
+    # owner's PC can use it through an SSH tunnel. The firewall doesn't open 5432 either.
+    ports:
+      - '127.0.0.1:5432:5432'
     command:
       # Sized for a 2 GB server shared with the API (docs/PRODUCTION_DATABASE.md).
       - postgres

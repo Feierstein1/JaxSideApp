@@ -19,7 +19,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify": "npm run typecheck && npm run lint && npm test && npm run build -w @jax/server",
-    "dev:remote": "node scripts/dev-remote.mjs"
+    "dev:remote": "node scripts/dev-remote.mjs",
+    "admin:staging": "node scripts/admin-staging.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

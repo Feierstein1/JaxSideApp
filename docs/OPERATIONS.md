@@ -101,6 +101,24 @@ Off by default in production (`ADMIN_PORTAL_ENABLED` unset → every `/admin` pa
 production database through a secure tunnel, or set `ADMIN_PORTAL_ENABLED=true` only behind an
 IP allow-list. Make an admin with `npm run admin:promote -w @jax/server -- <username>`.
 
+### The portal for the AWS server (D153)
+
+`npm run admin:staging`, then open **http://localhost:3001/admin**. It opens an SSH tunnel to
+the server's database (Postgres listens only on the server's own 127.0.0.1:5432; SSH accepts
+only the owner's internet address) and runs a second copy of the portal on port 3001 with the
+server's settings from `deploy/staging/secrets/staging.env`, building into `.next-admin` so the
+usual dev server on port 3000 keeps working. Sign in with the server's admin account. Ctrl+C
+closes the portal and the tunnel. If the home internet address changes, update the SSH rule
+(Lightsail firewall, port 22) first.
+
+### Restore drill (staging, 2026-10-28)
+
+Last night's backup (`s3://jaxside-staging-backups/db/jax_staging-2026-10-28T0715Z.dump`,
+1.4 MB) restored into a scratch database on the server in 3 s; accounts, posts, photos,
+places, migrations and a PostGIS distance query matched the live database as of the backup
+time; the scratch database was dropped. Steps: download the dump with the app's storage key,
+`createdb -T template0`, `pg_restore --no-owner --no-acl --exit-on-error`, compare counts.
+
 ## 6. Deploying a new version (checklist)
 
 1. `npm run verify` (types, lint, tests, build) passes on the commit.

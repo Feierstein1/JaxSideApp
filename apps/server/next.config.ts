@@ -21,6 +21,9 @@ function lanAddresses(): string[] {
 }
 
 const nextConfig: NextConfig = {
+  // D153: the staging admin portal (npm run admin:staging) runs a second dev server next to
+  // the usual one, so it builds into its own folder.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   allowedDevOrigins: lanAddresses(),
   experimental: {
     // Dev only: Next's built-in MCP endpoint copies browser console output into
