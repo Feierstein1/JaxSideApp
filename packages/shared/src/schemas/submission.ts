@@ -2,9 +2,12 @@ import { z } from 'zod';
 import { CATEGORY_GROUPS } from './directory';
 import { locationReadingSchema } from './location';
 
-/** P5.8: categories people can pick when suggesting a place (the directory's own). */
+/**
+ * P5.8: categories people can pick when suggesting a place (the directory's own). D149: not
+ * campuses (they come from map data only), and schools aren't places at all.
+ */
 export const SUBMIT_CATEGORIES = [
-  ...new Set(CATEGORY_GROUPS.flatMap((g) => [...g.categories])),
+  ...new Set(CATEGORY_GROUPS.filter((g) => g.key !== 'campus').flatMap((g) => [...g.categories])),
   'other',
 ] as const;
 

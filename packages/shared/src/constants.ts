@@ -231,6 +231,8 @@ export const CONFIG_DEFAULTS = {
   'topics.deletedKeepDays': 7,
   /** D143: one new topic of each kind (City, Near me) per this many days, per person. */
   'topics.newEveryDays': 30,
+  /** D147: accounts must be this many days old to start a topic (posting in one is fine). */
+  'topics.createMinAccountDays': 5,
   'rateLimit.placeRemoval.perDay': 5,
   /** Places within this distance with a similar name are shown as possible duplicates. */
   'submission.duplicateRadiusMeters': 300,

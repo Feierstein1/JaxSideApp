@@ -19,6 +19,7 @@ export const ICON_GLYPHS: Record<string, number> = {
   bed: 61840,
   barbell: 61810,
   heart: 62314,
+  school: 62812, // D149: campuses
   location: 62404,
 };
 

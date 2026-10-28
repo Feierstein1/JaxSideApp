@@ -71,6 +71,10 @@ export async function duplicateCandidates(
 
 // ───────────────────────────── Submitting ─────────────────────────────
 
+/** D149: names that are schools or campuses (checked on the normalized name). */
+const SCHOOL_WORDS =
+  /\b(school|schools|elementary|preschool|pre k|prek|daycare|day care|kindergarten|montessori|university|college|campus)\b/;
+
 export async function createSubmission(
   user: User,
   at: GeoPoint,
@@ -83,6 +87,14 @@ export async function createSubmission(
   },
   now = new Date(),
 ) {
+  // D149: schools aren't places on JaxSide (minors), and campuses come from map data only.
+  if (SCHOOL_WORDS.test(normalizeName(input.name))) {
+    throw new ApiError(
+      400,
+      'SCHOOLS_NOT_ALLOWED',
+      'Schools and campuses can’t be suggested. Campuses are added from map data. If this is something else, use Contact us.',
+    );
+  }
   const [minAgeHours, maxPending] = await Promise.all([
     getConfig('submission.minAccountAgeHours'),
     getConfig('submission.maxPending'),

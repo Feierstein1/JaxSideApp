@@ -24,7 +24,6 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [birthYear, setBirthYear] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
-  const [confirmAdult, setConfirmAdult] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
 
@@ -35,7 +34,6 @@ export default function Register() {
       password,
       birthYear: birthYear.trim() === '' ? undefined : Number(birthYear),
       acceptTerms,
-      confirmAdult,
     });
     // Confirmation is a client-side typo check only; it is never sent to the server.
     const mismatch = password !== confirmPassword ? "Passwords don't match" : undefined;
@@ -68,8 +66,8 @@ export default function Register() {
         <Banner icon="shield-checkmark-outline">
           <Text style={[TYPE.callout, { color: DARK.text }]}>
             JaxSide is for adults 18 and older. We use your birth year only to check that, then
-            discard it. We don&apos;t store it. Your email is stored encrypted and never shown to
-            anyone. This is a simple age check, not identity verification.
+            discard it. We confirm your email with a 6-digit code to keep out bots and fake
+            accounts; it&apos;s stored encrypted and never shown to anyone.
           </Text>
         </Banner>
         <FormError>{errors.form}</FormError>
@@ -123,8 +121,6 @@ export default function Register() {
           error={errors.birthYear}
         />
         <View style={{ marginTop: SPACE.sm }}>
-          <SwitchRow label="I am 18 or older" value={confirmAdult} onChange={setConfirmAdult} />
-          <FormError>{errors.confirmAdult}</FormError>
           <SwitchRow
             label="I accept the Terms of Service"
             value={acceptTerms}

@@ -1402,6 +1402,8 @@ model Poll {
   updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
   /// Set once the votes are counted and the key destroyed (after closing).
   finalizedAt    DateTime?        @db.Timestamptz(3)
+  /// D150: an admin made this the Poll of the week (Home shows the newest featured open poll).
+  featuredAt     DateTime?        @db.Timestamptz(3)
   /// How many people voted (filled when finalized).
   voterCount     Int              @default(0)
   createdBy      User?            @relation("PollCreator", fields: [createdById], references: [id], onDelete: SetNull)

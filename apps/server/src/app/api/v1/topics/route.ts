@@ -28,8 +28,9 @@ export const POST = route(async (req) => {
       windowSeconds: 86_400,
     },
   ]);
-  await assertTopicAllowance(user, input.scope); // D143
   const at = await assertLocationEligible({ kind: 'user', user }, input.reading, 'general.post');
+  // D143 / D147 (after the location check, per the route order): account age, one a month.
+  await assertTopicAllowance(user, input.scope);
   const { id, held } = await createUserTopic(user.id, input, coarsenPoint(at));
   if (held) {
     // D142: like a held post (202): the creator is told it appears after review.

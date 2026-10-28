@@ -29,6 +29,10 @@ const RULES: { key: string; values: Record<string, string> | '*' }[] = [
       theatre: 'entertainment',
       arts_centre: 'arts',
       library: 'library',
+      // D149: college and university campuses. K-12 schools (amenity=school, kindergarten)
+      // are deliberately not on this list, so they're never imported.
+      university: 'campus',
+      college: 'campus',
       marketplace: 'market',
       community_centre: 'community',
       pharmacy: 'pharmacy',

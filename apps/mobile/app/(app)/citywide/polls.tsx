@@ -11,7 +11,7 @@ import { showAlert } from '@/dialog';
 import { fetchPolls, pollWhen } from '@/polls/api';
 import { Text } from '@/text';
 import { SPACE, TYPE } from '@/tokens';
-import { Chip, ErrorState, FloatingButton, PageTitle, SearchField } from '@/ui';
+import { Chip, ErrorState, FloatingButton, PageTitle, SearchField, Segmented } from '@/ui';
 
 const TOPICS = Object.keys(POLL_TOPICS) as PollTopic[];
 
@@ -46,6 +46,7 @@ function PollRow({ p }: { p: PollView }) {
         />
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={[TYPE.caption, { color: DARK.accent, fontWeight: '700' }]}>
+            {p.featured && open ? '★ POLL OF THE WEEK · ' : ''}
             {POLL_TOPICS[p.topic]}
           </Text>
           <Text style={{ fontWeight: '700' }} numberOfLines={2}>
@@ -62,8 +63,10 @@ function PollRow({ p }: { p: PollView }) {
 }
 
 /**
- * D123 / D133: polls. On black: search and topic filters; on grey: open polls first, then
- * closed ones (results), and + to suggest a poll question.
+ * D123 / D133 / D150: polls. On black: Open / Voted, then search and topic filters; on grey
+ * the list (the Poll of the week first), and + to suggest a poll question. Open is what you
+ * haven't answered yet; Voted is what you answered plus closed polls with their results
+ * (once a poll closes, who voted is forgotten, so closed ones are there for everyone).
  */
 export default function PollsScreen() {
   const { state } = useAuth();
@@ -72,6 +75,7 @@ export default function PollsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [topic, setTopic] = useState<PollTopic | undefined>(undefined);
   const [q, setQ] = useState('');
+  const [tab, setTab] = useState<'open' | 'voted'>('open');
 
   const load = useCallback(async () => {
     setError(null);
@@ -93,8 +97,14 @@ export default function PollsScreen() {
 
   const shown = useMemo(() => {
     const words = q.trim().toLowerCase();
-    return (polls ?? []).filter((p) => !words || p.question.toLowerCase().includes(words));
-  }, [polls, q]);
+    const inTab = (p: PollView) =>
+      tab === 'open'
+        ? p.status === 'open' && p.myChoiceIds.length === 0
+        : p.status !== 'open' || p.myChoiceIds.length > 0;
+    return (polls ?? [])
+      .filter((p) => inTab(p) && (!words || p.question.toLowerCase().includes(words)))
+      .sort((a, b) => Number(b.featured) - Number(a.featured)); // stable: keeps the order
+  }, [polls, q, tab]);
 
   function suggest() {
     if (isGuest) return promptAccount('suggest poll questions');
@@ -112,6 +122,16 @@ export default function PollsScreen() {
           icon="stats-chart"
           title="Polls"
           subtitle="Vote to see how Jacksonville answered."
+        />
+        {/* D150: what's left to answer, or what you answered (and every result). */}
+        <Segmented
+          stretch
+          options={[
+            { key: 'open', label: 'Open polls', icon: 'checkbox-outline' },
+            { key: 'voted', label: 'Voted', icon: 'stats-chart' },
+          ]}
+          value={tab}
+          onChange={(v) => setTab(v as 'open' | 'voted')}
         />
         <View style={{ flexDirection: 'row' }}>
           <SearchField
@@ -152,7 +172,11 @@ export default function PollsScreen() {
           renderItem={({ item }) => <PollRow p={item} />}
           ListEmptyComponent={
             <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
-              {q.trim() || topic ? 'No polls match.' : 'No polls yet.'}
+              {q.trim() || topic
+                ? 'No polls match.'
+                : tab === 'open'
+                  ? 'You’re all caught up. New polls come out every week.'
+                  : 'Polls you answer, and results of closed polls, show here.'}
             </Text>
           }
         />

@@ -31,7 +31,13 @@ export function HomeSlot({ reloadKey }: { reloadKey: string }) {
       void fetchPolls()
         .catch(() => null)
         .then((polls) => {
-          if (live) setPoll(polls?.open.find((p) => p.canVote) ?? null);
+          // D150: the admin's Poll of the week first; otherwise the newest you can vote in.
+          if (live) {
+            const open = polls?.open ?? [];
+            setPoll(
+              open.find((p) => p.featured && p.canVote) ?? open.find((p) => p.canVote) ?? null,
+            );
+          }
         });
       return () => {
         live = false;

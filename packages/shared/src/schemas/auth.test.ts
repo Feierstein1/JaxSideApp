@@ -42,9 +42,17 @@ describe('registerRequestSchema', () => {
     expect(registerRequestSchema.safeParse({ ...valid, username }).success).toBe(false);
   });
 
-  it('requires ToS acceptance and 18+ confirmation to be literally true', () => {
+  it('requires ToS acceptance to be literally true', () => {
     expect(registerRequestSchema.safeParse({ ...valid, acceptTerms: false }).success).toBe(false);
+  });
+
+  // D148: the birth year is the age check; the old 18+ switch is optional (older apps send it).
+  it('no longer needs the 18+ switch, but still accepts it from older app versions', () => {
+    const { confirmAdult: _, ...withoutSwitch } = valid;
+    expect(registerRequestSchema.safeParse(withoutSwitch).success).toBe(true);
+    expect(registerRequestSchema.safeParse({ ...valid, confirmAdult: true }).success).toBe(true);
     expect(registerRequestSchema.safeParse({ ...valid, confirmAdult: 'true' }).success).toBe(false);
+    expect(registerRequestSchema.safeParse({ ...valid, birthYear: undefined }).success).toBe(false);
   });
 
   it('enforces password length bounds', () => {
