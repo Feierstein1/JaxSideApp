@@ -70,6 +70,8 @@ export function PostCard({
   const faint = contrastRatio(color.hex, DARK.card) < 2;
   const isUser = 'username' in author;
   const isNew = Date.now() - Date.parse(post.createdAt) < NEW_FOR_MS;
+  // D155: staff posts get a gold-tinted card with a gold edge, so they can't be mistaken.
+  const isAdmin = 'admin' in author && !!author.admin;
   const meta = [
     postTime(post.createdAt),
     post.distanceMeters !== null ? formatDistance(post.distanceMeters) : null,
@@ -88,7 +90,13 @@ export function PostCard({
     >
       {({ pressed }) => (
         // D127: the top corners clipped like the icon's stepped frame.
-        <DecoBox shape="chamferTop" cut={14} fill={pressed ? DARK.raised : DARK.card}>
+        <DecoBox
+          shape="chamferTop"
+          cut={14}
+          fill={pressed ? DARK.raised : isAdmin ? DARK.adminCard : DARK.card}
+          stroke={isAdmin ? DARK.adminEdge : undefined}
+          strokeWidth={isAdmin ? 1.5 : 1}
+        >
           {isNew ? (
             // D140: just inside the clipped top-right corner, above the name row.
             <View
@@ -190,7 +198,7 @@ export function PostCard({
                     </View>
                   ) : null}
                 </View>
-                {'admin' in author && author.admin ? <AdminTag /> : null}
+                {isAdmin ? <AdminTag /> : null}
                 <Text
                   style={{ color: DARK.textMuted, fontSize: 13, fontWeight: '500', marginTop: 1 }}
                 >

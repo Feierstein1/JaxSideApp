@@ -501,6 +501,17 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Admin portal → Polls → **Make Poll of the week**: Home shows that poll; it's starred at the top
       of the Polls list; featuring another replaces it.
 
+### Admin look and notifications (D155, D156)
+
+- [ ] A post and a comment by an account with the ADMIN badge have a gold-tinted background and a
+      gold edge, in the feed and on the post page.
+- [ ] Someone comments on your post: the bell says "name commented on your post near …"; a second
+      comment turns it into "2 new comments…". Tapping opens the post scrolled to that comment,
+      highlighted.
+- [ ] A reply to your comment and an `@yourname` in a post or comment each notify you once.
+- [ ] Away from the area, opening the notification shows the post but its comments say "Comments
+      show when you're near this post"; someone you blocked never triggers a notification.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

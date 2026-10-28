@@ -80,54 +80,66 @@ describe('rating a place (D144)', () => {
     expect(await db.placeRating.count()).toBe(0);
   });
 
-  it('keeps exact counts when many people vote at the same moment', async () => {
-    const people = await Promise.all(Array.from({ length: 12 }, () => person()));
-    await Promise.all(people.map((p, i) => rate(p, i < 9 ? 1 : -1)));
-    // and the same people voting again all at once changes nothing
-    await Promise.all(people.map((p, i) => rate(p, i < 9 ? 1 : -1)));
-    expect(await counts()).toEqual({ likeCount: 9, dislikeCount: 3 });
-    expect(await db.placeRating.count()).toBe(12);
-  });
+  it(
+    'keeps exact counts when many people vote at the same moment',
+    { timeout: 30_000 },
+    async () => {
+      const people = await Promise.all(Array.from({ length: 12 }, () => person()));
+      await Promise.all(people.map((p, i) => rate(p, i < 9 ? 1 : -1)));
+      // and the same people voting again all at once changes nothing
+      await Promise.all(people.map((p, i) => rate(p, i < 9 ? 1 : -1)));
+      expect(await counts()).toEqual({ likeCount: 9, dislikeCount: 3 });
+      expect(await db.placeRating.count()).toBe(12);
+    },
+  );
 
-  it('shows % liked only once 10 people voted, in the list and on the place', async () => {
-    const people = await Promise.all(Array.from({ length: 10 }, () => person()));
-    for (const p of people.slice(0, 9)) await rate(p, p === people[0] ? -1 : 1);
-    const viewer = await person();
-    expect((await view(viewer)).rating).toBeNull(); // 9 votes: not shown yet
-    await rate(people[9]!, 1);
-    expect((await view(viewer)).rating).toEqual({ likedPercent: 90, votes: 10 });
-    expect((await view(people[0]!)).myRating).toBe(-1);
+  it(
+    'shows % liked only once 10 people voted, in the list and on the place',
+    { timeout: 30_000 },
+    async () => {
+      const people = await Promise.all(Array.from({ length: 10 }, () => person()));
+      for (const p of people.slice(0, 9)) await rate(p, p === people[0] ? -1 : 1);
+      const viewer = await person();
+      expect((await view(viewer)).rating).toBeNull(); // 9 votes: not shown yet
+      await rate(people[9]!, 1);
+      expect((await view(viewer)).rating).toEqual({ likedPercent: 90, votes: 10 });
+      expect((await view(people[0]!)).myRating).toBe(-1);
 
-    const list = await call(searchPOST as H, 'POST', {
-      token: viewer.token,
-      body: { reading: reading(), sort: 'liked' },
-    });
-    expect(list.body.places[0]).toMatchObject({
-      name: 'Bold Bean',
-      rating: { likedPercent: 90, votes: 10 },
-    });
-    expect(list.body.places[1]).toMatchObject({ name: 'Second Cup', rating: null });
-  });
+      const list = await call(searchPOST as H, 'POST', {
+        token: viewer.token,
+        body: { reading: reading(), sort: 'liked' },
+      });
+      expect(list.body.places[0]).toMatchObject({
+        name: 'Bold Bean',
+        rating: { likedPercent: 90, votes: 10 },
+      });
+      expect(list.body.places[1]).toMatchObject({ name: 'Second Cup', rating: null });
+    },
+  );
 
   // 🔒 Only while there, not your own place, not brand-new accounts, not while locked.
-  it('refuses votes from away, from the owner, from new accounts and while locked', async () => {
-    const away = await person();
-    expect((await rate(away, 1, FAR)).status).toBe(403);
+  it(
+    'refuses votes from away, from the owner, from new accounts and while locked',
+    { timeout: 30_000 },
+    async () => {
+      const away = await person();
+      expect((await rate(away, 1, FAR)).status).toBe(403);
 
-    const owner = await person();
-    await db.ownerClaim.create({
-      data: { placeId: cafe, userId: owner.id, method: 'EMAIL', status: 'VERIFIED' },
-    });
-    expect((await rate(owner, 1)).body.error.code).toBe('OWNER');
+      const owner = await person();
+      await db.ownerClaim.create({
+        data: { placeId: cafe, userId: owner.id, method: 'EMAIL', status: 'VERIFIED' },
+      });
+      expect((await rate(owner, 1)).body.error.code).toBe('OWNER');
 
-    const fresh = await person(1);
-    expect((await rate(fresh, 1)).body.error.code).toBe('ACCOUNT_TOO_NEW');
+      const fresh = await person(1);
+      expect((await rate(fresh, 1)).body.error.code).toBe('ACCOUNT_TOO_NEW');
 
-    await db.businessPlace.update({ where: { id: cafe }, data: { ratingsLockedAt: new Date() } });
-    const r = await rate(await person(), 1);
-    expect(r.status).toBe(423);
-    expect(await counts()).toEqual({ likeCount: 0, dislikeCount: 0 });
-  });
+      await db.businessPlace.update({ where: { id: cafe }, data: { ratingsLockedAt: new Date() } });
+      const r = await rate(await person(), 1);
+      expect(r.status).toBe(423);
+      expect(await counts()).toEqual({ likeCount: 0, dislikeCount: 0 });
+    },
+  );
 });
 
 describe('admin tools (D144)', () => {

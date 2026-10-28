@@ -40,12 +40,35 @@ export interface FriendRequestView {
 
 export interface NotificationView {
   id: string;
-  type: 'FRIEND_REQUEST' | 'FRIEND_ACCEPTED';
+  /** D156: POST_COMMENT, COMMENT_REPLY and MENTION point to a post (and comment). */
+  type: 'FRIEND_REQUEST' | 'FRIEND_ACCEPTED' | 'POST_COMMENT' | 'COMMENT_REPLY' | 'MENTION';
   actor: FriendUser | null;
   /** FRIEND_REQUEST still waiting: its request ID, so it can be answered from the bell. */
   pendingRequestId: string | null;
+  /**
+   * D156: what to open. Never the text: the post or comment only shows when you open it,
+   * and its comments only when you're in the area (the usual reading rule).
+   */
+  target: { kind: 'general' | 'business'; postId: string; commentId: string | null } | null;
+  /** D156: where it is ("Riverside", a place's name), for "…near Riverside". */
+  where: string | null;
+  /** D156: unread comments on one post are combined ("5 new comments on your post"). */
+  count: number;
   createdAt: string;
   read: boolean;
+}
+
+/** D156: at most this many @mentions in one post or comment notify anyone. */
+export const MENTION_NOTIFY_MAX = 3;
+
+/** D156: the distinct @usernames written in a text (lower case), in order of appearance. */
+export function mentionedUsernames(text: string): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(/(^|[^A-Za-z0-9_@])@([A-Za-z0-9_]{3,20})(?![A-Za-z0-9_])/g)) {
+    const name = m[2]!.toLowerCase();
+    if (!out.includes(name)) out.push(name);
+  }
+  return out;
 }
 
 /** "@name posted near Avondale" / "@name posted at Bold Bean". No text, no coordinates. */

@@ -321,7 +321,16 @@ describe('comments (P3.3, D20)', () => {
       ['@ALICE_P already tagged', 1, top],
       ['my own follow-up', 1, top],
     ]);
-    expect(await db.notification.count()).toBe(0); // tags never notify
+    // D156 (was "tags never notify"): alice hears about the comment on her post and the two
+    // replies to her comment; bob about alice's reply. Her own follow-up notifies no one.
+    const notes = await db.notification.findMany({
+      select: { userId: true, type: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const forAlice = notes.filter((n) => n.userId === aliceId).map((n) => n.type);
+    const forOthers = notes.filter((n) => n.userId !== aliceId).map((n) => n.type);
+    expect(forAlice).toEqual(['POST_COMMENT', 'COMMENT_REPLY', 'COMMENT_REPLY']);
+    expect(forOthers).toEqual(['COMMENT_REPLY']); // bob, for alice's reply
     const foreign = (await comment(bob, other, 'elsewhere')).body.id;
     expect((await comment(bob, p, 'x', foreign)).body.error.code).toBe('INVALID_PARENT');
   });

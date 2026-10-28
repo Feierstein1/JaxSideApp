@@ -62,6 +62,7 @@ import { checkEdit, checkNewContent } from '../moderation/spam';
 import { castVote } from './votes';
 import { evaluateForCommentAuthor, evaluateForPostAuthor } from '../achievements';
 import { assertTopicOpen, getTopic, localRadiusMeters, topicAnchor } from '../topics';
+import { notifyComment, notifyPostMentions } from '../social/notifications';
 
 export type IdCtx = { params: Promise<{ id: string }> };
 
@@ -311,6 +312,8 @@ export async function createGeneral(req: Request) {
     input.topicId,
   );
   if (hold) return heldResponse(hold, { generalPostId: id });
+  // D156: tell anyone it @mentions (held posts tell no one).
+  await notifyPostMentions({ kind: 'general', postId: id, authorId: user.id, body: input.body });
   return NextResponse.json(
     { post: await getPostView('general', id, user.id, at) },
     { status: 201 },
@@ -339,6 +342,7 @@ export async function createBusiness(req: Request, ctx: IdCtx) {
     input.videoId,
   );
   if (hold) return heldResponse(hold, { businessPostId: id });
+  await notifyPostMentions({ kind: 'business', postId: id, authorId: user.id, body: input.body });
   return NextResponse.json({ post: await getPostView('business', id, user.id) }, { status: 201 });
 }
 
@@ -438,6 +442,15 @@ export function commentCreate(kind: DiscussionKind) {
       held: !!hold,
     });
     if (hold) return heldResponse(hold, { commentId: id });
+    // D156: the post's author, the person replied to, and anyone @mentioned.
+    await notifyComment({
+      kind,
+      postId,
+      commentId: id,
+      authorId: user.id,
+      parentCommentId: input.parentCommentId,
+      body: input.body,
+    });
     return NextResponse.json({ id }, { status: 201 });
   };
 }

@@ -95,6 +95,10 @@ export const DARK = {
   error: '#FF8A80',
   errorSoft: '#3D2224',
 
+  /** D155: posts and comments by staff (the ADMIN badge): a gold-tinted card, gold edge. */
+  adminCard: '#382E17',
+  adminEdge: BRAND.gold,
+
   scrim: 'rgba(0,0,0,0.6)',
   shadow: BRAND.black,
 } as const;
