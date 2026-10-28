@@ -13,12 +13,8 @@ import { JosefinSans_700Bold } from '@expo-google-fonts/josefin-sans/700Bold';
 import { RussoOne_400Regular } from '@expo-google-fonts/russo-one';
 import { DARK } from '@jax/shared';
 import { AuthProvider, useAuth } from '@/auth/AuthContext';
-import { installRemoteLogging } from '@/debug/remote-log';
 import { DialogHost } from '@/dialog';
 import { GuideHost } from '@/guides/guide';
-
-// D100 (temporary): send app errors to the development server's log.
-installRemoteLogging();
 import { LoadingEmblem } from '@/brand/Emblem';
 
 /** D79: navigation colors match the dark theme, so no white flashes between screens. */

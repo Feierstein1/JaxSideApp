@@ -5,7 +5,6 @@ import { WebView as RNWebView, type WebViewMessageEvent } from 'react-native-web
 import { router } from 'expo-router';
 import { categoryGroup, DARK, type PlaceSummary } from '@jax/shared';
 import { API_BASE_URL, api } from '@/api';
-import { remoteLog } from '@/debug/remote-log';
 import { Text } from '@/text';
 import { SPACE, TYPE } from '@/tokens';
 
@@ -54,13 +53,9 @@ export function PlacesMap({
     api
       .get<{ available: boolean; pageUrl?: string }>('/api/v1/map')
       .then((r) => {
-        remoteLog('info', `map config: available=${r.available}`, 'PlacesMap');
         setPageUrl(r.available && r.pageUrl ? `${API_BASE_URL}${r.pageUrl}` : null);
       })
-      .catch((e: unknown) => {
-        remoteLog('error', 'map config request failed', 'PlacesMap', e);
-        setError('Couldn’t load the map.');
-      });
+      .catch(() => setError('Couldn’t load the map.'));
   }, []);
 
   /** Sends places and your location to the map; `fit` frames you and the places again. */
@@ -100,7 +95,6 @@ export function PlacesMap({
 
   /** Android / iOS may stop the map's web view in the background: reload it. */
   function restart() {
-    remoteLog('info', 'map web view restarted', 'PlacesMap');
     setReady(false);
     fittedAt.current = null;
     web.current?.reload();
@@ -115,14 +109,9 @@ export function PlacesMap({
     }
     if (msg.type === 'ready') {
       setReady(true);
-      remoteLog('info', 'map ready', 'PlacesMap');
     } else if (msg.type === 'open' && typeof msg.id === 'string') {
       router.push(`/places/${msg.id}`);
-    } else if (msg.type === 'log') {
-      remoteLog('info', String(msg.message), 'map page');
     } else if (msg.type === 'error') {
-      // D100: every map error goes to the development log.
-      remoteLog('error', String(msg.message), 'map page');
       if (!ready) setError('The map couldn’t start. Try the list.');
     }
   }
@@ -147,23 +136,7 @@ export function PlacesMap({
           javaScriptEnabled
           // Only our map page; links never open inside the map.
           onShouldStartLoadWithRequest={(r) => r.url.startsWith(API_BASE_URL)}
-          onError={(e) => {
-            remoteLog(
-              'error',
-              `WebView load error: ${e.nativeEvent.description}`,
-              'PlacesMap',
-              e.nativeEvent,
-            );
-            setError('The map couldn’t load. Try the list.');
-          }}
-          onHttpError={(e) =>
-            remoteLog(
-              'error',
-              `WebView HTTP ${e.nativeEvent.statusCode}`,
-              'PlacesMap',
-              e.nativeEvent.url,
-            )
-          }
+          onError={() => setError('The map couldn’t load. Try the list.')}
           setSupportMultipleWindows={false}
           onRenderProcessGone={restart}
           onContentProcessDidTerminate={restart}

@@ -12,7 +12,22 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://staging-api.jaxside.com"
       },
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "staging"
+    },
+    "production": {
+      "distribution": "store",
+      "channel": "production",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.jaxside.com"
+      }
     }
+  },
+  "submit": {
+    "production": {}
   }
 }
