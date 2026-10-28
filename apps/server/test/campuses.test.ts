@@ -4,7 +4,7 @@ import { POST as submitPOST } from '@/app/api/v1/submissions/route';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
-import { buildOverpassQuery, categorize } from '@/server/directory/osm';
+import { buildOverpassQuery, campusName, categorize } from '@/server/directory/osm';
 import { markerStyles } from '@/server/map/icons';
 import { readBoundaryFile } from '@/server/location/boundary-file';
 import { importServiceArea } from '@/server/location/service-area';
@@ -23,6 +23,19 @@ describe('campuses from map data (D149)', () => {
     const q = buildOverpassQuery([30, -82, 30.6, -81.3]);
     expect(q).toContain('university');
     expect(q).not.toMatch(/\bschool\b/);
+  });
+
+  it('shortens long campus names so they fit the list', () => {
+    expect(campusName('Florida State College at Jacksonville - Downtown Campus')).toBe(
+      'FSCJ Downtown Campus',
+    );
+    expect(campusName('Florida State College at Jacksonville Cecil Center North')).toBe(
+      'FSCJ Cecil Center North',
+    );
+    expect(campusName('Concorde Career Institute - Jacksonville')).toBe(
+      'Concorde Career Institute',
+    );
+    expect(campusName('University of North Florida')).toBe('University of North Florida');
   });
 
   it('has its own group, color and map marker', () => {

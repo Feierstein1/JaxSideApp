@@ -204,16 +204,30 @@ function phone(t: Record<string, string>): string | null {
   return raw ? raw.slice(0, 40) : null;
 }
 
+/**
+ * D149: campus names on the map are often too long for the list (D69: 30 characters), so the
+ * usual short forms are used: "Florida State College at Jacksonville - Downtown Campus" is
+ * "FSCJ Downtown Campus", and a trailing " - Jacksonville" is dropped.
+ */
+export function campusName(name: string): string {
+  return name
+    .replace(/^Florida State College at Jacksonville\b[\s-]*/i, 'FSCJ ')
+    .replace(/\s*-\s*Jacksonville$/i, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 /** Turns raw Overpass elements into importable places (named + allow-listed + located). */
 export function toCandidates(elements: OsmElement[]): PlaceCandidate[] {
   const out: PlaceCandidate[] = [];
   for (const el of elements) {
     const tags = el.tags ?? {};
-    const name = tags.name?.trim();
     const lat = el.lat ?? el.center?.lat;
     const lon = el.lon ?? el.center?.lon;
-    if (!name || lat === undefined || lon === undefined) continue;
     const category = categorize(tags);
+    const raw = tags.name?.trim();
+    const name = raw && category === 'campus' ? campusName(raw) : raw;
+    if (!name || lat === undefined || lon === undefined) continue;
     if (!category) continue;
     const nameNormalized = normalizeName(name);
     if (!nameNormalized) continue;
