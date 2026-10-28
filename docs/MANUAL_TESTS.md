@@ -481,6 +481,13 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] With the map open, close the app, go somewhere else (more than ~200 m), reopen: the map
       shows the new area without switching to the list and back.
 
+### Admin: any place (D146)
+
+- [ ] Admin portal → **All places** → search a place → **Remove** (give a reason): it's gone from
+      the app's list and map; Removals → Removed lists it; **Keep** brings it back.
+- [ ] **Add a place** with a pin copied from Google Maps (long-press the spot): it's in the app's
+      Places list right away. A pin outside Duval is refused.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

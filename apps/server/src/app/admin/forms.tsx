@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { COLORS } from '@jax/shared';
+import { COLORS, SUBMIT_CATEGORIES } from '@jax/shared';
 import { adminFetch, ui } from './admin-ui';
 
 /** Moderator forms (P5.14). Each posts to the admin API with the CSRF header. */
@@ -284,6 +284,113 @@ export function PlaceRatingControls({ placeId, locked }: { placeId: string; lock
       {error ? <span style={ui.error}>{error}</span> : null}
       {done ? <span role="status">{done}</span> : null}
     </span>
+  );
+}
+
+/** D146: take any place down now (asks for a reason; Removals → Keep undoes it). */
+export function RemovePlaceButton({ placeId, name }: { placeId: string; name: string }) {
+  const { busy, error, done, run } = useSubmit();
+  const remove = () =>
+    run(async () => {
+      const reason = prompt(`Remove “${name}”? Give a reason (kept in the audit log).`);
+      if (!reason || reason.trim().length < 3) return 'Cancelled.';
+      await adminFetch(`/api/v1/admin/places/${placeId}/remove`, {
+        method: 'POST',
+        body: { reason },
+      });
+      setTimeout(() => window.location.reload(), 500);
+      return 'Removed.';
+    });
+  return (
+    <span>
+      <button style={ui.buttonDanger} disabled={busy} onClick={remove}>
+        Remove
+      </button>
+      {error ? <span style={ui.error}> {error}</span> : null}
+      {done ? <span role="status"> {done}</span> : null}
+    </span>
+  );
+}
+
+/**
+ * D146: add a place now. The pin is typed as "latitude, longitude" (in Google Maps, long-
+ * press the spot and copy the numbers shown); it must be inside Duval.
+ */
+export function AddPlaceForm() {
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState<string>(SUBMIT_CATEGORIES[0]);
+  const [address, setAddress] = useState('');
+  const [pin, setPin] = useState('');
+  const { busy, error, done, run } = useSubmit();
+  const submit = () =>
+    run(async () => {
+      const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(pin);
+      if (!m) throw new Error('Enter the pin as "latitude, longitude", e.g. 30.3274, -81.6588');
+      await adminFetch('/api/v1/admin/places', {
+        method: 'POST',
+        body: {
+          name,
+          category,
+          ...(address.trim() ? { address } : {}),
+          latitude: Number(m[1]),
+          longitude: Number(m[2]),
+        },
+      });
+      setName('');
+      setAddress('');
+      setPin('');
+      return 'Added. It’s in the app now.';
+    });
+  return (
+    <div style={{ ...ui.card, marginTop: 24, maxWidth: 560 }}>
+      <h2 style={{ marginTop: 0 }}>Add a place</h2>
+      <label style={ui.label}>
+        Name
+        <input
+          style={ui.input}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={30}
+        />
+      </label>
+      <label style={ui.label}>
+        Category
+        <select style={ui.input} value={category} onChange={(e) => setCategory(e.target.value)}>
+          {SUBMIT_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c.replaceAll('_', ' ')}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={ui.label}>
+        Address (optional)
+        <input
+          style={ui.input}
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          maxLength={200}
+        />
+      </label>
+      <label style={ui.label}>
+        Pin: latitude, longitude (in Google Maps, long-press the spot and copy the numbers)
+        <input
+          style={ui.input}
+          value={pin}
+          onChange={(e) => setPin(e.target.value)}
+          placeholder="30.3274, -81.6588"
+        />
+      </label>
+      <button style={ui.button} disabled={busy || !name.trim() || !pin.trim()} onClick={submit}>
+        Add place
+      </button>
+      {error ? (
+        <p role="alert" style={ui.error}>
+          {error}
+        </p>
+      ) : null}
+      {done ? <p role="status">{done}</p> : null}
+    </div>
   );
 }
 
