@@ -8,6 +8,7 @@ export default tseslint.config(
     ignores: [
       '**/node_modules/**',
       '**/.next/**',
+      '**/.next-*/**', // D153: the staging admin portal's build folder
       '**/.expo/**',
       '**/dist/**',
       '**/coverage/**',
