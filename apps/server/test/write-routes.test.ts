@@ -45,7 +45,6 @@ import * as ownerConfirm from '@/app/api/v1/owner-claims/[id]/confirm/route';
 import * as ownerProof from '@/app/api/v1/owner-claims/[id]/proof/route';
 import * as ownerCancel from '@/app/api/v1/owner-claims/[id]/cancel/route';
 import * as contact from '@/app/api/v1/contact/route';
-import * as clientLog from '@/app/api/v1/dev/client-log/route';
 import * as messages from '@/app/api/v1/messages/route';
 import * as messageUnsend from '@/app/api/v1/messages/[id]/unsend/route';
 import * as messageHide from '@/app/api/v1/messages/[id]/hide/route';
@@ -516,16 +515,6 @@ const ROWS: Row[] = [
     id: null,
     location: false,
     body: () => ({ title: 'Best tacos in Riverside' }),
-  },
-  // D100: temporary phone error log (development only; no session, rate-limited per IP).
-  {
-    route: 'dev/client-log',
-    method: 'POST',
-    handler: h(clientLog, 'POST'),
-    auth: false,
-    id: null,
-    location: false,
-    body: () => ({ level: 'error', message: 'route table test' }),
   },
   // D90: Contact us (contact.test.ts).
   {

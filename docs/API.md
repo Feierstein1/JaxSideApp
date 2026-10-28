@@ -20,9 +20,8 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 
 ## dev
 
-| Method | Path                     | Who    | Location | What it does |
-| ------ | ------------------------ | ------ | -------- | ------------ |
-| POST   | `/api/v1/dev/client-log` | public |          |              |
+| Method | Path | Who | Location | What it does |
+| ------ | ---- | --- | -------- | ------------ |
 
 ## friends
 

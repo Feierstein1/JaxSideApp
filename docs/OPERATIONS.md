@@ -119,6 +119,23 @@ places, migrations and a PostGIS distance query matched the live database as of 
 time; the scratch database was dropped. Steps: download the dump with the app's storage key,
 `createdb -T template0`, `pg_restore --no-owner --no-acl --exit-on-error`, compare counts.
 
+## Releasing changes (D154)
+
+Three kinds of change, each with its own path. The server always ships first and stays
+compatible with app versions people still have (e.g. it still accepts the old 18+ switch).
+
+| Change                                                             | How                                                                             | Live after                                                                     | Downtime                        |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------- |
+| A setting (limits, spam phrases, Poll of the week, bans)           | Admin portal                                                                    | Immediately                                                                    | None                            |
+| Server code                                                        | Back up the database if it has migrations, then `bash deploy/staging/deploy.sh` | 5–10 min (builds on the server)                                                | ~10–30 s while the app restarts |
+| App code: JavaScript, text, layout, images                         | `npm run update:production -w @jax/mobile -- "what changed"`                    | Downloaded the next time the app opens, applied on the launch after            | None                            |
+| App code: native (new permission, SDK upgrade, new native library) | `eas build --profile production`, then submit to the stores                     | Store review (Google hours to ~3 days, Apple ~1–2 days) + people's auto-update | None                            |
+
+Over-the-air updates go to builds on the same channel (staging or production) whose native
+fingerprint matches; a build that doesn't match keeps its current code until a new store
+build. `scripts/ota.mjs` sets the server address per channel, so an update can't point at a
+development server.
+
 ## 6. Deploying a new version (checklist)
 
 1. `npm run verify` (types, lint, tests, build) passes on the commit.

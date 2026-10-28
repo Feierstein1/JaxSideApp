@@ -65,6 +65,14 @@
         "projectId": "deeb8830-0fa8-4998-b4c2-ca703c18913a"
       }
     },
-    "owner": "kenfeier"
+    "owner": "kenfeier",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/deeb8830-0fa8-4998-b4c2-ca703c18913a",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }
