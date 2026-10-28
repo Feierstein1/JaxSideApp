@@ -171,6 +171,8 @@ export interface PollView {
    * (confirmed, a few days old; never guests). Home shows the poll before Citywide only then.
    */
   canVote: boolean;
+  /** D150: the Poll of the week (an admin picks it; Home shows it first). */
+  featured: boolean;
   /**
    * Totals. D133: while open, only for people who voted (live, citywide, with how many voted);
    * once closed, for everyone (with the ZIP breakdown).

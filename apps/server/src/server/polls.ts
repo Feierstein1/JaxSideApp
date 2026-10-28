@@ -243,6 +243,7 @@ async function view(
     choices: p.choices,
     myChoiceIds,
     canVote: status === 'open' && ready && myChoiceIds.length === 0,
+    featured: !!p.featuredAt,
     // D133: closed: everyone sees the final results (with ZIPs). Open: only people who
     // voted, live and citywide (so seeing results never sways anyone who hasn't voted).
     results:
@@ -387,6 +388,24 @@ function pollData(input: AdminPollRequest) {
 }
 
 /** Admin list: every poll with its status and, while open, only how many have voted. */
+/**
+ * D150: make a poll the Poll of the week (Home shows it first), or stop featuring it. Only
+ * one at a time: featuring one clears the others. A closed poll can't be featured.
+ */
+export async function featurePoll(id: string, on: boolean, now = new Date()) {
+  const poll = await db.poll.findUnique({ where: { id }, select: { closesAt: true } });
+  if (!poll) throw new ApiError(404, 'NOT_FOUND', 'Poll not found');
+  if (on && poll.closesAt <= now) {
+    throw new ApiError(409, 'POLL_CLOSED', 'That poll has closed.');
+  }
+  await db.$transaction([
+    ...(on
+      ? [db.poll.updateMany({ where: { featuredAt: { not: null } }, data: { featuredAt: null } })]
+      : []),
+    db.poll.update({ where: { id }, data: { featuredAt: on ? now : null } }),
+  ]);
+}
+
 export async function adminListPolls(now = new Date()) {
   await finalizeDuePolls(now);
   const polls = await db.poll.findMany({
@@ -411,6 +430,7 @@ export async function adminListPolls(now = new Date()) {
     status: pollStatus(p, now),
     choices: p.choices,
     createdBy: p.createdBy?.username ?? null,
+    featured: !!p.featuredAt,
     votesSoFar: p.finalizedAt ? p.voterCount : p._count.voters,
     results: p.finalizedAt ? buildResults(p.choices, p.tallies, p.voterTallies) : null,
   }));

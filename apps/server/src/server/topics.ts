@@ -274,14 +274,29 @@ export async function createUserTopic(
 /**
  * D143: one new topic of each kind (City, Near me) every topics.newEveryDays per person.
  * Every topic they started counts, deleted, held or removed ones too, so deleting one doesn't
- * free the slot. Admins aren't limited.
+ * free the slot. D147: and only once the account is topics.createMinAccountDays old (slows
+ * down new accounts made to advertise). Admins aren't limited.
  */
 export async function assertTopicAllowance(
-  user: { id: string; role: string },
+  user: { id: string; role: string; createdAt: Date },
   scope: 'city' | 'local',
   now = new Date(),
 ) {
   if (user.role === 'ADMIN') return;
+  const minAge = await getConfig('topics.createMinAccountDays');
+  const allowedAt = new Date(user.createdAt.getTime() + minAge * 86_400_000);
+  if (now < allowedAt) {
+    const when = allowedAt.toLocaleDateString('en-US', {
+      timeZone: APP_TIME_ZONE,
+      month: 'short',
+      day: 'numeric',
+    });
+    throw new ApiError(
+      403,
+      'ACCOUNT_TOO_NEW',
+      `New accounts can start topics after ${minAge} days (from ${when}). You can post in existing topics now.`,
+    );
+  }
   const days = await getConfig('topics.newEveryDays');
   const last = await db.cityTopic.findFirst({
     where: {

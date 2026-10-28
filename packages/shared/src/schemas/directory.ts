@@ -30,6 +30,8 @@ export const CATEGORY_GROUPS = [
   { key: 'lodging', label: 'Hotels', categories: ['lodging'] },
   // D105: churches, mosques and synagogues (OSM places of worship, by religion).
   { key: 'faith', label: 'Places of worship', categories: ['church', 'mosque', 'synagogue'] },
+  // D149: college and university campuses (OSM only; people can't suggest them).
+  { key: 'campus', label: 'Campuses', categories: ['campus'] },
 ] as const;
 
 /**
@@ -47,6 +49,7 @@ export const CATEGORY_COLORS: Record<(typeof CATEGORY_GROUPS)[number]['key'] | '
   lodging: '#00695C', // teal-green
   fitness: '#283593', // indigo (D89)
   faith: '#7A5C00', // dark ochre (D105)
+  campus: '#5D1049', // deep plum (D149)
 
   other: '#37474F', // slate
 };
@@ -66,6 +69,7 @@ export const CATEGORY_ICONS: Record<(typeof CATEGORY_GROUPS)[number]['key'] | 'o
   lodging: 'bed',
   fitness: 'barbell', // D89
   faith: 'heart', // D105
+  campus: 'school', // D149: a graduation cap
   other: 'location',
 };
 

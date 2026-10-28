@@ -220,7 +220,7 @@ export default async function PollsPage({
                 ) : null}
               </>
             )}
-            <PollActions id={p.id} status={p.status} />
+            <PollActions id={p.id} status={p.status} featured={p.featured} />
           </div>
         ))}
       </div>

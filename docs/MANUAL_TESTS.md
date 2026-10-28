@@ -488,6 +488,19 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] **Add a place** with a pin copied from Google Maps (long-press the spot): it's in the app's
       Places list right away. A pin outside Duval is refused.
 
+### Sign-up, topics, campuses, polls (D147–D150)
+
+- [ ] Create account: there's no "I am 18 or older" switch; the birth year is still asked; the note
+      mentions the email code. A too-recent birth year is refused.
+- [ ] A new account (under 5 days old) tapping + on City Topics is told when it can start one, but
+      can post inside existing topics.
+- [ ] Places: a **Campuses** filter (plum, graduation cap) lists UNF, JU, FSCJ and the like; they
+      show on the map. Suggesting "Lee High School" or "UNF Campus" is refused.
+- [ ] Polls: **Open polls / Voted** at the top; answer one in Open and it moves to Voted with live
+      results; closed polls are under Voted.
+- [ ] Admin portal → Polls → **Make Poll of the week**: Home shows that poll; it's starred at the top
+      of the Polls list; featuring another replaces it.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

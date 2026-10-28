@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DELETE as topicDELETE } from '@/app/api/v1/topics/[id]/route';
+import { POST as postsPOST } from '@/app/api/v1/posts/route';
 import { POST as pagePOST } from '@/app/api/v1/topics/list/route';
 import { POST as createPOST } from '@/app/api/v1/topics/route';
 import { listCases } from '@/server/admin/queue';
@@ -19,11 +20,11 @@ const DAY = 86_400_000;
 const AT = { latitude: 30.3274, longitude: -81.6588 };
 const reading = () => ({ ...AT, accuracyMeters: 10, timestamp: Date.now() - 2_000 });
 
-async function person(name: string, role: 'USER' | 'ADMIN' = 'USER') {
+async function person(name: string, role: 'USER' | 'ADMIN' = 'USER', ageDays = 10) {
   const u = await createTestUser(name, {
     role,
     emailVerifiedAt: new Date(),
-    createdAt: new Date(Date.now() - 10 * DAY),
+    createdAt: new Date(Date.now() - ageDays * DAY),
   });
   return { id: u.id, token: (await createSession(u.id, 'MOBILE')).token };
 }
@@ -76,6 +77,30 @@ describe('one topic of each kind per 30 days (D143)', () => {
     const admin = await person('tl_admin', 'ADMIN');
     expect((await create(admin.token, 'city', 'Admin topic one')).status).toBe(201);
     expect((await create(admin.token, 'city', 'Admin topic two')).status).toBe(201);
+  });
+});
+
+describe('new accounts wait 5 days to start a topic (D147)', () => {
+  // 🔒 A 3-day-old account can't start one, but can post in an existing topic.
+  it('refuses starting a topic until the account is 5 days old; posting in one works', async () => {
+    const fresh = await person('tl_fresh', 'USER', 3);
+    const r = await create(fresh.token, 'city', 'Visit my new shop');
+    expect(r.status).toBe(403);
+    expect(r.body.error.code).toBe('ACCOUNT_TOO_NEW');
+    expect(r.body.error.message).toMatch(/after 5 days/);
+
+    const t = (await create(me.token, 'city', 'Existing topic')).body.topic;
+    const post = await call(postsPOST as H, 'POST', {
+      token: fresh.token,
+      body: { reading: reading(), body: 'Joining in here', topicId: t.id },
+    });
+    expect(post.status).toBe(201);
+
+    await db.user.update({
+      where: { id: fresh.id },
+      data: { createdAt: new Date(Date.now() - 6 * DAY) },
+    });
+    expect((await create(fresh.token, 'city', 'Now I can start one')).status).toBe(201);
   });
 });
 

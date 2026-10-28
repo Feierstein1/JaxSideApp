@@ -36,7 +36,11 @@ export const registerRequestSchema = z.strictObject({
   password: passwordSchema,
   birthYear: birthYearSchema,
   acceptTerms: z.literal(true, { error: 'You must accept the Terms of Service' }),
-  confirmAdult: z.literal(true, { error: 'You must confirm you are 18 or older' }),
+  /**
+   * D148: the "I am 18 or older" switch is gone (the birth year is the age check). Still
+   * accepted, and ignored, so app versions that send it keep working.
+   */
+  confirmAdult: z.literal(true).optional(),
 });
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 

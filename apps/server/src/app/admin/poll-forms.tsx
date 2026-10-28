@@ -370,21 +370,37 @@ export function PollSuggestionActions({
   );
 }
 
-export function PollActions({ id, status }: { id: string; status: string }) {
+export function PollActions({
+  id,
+  status,
+  featured,
+}: {
+  id: string;
+  status: string;
+  featured: boolean;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  async function act(kind: 'delete' | 'end') {
-    const sure = confirm(
-      kind === 'delete'
-        ? 'Delete this poll? It hasn’t opened yet, so nobody has seen it.'
-        : 'End this poll now? It closes and is counted right away; this can’t be undone.',
-    );
+  async function act(kind: 'delete' | 'end' | 'feature') {
+    const sure =
+      kind === 'feature' ||
+      confirm(
+        kind === 'delete'
+          ? 'Delete this poll? It hasn’t opened yet, so nobody has seen it.'
+          : 'End this poll now? It closes and is counted right away; this can’t be undone.',
+      );
     if (!sure) return;
     setBusy(true);
     setError(undefined);
     try {
       if (kind === 'delete') {
         await adminFetch(`/api/v1/admin/polls/${id}`, { method: 'DELETE' });
+      } else if (kind === 'feature') {
+        // D150: one Poll of the week; featuring this one replaces the last.
+        await adminFetch(`/api/v1/admin/polls/${id}/feature`, {
+          method: 'POST',
+          body: { featured: !featured },
+        });
       } else {
         await adminFetch(`/api/v1/admin/polls/${id}/end`, { method: 'POST' });
       }
@@ -405,6 +421,15 @@ export function PollActions({ id, status }: { id: string; status: string }) {
             Delete
           </button>
         </>
+      ) : null}
+      {status === 'open' || status === 'upcoming' ? (
+        <button
+          style={featured ? ui.button : ui.buttonSecondary}
+          disabled={busy}
+          onClick={() => void act('feature')}
+        >
+          {featured ? '★ Poll of the week (stop)' : 'Make Poll of the week'}
+        </button>
       ) : null}
       {status === 'open' ? (
         <button style={ui.buttonSecondary} disabled={busy} onClick={() => void act('end')}>
