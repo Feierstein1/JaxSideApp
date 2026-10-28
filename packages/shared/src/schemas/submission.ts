@@ -35,6 +35,23 @@ export const submissionCreateSchema = z.strictObject({
   confirmWarning: z.literal(true).optional(),
 });
 
+/**
+ * D146: an admin adds a place directly (no suggestion or votes). The pin is typed in
+ * ("30.3274, -81.6588", e.g. copied from a map app); it must be inside Duval.
+ */
+export const adminPlaceCreateSchema = z.strictObject({
+  name: placeName,
+  category: z.enum(SUBMIT_CATEGORIES as unknown as [string, ...string[]]),
+  address: z.string().trim().max(200).optional(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+
+/** D146: an admin takes any place down now (no request needed); Keep in Removals undoes it. */
+export const adminPlaceRemoveSchema = z.strictObject({
+  reason: z.string().trim().min(3, 'A reason is required').max(500),
+});
+
 /** P5.12: an admin's decision on one submission. */
 export const submissionDecisionSchema = z.discriminatedUnion('decision', [
   z.strictObject({

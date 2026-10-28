@@ -344,7 +344,8 @@ export async function adminRemovePlace(adminId: string, removalId: string, now =
  * place) for `places.removedPostDays` (90). After that they're deleted for good, with their
  * comments, votes and photo files, to save storage. Posts that were reported (the post or
  * any comment on it) are kept as moderation evidence; reports and the admin log are never
- * deleted here.
+ * deleted here. D146: its favorites and ratings go at the same time (until then they're
+ * only hidden, so restoring the place brings them back).
  */
 export async function purgeRemovedPlacePosts(now = new Date()) {
   const days = await getConfig('places.removedPostDays');
@@ -360,9 +361,18 @@ export async function purgeRemovedPlacePosts(now = new Date()) {
     take: 200,
   });
   if (!places.length) return 0;
+  const ids = places.map((p) => p.id);
+  await db.$transaction([
+    db.favoritePlace.deleteMany({ where: { placeId: { in: ids } } }),
+    db.placeRating.deleteMany({ where: { placeId: { in: ids } } }),
+    db.businessPlace.updateMany({
+      where: { id: { in: ids } },
+      data: { likeCount: 0, dislikeCount: 0 },
+    }),
+  ]);
   const posts = await db.businessPost.findMany({
     where: {
-      placeId: { in: places.map((p) => p.id) },
+      placeId: { in: ids },
       reports: { none: {} },
       comments: { none: { reports: { some: {} } } },
     },
