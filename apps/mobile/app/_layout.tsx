@@ -13,6 +13,7 @@ import { JosefinSans_700Bold } from '@expo-google-fonts/josefin-sans/700Bold';
 import { RussoOne_400Regular } from '@expo-google-fonts/russo-one';
 import { DARK } from '@jax/shared';
 import { AuthProvider, useAuth } from '@/auth/AuthContext';
+import { VerifyEmailGate } from '@/auth/VerifyEmailGate';
 import { DialogHost } from '@/dialog';
 import { GuideHost } from '@/guides/guide';
 import { LoadingEmblem } from '@/brand/Emblem';
@@ -85,6 +86,8 @@ export default function RootLayout() {
       {fontsLoaded || fontError ? (
         <AuthProvider>
           <RootStack />
+          {/* D159: in front of everything until the email is confirmed. */}
+          <VerifyEmailGate />
           {/* D97: the app's styled pop-ups (showAlert / showMenu). */}
           <DialogHost />
           {/* D104: first-time guides. */}
