@@ -5,6 +5,7 @@ import { api } from '@/api';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { Button, Field, FormError, styles } from '@/ui';
 import { useAuth } from './AuthContext';
+import { BotTrap } from './BotTrap';
 import { Text } from '@/text';
 
 /** D31: confirm your email with the 6-digit code (shown until confirmed). */
@@ -14,9 +15,10 @@ export function EmailCodeCard({ email }: { email: string }) {
   const [note, setNote] = useState<string>();
   const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false); // D160: bot trap
 
   async function confirm() {
-    const v = validate(verifyEmailCodeSchema, { code });
+    const v = validate(verifyEmailCodeSchema, { code, newsletterOptIn });
     if (!v.ok) return setErrors(v.errors);
     setErrors({});
     setBusy(true);
@@ -69,6 +71,7 @@ export function EmailCodeCard({ email }: { email: string }) {
         placeholder="123 456"
         error={errors.code}
       />
+      <BotTrap value={newsletterOptIn} onChange={setNewsletterOptIn} />
       <Button title="Confirm email" onPress={() => void confirm()} busy={busy} />
       <Button variant="link" title="Send a new code" onPress={() => void resend()} />
       <Button variant="link" title="I used the link in the email" onPress={() => void refresh()} />
