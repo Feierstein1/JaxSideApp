@@ -48,7 +48,9 @@ export function Compose({ target, placeName }: { target: PostTarget; placeName?:
   const [voice, setVoice] = useState<UploadedVoice | null>(null);
   /** D102: a video post; its text is an optional caption. */
   const [video, setVideo] = useState<(UploadedVideo & { localUri: string }) | null>(null);
-  const ready = mode === 'text' ? !!body.trim() : mode === 'voice' ? !!voice : !!video;
+  // D158: a photo post needs no text.
+  const ready =
+    mode === 'text' ? !!body.trim() || photos.length > 0 : mode === 'voice' ? !!voice : !!video;
   const canPost = ready && !busy && !uploading;
   const nearLimit = body.length > POST_MAX * 0.9;
   const guideKey = target.kind === 'general' ? 'areaPost' : 'placePost';

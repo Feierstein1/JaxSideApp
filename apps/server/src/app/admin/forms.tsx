@@ -551,10 +551,19 @@ export function RemovalActions({ id, status }: { id: string; status: string }) {
 }
 
 /** D103: approve or reject an owner claim, or remove a verified owner's tag. */
-export function OwnerActions({ id, status }: { id: string; status: string }) {
+export function OwnerActions({
+  id,
+  status,
+  primary = false,
+}: {
+  id: string;
+  status: string;
+  /** D157: this owner manages the place's owner team. */
+  primary?: boolean;
+}) {
   const [note, setNote] = useState('');
   const { busy, error, done, run } = useSubmit();
-  const act = (action: 'approve' | 'reject' | 'revoke') =>
+  const act = (action: 'approve' | 'reject' | 'revoke' | 'make-primary') =>
     run(async () => {
       await adminFetch(`/api/v1/admin/owner-claims/${id}`, {
         method: 'POST',
@@ -565,7 +574,9 @@ export function OwnerActions({ id, status }: { id: string; status: string }) {
         ? 'Verified.'
         : action === 'reject'
           ? 'Rejected.'
-          : 'Tag removed.';
+          : action === 'make-primary'
+            ? 'Now the primary owner.'
+            : 'Tag removed.';
     });
   if (status !== 'PENDING' && status !== 'VERIFIED') return null;
   return (
@@ -589,9 +600,18 @@ export function OwnerActions({ id, status }: { id: string; status: string }) {
           </button>
         </>
       ) : (
-        <button style={ui.buttonSecondary} disabled={busy} onClick={() => act('revoke')}>
-          Remove Owner tag
-        </button>
+        <>
+          <button style={ui.buttonSecondary} disabled={busy} onClick={() => act('revoke')}>
+            Remove Owner tag
+          </button>{' '}
+          {primary ? (
+            <strong>Primary owner (manages the team)</strong>
+          ) : (
+            <button style={ui.buttonSecondary} disabled={busy} onClick={() => act('make-primary')}>
+              Make primary owner
+            </button>
+          )}
+        </>
       )}
       {error ? (
         <p role="alert" style={ui.error}>

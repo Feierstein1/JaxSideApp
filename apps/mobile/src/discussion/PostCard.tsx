@@ -16,12 +16,61 @@ import { VideoPlayer } from './VideoPlayer';
 import { VoicePlayer } from './VoicePlayer';
 import { VoteControl } from './VoteControl';
 
-type AnyAuthor = { username: string } | { guest: true } | { deleted: true };
+type AnyAuthor =
+  | { username: string }
+  | { theOwner: true; place: string; staffName: string | null }
+  | { guest: true }
+  | { deleted: true };
 
 export function authorName(a: AnyAuthor): string {
   if ('username' in a) return a.username;
+  // D157: a place's owner team in its own discussion; never a username.
+  if ('theOwner' in a) return a.staffName ? `The Owner · ${a.staffName}` : 'The Owner';
   if ('guest' in a) return 'GUEST';
   return 'deleted user';
+}
+
+/** D157: The Owner's picture: the storefront on teal, like the place itself. */
+export function OwnerAvatar({ size }: { size: number }) {
+  return (
+    <View
+      accessible
+      accessibilityLabel="The Owner"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: DARK.teal,
+        borderWidth: 2,
+        borderColor: DARK.accent,
+      }}
+    >
+      <Ionicons name="storefront" size={size * 0.5} color={DARK.onTeal} />
+    </View>
+  );
+}
+
+/** D157: the "Verified owner" pill next to The Owner's name. */
+export function OwnerPill() {
+  return (
+    <View
+      accessibilityLabel="Verified owner"
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        paddingHorizontal: 6,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: DARK.accent,
+      }}
+    >
+      <Ionicons name="ribbon" size={11} color={DARK.onAccent} />
+      <Text style={{ color: DARK.onAccent, fontSize: 11, fontWeight: '800' }}>Verified</Text>
+    </View>
+  );
 }
 
 /** Opens a registered author's profile (P4.8); guests and deleted users aren't links. */
@@ -69,6 +118,7 @@ export function PostCard({
   const [clamped, setClamped] = useState(false);
   const faint = contrastRatio(color.hex, DARK.card) < 2;
   const isUser = 'username' in author;
+  const isOwner = 'theOwner' in author; // D157
   const isNew = Date.now() - Date.parse(post.createdAt) < NEW_FOR_MS;
   // D155: staff posts get a gold-tinted card with a gold edge, so they can't be mistaken.
   const isAdmin = 'admin' in author && !!author.admin;
@@ -151,13 +201,17 @@ export function PostCard({
                 accessibilityRole={isUser ? 'link' : undefined}
                 accessibilityLabel={isUser ? `${name}'s profile` : undefined}
               >
-                <ProfileAvatar
-                  name={name}
-                  url={'avatarUrl' in author ? author.avatarUrl : null}
-                  size={42}
-                  ringColor={faint ? DARK.border : color.hex}
-                  fill={color.hex}
-                />
+                {isOwner ? (
+                  <OwnerAvatar size={42} />
+                ) : (
+                  <ProfileAvatar
+                    name={name}
+                    url={'avatarUrl' in author ? author.avatarUrl : null}
+                    size={42}
+                    ringColor={faint ? DARK.border : color.hex}
+                    fill={color.hex}
+                  />
+                )}
               </Pressable>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
@@ -177,26 +231,8 @@ export function PostCard({
                     />
                   ) : null}
                   {'medals' in author ? <MedalIcons medals={author.medals} size={16} /> : null}
-                  {/* D103: a verified owner of this place (its discussion only). */}
-                  {'owner' in author && author.owner ? (
-                    <View
-                      accessibilityLabel="Verified owner"
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 3,
-                        paddingHorizontal: 6,
-                        height: 20,
-                        borderRadius: 10,
-                        backgroundColor: DARK.accent,
-                      }}
-                    >
-                      <Ionicons name="ribbon" size={11} color={DARK.onAccent} />
-                      <Text style={{ color: DARK.onAccent, fontSize: 11, fontWeight: '800' }}>
-                        Owner
-                      </Text>
-                    </View>
-                  ) : null}
+                  {/* D157: the place's owner team, in its own discussion. */}
+                  {isOwner ? <OwnerPill /> : null}
                 </View>
                 {isAdmin ? <AdminTag /> : null}
                 <Text

@@ -8,6 +8,7 @@ import { ApiRequestError } from '@/api/client';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { Banner, Button, Field, FormError, PageTitle, Screen } from '@/ui';
+import { OwnerTeam } from '@/places/OwnerTeam';
 
 type Method = 'EMAIL' | 'WEBSITE' | 'PHONE';
 interface Claim {
@@ -95,16 +96,20 @@ export default function OwnerClaimScreen() {
     <Screen keyboard>
       <PageTitle
         title="I own this place"
-        subtitle={`Get an Owner tag on your posts in ${info.place.name}’s discussion. Everywhere else you stay anonymous.`}
+        subtitle={`Post as “The Owner” in ${info.place.name}’s discussion. Everywhere else you stay yourself.`}
         icon="storefront-outline"
       />
       <FormError>{error}</FormError>
 
       {verified ? (
-        <Banner icon="checkmark-circle" tone="success">
-          You’re a verified owner. Your posts here show the Owner tag. Please say so in posts about
-          your own business, and no repeated promotions.
-        </Banner>
+        <>
+          <Banner icon="checkmark-circle" tone="success">
+            You’re a verified owner. In this place’s discussion you post and comment as “The Owner”,
+            never your username. No repeated promotions, please.
+          </Banner>
+          {/* D157: the owner team. */}
+          <OwnerTeam placeId={placeId} />
+        </>
       ) : open ? (
         <OpenClaim
           claim={open}

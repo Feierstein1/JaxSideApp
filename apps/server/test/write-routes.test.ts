@@ -77,6 +77,8 @@ import * as restrictedAppeal from '@/app/api/v1/appeals/restricted/route';
 import * as restrictedStanding from '@/app/api/v1/appeals/restricted/standing/route';
 import * as profile from '@/app/api/v1/me/profile/route';
 import * as favorite from '@/app/api/v1/places/[id]/favorite/route';
+import * as ownerTeam from '@/app/api/v1/places/[id]/owner-team/route';
+import * as ownerTeamMember from '@/app/api/v1/places/[id]/owner-team/[claimId]/route';
 import * as placeRating from '@/app/api/v1/places/[id]/rating/route';
 import * as roomList from '@/app/api/v1/places/[id]/posts/list/route';
 import * as roomPosts from '@/app/api/v1/places/[id]/posts/route';
@@ -545,6 +547,33 @@ const ROWS: Row[] = [
     id: 'place',
     location: false,
     body: () => ({ method: 'WEBSITE' }),
+  },
+  // D157: the owner team (the primary owner manages it).
+  {
+    route: 'places/[id]/owner-team',
+    method: 'POST',
+    handler: h(ownerTeam, 'POST'),
+    auth: true,
+    id: 'place',
+    location: false,
+    body: () => ({ username: 'someone' }),
+  },
+  {
+    route: 'places/[id]/owner-team/[claimId]',
+    method: 'PATCH',
+    handler: h(ownerTeamMember, 'PATCH'),
+    auth: true,
+    id: 'place',
+    location: false,
+    body: () => ({ staffName: 'Sarah' }),
+  },
+  {
+    route: 'places/[id]/owner-team/[claimId]',
+    method: 'DELETE',
+    handler: h(ownerTeamMember, 'DELETE'),
+    auth: true,
+    id: 'place',
+    location: false,
   },
   {
     route: 'owner-claims/[id]/confirm',

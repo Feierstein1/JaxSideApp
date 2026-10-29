@@ -183,6 +183,22 @@ export interface PlaceChange {
 // ───────────── D103: verified business owners ─────────────
 
 export const OWNER_METHODS = ['EMAIL', 'WEBSITE', 'PHONE'] as const;
+/** D157: shown instead of a username in the owner's place ("The Owner · Sarah"). */
+export const STAFF_NAME_MAX = 30;
+const staffName = z.string().trim().min(1).max(STAFF_NAME_MAX);
+
+/** D157: the primary owner adds a team member by username (optional staff name). */
+export const ownerTeamAddSchema = z.strictObject({
+  username: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9_]{3,20}$/, 'Not a username'),
+  staffName: staffName.optional(),
+});
+
+/** D157: change a team member's staff name (null removes it). */
+export const ownerTeamUpdateSchema = z.strictObject({ staffName: staffName.nullable() });
+
 export const ownerClaimSchema = z.strictObject({
   method: z.enum(OWNER_METHODS),
   /** EMAIL only: an address at the business's own web domain. */
@@ -201,6 +217,7 @@ export const ownerProofSchema = z.strictObject({
     .refine((u) => /^https?:\/\//i.test(u), 'Enter a web link (http or https)'),
 });
 export const ownerDecisionSchema = z.strictObject({
-  action: z.enum(['approve', 'reject', 'revoke']),
+  /** D157: `make-primary` moves the primary owner role (team management) to this owner. */
+  action: z.enum(['approve', 'reject', 'revoke', 'make-primary']),
   note: z.string().trim().max(500).optional(),
 });

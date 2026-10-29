@@ -532,6 +532,7 @@ enum OwnerMethod {
   EMAIL // a code to an address at the business's own web domain (automatic)
   WEBSITE // a code the owner posts on the business's site or social page (admin checks)
   PHONE // an admin calls the business's public number and reads a code
+  TEAM // D157: added to the owner team by the place's primary owner
 }
 
 enum OwnerClaimStatus {
@@ -560,6 +561,12 @@ model OwnerClaim {
   /// PHONE: the code an admin reads out (shown in the portal only).
   phoneCode     String?          @db.VarChar(10)
   note          String?          @db.VarChar(500)
+  /// D157: the place's primary owner (the first verified): manages the owner team.
+  primary       Boolean          @default(false)
+  /// D157: shown instead of a username ("The Owner · Sarah"); optional.
+  staffName     String?          @db.VarChar(30)
+  /// D157: the primary owner who added this team member (TEAM claims).
+  addedById     String?          @db.Uuid
   createdAt     DateTime         @default(now()) @db.Timestamptz(3)
   verifiedAt    DateTime?        @db.Timestamptz(3)
   decidedAt     DateTime?        @db.Timestamptz(3)
@@ -570,6 +577,8 @@ model OwnerClaim {
 
   /// One open claim per person and place (was raw SQL; D109).
   @@unique([placeId, userId], map: "OwnerClaim_one_open", where: raw("status = 'PENDING'"))
+  /// D157: one primary owner per place.
+  @@unique([placeId], map: "OwnerClaim_one_primary", where: raw("\"primary\" AND status = 'VERIFIED'"))
   @@index([placeId, status])
   @@index([userId, status])
   @@index([status, createdAt])

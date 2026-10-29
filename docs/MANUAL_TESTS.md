@@ -512,6 +512,17 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Away from the area, opening the notification shows the post but its comments say "Comments
       show when you're near this post"; someone you blocked never triggers a notification.
 
+### The Owner (D157)
+
+- [ ] As a verified owner, post in your place's discussion: it shows "The Owner" with the
+      storefront picture and a Verified pill, no username. In the area feed you're yourself.
+- [ ] Owner screen (place → I own this place): **Owner team** lists you as primary; add a friend by
+      username with a staff name; their comments in the place show "The Owner · Sarah".
+- [ ] A team member can change their own staff name but can't add or remove people; the primary
+      can remove them.
+- [ ] Someone answering The Owner's reply: no "@username" appears; their bell says "The Owner of …".
+- [ ] Admin portal → Owners: **Make primary owner** moves team management to another owner.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

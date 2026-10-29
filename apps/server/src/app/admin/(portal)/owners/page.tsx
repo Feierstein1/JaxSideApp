@@ -17,6 +17,7 @@ const HOW = {
   EMAIL: 'Business email',
   WEBSITE: 'Code on website / social page',
   PHONE: 'Phone call',
+  TEAM: 'Added by the primary owner', // D157
 };
 
 /**
@@ -87,7 +88,7 @@ export default async function OwnersPage({
             {c.method === 'EMAIL' ? <p>Confirmed a code sent to @{c.emailDomain}.</p> : null}
             {c.note ? <p style={ui.muted}>Note: {c.note}</p> : null}
             {c.decidedBy ? <p style={ui.muted}>Decided by @{c.decidedBy.username}</p> : null}
-            <OwnerActions id={c.id} status={c.status} />
+            <OwnerActions id={c.id} status={c.status} primary={c.primary} />
           </div>
         ))}
       </div>

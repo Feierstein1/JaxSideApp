@@ -251,6 +251,8 @@ export const CONFIG_DEFAULTS = {
   /** D103: owner claims started per person per day, and code tries per minute. */
   'rateLimit.ownerClaim.perDay': 3,
   'rateLimit.ownerCode.perMinute': 10,
+  /** D157: owner team changes (add, rename, remove). */
+  'rateLimit.ownerTeam.perMinute': 20,
   // D98 private messages
   'rateLimit.message.perMinute': 30,
   'rateLimit.message.perDay': 1000,

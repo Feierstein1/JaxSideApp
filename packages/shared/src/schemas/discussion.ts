@@ -61,7 +61,7 @@ export const VOICE_MAX_SECONDS = 60;
 export const createPostSchema = z
   .strictObject({
     reading: locationReadingSchema,
-    // A voice post may have no caption (D75); every other post needs text.
+    // Voice, video and (D158) photo posts may have no caption; a text post needs text.
     body: z.union([postBodySchema, z.literal('')]).default(''),
     confirmWarning,
     photoIds: z.array(z.uuid()).max(PHOTOS_MAX).optional(),
@@ -75,8 +75,8 @@ export const createPostSchema = z
     message: 'A post can have photos or a voice clip, not both',
     path: ['voiceId'],
   })
-  .refine((p) => p.body.length > 0 || !!p.voiceId || !!p.videoId, {
-    message: 'Write something first',
+  .refine((p) => p.body.length > 0 || !!p.voiceId || !!p.videoId || !!p.photoIds?.length, {
+    message: 'Write something or add a photo',
     path: ['body'],
   });
 
@@ -114,11 +114,14 @@ export interface PostView {
         medals: MedalBadge[];
         color: string;
         avatarUrl: string | null;
-        /** D103: a verified owner of this place (place discussions only). */
-        owner?: true;
         /** D141: a JaxSide staff member (shown as ADMIN under the name). */
         admin?: true;
       }
+    /**
+     * D157: a verified owner (or owner team member) in their own place's discussion. Never
+     * their username: "The Owner", with the staff name if one is set.
+     */
+    | { theOwner: true; place: string; staffName: string | null }
     | { deleted: true };
   score: number;
   upCount: number;
@@ -175,7 +178,11 @@ export interface CommentView {
   editedAt: string | null;
   /** D141: `admin` marks a JaxSide staff member (ADMIN under the name). */
   author:
-    { username: string; medals: MedalBadge[]; admin?: true } | { guest: true } | { deleted: true };
+    | { username: string; medals: MedalBadge[]; admin?: true }
+    /** D157: the place's owner team, in its own discussion. */
+    | { theOwner: true; place: string; staffName: string | null }
+    | { guest: true }
+    | { deleted: true };
   score: number;
   myVote: -1 | 0 | 1;
   isMine: boolean;

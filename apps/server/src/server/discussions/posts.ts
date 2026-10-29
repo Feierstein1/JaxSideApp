@@ -50,6 +50,7 @@ interface PostRow {
   photos: { id: string; width: number; height: number }[] | null;
   voice: { id: string; durationMs: number } | null;
   is_owner: boolean;
+  owner_staff_name: string | null;
   video: { id: string; durationMs: number; width: number | null; height: number | null } | null;
   my_vote: number | null;
   distance: number | null;
@@ -69,16 +70,18 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
     author:
       r.author_status === 'DELETED'
         ? { deleted: true }
-        : {
-            username: r.username,
-            medals: r.medals,
-            color: r.author_color,
-            avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
-            // D103: a verified owner, in their own place's discussion only.
-            ...(r.is_owner ? { owner: true } : {}),
-            // D141: staff, so people can tell when an admin is speaking.
-            ...(r.staff_badge ? { admin: true } : {}),
-          },
+        : r.is_owner
+          ? // D157: in their own place's discussion an owner is "The Owner" (no username,
+            // photo or medals); who wrote it is kept for moderators only.
+            { theOwner: true, place: r.place_name!, staffName: r.owner_staff_name }
+          : {
+              username: r.username,
+              medals: r.medals,
+              color: r.author_color,
+              avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
+              // D141: staff, so people can tell when an admin is speaking.
+              ...(r.staff_badge ? { admin: true } : {}),
+            },
     score: r.score,
     upCount: r.upCount,
     downCount: r.downCount,
@@ -135,8 +138,12 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
     kind === 'business'
       ? Prisma.sql`pl.id AS place_id, pl.name AS place_name,
           EXISTS (SELECT 1 FROM "OwnerClaim" oc WHERE oc."placeId" = pl.id
-                  AND oc."userId" = p."authorId" AND oc.status = 'VERIFIED') AS is_owner`
-      : Prisma.sql`NULL::uuid AS place_id, NULL::text AS place_name, false AS is_owner`;
+                  AND oc."userId" = p."authorId" AND oc.status = 'VERIFIED') AS is_owner,
+          (SELECT oc."staffName" FROM "OwnerClaim" oc WHERE oc."placeId" = pl.id
+                  AND oc."userId" = p."authorId" AND oc.status = 'VERIFIED'
+            LIMIT 1) AS owner_staff_name`
+      : Prisma.sql`NULL::uuid AS place_id, NULL::text AS place_name, false AS is_owner,
+          NULL::text AS owner_staff_name`;
   const join =
     kind === 'business'
       ? Prisma.sql`JOIN "BusinessPlace" pl ON pl.id = p."placeId"`

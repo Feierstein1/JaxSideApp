@@ -28,6 +28,9 @@ interface CommentRow {
   author_status: string | null;
   staff_badge: boolean | null;
   medals: MedalBadge[] | null;
+  /** D157: the place's name when the author is one of its verified owners. */
+  owner_place: string | null;
+  owner_staff_name: string | null;
   score: number;
   my_vote: number | null;
 }
@@ -49,11 +52,14 @@ function toView(r: CommentRow, viewer: CommentViewer): CommentView {
         ? { guest: true }
         : r.author_status === 'DELETED' || !r.username
           ? { deleted: true }
-          : {
-              username: r.username,
-              medals: r.medals ?? [],
-              ...(r.staff_badge ? { admin: true as const } : {}), // D141
-            },
+          : r.owner_place
+            ? // D157: an owner in their own place's discussion is "The Owner".
+              { theOwner: true as const, place: r.owner_place, staffName: r.owner_staff_name }
+            : {
+                username: r.username,
+                medals: r.medals ?? [],
+                ...(r.staff_badge ? { admin: true as const } : {}), // D141
+              },
     score: r.score,
     myVote: (r.my_vote ?? 0) as -1 | 0 | 1,
     isMine:
@@ -76,6 +82,23 @@ export interface CommentViewer {
 /** Matches no row: used where a guest has no user ID (votes, blocks). */
 export const NO_USER = '00000000-0000-0000-0000-000000000000';
 
+/**
+ * D157: in a place's discussion, comments by that place's verified owners show as "The Owner"
+ * (the place name and the commenter's staff name, never their username).
+ */
+function ownerColumns(kind: DiscussionKind, postId: string) {
+  if (kind !== 'business') {
+    return Prisma.sql`NULL::text AS owner_place, NULL::text AS owner_staff_name`;
+  }
+  const claim = Prisma.sql`FROM "OwnerClaim" oc
+    JOIN "BusinessPost" bp ON bp."placeId" = oc."placeId"
+    JOIN "BusinessPlace" pl ON pl.id = oc."placeId"
+    WHERE bp.id = ${postId}::uuid AND oc."userId" = t."authorUserId" AND oc.status = 'VERIFIED'`;
+  return Prisma.sql`
+    (SELECT pl.name ${claim} LIMIT 1) AS owner_place,
+    (SELECT oc."staffName" ${claim} LIMIT 1) AS owner_staff_name`;
+}
+
 export async function listComments(kind: DiscussionKind, postId: string, viewer: CommentViewer) {
   const viewerId = viewer.userId ?? NO_USER;
   const max = await getConfig('comments.maxPerPost');
@@ -94,7 +117,8 @@ export async function listComments(kind: DiscussionKind, postId: string, viewer:
            t."authorKind"::text AS "authorKind", t."authorUserId", t."authorGuestId", u.username,
            u.status::text AS author_status, u."staffBadge" AS staff_badge, t.score,
            v.value AS my_vote,
-           ${medalKeysSql(Prisma.sql`t."authorUserId"`)} AS medals
+           ${medalKeysSql(Prisma.sql`t."authorUserId"`)} AS medals,
+           ${ownerColumns(kind, postId)}
     FROM thread t
     LEFT JOIN "User" u ON u.id = t."authorUserId"
     LEFT JOIN "Vote" v ON v."commentId" = t.id AND v."voterId" = ${viewerId}::uuid
@@ -117,7 +141,9 @@ function startsWithTag(body: string, username: string) {
  * Adds a comment (or reply) and bumps the post's comment count in one transaction.
  * A reply's parent must be a visible comment on the same post. D105: replies go one level
  * deep (post → comment → reply); a reply to a reply goes under the same comment, starting
- * with "@name" for the person answered (a tag only: nobody is notified). A post takes at
+ * with "@name" for the person answered (D156: they're notified through the bell). D157: not
+ * when the person answered is The Owner in their own place (that would show their username).
+ * A post takes at
  * most `comments.limitPerPost` comments, replies included.
  */
 export async function createComment(opts: {
@@ -182,11 +208,23 @@ export async function createComment(opts: {
       }
       const answered = parent.authorUser;
       const self = opts.author.kind === 'USER' && parent.authorUserId === opts.author.userId;
+      const answeredIsOwner =
+        opts.kind === 'business' &&
+        !!parent.authorUserId &&
+        !!(await tx.ownerClaim.findFirst({
+          where: {
+            userId: parent.authorUserId,
+            status: 'VERIFIED',
+            place: { posts: { some: { id: opts.postId } } },
+          },
+          select: { id: true },
+        }));
       if (
         anchor.id !== opts.parentCommentId &&
         answered &&
         answered.status !== 'DELETED' &&
         !self &&
+        !answeredIsOwner &&
         !startsWithTag(body, answered.username)
       ) {
         body = `@${answered.username} ${body}`;
