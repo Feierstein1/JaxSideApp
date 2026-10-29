@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -39,7 +39,16 @@ const COMMENT_LIMIT = CONFIG_DEFAULTS['comments.limitPerPost'];
  * (report, delete) are in its "•••" menu; comments sit in one white panel as a thread with
  * avatars; the reply box is a rounded field with a round send button.
  */
-export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
+export function PostDetail({
+  kind,
+  id,
+  focusCommentId,
+}: {
+  kind: DiscussionKind;
+  id: string;
+  /** D156: opened from a notification: scroll to this comment and highlight it. */
+  focusCommentId?: string;
+}) {
   const [post, setPost] = useState<PostView>();
   const [comments, setComments] = useState<CommentView[]>([]);
   const [error, setError] = useState<string>();
@@ -56,6 +65,10 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
   const [editing, setEditing] = useState(false);
   /** D115: close enough to comment (the server says; reading a post doesn't need it). */
   const [nearEnough, setNearEnough] = useState(true);
+  // D156: where the comments box and the focused comment sit, to scroll to it once.
+  const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
+  const commentsTop = useRef(0);
+  const scrolled = useRef(false);
 
   const load = useCallback(async () => {
     setError(undefined);
@@ -180,6 +193,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
     <KeyboardSafeView style={{ flex: 1, backgroundColor: DARK.page }}>
       {post.place ? <PlaceContext place={post.place} /> : null}
       <ScrollView
+        ref={scroller}
         contentContainerStyle={{ paddingTop: 6, paddingBottom: SPACE.xl }}
         keyboardShouldPersistTaps="handled"
       >
@@ -208,6 +222,7 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
           </View>
         ) : null}
         <View
+          onLayout={(e) => (commentsTop.current = e.nativeEvent.layout.y)}
           style={{
             marginHorizontal: SPACE.md,
             borderRadius: RADIUS.lg,
@@ -239,6 +254,19 @@ export function PostDetail({ kind, id }: { kind: DiscussionKind; id: string }) {
                 key={c.id}
                 c={c}
                 first={i === 0}
+                highlight={c.id === focusCommentId}
+                onLayoutY={
+                  c.id === focusCommentId
+                    ? (y) => {
+                        if (scrolled.current) return;
+                        scrolled.current = true;
+                        scroller.current?.scrollTo({
+                          y: Math.max(0, commentsTop.current + y - 80),
+                          animated: true,
+                        });
+                      }
+                    : undefined
+                }
                 onReply={
                   canComment && nearEnough && !commentsLocked && c.status === 'visible'
                     ? () => startReply(c)
@@ -420,6 +448,8 @@ function CommentBody({ body }: { body: string }) {
 function CommentRow({
   c,
   first,
+  highlight = false,
+  onLayoutY,
   onReply,
   onDelete,
   onReport,
@@ -427,6 +457,9 @@ function CommentRow({
 }: {
   c: CommentView;
   first: boolean;
+  /** D156: the comment a notification opened. */
+  highlight?: boolean;
+  onLayoutY?: (y: number) => void;
   onReply?: () => void;
   onDelete?: () => void;
   onReport?: () => void;
@@ -434,6 +467,8 @@ function CommentRow({
 }) {
   const visible = c.status === 'visible';
   const name = visible ? authorName(c.author) : '';
+  // D155: a staff comment sits in a gold-tinted box with a gold edge.
+  const isAdmin = visible && 'admin' in c.author && !!c.author.admin;
   const menu = onDelete
     ? () =>
         openMenu('Your comment', [
@@ -462,7 +497,9 @@ function CommentRow({
 
   return (
     <View
+      onLayout={onLayoutY ? (e) => onLayoutY(e.nativeEvent.layout.y) : undefined}
       style={{
+        backgroundColor: highlight ? DARK.accentSoft : undefined,
         borderTopWidth: first || c.depth > 0 ? 0 : 1,
         borderTopColor: DARK.hairline,
         // D105: one reply level (older, deeper threads line up with it).
@@ -480,6 +517,18 @@ function CommentRow({
           borderLeftWidth: c.depth > 0 ? 2 : 0,
           borderLeftColor: DARK.hairline,
           paddingLeft: c.depth > 0 ? 10 : 0,
+          ...(isAdmin
+            ? {
+                backgroundColor: DARK.adminCard,
+                borderWidth: 1.5,
+                borderColor: DARK.adminEdge,
+                borderRadius: RADIUS.md,
+                paddingLeft: 10,
+                paddingRight: 8,
+                paddingBottom: 6,
+                marginTop: 6,
+              }
+            : {}),
         }}
       >
         {visible ? (
@@ -514,7 +563,7 @@ function CommentRow({
               {`  ${timeAgo(c.createdAt)}${c.editedAt ? ' · edited' : ''}`}
             </Text>
           ) : null}
-          {visible && 'admin' in c.author && c.author.admin ? <AdminTag small /> : null}
+          {isAdmin ? <AdminTag small /> : null}
           <Text
             style={[
               TYPE.callout,

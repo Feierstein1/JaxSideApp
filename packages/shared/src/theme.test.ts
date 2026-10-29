@@ -84,7 +84,12 @@ describe('category colors (D70)', () => {
 });
 
 describe('dark theme (D79)', () => {
-  const bgs = { page: DARK.page, card: DARK.card, raised: DARK.raised } as const;
+  const bgs = {
+    page: DARK.page,
+    card: DARK.card,
+    raised: DARK.raised,
+    adminCard: DARK.adminCard, // D155
+  } as const;
   // Text and links must read at 4.5:1 on every layer they can sit on.
   it.each(
     (['text', 'textMuted', 'placeholder', 'accent', 'tealText', 'error'] as const).flatMap((fg) =>

@@ -670,6 +670,8 @@ model GeneralPost {
   reports    Report[]
   modActions ModerationAction[]
 
+  notifications Notification[] // D156
+
   @@index([location], type: Gist)
   /// D125: a topic's posts, newest first.
   @@index([topicId, status, createdAt(sort: Desc), id(sort: Desc)], where: raw("\"topicId\" IS NOT NULL"))
@@ -703,6 +705,8 @@ model BusinessPost {
   photos     Photo[]
   reports    Report[]
   modActions ModerationAction[]
+
+  notifications Notification[] // D156
 
   @@index([placeId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([authorId, createdAt(sort: Desc)])
@@ -741,6 +745,8 @@ model Comment {
   votes      Vote[]
   reports    Report[]
   modActions ModerationAction[]
+
+  notifications Notification[] // D156
 
   @@index([generalPostId, createdAt, id])
   @@index([businessPostId, createdAt, id])
@@ -933,17 +939,32 @@ model Friendship {
 enum NotificationType {
   FRIEND_REQUEST
   FRIEND_ACCEPTED
+  /// D156: someone commented on your post (unread ones on the same post are combined).
+  POST_COMMENT
+  /// D156: someone replied to your comment.
+  COMMENT_REPLY
+  /// D156: someone wrote @you in a post or comment.
+  MENTION
 }
 
 model Notification {
-  id        String           @id @default(uuid(7)) @db.Uuid
-  userId    String           @db.Uuid
-  type      NotificationType
-  actorId   String?          @db.Uuid
-  createdAt DateTime         @default(now()) @db.Timestamptz(3)
-  readAt    DateTime?        @db.Timestamptz(3)
-  user      User             @relation("NotificationFor", fields: [userId], references: [id], onDelete: Cascade)
-  actor     User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  id             String           @id @default(uuid(7)) @db.Uuid
+  userId         String           @db.Uuid
+  type           NotificationType
+  actorId        String?          @db.Uuid
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  readAt         DateTime?        @db.Timestamptz(3)
+  /// D156: the post (and comment) a comment, reply or mention notification points to.
+  generalPostId  String?          @db.Uuid
+  businessPostId String?          @db.Uuid
+  commentId      String?          @db.Uuid
+  /// D156: unread comments on one post are one row ("5 new comments").
+  count          Int              @default(1)
+  user           User             @relation("NotificationFor", fields: [userId], references: [id], onDelete: Cascade)
+  actor          User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  generalPost    GeneralPost?     @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
+  businessPost   BusinessPost?    @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
+  comment        Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   // P13.1: the unread bell count; createdAt for the purge
@@ -951,6 +972,10 @@ model Notification {
   @@index([createdAt])
   // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
   @@index([actorId])
+  // D156: foreign keys (deleting a post or comment removes its notifications).
+  @@index([generalPostId], where: raw("\"generalPostId\" IS NOT NULL"))
+  @@index([businessPostId], where: raw("\"businessPostId\" IS NOT NULL"))
+  @@index([commentId], where: raw("\"commentId\" IS NOT NULL"))
   // P13.7: purge of read notifications
   @@index([readAt], where: raw("\"readAt\" IS NOT NULL"))
 }
