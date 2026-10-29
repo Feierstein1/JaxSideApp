@@ -244,7 +244,11 @@ export default function TopicScreen() {
             : 'Nothing was posted.'
         }
         emptyAction={open ? { label: 'Write the first post', onPress: compose } : undefined}
-        fab={open ? <FloatingButton label="Post in this topic" onPress={compose} /> : undefined}
+        fab={
+          open ? (
+            <FloatingButton title="Add Post" label="Post in this topic" onPress={compose} />
+          ) : undefined
+        }
       />
       <ReportSheet target={reporting} onClose={() => setReporting(undefined)} />
     </View>

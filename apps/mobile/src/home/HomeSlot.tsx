@@ -7,17 +7,20 @@ import { fetchPolls, pollWhen } from '@/polls/api';
 import { hasVoted, takeThanks, useVotedVersion } from '@/polls/voted';
 import { Text } from '@/text';
 import { DecoBox } from '@/deco';
+import { dismiss, isDismissed, useDismissed } from '@/dismissed';
 import { SPACE } from '@/tokens';
 
 /**
  * D126 / D133: the poll's space on Home, between search and the type tabs. While there's an
  * open poll you can vote in, it shows the poll; right after you vote, a short thank-you; then
- * nothing, so the posts get the room. City Topics live in the Topics tab.
+ * nothing, so the posts get the room. City Topics live in the Topics tab. D162: × hides that
+ * poll (it stays hidden; the next poll shows again).
  */
 export function HomeSlot({ reloadKey }: { reloadKey: string }) {
   const [poll, setPoll] = useState<PollView | null>(null);
   const [thanks, setThanks] = useState(false);
   useVotedVersion(); // D130: hide a poll the moment you vote in it
+  useDismissed();
 
   useFocusEffect(
     useCallback(() => {
@@ -47,7 +50,9 @@ export function HomeSlot({ reloadKey }: { reloadKey: string }) {
   );
 
   if (thanks) return <ThanksBar />;
-  if (poll && !hasVoted(poll.id)) return <PollPrompt poll={poll} />;
+  if (poll && !hasVoted(poll.id) && !isDismissed(`poll:${poll.id}`)) {
+    return <PollPrompt poll={poll} onClose={() => dismiss([`poll:${poll.id}`])} />;
+  }
   return null;
 }
 
@@ -81,7 +86,7 @@ function ThanksBar() {
 }
 
 /** The poll in the shared space: one line of question, and a Vote button. */
-function PollPrompt({ poll }: { poll: PollView }) {
+function PollPrompt({ poll, onClose }: { poll: PollView; onClose: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -119,6 +124,14 @@ function PollPrompt({ poll }: { poll: PollView }) {
         >
           <Text style={{ color: DARK.onAccent, fontWeight: '800', fontSize: 13 }}>Vote</Text>
         </DecoBox>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Hide this poll"
+          onPress={onClose}
+          hitSlop={10}
+        >
+          <Ionicons name="close" size={20} color={DARK.textMuted} />
+        </Pressable>
       </DecoBox>
     </Pressable>
   );

@@ -181,7 +181,7 @@ export default function PollsScreen() {
           }
         />
       ) : null}
-      <FloatingButton label="Suggest a poll question" onPress={suggest} />
+      <FloatingButton title="Suggest Poll" label="Suggest a poll question" onPress={suggest} />
     </View>
   );
 }

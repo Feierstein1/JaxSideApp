@@ -13,6 +13,7 @@ import {
   type SuggestPollRequest,
 } from '@jax/shared';
 import type { PollKind as DbPollKind, Prisma, User } from '@/generated/prisma/client';
+import { pastAccountWait } from './account-age';
 import { getConfig } from './config';
 import { createUserKey, unwrapUserKey } from './crypto/field-encryption';
 import { db } from './db';
@@ -33,7 +34,6 @@ import type { GeoPoint } from './location/eligibility';
  * - Results are shown only after closing; ZIPs under POLL_MIN_GROUP voters are combined.
  */
 
-const DAY_MS = 86_400_000;
 const keyOwner = (pollId: string) => `pollkey:${pollId}`;
 const toDb = (k: PollKind) => k.toUpperCase() as DbPollKind;
 const fromDb = (k: DbPollKind) => k.toLowerCase() as PollKind;
@@ -209,16 +209,17 @@ async function voterReady(userId: string | null, now: Date): Promise<boolean> {
   const [u, days] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
-      select: { status: true, emailVerifiedAt: true, createdAt: true },
+      select: {
+        status: true,
+        emailVerifiedAt: true,
+        createdAt: true,
+        role: true,
+        staffBadge: true,
+      },
     }),
     getConfig('polls.voterMinAccountDays'),
   ]);
-  return (
-    !!u &&
-    u.status === 'ACTIVE' &&
-    !!u.emailVerifiedAt &&
-    now.getTime() - u.createdAt.getTime() >= days * DAY_MS
-  );
+  return !!u && u.status === 'ACTIVE' && !!u.emailVerifiedAt && pastAccountWait(u, days, now);
 }
 
 async function view(
@@ -286,9 +287,12 @@ export async function getPoll(id: string, userId: string | null, now = new Date(
 }
 
 /** Confirmed accounts a few days old (the route already checked the email). */
-export async function pollVoterAllowed(user: Pick<User, 'createdAt'>, now = new Date()) {
+export async function pollVoterAllowed(
+  user: Pick<User, 'createdAt' | 'role' | 'staffBadge'>,
+  now = new Date(),
+) {
   const days = await getConfig('polls.voterMinAccountDays');
-  if (now.getTime() - user.createdAt.getTime() < days * DAY_MS) {
+  if (!pastAccountWait(user, days, now)) {
     throw new ApiError(
       403,
       'ACCOUNT_TOO_NEW',

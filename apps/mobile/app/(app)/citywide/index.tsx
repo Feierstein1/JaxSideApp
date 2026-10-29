@@ -93,8 +93,9 @@ export default function CityTopicsScreen() {
         ))}
       </ScrollView>
       <FloatingButton
+        title="Add Topic"
         label={local ? 'Start a topic near you' : 'Start a city topic'}
-        onPress={() => start(scope)}
+        onPress={() => void start(scope)}
       />
     </View>
   );

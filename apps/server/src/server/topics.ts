@@ -11,8 +11,9 @@ import {
   type TopicPage,
   type TopicView,
 } from '@jax/shared';
-import type { CityTopic } from '@/generated/prisma/client';
+import type { CityTopic, User } from '@/generated/prisma/client';
 import { Prisma } from '@/generated/prisma/client';
+import { skipsAccountWaits } from './account-age';
 import { getConfig } from './config';
 import { db } from './db';
 import { decodeCursor, encodeCursor } from './discussions/cursor';
@@ -278,11 +279,11 @@ export async function createUserTopic(
  * down new accounts made to advertise). Admins aren't limited.
  */
 export async function assertTopicAllowance(
-  user: { id: string; role: string; createdAt: Date },
+  user: Pick<User, 'id' | 'role' | 'staffBadge' | 'createdAt'>,
   scope: 'city' | 'local',
   now = new Date(),
 ) {
-  if (user.role === 'ADMIN') return;
+  if (skipsAccountWaits(user)) return; // D162
   const minAge = await getConfig('topics.createMinAccountDays');
   const allowedAt = new Date(user.createdAt.getTime() + minAge * 86_400_000);
   if (now < allowedAt) {

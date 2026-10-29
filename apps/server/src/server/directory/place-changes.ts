@@ -1,6 +1,7 @@
 import type { PlaceChange } from '@jax/shared';
 import { milesToMeters } from '@jax/shared';
 import type { Prisma, User } from '@/generated/prisma/client';
+import { pastAccountWait } from '../account-age';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { ApiError } from '../http';
@@ -20,9 +21,12 @@ import { approveSubmissionTx } from './submissions';
 const DAY_MS = 86_400_000;
 const at = (p: { latitude: number; longitude: number }) => ({ lat: p.latitude, lon: p.longitude });
 
-export async function voterAllowed(user: Pick<User, 'createdAt'>, now = new Date()) {
+export async function voterAllowed(
+  user: Pick<User, 'createdAt' | 'role' | 'staffBadge'>,
+  now = new Date(),
+) {
   const days = await getConfig('places.voterMinAccountDays');
-  if (now.getTime() - user.createdAt.getTime() < days * DAY_MS) {
+  if (!pastAccountWait(user, days, now)) {
     throw new ApiError(
       403,
       'ACCOUNT_TOO_NEW',
@@ -35,7 +39,13 @@ export async function voterAllowed(user: Pick<User, 'createdAt'>, now = new Date
  * Open suggestions and removal requests within the place radius of `here` that you haven't
  * voted on and didn't ask for yourself (D100: your request already counts as your vote).
  */
-export async function listNearbyChanges(userId: string, here: GeoPoint): Promise<PlaceChange[]> {
+export async function listNearbyChanges(
+  user: Pick<User, 'id' | 'createdAt' | 'role' | 'staffBadge'>,
+  here: GeoPoint,
+): Promise<PlaceChange[]> {
+  // D162: nothing to show an account that can't vote yet (staff never wait).
+  if (!pastAccountWait(user, await getConfig('places.voterMinAccountDays'))) return [];
+  const userId = user.id;
   const [days, radiusMiles, needed] = await Promise.all([
     getConfig('places.changeDays'),
     getConfig('radius.business.maxMiles'),

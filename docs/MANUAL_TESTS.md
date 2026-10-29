@@ -540,6 +540,14 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] A post with more than 20 comments shows 20, then **Show more comments (N more)** adds 20 more.
 - [ ] Opening a comment from a notification shows it even when it's past the first 20.
 
+### Phone-test fixes (D162)
+
+- [ ] As an account with the ADMIN badge, made today: place votes, poll votes, ratings and Add Topic work with no wait.
+- [ ] As a regular account made today: no "Verify changes near you" strip; Add Topic shows one "Not yet" pop-up and no form.
+- [ ] A Do/Don't guide: "Got it" never shows it again; closing it shows it once more, and closing it again ends it.
+- [ ] The floating buttons read Add Post / Add Place / Add Topic / Suggest Poll.
+- [ ] × hides Home's poll and the Verify changes strip; they stay hidden after reopening the app.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

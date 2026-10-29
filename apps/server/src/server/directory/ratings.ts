@@ -1,5 +1,6 @@
 import type { PlaceSummary } from '@jax/shared';
 import type { User } from '@/generated/prisma/client';
+import { pastAccountWait } from '../account-age';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { ApiError } from '../http';
@@ -11,13 +12,13 @@ import { ApiError } from '../http';
  * so two votes at once can't miscount. Owners can't vote on their own place.
  */
 export async function ratePlace(
-  user: Pick<User, 'id' | 'createdAt'>,
+  user: Pick<User, 'id' | 'createdAt' | 'role' | 'staffBadge'>,
   placeId: string,
   value: -1 | 0 | 1,
   now = new Date(),
 ): Promise<Pick<PlaceSummary, 'rating' | 'myRating' | 'ratingsLocked'>> {
   const minDays = await getConfig('places.ratingMinAccountDays');
-  if (now.getTime() - user.createdAt.getTime() < minDays * 86_400_000) {
+  if (!pastAccountWait(user, minDays, now)) {
     throw new ApiError(
       403,
       'ACCOUNT_TOO_NEW',

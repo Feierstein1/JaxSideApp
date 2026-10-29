@@ -179,8 +179,9 @@ export default function AllTopicsScreen() {
         />
       ) : null}
       <FloatingButton
+        title="Add Topic"
         label={local ? 'Start a topic near you' : 'Start a city topic'}
-        onPress={() => start(scope)}
+        onPress={() => void start(scope)}
       />
 
       {/* The filter window: category and (accounts) the topics you follow. */}
