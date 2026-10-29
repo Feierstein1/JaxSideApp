@@ -178,7 +178,7 @@ export interface CommentView {
   editedAt: string | null;
   /** D141: `admin` marks a JaxSide staff member (ADMIN under the name). */
   author:
-    | { username: string; medals: MedalBadge[]; admin?: true }
+    | { username: string; medals: MedalBadge[]; avatarUrl: string | null; admin?: true }
     /** D157: the place's owner team, in its own discussion. */
     | { theOwner: true; place: string; staffName: string | null }
     | { guest: true }

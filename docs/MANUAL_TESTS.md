@@ -534,6 +534,12 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Sign up and confirm normally (with TalkBack/VoiceOver on, too): no extra checkbox is seen,
       heard or reachable, and the account works. (The ticked case is covered by server tests.)
 
+### Comment photos and paging (D161)
+
+- [ ] Comments show the author's profile photo (initials when they have none).
+- [ ] A post with more than 20 comments shows 20, then **Show more comments (N more)** adds 20 more.
+- [ ] Opening a comment from a notification shows it even when it's past the first 20.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

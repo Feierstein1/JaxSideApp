@@ -291,6 +291,24 @@ describe('comments (P3.3, D20)', () => {
     expect(d.body.post.commentCount).toBe(4);
   });
 
+  // D161: comments carry the author's profile photo, like posts do.
+  it('comments show the author’s profile photo', async () => {
+    const photo = await db.photo.create({
+      data: { uploaderId: aliceId, status: 'ACTIVE', storageKey: 'avatars/alice-test' },
+    });
+    await db.profile.upsert({
+      where: { userId: aliceId },
+      create: { userId: aliceId, avatarPhotoId: photo.id },
+      update: { avatarPhotoId: photo.id },
+    });
+    const p = (await post(alice, 'Q')).body.post.id;
+    await comment(alice, p, 'mine');
+    await comment(bob, p, 'theirs');
+    const [mine, theirs] = (await detail(bob, p)).body.comments;
+    expect(mine.author.avatarUrl).toMatch(/^\/api\/v1\/photos\//);
+    expect(theirs.author.avatarUrl).toBeNull();
+  });
+
   it('commenting needs to be within 0.3 mi (528 yd) of the post (D71)', async () => {
     const p = (await post(alice, 'Q')).body.post.id;
     expect((await comment(bob, p, 'from up the street', undefined, NEAR)).status).toBe(201);
