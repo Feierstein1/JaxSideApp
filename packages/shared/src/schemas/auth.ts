@@ -41,6 +41,8 @@ export const registerRequestSchema = z.strictObject({
    * accepted, and ignored, so app versions that send it keep working.
    */
   confirmAdult: z.literal(true).optional(),
+  /** D160: a bot trap. The app's checkbox is invisible, so only a bot ever sends true. */
+  newsletterOptIn: z.boolean().optional(),
 });
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 
@@ -75,6 +77,8 @@ export const emailCodeSchema = z
 
 export const verifyEmailCodeSchema = z.strictObject({
   code: emailCodeSchema,
+  /** D160: a bot trap, as on sign-up. */
+  newsletterOptIn: z.boolean().optional(),
 });
 
 export const passwordResetCodeSchema = z.strictObject({

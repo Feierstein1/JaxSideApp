@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Switch, View } from 'react-native';
 import { router } from 'expo-router';
 import { PASSWORD_MIN, registerRequestSchema, DARK } from '@jax/shared';
 import { api } from '@/api';
+import { BotTrap } from '@/auth/BotTrap';
 import { serverErrors, validate, type FieldErrors } from '@/forms';
 import { SPACE, TYPE } from '@/tokens';
 import {
@@ -24,6 +25,7 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [birthYear, setBirthYear] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false); // D160: bot trap
   const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
 
@@ -34,6 +36,7 @@ export default function Register() {
       password,
       birthYear: birthYear.trim() === '' ? undefined : Number(birthYear),
       acceptTerms,
+      newsletterOptIn,
     });
     // Confirmation is a client-side typo check only; it is never sent to the server.
     const mismatch = password !== confirmPassword ? "Passwords don't match" : undefined;
@@ -127,6 +130,7 @@ export default function Register() {
             onChange={setAcceptTerms}
           />
           <FormError>{errors.acceptTerms}</FormError>
+          <BotTrap value={newsletterOptIn} onChange={setNewsletterOptIn} />
         </View>
         <Text style={[TYPE.caption, styles.muted, { marginTop: SPACE.xs }]}>
           Read the{' '}

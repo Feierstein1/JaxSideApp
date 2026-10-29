@@ -10,6 +10,7 @@ import {
 } from '@jax/shared';
 import type { EmailToken, EmailTokenPurpose, Installation } from '@/generated/prisma/client';
 import { assertInstallationNotBanned } from '../installations';
+import { springTrap } from '../moderation/honeypot';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { getEnv } from '../env';
@@ -290,6 +291,11 @@ export async function register(input: RegisterRequest, ctx: RequestContext) {
     throw err;
   }
 
+  // D160: the hidden checkbox was ticked, so this is a bot. It sees the usual reply.
+  if (input.newsletterOptIn) {
+    await springTrap(userId, 'sign-up', ctx.installation?.id ?? null, now);
+    return REGISTER_ACCEPTED;
+  }
   await sendVerification(userId, input.email, now);
   return REGISTER_ACCEPTED;
 }
@@ -389,9 +395,19 @@ export async function verifyEmailByCode(
   user: { id: string; emailVerifiedAt: Date | null },
   code: string,
   ctx: RequestContext,
+  trapped = false,
 ) {
-  if (user.emailVerifiedAt) return { status: 'already_verified' as const };
   const now = ctx.now ?? new Date();
+  // D160: the hidden checkbox was ticked, so this is a bot.
+  if (trapped) {
+    await springTrap(user.id, 'email confirmation', ctx.installation?.id ?? null, now);
+    throw new ApiError(
+      403,
+      'ACCOUNT_BANNED',
+      'This account has been banned for breaking the Community Guidelines.',
+    );
+  }
+  if (user.emailVerifiedAt) return { status: 'already_verified' as const };
   await consumeEmailCode(user.id, 'VERIFY_EMAIL', code, ctx);
   await db.user.update({ where: { id: user.id }, data: { emailVerifiedAt: now } });
   return { status: 'verified' as const };
