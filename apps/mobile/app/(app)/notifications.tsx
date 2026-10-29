@@ -9,6 +9,7 @@ import { haptic } from '@/motion';
 import { social } from '@/social/api';
 import { FriendRow } from '@/social/FriendRow';
 import { clearUnread } from '@/social/unread';
+import { OwnerAvatar } from '@/discussion/PostCard';
 import { ProfileAvatar } from '@/profile/ProfileAvatar';
 import { Text } from '@/text';
 import { SPACE, TYPE } from '@/tokens';
@@ -16,8 +17,11 @@ import { Bone, Button, EmptyState, ErrorState, ListGroup, PageTitle, Pulse, Scre
 
 /** D156: what an activity notification says (never the text itself). */
 function activityLine(n: NotificationView): string {
-  const name = n.actor?.username ?? 'Someone';
-  const near = n.where ? ` near ${n.where}` : '';
+  // D157: the place's owner team is "The Owner of …", never a username.
+  const name = n.actorIsOwner
+    ? `The Owner${n.where ? ` of ${n.where}` : ''}`
+    : (n.actor?.username ?? 'Someone');
+  const near = n.where && !n.actorIsOwner ? ` near ${n.where}` : '';
   switch (n.type) {
     case 'POST_COMMENT':
       return n.count > 1
@@ -60,13 +64,17 @@ function ActivityRow({ n }: { n: NotificationView }) {
       })}
     >
       <View>
-        <ProfileAvatar
-          name={n.actor?.username ?? '?'}
-          url={n.actor?.avatarUrl ?? null}
-          size={44}
-          ringColor={color.hex}
-          fill={color.hex}
-        />
+        {n.actorIsOwner ? (
+          <OwnerAvatar size={44} />
+        ) : (
+          <ProfileAvatar
+            name={n.actor?.username ?? '?'}
+            url={n.actor?.avatarUrl ?? null}
+            size={44}
+            ringColor={color.hex}
+            fill={color.hex}
+          />
+        )}
         <View
           style={{
             position: 'absolute',
@@ -132,7 +140,7 @@ export default function Notifications() {
   }
 
   const waiting = items?.filter((n) => n.actor && n.pendingRequestId) ?? [];
-  const rest = items?.filter((n) => n.actor && !n.pendingRequestId) ?? [];
+  const rest = items?.filter((n) => (n.actor || n.actorIsOwner) && !n.pendingRequestId) ?? [];
   const isActivity = (n: NotificationView) => n.target !== null;
 
   return (

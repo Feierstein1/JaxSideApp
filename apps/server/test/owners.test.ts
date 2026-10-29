@@ -108,13 +108,14 @@ describe('verifying an owner (D103)', () => {
     const ok = await confirm(ann, r.body.claim.id, lastCode());
     expect(ok.body.claim.status).toBe('VERIFIED');
     const post = await roomPost(ann, 'Fresh pastries today');
-    expect(post.body.post.author.owner).toBe(true);
+    // D157: in their own place an owner is "The Owner" (no username).
+    expect(post.body.post.author).toEqual({ theOwner: true, place: 'Bold Bean', staffName: null });
     const general = await call(postsPOST as H, 'POST', {
       token: ann.token,
       body: { reading: reading(), body: 'Nice evening' },
     });
-    expect(general.body.post.author.owner).toBeUndefined(); // not in the area feed
-    expect((await roomPost(bob, 'I love it here')).body.post.author.owner).toBeUndefined();
+    expect(general.body.post.author.theOwner).toBeUndefined(); // not in the area feed
+    expect((await roomPost(bob, 'I love it here')).body.post.author.theOwner).toBeUndefined();
   });
 
   it('a second owner of the same place needs an admin', async () => {

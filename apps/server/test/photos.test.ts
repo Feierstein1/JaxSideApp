@@ -229,6 +229,22 @@ describe('photos on posts and delivery (P6.1, P6.4, ✅MS6)', () => {
     return { photoId: photo.id as string, post: p.body.post };
   }
 
+  // D158: a photo post needs no text; a post with neither is still refused.
+  it('posts photos with no caption, but not an empty post', async () => {
+    const photo = (await upload(ann.token, gpsJpeg)).body;
+    const p = await call(postsPOST as H, 'POST', {
+      token: ann.token,
+      body: { reading: reading(), photoIds: [photo.id] },
+    });
+    expect(p.status).toBe(201);
+    expect(p.body.post).toMatchObject({ body: '', type: 'media' });
+    const empty = await call(postsPOST as H, 'POST', {
+      token: ann.token,
+      body: { reading: reading(), body: '' },
+    });
+    expect(empty.status).toBe(400);
+  });
+
   it('a post carries a signed link that serves the clean JPEG', async () => {
     const { post } = await postWithPhoto();
     expect(post.photos).toHaveLength(1);

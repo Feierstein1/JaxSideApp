@@ -21,7 +21,7 @@ import { Banner, Button, ErrorState, openMenu, SectionTitle, KeyboardSafeView } 
 import { createComment, deleteComment, deletePost, fetchPost, markFeedsDirty } from './api';
 import { EditPostSheet } from './EditPostSheet';
 import { sendScreened } from './screening';
-import { authorName, openAuthor, PostCard, PostSkeleton } from './PostCard';
+import { authorName, openAuthor, OwnerAvatar, PostCard, PostSkeleton } from './PostCard';
 import { useGuest } from '@/auth/guest';
 import { AdminTag } from '@/profile/AdminTag';
 import { MedalIcons } from '@/profile/Medals';
@@ -538,7 +538,11 @@ function CommentRow({
             accessibilityRole={'username' in c.author ? 'link' : undefined}
             accessibilityLabel={'username' in c.author ? `${name}'s profile` : undefined}
           >
-            <ProfileAvatar name={name} url={null} size={34} ringColor={DARK.hairline} />
+            {'theOwner' in c.author ? (
+              <OwnerAvatar size={34} />
+            ) : (
+              <ProfileAvatar name={name} url={null} size={34} ringColor={DARK.hairline} />
+            )}
           </Pressable>
         ) : (
           <View
@@ -560,6 +564,7 @@ function CommentRow({
                 {name}
               </Text>
               {'medals' in c.author ? <MedalIcons medals={c.author.medals} size={14} /> : null}
+              {'theOwner' in c.author ? ' ✓ owner' : ''}
               {`  ${timeAgo(c.createdAt)}${c.editedAt ? ' · edited' : ''}`}
             </Text>
           ) : null}

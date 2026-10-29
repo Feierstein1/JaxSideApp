@@ -1,10 +1,12 @@
 import { randomInt, timingSafeEqual } from 'node:crypto';
 import type { OwnerClaimStatus, OwnerMethod, User } from '@/generated/prisma/client';
+import { normalizeUsername } from '@jax/shared';
 import { hashToken } from '../auth/crypto';
 import { db } from '../db';
 import { ApiError } from '../http';
 import { sendSafely } from '../mail/mailer';
 import { ownerCodeEmail } from '../mail/templates';
+import { screenText } from '../moderation/screening';
 
 /**
  * D103 (Phase 12, decided in D92): verified business owners. An owner gets an **Owner** tag
@@ -93,6 +95,9 @@ export interface OwnerClaimView {
   createdAt: string;
   verifiedAt: string | null;
   note: string | null;
+  /** D157: the primary owner (manages the team), and the name shown instead of a username. */
+  primary: boolean;
+  staffName: string | null;
 }
 
 function view(c: {
@@ -105,6 +110,8 @@ function view(c: {
   createdAt: Date;
   verifiedAt: Date | null;
   note: string | null;
+  primary: boolean;
+  staffName: string | null;
 }): OwnerClaimView {
   return {
     id: c.id,
@@ -116,6 +123,8 @@ function view(c: {
     createdAt: c.createdAt.toISOString(),
     verifiedAt: c.verifiedAt?.toISOString() ?? null,
     note: c.note,
+    primary: c.primary,
+    staffName: c.staffName,
   };
 }
 
@@ -275,7 +284,13 @@ export async function confirmOwnerCode(
   }
   const updated = await db.ownerClaim.update({
     where: { id: c.id },
-    data: { status: 'VERIFIED', verifiedAt: now, codeHash: null, phoneCode: null },
+    data: {
+      status: 'VERIFIED',
+      verifiedAt: now,
+      codeHash: null,
+      phoneCode: null,
+      primary: await primaryIfFirst(c.placeId), // D157
+    },
   });
   return view(updated);
 }
@@ -327,12 +342,13 @@ export async function listOwnerClaims(status: 'PENDING' | 'VERIFIED' | 'REJECTED
 export async function decideOwnerClaim(
   adminId: string,
   claimId: string,
-  action: 'approve' | 'reject' | 'revoke',
+  action: 'approve' | 'reject' | 'revoke' | 'make-primary',
   note: string | undefined,
   now = new Date(),
 ) {
   const c = await db.ownerClaim.findUnique({ where: { id: claimId } });
   if (!c) throw NOT_FOUND();
+  if (action === 'make-primary') return makePrimaryOwner(claimId);
   if (action === 'revoke') {
     if (c.status !== 'VERIFIED')
       throw new ApiError(409, 'NOT_VERIFIED', 'Only verified owners can lose the tag.');
@@ -352,6 +368,7 @@ export async function decideOwnerClaim(
             verifiedAt: now,
             decidedAt: now,
             decidedById: adminId,
+            primary: await primaryIfFirst(c.placeId), // D157
             codeHash: null,
             phoneCode: null,
             note: note ?? null,
@@ -365,4 +382,146 @@ export async function decideOwnerClaim(
             note: note ?? null,
           },
   });
+}
+
+// ───────────── D157: the owner team ("The Owner") ─────────────
+
+/** The primary owner's claim for a place, or 403. */
+async function primaryClaim(userId: string, placeId: string) {
+  const c = await db.ownerClaim.findFirst({
+    where: { placeId, userId, status: 'VERIFIED', primary: true },
+  });
+  if (!c)
+    throw new ApiError(403, 'NOT_PRIMARY_OWNER', 'Only the primary owner can manage the team.');
+  return c;
+}
+
+/** A verified owner (primary or team) of the place: they see the team. */
+async function anyOwnerClaim(userId: string, placeId: string) {
+  const c = await db.ownerClaim.findFirst({ where: { placeId, userId, status: 'VERIFIED' } });
+  if (!c) throw new ApiError(403, 'NOT_OWNER', 'Only this place’s owners can see the team.');
+  return c;
+}
+
+export interface OwnerTeamMember {
+  claimId: string;
+  username: string;
+  staffName: string | null;
+  primary: boolean;
+  since: string;
+  isMe: boolean;
+}
+
+/** The team (only its members see it; usernames are shown only to them). */
+export async function ownerTeam(userId: string, placeId: string): Promise<OwnerTeamMember[]> {
+  await anyOwnerClaim(userId, placeId);
+  const rows = await db.ownerClaim.findMany({
+    where: { placeId, status: 'VERIFIED' },
+    orderBy: [{ primary: 'desc' }, { verifiedAt: 'asc' }],
+    include: { user: { select: { username: true } } },
+  });
+  return rows.map((r) => ({
+    claimId: r.id,
+    username: r.user.username,
+    staffName: r.staffName,
+    primary: r.primary,
+    since: (r.verifiedAt ?? r.createdAt).toISOString(),
+    isMe: r.userId === userId,
+  }));
+}
+
+/** The primary owner adds someone by username (an active, confirmed account). */
+export async function addTeamMember(
+  userId: string,
+  placeId: string,
+  input: { username: string; staffName?: string },
+  now = new Date(),
+) {
+  await primaryClaim(userId, placeId);
+  if (input.staffName) await screenText(input.staffName, 'bio');
+  const member = await db.user.findUnique({
+    where: { usernameNormalized: normalizeUsername(input.username) },
+    select: { id: true, status: true, emailVerifiedAt: true },
+  });
+  if (!member || member.status !== 'ACTIVE' || !member.emailVerifiedAt) {
+    throw new ApiError(404, 'NOT_FOUND', 'No confirmed account with that username.');
+  }
+  const already = await db.ownerClaim.findFirst({
+    where: { placeId, userId: member.id, status: 'VERIFIED' },
+    select: { id: true },
+  });
+  if (already) throw new ApiError(409, 'ALREADY_OWNER', 'They’re already on the team.');
+  await db.ownerClaim.create({
+    data: {
+      placeId,
+      userId: member.id,
+      method: 'TEAM',
+      status: 'VERIFIED',
+      verifiedAt: now,
+      addedById: userId,
+      staffName: input.staffName?.trim() || null,
+    },
+  });
+}
+
+/** The primary owner sets anyone's staff name; a member can change their own. */
+export async function setStaffName(
+  userId: string,
+  placeId: string,
+  claimId: string,
+  staffName: string | null,
+) {
+  const mine = await anyOwnerClaim(userId, placeId);
+  const target = await db.ownerClaim.findFirst({
+    where: { id: claimId, placeId, status: 'VERIFIED' },
+  });
+  if (!target) throw NOT_FOUND();
+  if (!mine.primary && target.userId !== userId) {
+    throw new ApiError(403, 'NOT_PRIMARY_OWNER', 'Only the primary owner can change others.');
+  }
+  if (staffName) await screenText(staffName, 'bio');
+  await db.ownerClaim.update({
+    where: { id: claimId },
+    data: { staffName: staffName?.trim() || null },
+  });
+}
+
+/** The primary owner removes a team member (not themselves; an admin moves the primary role). */
+export async function removeTeamMember(
+  userId: string,
+  placeId: string,
+  claimId: string,
+  now = new Date(),
+) {
+  const mine = await primaryClaim(userId, placeId);
+  if (mine.id === claimId) {
+    throw new ApiError(409, 'PRIMARY', 'The primary owner can’t remove themselves. Contact us.');
+  }
+  const r = await db.ownerClaim.updateMany({
+    where: { id: claimId, placeId, status: 'VERIFIED' },
+    data: { status: 'REVOKED', decidedAt: now, note: 'Removed by the primary owner' },
+  });
+  if (!r.count) throw NOT_FOUND();
+}
+
+/** Admin: make this verified owner the place's primary owner (the old one stays on the team). */
+export async function makePrimaryOwner(claimId: string) {
+  await db.$transaction(async (tx) => {
+    const c = await tx.ownerClaim.findFirst({ where: { id: claimId, status: 'VERIFIED' } });
+    if (!c) throw NOT_FOUND();
+    await tx.ownerClaim.updateMany({
+      where: { placeId: c.placeId, primary: true },
+      data: { primary: false },
+    });
+    await tx.ownerClaim.update({ where: { id: c.id }, data: { primary: true } });
+  });
+}
+
+/** The first verified owner of a place becomes its primary owner. */
+async function primaryIfFirst(placeId: string) {
+  const has = await db.ownerClaim.findFirst({
+    where: { placeId, status: 'VERIFIED', primary: true },
+    select: { id: true },
+  });
+  return !has;
 }

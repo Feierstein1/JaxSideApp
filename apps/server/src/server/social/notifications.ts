@@ -178,6 +178,21 @@ export async function notifyPostMentions(opts: {
   }
 }
 
+/** D157: notifications caused by a place's verified owner on one of that place's posts. */
+async function ownerActors(
+  rows: { id: string; actorId: string | null; businessPostId: string | null }[],
+) {
+  const candidates = rows.filter((r) => r.actorId && r.businessPostId);
+  if (!candidates.length) return new Set<string>();
+  const hits = await db.$queryRaw<{ id: string }[]>`
+    SELECT n.id FROM "Notification" n
+    JOIN "BusinessPost" bp ON bp.id = n."businessPostId"
+    JOIN "OwnerClaim" oc ON oc."placeId" = bp."placeId" AND oc."userId" = n."actorId"
+                        AND oc.status = 'VERIFIED'
+    WHERE n.id IN (${Prisma.join(candidates.map((r) => Prisma.sql`${r.id}::uuid`))})`;
+  return new Set(hits.map((h) => h.id));
+}
+
 /** Where a post is, for "near Riverside": the area, the place, or the citywide topic. */
 async function placesFor(rows: { generalPostId: string | null; businessPostId: string | null }[]) {
   const general = rows.flatMap((r) => (r.generalPostId ? [r.generalPostId] : []));
@@ -235,18 +250,23 @@ export async function listNotifications(userId: string): Promise<NotificationVie
   });
   const pendingBy = new Map(pending.map((p) => [p.requesterId, p.id]));
   const where = await placesFor(rows);
+  const owners = await ownerActors(rows);
   return rows.map((r) => ({
     id: r.id,
     type: r.type,
-    actor: r.actor
-      ? {
-          username: r.actor.username,
-          color: r.actor.profile?.color ?? 'teal',
-          avatarUrl: r.actor.profile?.avatarPhotoId
-            ? signedPhotoUrl(r.actor.profile.avatarPhotoId)
-            : null,
-        }
-      : null,
+    // D157: an owner acting in their own place is "The Owner", never their username.
+    actorIsOwner: owners.has(r.id),
+    actor: owners.has(r.id)
+      ? null
+      : r.actor
+        ? {
+            username: r.actor.username,
+            color: r.actor.profile?.color ?? 'teal',
+            avatarUrl: r.actor.profile?.avatarPhotoId
+              ? signedPhotoUrl(r.actor.profile.avatarPhotoId)
+              : null,
+          }
+        : null,
     pendingRequestId:
       r.type === 'FRIEND_REQUEST' && r.actorId ? (pendingBy.get(r.actorId) ?? null) : null,
     target: postTarget(r),

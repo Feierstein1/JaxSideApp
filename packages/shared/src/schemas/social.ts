@@ -54,6 +54,8 @@ export interface NotificationView {
   where: string | null;
   /** D156: unread comments on one post are combined ("5 new comments on your post"). */
   count: number;
+  /** D157: it was the place's owner team ("The Owner"); `actor` is null then. */
+  actorIsOwner: boolean;
   createdAt: string;
   read: boolean;
 }
