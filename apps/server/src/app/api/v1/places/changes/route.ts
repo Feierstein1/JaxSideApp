@@ -23,5 +23,5 @@ export const POST = route(async (req) => {
     input.reading,
     'directory.read',
   );
-  return NextResponse.json({ changes: await listNearbyChanges(user.id, here) });
+  return NextResponse.json({ changes: await listNearbyChanges(user, here) });
 });

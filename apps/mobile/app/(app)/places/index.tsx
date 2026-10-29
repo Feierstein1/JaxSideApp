@@ -239,7 +239,11 @@ export default function PlacesScreen() {
       )}
 
       {/* P5.8: suggest a missing place; same round button and spot as "new post". */}
-      <FloatingButton label="Add new place" onPress={() => router.push('/places/suggest')} />
+      <FloatingButton
+        title="Add Place"
+        label="Add new place"
+        onPress={() => router.push('/places/suggest')}
+      />
 
       <FilterSheet
         open={filtersOpen}

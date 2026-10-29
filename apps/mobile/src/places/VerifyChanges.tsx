@@ -12,13 +12,15 @@ import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { categoryIcon } from './PlaceHeader';
 import { showAlert } from '@/dialog';
 import { ensureGuide } from '@/guides/guide';
+import { dismiss, isDismissed, useDismissed } from '@/dismissed';
 
 /**
  * D94: "Verify changes near you": a small sideways strip at the top of Places with places
  * people asked to add or remove within 528 yd. Tap a side, then you have a few seconds to
  * undo before it's sent; after that it's final (D100). Once you vote, the card leaves your
  * strip; your own requests never appear (they already count as your vote). Ten votes one
- * way decide it. Hidden when there's nothing left to verify.
+ * way decide it. Hidden when there's nothing left to verify. D162: × hides the strip until a
+ * new change shows up nearby.
  */
 export function VerifyChanges({
   reloadKey,
@@ -43,7 +45,11 @@ export function VerifyChanges({
     void load();
   }, [load, reloadKey]);
 
-  if (!items.length) return null;
+  useDismissed();
+  const key = (c: PlaceChange) => `place-change:${c.kind}:${c.id}`;
+  const shown = items.filter((c) => !isDismissed(key(c)));
+
+  if (!shown.length) return null;
   return (
     <View style={{ paddingTop: SPACE.sm, paddingBottom: SPACE.xs }}>
       <View
@@ -57,12 +63,20 @@ export function VerifyChanges({
       >
         <Ionicons name="checkmark-done" size={16} color={DARK.accent} />
         <Text style={{ fontWeight: '800', fontSize: 15 }}>Verify changes near you</Text>
-        <Text style={[TYPE.caption, { color: DARK.textMuted }]}>· {items.length}</Text>
+        <Text style={[TYPE.caption, { color: DARK.textMuted, flex: 1 }]}>· {shown.length}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Hide changes to verify"
+          onPress={() => dismiss(shown.map(key))}
+          hitSlop={10}
+        >
+          <Ionicons name="close" size={20} color={DARK.textMuted} />
+        </Pressable>
       </View>
       <FlatList
         horizontal
         showsHorizontalScrollIndicator={false}
-        data={items}
+        data={shown}
         keyExtractor={(c) => `${c.kind}:${c.id}`}
         contentContainerStyle={{ paddingHorizontal: SPACE.md, gap: SPACE.sm }}
         renderItem={({ item }) => (

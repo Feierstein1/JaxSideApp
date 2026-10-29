@@ -5,6 +5,7 @@ import {
   type ConversationSummary,
 } from '@jax/shared';
 import type { AccountStatus, Prisma, User } from '@/generated/prisma/client';
+import { pastAccountWait } from '../account-age';
 import { getConfig } from '../config';
 import {
   createUserKey,
@@ -123,7 +124,7 @@ export async function sendMessage(
   let conversation = await findConversation(user.id, other.id);
   if (!conversation) {
     const minDays = await getConfig('messages.newChatMinAccountDays');
-    if (now.getTime() - user.createdAt.getTime() < minDays * DAY_MS) {
+    if (!pastAccountWait(user, minDays, now)) {
       throw new ApiError(
         403,
         'ACCOUNT_TOO_NEW',

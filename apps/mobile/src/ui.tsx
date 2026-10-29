@@ -967,14 +967,17 @@ export function SearchField({
 }
 
 /**
- * The round floating action button, bottom-right (D70): gold with a black icon (D33).
- * Same size and place everywhere: new post (Home, place discussions) and Add new place.
+ * The floating action button, bottom-right (D70): gold with black text and icon (D33). D162: a
+ * pill that says what it does ("Add Post", "Add Place", "Add Topic") instead of a bare +.
  */
 export function FloatingButton({
+  title,
   label,
   onPress,
   icon = 'add',
 }: {
+  /** The words on the button, e.g. "Add Post". */
+  title: string;
   /** Read by screen readers ("Write a new post", "Add new place"). */
   label: string;
   onPress: () => void;
@@ -991,16 +994,20 @@ export function FloatingButton({
       scaleTo={0.9}
       containerStyle={{ position: 'absolute', right: 18, bottom: 22 }}
       style={{
-        width: 62,
-        height: 62,
-        borderRadius: 31,
+        height: 52,
+        borderRadius: 26,
+        paddingLeft: 16,
+        paddingRight: 20,
+        flexDirection: 'row',
+        gap: 6,
         backgroundColor: DARK.accent,
         alignItems: 'center',
         justifyContent: 'center',
         ...elevation(2),
       }}
     >
-      <Ionicons name={icon} size={34} color={DARK.onAccent} />
+      <Ionicons name={icon} size={24} color={DARK.onAccent} />
+      <Text style={{ color: DARK.onAccent, fontSize: 16, fontWeight: '800' }}>{title}</Text>
     </PressableScale>
   );
 }

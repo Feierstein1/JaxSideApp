@@ -14,7 +14,8 @@ import { RADIUS, SPACE, TYPE } from '@/tokens';
  * D104 (Phase 11): first-time guides. Before an action the first time, call
  * `await ensureGuide('areaPost')`: it resolves true at once if this account already finished
  * that guide (at its current version), or shows the guide and resolves true on "Got it" and
- * false if it was closed (cancel the action; it shows again next time). Finished guides are
+ * false if it was closed (cancel the action). D162: a closed guide shows once more, the next
+ * time; closed again, it counts as seen and never shows again. Finished guides are
  * remembered on the server per account (guests: on the phone). One `<GuideHost />` is
  * mounted at the app root. `reviewGuide(key)` reopens any guide (Account → Community rules).
  */
@@ -57,6 +58,20 @@ async function loadSeen(): Promise<Record<string, number>> {
   return seen;
 }
 
+/** D162: guides closed once without finishing, on this phone, per account. */
+const closedKey = () =>
+  `jax.guidesClosed.${who === 'guest' ? 'guest' : (who ?? '').replace(/[^\w.-]/g, '')}`;
+
+async function closedBefore(key: GuideKey): Promise<boolean> {
+  const raw = await SecureStore.getItemAsync(closedKey()).catch(() => null);
+  const closed = raw ? (JSON.parse(raw) as string[]) : [];
+  if (closed.includes(key)) return true;
+  await SecureStore.setItemAsync(closedKey(), JSON.stringify([...closed, key])).catch(
+    () => undefined,
+  );
+  return false;
+}
+
 async function markSeen(key: GuideKey) {
   const version = GUIDES[key].version;
   seen = { ...(seen ?? {}), [key]: version };
@@ -91,7 +106,8 @@ async function ensureGuideOnce(key: GuideKey): Promise<boolean> {
     return true; // can't check right now: don't block the action
   }
   const ok = await showGuide(key);
-  if (ok) await markSeen(key);
+  // Finished, or closed a second time: never again (D162).
+  if (ok || (await closedBefore(key).catch(() => false))) await markSeen(key);
   return ok;
 }
 
