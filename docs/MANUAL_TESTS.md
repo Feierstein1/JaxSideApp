@@ -523,6 +523,12 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Someone answering The Owner's reply: no "@username" appears; their bell says "The Owner of …".
 - [ ] Admin portal → Owners: **Make primary owner** moves team management to another owner.
 
+### Email confirmation screen (D159)
+
+- [ ] Create an account and sign in without confirming: a full-screen "Confirm your email" screen
+      covers the app; Back does nothing; a wrong code shows an error; the right code closes it.
+- [ ] "Send a new code" emails a fresh one; "Wrong email? Sign out" goes back to sign-in.
+
 ## 9. Account settings
 
 - [x] Profile card: the band across the top is your color; the **Color** button opens 24 colors,

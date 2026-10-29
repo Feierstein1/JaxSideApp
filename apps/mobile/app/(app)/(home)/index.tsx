@@ -93,15 +93,6 @@ export default function HomeFeed() {
           {`Your guest session ends in ${guest.daysLeft} ${guest.daysLeft === 1 ? 'day' : 'days'} unless you use JaxSide before then.`}
         </Banner>
       ) : null}
-      {!verified && !isGuest ? (
-        <Banner
-          icon="mail-unread-outline"
-          onPress={() => router.push('/account')}
-          style={{ marginBottom: 0 }}
-        >
-          Confirm your email to post, comment and vote. Tap to enter your code.
-        </Banner>
-      ) : null}
       {/* D129 / D140: the art deco heading, centered, with the refresh button at the far
           right of the same line (an equal space on the left keeps the title centered). */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -2 }}>
