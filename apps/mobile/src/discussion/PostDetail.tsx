@@ -33,6 +33,8 @@ import { ensureGuide } from '@/guides/guide';
 
 const MAX_DEPTH = CONFIG_DEFAULTS['comments.maxDepth'];
 const COMMENT_LIMIT = CONFIG_DEFAULTS['comments.limitPerPost'];
+/** D161: comments show 20 at a time (each with its replies), so photos load as you read. */
+const COMMENT_PAGE = 20;
 
 /**
  * P3.3 / P3.11: one post with its comment thread and a reply box. D78: the post's actions
@@ -69,6 +71,9 @@ export function PostDetail({
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
   const commentsTop = useRef(0);
   const scrolled = useRef(false);
+  const [shownThreads, setShownThreads] = useState(COMMENT_PAGE);
+  /** A comment that must be on screen: the one a notification opened, or the one you just sent. */
+  const [revealId, setRevealId] = useState(focusCommentId);
 
   const load = useCallback(async () => {
     setError(undefined);
@@ -99,6 +104,7 @@ export function PostDetail({
         createComment(kind, id, text.trim(), replyTo?.id, ok),
       );
       if (!sent) return; // chose to edit after a warning
+      if ('id' in sent) setRevealId(sent.id);
       haptic.success();
       setText('');
       setReplyTo(undefined);
@@ -119,6 +125,18 @@ export function PostDetail({
       setText((t) => (t.startsWith(tag) ? t : tag + t));
     }
   }
+
+  // D161: a thread is a top-level comment and its replies (they come in thread order).
+  const threadOf: number[] = [];
+  let threads = 0;
+  for (const c of comments) {
+    if (c.depth === 0 || threads === 0) threads++;
+    threadOf.push(threads - 1);
+  }
+  const revealAt = revealId ? comments.findIndex((c) => c.id === revealId) : -1;
+  const showUpTo = Math.max(shownThreads, revealAt >= 0 ? threadOf[revealAt]! + 1 : 0);
+  const shown = comments.filter((_, i) => threadOf[i]! < showUpTo);
+  const hiddenCount = comments.length - shown.length;
 
   function confirmDeletePost() {
     showAlert(
@@ -249,7 +267,7 @@ export function PostDetail({
               </Text>
             </View>
           ) : (
-            comments.map((c, i) => (
+            shown.map((c, i) => (
               <CommentRow
                 key={c.id}
                 c={c}
@@ -286,6 +304,14 @@ export function PostDetail({
               />
             ))
           )}
+          {!commentsHidden && hiddenCount > 0 ? (
+            <Button
+              variant="linkOnDark"
+              title={`Show more comments (${hiddenCount} more)`}
+              onPress={() => setShownThreads(showUpTo + COMMENT_PAGE)}
+              style={{ borderTopWidth: 1, borderTopColor: DARK.hairline }}
+            />
+          ) : null}
         </View>
         {error ? <ErrorState dark message={error} /> : null}
       </ScrollView>
@@ -541,7 +567,12 @@ function CommentRow({
             {'theOwner' in c.author ? (
               <OwnerAvatar size={34} />
             ) : (
-              <ProfileAvatar name={name} url={null} size={34} ringColor={DARK.hairline} />
+              <ProfileAvatar
+                name={name}
+                url={'avatarUrl' in c.author ? c.author.avatarUrl : null}
+                size={34}
+                ringColor={DARK.hairline}
+              />
             )}
           </Pressable>
         ) : (

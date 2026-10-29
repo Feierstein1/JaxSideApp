@@ -2,6 +2,7 @@ import { medalKeysSql } from '../achievements';
 import { COMMENT_MAX, type CommentView, type DiscussionKind, type MedalBadge } from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
 import { getConfig } from '../config';
+import { signedPhotoUrl } from '../media/photos';
 import { db } from '../db';
 import { ApiError } from '../http';
 import { TABLE } from './posts';
@@ -27,6 +28,7 @@ interface CommentRow {
   username: string | null;
   author_status: string | null;
   staff_badge: boolean | null;
+  avatar_photo_id: string | null;
   medals: MedalBadge[] | null;
   /** D157: the place's name when the author is one of its verified owners. */
   owner_place: string | null;
@@ -58,6 +60,7 @@ function toView(r: CommentRow, viewer: CommentViewer): CommentView {
             : {
                 username: r.username,
                 medals: r.medals ?? [],
+                avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
                 ...(r.staff_badge ? { admin: true as const } : {}), // D141
               },
     score: r.score,
@@ -116,11 +119,13 @@ export async function listComments(kind: DiscussionKind, postId: string, viewer:
     SELECT t.id, t."parentCommentId", t.depth, t.body, t.status::text, t."createdAt", t."editedAt",
            t."authorKind"::text AS "authorKind", t."authorUserId", t."authorGuestId", u.username,
            u.status::text AS author_status, u."staffBadge" AS staff_badge, t.score,
+           pr."avatarPhotoId" AS avatar_photo_id,
            v.value AS my_vote,
            ${medalKeysSql(Prisma.sql`t."authorUserId"`)} AS medals,
            ${ownerColumns(kind, postId)}
     FROM thread t
     LEFT JOIN "User" u ON u.id = t."authorUserId"
+    LEFT JOIN "Profile" pr ON pr."userId" = t."authorUserId"
     LEFT JOIN "Vote" v ON v."commentId" = t.id AND v."voterId" = ${viewerId}::uuid
     WHERE NOT EXISTS (
       SELECT 1 FROM "UserBlock" b
