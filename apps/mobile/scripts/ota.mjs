@@ -17,6 +17,8 @@ const API = {
   staging: 'https://staging-api.jaxside.com',
   production: 'https://api.jaxside.com',
 };
+/** The EAS environment each channel's builds use (staging builds use the default, preview). */
+const EAS_ENVIRONMENT = { staging: 'preview', production: 'production' };
 const [channel, ...words] = process.argv.slice(2);
 if (!(channel in API)) {
   console.error('Usage: node scripts/ota.mjs <staging|production> "what changed"');
@@ -34,6 +36,8 @@ const r = spawnSync(
     'update',
     '--channel',
     channel,
+    '--environment',
+    EAS_ENVIRONMENT[channel],
     '--message',
     JSON.stringify(message),
     '--non-interactive',
