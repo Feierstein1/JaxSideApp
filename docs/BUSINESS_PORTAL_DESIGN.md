@@ -4,6 +4,8 @@ Status: **planning only, nothing built** (D165). Written 2026-10-30 from the own
 and answers. Open items are in the tracker (Q28–Q30). The build starts after the owner and I
 settle the details.
 
+The step-by-step hand-off for whoever builds this is `docs/BUSINESS_PORTAL_BUILD_BRIEF.md`.
+
 ## Goal
 
 Verified business owners get their own website to run their place's presence on JaxSide:
