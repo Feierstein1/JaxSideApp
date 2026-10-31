@@ -90,6 +90,27 @@ first**, so decide whether counts are included in a paid plan (Q29) before charg
 - **Money, later:** free promo periods can be set by an admin per business at first, so no
   payments are needed to start. Subscription billing (Stripe, on the website) comes after there
   are users; it needs the LLC, a business bank account and the owner's approval of the cost.
+
+### Ad rules added 2026-10-31
+
+- **Draft → preview → live.** An owner builds an ad as a draft and previews it exactly as users
+  will see it before anything goes live. Then they submit it; once approved it is scheduled and
+  runs on its own. States: Draft, Waiting for approval, Scheduled, Live, Paused, Ended. Owners
+  can pause, edit or delete (edits to a live ad go back for approval).
+- **A time window per ad.** Each ad has its own start and end, so it shows only inside that
+  window (and ends by itself).
+- **A cap on live ads by plan.** Up to **3 different ads** can be live at once, depending on the
+  plan.
+- **Shown in every feed:** the area feed, place discussions and topic discussions, mixed in
+  between posts. The server adds ads when it builds each list, so the phone can't pick or skip
+  them.
+- **Targeted by where the reader is right now.** Every feed request already carries the
+  reader's location reading, so the server matches it to each ad's radius or ZIP areas. This
+  is the reader's own location, not the page's: someone reading a place page from across town
+  sees ads for where they are.
+- **Rules that always hold:** labeled Sponsored, a report button, a limit on how many ads
+  appear in one list, no personal data used, owners see only totals.
+
 - Updates needed before ads go live: Terms for advertisers, Privacy Policy, and the store
   data-safety forms.
 
