@@ -113,7 +113,7 @@ first**, so decide whether counts are included in a paid plan (Q29) before charg
 
 ### Ad details settled 2026-10-31 (D167)
 
-- **At most 3 ads** per business, created and live; the plan may allow fewer. Making the same ad
+- **A saved library of up to 20 ads** per business (drafts and past ads count). Only **live** ads count toward the plan's limit of at most **3 live at once** (a plan may allow fewer). Making the same ad
   three times is allowed. To keep it fair to readers, the server shows at most one ad per
   business in any one list.
 - **Schedule:** dates and times, plus days of the week and time of day (for example a bar's
