@@ -11,6 +11,12 @@ generator client {
   previewFeatures = ["partialIndexes"]
 }
 
+generator business {
+  provider = "prisma-client"
+  /// D169: the business portal (apps/business) generates its own client from this schema.
+  output   = "../../business/src/generated/prisma"
+}
+
 datasource db {
   provider = "postgresql"
 }
@@ -1617,4 +1623,37 @@ model PollSuggestion {
 
   @@index([status, createdAt])
   @@index([userId, createdAt])
+}
+
+// ───────────────────── Business portal (D169, Phase 16) ─────────────────────
+// Owned and used only by apps/business. A business account has no link to a personal User.
+
+/// A business sign-in (the owner or an employee). Roles are per place (BusinessPlaceAccess, B1.5).
+model BusinessAccount {
+  id                 String            @id @default(uuid(7)) @db.Uuid
+  /// Lower-cased. Open question Q32: encrypt at rest like User emails (D35)?
+  email              String            @unique
+  passwordHash       String
+  mustChangePassword Boolean           @default(false)
+  failedLogins       Int               @default(0)
+  lockedUntil        DateTime?         @db.Timestamptz(3)
+  createdAt          DateTime          @default(now()) @db.Timestamptz(3)
+  revokedAt          DateTime?         @db.Timestamptz(3)
+  sessions           BusinessSession[]
+}
+
+/// A cookie session on the business website (same shape as admin sessions, D3).
+model BusinessSession {
+  id            String          @id @default(uuid(7)) @db.Uuid
+  tokenHash     String          @unique @db.Char(64)
+  csrfTokenHash String          @db.Char(64)
+  accountId     String          @db.Uuid
+  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+  lastUsedAt    DateTime        @default(now()) @db.Timestamptz(3)
+  expiresAt     DateTime        @db.Timestamptz(3)
+  revokedAt     DateTime?       @db.Timestamptz(3)
+  account       BusinessAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, revokedAt])
+  @@index([expiresAt])
 }

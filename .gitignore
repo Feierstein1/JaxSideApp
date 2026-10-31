@@ -54,3 +54,6 @@ apps/server/data/map/
 
 # D139: staging secrets (server settings, keys); never committed
 deploy/staging/secrets/
+
+# Business portal: generated Prisma client (D169)
+apps/business/src/generated/
