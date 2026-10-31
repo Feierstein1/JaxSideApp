@@ -46,6 +46,12 @@ serializers only. Keeping all data access in one place keeps those rules and the
 example `test/write-routes.test.ts`) in one place. `apps/business` can later move out as its
 own deployable folder without touching the API.
 
+**Separation rule (D169):** `apps/business` is never part of the phone app's build, bundle,
+updates or store releases, and the phone app never imports it (or the server). Only
+`@jax/shared` is common to both. ESLint enforces this in `eslint.config.mjs`; keep that rule
+passing. The owner website is built and deployed on its own (see B5), never through
+`eas build` or `eas update`.
+
 **Spike first (small):** one login round-trip from `apps/business` to the server API, with the
 session in an HttpOnly, SameSite=Strict cookie plus a CSRF token (copy the admin portal's
 pattern, `apps/server/src/server/admin/auth.ts`). If this proves awkward, the fallback is a

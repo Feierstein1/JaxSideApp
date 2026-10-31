@@ -35,6 +35,54 @@ export default tseslint.config(
     },
   },
   {
+    // D169: the phone app never includes the owner website or the server, and the owner
+    // website never includes phone-app code. Only @jax/shared is common to both.
+    files: ['apps/mobile/**/*.{ts,tsx,js,jsx,mjs}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@jax/business',
+                '@jax/business/*',
+                '**/apps/business/**',
+                '@jax/server',
+                '@jax/server/*',
+                '**/apps/server/**',
+              ],
+              message: 'The phone app must not import the owner website or the server (D169).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/business/**/*.{ts,tsx,js,jsx,mjs}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@jax/mobile',
+                '@jax/mobile/*',
+                '**/apps/mobile/**',
+                'react-native',
+                'expo',
+                'expo-*',
+              ],
+              message: 'The owner website must not import phone-app code (D169).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // CLI scripts and config files may print to stdout.
     files: ['**/scripts/**', '**/prisma/seed.ts', '**/*.config.{js,mjs,ts}'],
     rules: { 'no-console': 'off' },

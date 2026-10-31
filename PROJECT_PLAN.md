@@ -324,6 +324,8 @@ Format: `D# — date — decision — reason`. Proposed items become **Accepted*
 | D166 | **Accepted** 2026-10-31 | **Ad rules (adds to D165; nothing built).** Owners create an ad as a draft and preview it exactly as users will see it before it goes live, then submit it for approval. Each ad has its own time window. Up to 3 different ads can be live at once, depending on the plan. Ads appear in every feed (area feed, place discussions, topic discussions), added by the server, and are targeted by where the reader is at that moment (the location reading every feed request already carries), not by the page they are on. Details left to settle: Q31 | User 2026-10-31 |
 | D167 | **Accepted** 2026-10-31 | **Ad details (answers Q31; nothing built).** An owner can keep up to 20 ads saved (drafts and past ads); only live ads count against the plan, at most 3 live at once (a plan may allow fewer); the same ad may be made more than once, but the server shows at most one ad per business in a list. Each ad has a date and time window plus days of the week and time of day. Ads run in every topic, elections included, and an admin can switch a topic to ad-free. Ads are an image, a GIF, or a post, built from fixed templates (banner between two posts, post-style, full-width feature) whose size limits and a live preview the owner sees while building; exact sizes are chosen when the templates are designed. On its own place page a business with an active plan shows only its own ads; a place with no plan may show other ads. Guests see ads slightly more often than signed-in users (both rates are admin settings) | User 2026-10-31 |
 | D168 | **Accepted** 2026-10-31 | **Build plan for the business portal and ads (nothing built).** Ads are sold as **subscription plans** (a plan sets how many ads can be live, at most 3); prices open (Q28); friends' businesses get admin-granted free promo periods first; payments are built last and need the LLC, a bank account and approval. The build lives in this repo in its own folder, `apps/business` (web UI), with its API routes and Prisma models in `apps/server` so every rule and test stays in one place, and new shared types in `packages/shared`; it can become its own deployable folder later. A new agent builds it from `docs/BUSINESS_PORTAL_BUILD_BRIEF.md` | User 2026-10-31 |
+| D169 | **Accepted** 2026-10-31 | **The owner website is never part of the phone app.** `apps/business` is a separate folder with its own build and deployment; it is never included in the phone app's build, bundle, over-the-air updates or store releases, and the phone app never imports it (or the server). Only `@jax/shared` is shared. Enforced by an ESLint rule in both directions (`eslint.config.mjs`) | User 2026-10-31 |
+| D169 | **Accepted** 2026-10-31 | **Business portal has its own backend (changes D168's "API in `apps/server`").** `apps/business` is a full Next.js app: pages plus its own API routes (`/api/*`), sessions and rules. It never calls the phone app's API. It reads and writes the **same Postgres database** as the app, because ads, replies and claims must show up in both. The Prisma schema and migrations stay in `apps/server/prisma` (one migration history, no drift); `apps/business` generates its own client from that schema file. Rules that need no database (zod schemas, constants, colors) go in `packages/shared`; database rules the app already has ("The Owner" masking, moderation hold, serializers, rate limits) are re-implemented in `apps/business` with their own tests. Built here only so it can reference the app's styles and code; it will move to its own folder and AI when finished, so it must not import from `apps/server`. Ad serving in the app's feeds (B3.4) and ad cards (B3.6) stay in `apps/server` / `apps/mobile`; they only read ad tables. Build the phone-app part only as far as needed; another AI finishes it. Suggest a limited Postgres role for the business app (see Open Questions). |
 | D43 | **Accepted** 2026-10-15 | The signed-in username shows in the top bar on every screen, with an eye button that hides it **on that device's screen only** (stored on the device). Posts still show the username to others | User request. Screen-privacy toggle, not anonymous posting. **Confirmed by the user 2026-10-15** |
 
 ---
@@ -580,6 +582,32 @@ Before the staging deploy. Name and look first, because the domain, email sender
 - [x] P15.10 Topic rules (D134): creators can delete but not edit (deleted topics hidden, kept a week for the admin, then removed with their posts); 15+ reports from different people hide a topic for review; "show my username as the creator" (off by default, the only thing a creator can change later); My created discussions filter; ★ on your own topics ✅ 2026-10-25: migration `topic_rules` (HELD, DELETED, `showCreator`, `deletedAt`); PATCH / DELETE `topics/[id]` (creator only, 404 otherwise); `topics.autoHideReports` 15 and `topics.deletedKeepDays` 7; nightly purge; admin Topics page sections Held for review and Deleted by their creators; app: switch on Start a topic, ★ and "by @name", I started filter, creator ••• menu. Tests `topic-rules.test.ts` (🔒 others can't change or delete; the title can't be edited), `write-routes.test.ts`
 - [x] P15.11 Expo SDK 58 upgrade (Expo Go on phones moved to 58; store builds should be on a current SDK) ✅ 2026-10-26 (D137): Expo 58.0.19, React Native 0.88, React 19.3.0 workspace-wide; expo-doctor 20/20; type fixes for RN 0.88 refs and list props; Messages / Notifications no longer bounce to Home; post type picker (D136). 880 server + 144 shared + 49 app tests, Next build and Android export pass; you confirmed on the phone
 - [x] P15.12 Daily-volume stress test (user 2026-10-25): simulate a busy day of writes and reads together: posts, comments and votes in bulk, photo / voice / video uploads and downloads (storage and signed URLs), feeds and topic lists under load; measure response times, database growth per day and storage bandwidth, and find the limits before launch (extends the one-fifth-scale load test, P13.10) ✅ 2026-10-26: `npm run load:daily -w @jax/server` (`scripts/load/daily.ts`, refuses any database not named `*_load`) plays a busy day through the real HTTP API on a production build. 1,000 active people, about 156,000 requests (23,000 writes) in 20–25 min: **0 errors**, 100–140 requests/s against about 6.5 needed at the busiest hour. Lasting growth about 15 MB database and 90 MB media a day. Fix: an upvote re-checks only the medals a vote can change (73 → 58 ms alone). Results and findings in `docs/STRESS_TEST_RESULTS.md`; badge-check merge proposed (Q26)
+
+---
+
+## Phase 16 — Business portal and ads (D165–D169; brief: `docs/BUSINESS_PORTAL_BUILD_BRIEF.md`)
+
+Separate website in `apps/business` with its own API, same database (D169). Nothing here ships until the owner approves B4/B5. 🔒 = needs a bypass test.
+
+- [ ] B0 Spike: sign-in round-trip in `apps/business` (own API route, HttpOnly SameSite=Strict cookie + CSRF); record the result
+- [ ] B1.1 Prisma models and migration
+- [ ] B1.2 Business sign-in, sessions, CSRF, lockout, rate limits, forced password change 🔒 (user token never works here and vice versa)
+- [ ] B1.3 Claim -> email invite -> business account; link existing VERIFIED claims
+- [ ] B1.4 Place list (one place opens straight in)
+- [ ] B1.5 Employees and roles (Owner / Manager / Staff) 🔒
+- [ ] B1.6 Discussion inbox: read and reply from anywhere as "The Owner" 🔒
+- [ ] B1.7 Admin portal pages for business accounts
+- [ ] B1.8 Owner notifications
+- [ ] B2.1 Insights counts, under-10 rule 🔒 (gated by a plan setting, Q29)
+- [ ] B3.1 Plans and subscriptions as data; admin comp
+- [ ] B3.2 Ad library, templates, preview, schedule, targeting, limits
+- [ ] B3.3 Admin approval queue
+- [ ] B3.4 Ad serving in all feeds (app server) 🔒
+- [ ] B3.5 Counters and owner stats 🔒
+- [ ] B3.6 Phone app: ad cards, Sponsored, report, Interested / Not interested (minimum needed; another AI finishes)
+- [ ] B3.7 Load check
+- [ ] B4.1 Payments (only with the owner's approval)
+- [ ] B5.1-B5.2 Going live (only with the owner's approval)
 
 ---
 
@@ -841,3 +869,5 @@ Events/meetups/RSVPs · sponsored content / ads / subscriptions · phone push no
 | 2026-10-31 | D166, Q30, Q31 | Q30 answered (local business deals only, no brand ads). Ad rules added (draft/preview/approval, time windows, up to 3 live ads by plan, all feeds, targeted by the reader's location); Q31 lists the open details |
 | 2026-10-31 | D167, Q31 | Ad details settled (3 ads per business, date/day/time windows, all topics, template formats, place-page protection for plan holders, more ads for guests) |
 | 2026-10-31 | D168 | Subscription model chosen; build brief for the business portal written (`docs/BUSINESS_PORTAL_BUILD_BRIEF.md`); plan to build in `apps/business` with API in `apps/server`; Q28 prices still open |
+| 2026-10-31 | D169 | Owner website kept fully separate from the phone app; ESLint import rules in both directions |
+| 2026-10-31 | D169 | Business portal gets its own backend in `apps/business` (own API, same database, schema stays in `apps/server/prisma`); Phase 16 checklist added; nothing built yet |
