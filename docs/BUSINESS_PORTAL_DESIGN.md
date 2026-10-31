@@ -111,6 +111,27 @@ first**, so decide whether counts are included in a paid plan (Q29) before charg
 - **Rules that always hold:** labeled Sponsored, a report button, a limit on how many ads
   appear in one list, no personal data used, owners see only totals.
 
+### Ad details settled 2026-10-31 (D167)
+
+- **At most 3 ads** per business, created and live; the plan may allow fewer. Making the same ad
+  three times is allowed. To keep it fair to readers, the server shows at most one ad per
+  business in any one list.
+- **Schedule:** dates and times, plus days of the week and time of day (for example a bar's
+  happy hour, Tue–Fri 4–7pm).
+- **Ads run in every topic,** elections included, and an admin can switch a topic to ad-free.
+- **Formats:** an image, a GIF, or a post-style ad, built from fixed **templates** (no custom
+  layouts or code). The editor shows each template's size and limits up front, with a live
+  preview, and explains any "too big" or "wrong shape" problem in plain words. Starting set:
+  a small **banner** that sits between two posts, a standard **post-style** ad (image,
+  headline, short text), and a large **feature** ad with a full-width image. Pictures and GIFs
+  go through the same upload checks as posts (metadata removed, re-encoded, size caps).
+  Exact sizes are chosen when the templates are designed.
+- **A place's own page:** a business with an active plan sees only its own ads on its place
+  page, so rivals never appear there. A place with no plan (or nobody who has claimed it) may
+  show other ads. The claim button and this protection double as the pitch to owners.
+- **Guests see ads somewhat more often** than signed-in users. Both rates are admin settings.
+- **Who is shown an ad:** still decided by where the reader is right now (see above).
+
 - Updates needed before ads go live: Terms for advertisers, Privacy Policy, and the store
   data-safety forms.
 
