@@ -475,6 +475,11 @@ model BusinessPlace {
   ownerClaims OwnerClaim[]
   placeStats  PlaceStatsDaily[]
 
+  // D169: business portal (no columns here; the business tables point at the place).
+  businessAccess  BusinessPlaceAccess[]
+  businessInvites BusinessInvite[]
+  ads             Ad[]
+
   @@unique([sourceName, sourceId])
   @@index([location], type: Gist)
   @@index([nameNormalized(ops: raw("gin_trgm_ops"))], type: Gin)
@@ -550,36 +555,39 @@ enum OwnerClaimStatus {
 }
 
 model OwnerClaim {
-  id            String           @id @default(uuid(7)) @db.Uuid
-  placeId       String           @db.Uuid
-  userId        String           @db.Uuid
-  method        OwnerMethod
-  status        OwnerClaimStatus @default(PENDING)
+  id              String                @id @default(uuid(7)) @db.Uuid
+  placeId         String                @db.Uuid
+  userId          String                @db.Uuid
+  method          OwnerMethod
+  status          OwnerClaimStatus      @default(PENDING)
   /// EMAIL: only the domain is kept (the address is used once, to send the code).
-  emailDomain   String?          @db.VarChar(200)
+  emailDomain     String?               @db.VarChar(200)
   /// EMAIL / PHONE: the code to enter, hashed; expires; limited tries.
-  codeHash      String?          @db.VarChar(100)
-  codeExpiresAt DateTime?        @db.Timestamptz(3)
-  attempts      Int              @default(0)
+  codeHash        String?               @db.VarChar(100)
+  codeExpiresAt   DateTime?             @db.Timestamptz(3)
+  attempts        Int                   @default(0)
   /// WEBSITE: the code to post publicly, and where the owner says they posted it.
-  publicCode    String?          @db.VarChar(20)
-  proofUrl      String?          @db.VarChar(500)
+  publicCode      String?               @db.VarChar(20)
+  proofUrl        String?               @db.VarChar(500)
   /// PHONE: the code an admin reads out (shown in the portal only).
-  phoneCode     String?          @db.VarChar(10)
-  note          String?          @db.VarChar(500)
+  phoneCode       String?               @db.VarChar(10)
+  note            String?               @db.VarChar(500)
   /// D157: the place's primary owner (the first verified): manages the owner team.
-  primary       Boolean          @default(false)
+  primary         Boolean               @default(false)
   /// D157: shown instead of a username ("The Owner · Sarah"); optional.
-  staffName     String?          @db.VarChar(30)
+  staffName       String?               @db.VarChar(30)
   /// D157: the primary owner who added this team member (TEAM claims).
-  addedById     String?          @db.Uuid
-  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
-  verifiedAt    DateTime?        @db.Timestamptz(3)
-  decidedAt     DateTime?        @db.Timestamptz(3)
-  decidedById   String?          @db.Uuid
-  place         BusinessPlace    @relation(fields: [placeId], references: [id], onDelete: Cascade)
-  user          User             @relation("OwnerClaimant", fields: [userId], references: [id], onDelete: Cascade)
-  decidedBy     User?            @relation("OwnerClaimDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  addedById       String?               @db.Uuid
+  createdAt       DateTime              @default(now()) @db.Timestamptz(3)
+  verifiedAt      DateTime?             @db.Timestamptz(3)
+  decidedAt       DateTime?             @db.Timestamptz(3)
+  decidedById     String?               @db.Uuid
+  place           BusinessPlace         @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  user            User                  @relation("OwnerClaimant", fields: [userId], references: [id], onDelete: Cascade)
+  decidedBy       User?                 @relation("OwnerClaimDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  /// D169: the business-portal invite and access this verified claim led to (B1.3).
+  businessInvites BusinessInvite[]
+  businessAccess  BusinessPlaceAccess[]
 
   /// One open claim per person and place (was raw SQL; D109).
   @@unique([placeId, userId], map: "OwnerClaim_one_open", where: raw("status = 'PENDING'"))
@@ -1628,18 +1636,44 @@ model PollSuggestion {
 // ───────────────────── Business portal (D169, Phase 16) ─────────────────────
 // Owned and used only by apps/business. A business account has no link to a personal User.
 
-/// A business sign-in (the owner or an employee). Roles are per place (BusinessPlaceAccess, B1.5).
+/// A business sign-in (the owner or an employee). Roles are per place (BusinessPlaceAccess).
+/// Owners sign in with an email; employees the owner creates sign in with a username
+/// (CHECK: at least one of the two).
 model BusinessAccount {
-  id                 String            @id @default(uuid(7)) @db.Uuid
-  /// Lower-cased. Open question Q32: encrypt at rest like User emails (D35)?
-  email              String            @unique
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  /// Lower-cased. Plain text by the owner's choice (Q32); never in a public response.
+  email              String?   @unique @db.VarChar(254)
+  /// Employees only; lower-cased.
+  username           String?   @unique @db.VarChar(40)
   passwordHash       String
-  mustChangePassword Boolean           @default(false)
-  failedLogins       Int               @default(0)
-  lockedUntil        DateTime?         @db.Timestamptz(3)
-  createdAt          DateTime          @default(now()) @db.Timestamptz(3)
-  revokedAt          DateTime?         @db.Timestamptz(3)
-  sessions           BusinessSession[]
+  mustChangePassword Boolean   @default(false)
+  passwordChangedAt  DateTime? @db.Timestamptz(3)
+  failedLogins       Int       @default(0)
+  lockedUntil        DateTime? @db.Timestamptz(3)
+  /// Optional two-factor (B1.2): the authenticator secret, encrypted; on once confirmed.
+  totpSecretEnc      String?
+  totpEnabledAt      DateTime? @db.Timestamptz(3)
+  totpLastStep       BigInt?
+  /// The Owner account that created this employee login; null for owners.
+  createdById        String?   @db.Uuid
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  /// A JaxSide admin suspended the account (B1.7); sign-in refused until lifted.
+  suspendedAt        DateTime? @db.Timestamptz(3)
+  /// Revoked by its Owner or an admin; never signs in again.
+  revokedAt          DateTime? @db.Timestamptz(3)
+
+  createdBy     BusinessAccount?      @relation("BusinessEmployees", fields: [createdById], references: [id], onDelete: SetNull)
+  employees     BusinessAccount[]     @relation("BusinessEmployees")
+  sessions      BusinessSession[]
+  placeAccess   BusinessPlaceAccess[] @relation("AccessHolder")
+  accessGranted BusinessPlaceAccess[] @relation("AccessGranter")
+  invitesUsed   BusinessInvite[]
+  subscriptions Subscription[]
+  ads           Ad[]                  @relation("AdOwner")
+  adsCreated    Ad[]                  @relation("AdCreator")
+  media         AdMedia[]
+
+  @@index([createdById])
 }
 
 /// A cookie session on the business website (same shape as admin sessions, D3).
@@ -1656,4 +1690,210 @@ model BusinessSession {
 
   @@index([accountId, revokedAt])
   @@index([expiresAt])
+}
+
+enum BusinessRole {
+  OWNER // billing, ads, team, everything
+  MANAGER // posts, replies, drafts ads
+  STAFF // posts, replies
+}
+
+/// Who can run which place, and as what. One live Owner per place (partial unique index).
+model BusinessPlaceAccess {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  accountId    String           @db.Uuid
+  placeId      String           @db.Uuid
+  role         BusinessRole
+  /// D157: shown after "The Owner" on posts ("The Owner · Sarah"); optional.
+  staffName    String?          @db.VarChar(30)
+  /// B1.3: the verified phone-app claim this Owner access came from.
+  ownerClaimId String?          @db.Uuid
+  grantedById  String?          @db.Uuid
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  revokedAt    DateTime?        @db.Timestamptz(3)
+  account      BusinessAccount  @relation("AccessHolder", fields: [accountId], references: [id], onDelete: Cascade)
+  place        BusinessPlace    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  ownerClaim   OwnerClaim?      @relation(fields: [ownerClaimId], references: [id], onDelete: SetNull)
+  grantedBy    BusinessAccount? @relation("AccessGranter", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([accountId, placeId], map: "BusinessPlaceAccess_one_live", where: raw("\"revokedAt\" IS NULL"))
+  @@unique([placeId], map: "BusinessPlaceAccess_one_owner", where: raw("role = 'OWNER' AND \"revokedAt\" IS NULL"))
+  @@index([placeId, revokedAt])
+  @@index([ownerClaimId])
+  @@index([grantedById])
+}
+
+/// B1.3: the emailed link that lets a verified claimant create their business account.
+model BusinessInvite {
+  id              String           @id @default(uuid(7)) @db.Uuid
+  tokenHash       String           @unique @db.Char(64)
+  placeId         String           @db.Uuid
+  ownerClaimId    String           @db.Uuid
+  expiresAt       DateTime         @db.Timestamptz(3)
+  usedAt          DateTime?        @db.Timestamptz(3)
+  usedByAccountId String?          @db.Uuid
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  place           BusinessPlace    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  ownerClaim      OwnerClaim       @relation(fields: [ownerClaimId], references: [id], onDelete: Cascade)
+  usedBy          BusinessAccount? @relation(fields: [usedByAccountId], references: [id], onDelete: SetNull)
+
+  @@index([ownerClaimId])
+  @@index([placeId])
+  @@index([usedByAccountId])
+  @@index([expiresAt])
+}
+
+/// D168: a subscription plan, edited by an admin. Prices are open (Q28).
+model Plan {
+  id               String         @id @default(uuid(7)) @db.Uuid
+  name             String         @unique @db.VarChar(60)
+  /// Ads live at once (CHECK 0..3, D167).
+  liveAdLimit      Int            @db.SmallInt
+  /// Monthly price in cents; null until prices are decided (Q28).
+  priceCents       Int?
+  /// Q29: whether the plan includes area counts (insights).
+  includesInsights Boolean        @default(false)
+  active           Boolean        @default(true)
+  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+  subscriptions    Subscription[]
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+/// D168: a business's plan. `comped` = a free promo period an admin granted (no payment).
+model Subscription {
+  id               String             @id @default(uuid(7)) @db.Uuid
+  accountId        String             @db.Uuid
+  planId           String             @db.Uuid
+  status           SubscriptionStatus @default(ACTIVE)
+  startsAt         DateTime           @db.Timestamptz(3)
+  /// Null = open-ended.
+  endsAt           DateTime?          @db.Timestamptz(3)
+  comped           Boolean            @default(false)
+  /// The JaxSide admin (User id) who granted a comp; a plain id kept for the record.
+  grantedByAdminId String?            @db.Uuid
+  note             String?            @db.VarChar(300)
+  createdAt        DateTime           @default(now()) @db.Timestamptz(3)
+  account          BusinessAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  plan             Plan               @relation(fields: [planId], references: [id])
+
+  /// One active subscription per business.
+  @@unique([accountId], map: "Subscription_one_active", where: raw("status = 'ACTIVE'"))
+  @@index([planId])
+}
+
+enum AdTemplate {
+  BANNER // between two posts
+  POST // looks like a post
+  FEATURE // large
+}
+
+/// D171: stored approval states. "Scheduled" and "Live" are worked out from the time
+/// window of an APPROVED ad, so no background job has to flip them.
+enum AdStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PAUSED
+  ENDED
+}
+
+/// Ad image or GIF uploaded by a business account (Photo needs a personal uploader).
+model AdMedia {
+  id            String          @id @default(uuid(7)) @db.Uuid
+  accountId     String          @db.Uuid
+  storageKey    String?         @unique @db.VarChar(200)
+  quarantineKey String?         @unique @db.VarChar(200)
+  status        PhotoStatus     @default(PENDING_UPLOAD)
+  mimeType      String?         @db.VarChar(40)
+  width         Int?
+  height        Int?
+  bytes         Int?
+  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+  processedAt   DateTime?       @db.Timestamptz(3)
+  removedAt     DateTime?       @db.Timestamptz(3)
+  account       BusinessAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  ads           Ad[]
+
+  @@index([accountId, createdAt])
+  @@index([status, createdAt])
+}
+
+/// D166/D167: an ad in a business's library (at most 20 per business, B3.2).
+model Ad {
+  id            String           @id @default(uuid(7)) @db.Uuid
+  accountId     String           @db.Uuid
+  /// The place the ad promotes (one the business runs).
+  placeId       String           @db.Uuid
+  status        AdStatus         @default(DRAFT)
+  template      AdTemplate
+  headline      String           @db.VarChar(80)
+  body          String?          @db.VarChar(500)
+  mediaId       String?          @db.Uuid
+  /// Q30: alcohol deals carry a "21+" line.
+  adultsOnly    Boolean          @default(false)
+  startsAt      DateTime?        @db.Timestamptz(3)
+  endsAt        DateTime?        @db.Timestamptz(3)
+  /// Days it runs: bit 0 = Sunday … bit 6 = Saturday (127 = every day; CHECK 1..127).
+  daysOfWeek    Int              @default(127) @db.SmallInt
+  /// Time of day in Jacksonville local minutes (0..1440); both null = all day.
+  dailyStartMin Int?             @db.SmallInt
+  dailyEndMin   Int?             @db.SmallInt
+  /// Targeting (B3.4): a radius around the place and/or chosen ZIP codes.
+  radiusMeters  Int?
+  zips          String[]         @db.VarChar(5)
+  createdById   String?          @db.Uuid
+  submittedAt   DateTime?        @db.Timestamptz(3)
+  approvedAt    DateTime?        @db.Timestamptz(3)
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime         @updatedAt @db.Timestamptz(3)
+  account       BusinessAccount  @relation("AdOwner", fields: [accountId], references: [id], onDelete: Cascade)
+  createdBy     BusinessAccount? @relation("AdCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  place         BusinessPlace    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  media         AdMedia?         @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  reviews       AdReview[]
+  dailyStats    AdDailyStats[]
+
+  @@index([accountId, status])
+  @@index([status, startsAt, endsAt])
+  @@index([placeId])
+  @@index([mediaId])
+  @@index([createdById])
+}
+
+enum AdDecision {
+  APPROVED
+  REJECTED
+}
+
+/// B3.3: an admin's decision on a submitted ad, with what the ad said at the time.
+model AdReview {
+  id        String     @id @default(uuid(7)) @db.Uuid
+  adId      String     @db.Uuid
+  /// The JaxSide admin (User id); a plain id kept for the record.
+  adminId   String     @db.Uuid
+  decision  AdDecision
+  /// Shown to the business when an ad is turned down.
+  reason    String?    @db.VarChar(500)
+  snapshot  Json
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
+  ad        Ad         @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@index([adId, createdAt])
+}
+
+/// B3.5: totals per ad per day (never one row per view, never who).
+model AdDailyStats {
+  adId          String   @db.Uuid
+  day           DateTime @db.Date
+  views         Int      @default(0)
+  interested    Int      @default(0)
+  notInterested Int      @default(0)
+  ad            Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@id([adId, day])
 }
