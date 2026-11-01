@@ -71,6 +71,8 @@ export const envSchema = z
     SMTP_PASS: secret(16).optional(),
     /** D90: optional inbox that gets a copy of each Contact us message. */
     SUPPORT_INBOX: z.string().email().optional(),
+    /** D172: the business website (apps/business), for the invite links this server emails. */
+    BUSINESS_BASE_URL: z.string().url().default('http://localhost:3100'),
   })
   .superRefine((env, ctx) => {
     // Structural keyring checks (lengths, current key present, keys distinct).

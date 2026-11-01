@@ -20,6 +20,7 @@ export const LIMITS = {
   loginPerIdentifier: { limit: 10, windowSeconds: 900 },
   twoFactorPerAccount: { limit: 10, windowSeconds: 900 },
   passwordChangePerAccount: { limit: 10, windowSeconds: 3600 },
+  inviteAcceptPerIp: { limit: 20, windowSeconds: 3600 },
   /** Every other signed-in change. */
   writePerAccount: { limit: 60, windowSeconds: 60 },
 } as const;

@@ -9,6 +9,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as login from '@/app/api/auth/login/route';
+import * as inviteAccept from '@/app/api/invites/accept/route';
+import * as inviteAcceptNew from '@/app/api/invites/accept-new/route';
 import * as logout from '@/app/api/auth/logout/route';
 import * as password from '@/app/api/auth/password/route';
 import * as twoFactorConfirm from '@/app/api/auth/two-factor/confirm/route';
@@ -37,6 +39,20 @@ type Entry = {
 };
 
 const ROUTES: Entry[] = [
+  {
+    path: 'invites/accept-new',
+    method: 'POST',
+    handler: inviteAcceptNew.POST,
+    kind: 'public',
+    body: true,
+  },
+  {
+    path: 'invites/accept',
+    method: 'POST',
+    handler: inviteAccept.POST,
+    kind: 'session',
+    body: true,
+  },
   { path: 'auth/login', method: 'POST', handler: login.POST, kind: 'public', body: true },
   {
     path: 'auth/two-factor/login',

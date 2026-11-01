@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { TEXT } from '@/text';
 import { post } from '../client';
+import { safeNext } from '../safe-next';
 import { Card, ui } from '../ui';
 
 type LoginAnswer = { twoFactor?: true; challenge?: string };
@@ -31,7 +32,7 @@ export default function LoginPage() {
   }
 
   function done() {
-    router.replace('/');
+    router.replace(safeNext(new URLSearchParams(window.location.search).get('next')));
     router.refresh();
   }
 

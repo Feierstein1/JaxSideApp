@@ -5,6 +5,7 @@ import { hashToken } from '../auth/crypto';
 import { db } from '../db';
 import { ApiError } from '../http';
 import { sendSafely } from '../mail/mailer';
+import { inviteAfterVerification, revokeBusinessAccessForClaim } from './business-invites';
 import { ownerCodeEmail } from '../mail/templates';
 import { screenText } from '../moderation/screening';
 
@@ -292,6 +293,7 @@ export async function confirmOwnerCode(
       primary: await primaryIfFirst(c.placeId), // D157
     },
   });
+  if (updated.primary) await inviteAfterVerification(updated.id, now); // D172
   return view(updated);
 }
 
@@ -356,10 +358,11 @@ export async function decideOwnerClaim(
       where: { id: c.id },
       data: { status: 'REVOKED', decidedAt: now, decidedById: adminId, note: note ?? null },
     });
+    await revokeBusinessAccessForClaim(c.id, now); // D172
     return;
   }
   if (c.status !== 'PENDING') throw new ApiError(409, 'ALREADY_DECIDED', 'Already decided');
-  await db.ownerClaim.update({
+  const decided = await db.ownerClaim.update({
     where: { id: c.id },
     data:
       action === 'approve'
@@ -382,6 +385,9 @@ export async function decideOwnerClaim(
             note: note ?? null,
           },
   });
+  if (decided.status === 'VERIFIED' && decided.primary) {
+    await inviteAfterVerification(decided.id, now); // D172
+  }
 }
 
 // ───────────── D157: the owner team ("The Owner") ─────────────

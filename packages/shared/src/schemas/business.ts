@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { passwordSchema } from './auth';
+import { emailSchema, passwordSchema } from './auth';
 
 /**
  * Business website (D169). Shapes only; accounts are checked on the business server.
@@ -39,3 +39,16 @@ export const businessTwoFactorDisableSchema = z.strictObject({
   password: z.string().min(1).max(128),
   code: totpCodeSchema,
 });
+
+/** D172: the invite link's token (from the email the app server sent). */
+const inviteTokenSchema = z.string().min(20).max(100);
+
+/** Create a business account from an invite: the owner's business email and a password. */
+export const businessInviteAcceptNewSchema = z.strictObject({
+  token: inviteTokenSchema,
+  email: emailSchema,
+  password: passwordSchema,
+});
+
+/** Add the invited place to the business account that's signed in. */
+export const businessInviteAcceptSchema = z.strictObject({ token: inviteTokenSchema });

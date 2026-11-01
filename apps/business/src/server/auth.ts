@@ -160,7 +160,7 @@ export async function completeTwoFactorLogin(
   return { kind: 'session', account, ...(await createSession(account.id, now)) };
 }
 
-async function createSession(accountId: string, now: Date): Promise<SessionGrant> {
+export async function createSession(accountId: string, now: Date): Promise<SessionGrant> {
   const token = generateToken();
   const csrfToken = generateToken();
   const expiresAt = new Date(now.getTime() + SESSION_HOURS * 60 * MINUTE_MS);

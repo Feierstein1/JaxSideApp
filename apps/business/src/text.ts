@@ -34,6 +34,33 @@ export const TEXT = {
     submit: 'Change password',
     done: 'Password changed. Other devices were signed out.',
   },
+  roles: { OWNER: 'Owner', MANAGER: 'Manager', STAFF: 'Staff' },
+  places: {
+    title: 'Your places',
+    none: 'No places yet. When JaxSide verifies you as an owner, you get an email to add your place.',
+    back: '← All your places',
+    soon: '(coming soon)',
+    sections: {
+      discussion: 'Discussion',
+      team: 'Team',
+      ads: 'Ads',
+      insights: 'Insights',
+      billing: 'Plan and billing',
+    },
+  },
+  invite: {
+    title: 'Set up your business account',
+    intro: (place: string) => `You're verified as the owner of ${place}.`,
+    separate:
+      'Your business account is separate from your personal JaxSide account. Use your business email and a new password.',
+    email: 'Business email',
+    passwordAgain: 'Password again',
+    mismatch: 'The two passwords don’t match.',
+    create: 'Create business account',
+    addToAccount: 'Add this place to my account',
+    haveAccount: 'Already have a business account?',
+    signInFirst: 'Sign in first',
+  },
   twoFactor: {
     title: 'Two-step sign-in',
     off: 'Off. Turn it on to ask for a code from an authenticator app each time you sign in.',

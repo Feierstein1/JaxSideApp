@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { POST as loginRoute } from '@/app/api/auth/login/route';
-import { hashPassword } from '@/server/crypto';
+import { generateToken, hashPassword, hashToken } from '@/server/crypto';
 import { db } from '@/server/db';
 
 export const PASSWORD = 'correct horse battery';
@@ -47,9 +47,69 @@ export async function makePlace(name = 'Bold Bean', lat = 30.33, lng = -81.66) {
   return db.businessPlace.findUniqueOrThrow({ where: { id } });
 }
 
-/** Removes places made by makePlace (the app's tests own the rest of the directory). */
+/** Removes places and people made here (the app's tests own the rest of its data). */
 export async function removeTestPlaces() {
-  await db.businessPlace.deleteMany({ where: { sourceName: 'test' } });
+  await db.businessPlace.deleteMany({ where: { sourceName: 'test' } }); // claims go with them
+  await db.user.deleteMany({ where: { username: { startsWith: 'bt_' } } });
+}
+
+/**
+ * A phone-app person with a verified owner claim, as the app server leaves them (D103).
+ * A live user needs encrypted email fields only the app can make, so these are BANNED;
+ * the business site never looks at the person, only at the claim.
+ */
+export async function makeOwnerClaim(
+  placeId: string,
+  opts: {
+    username?: string;
+    userId?: string;
+    primary?: boolean;
+    status?: 'VERIFIED' | 'REVOKED';
+  } = {},
+) {
+  const userId =
+    opts.userId ??
+    (
+      await db.user.create({
+        data: {
+          username: opts.username ?? `bt_${randomUUID().slice(0, 8)}`,
+          usernameNormalized: (opts.username ?? `bt_${randomUUID().slice(0, 8)}`).toLowerCase(),
+          passwordHash: 'x',
+          ageCutoffYear: 2007,
+          tosAcceptedAt: new Date(),
+          tosVersion: 'test',
+          adultConfirmedAt: new Date(),
+          status: 'BANNED',
+        },
+      })
+    ).id;
+  return db.ownerClaim.create({
+    data: {
+      placeId,
+      userId,
+      method: 'EMAIL',
+      status: opts.status ?? 'VERIFIED',
+      primary: opts.primary ?? true,
+      verifiedAt: new Date(),
+    },
+  });
+}
+
+/** An invite as the app server writes it (D172); returns the token from the email link. */
+export async function makeInvite(
+  claim: { id: string; placeId: string },
+  expiresAt = new Date(Date.now() + 7 * 86_400_000),
+) {
+  const token = generateToken();
+  await db.businessInvite.create({
+    data: {
+      tokenHash: hashToken(token),
+      placeId: claim.placeId,
+      ownerClaimId: claim.id,
+      expiresAt,
+    },
+  });
+  return token;
 }
 
 export function post(path: string, body?: unknown, headers: Record<string, string> = {}) {

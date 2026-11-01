@@ -578,6 +578,15 @@ export function OwnerActions({
             ? 'Now the primary owner.'
             : 'Tag removed.';
     });
+  // D172: emails the owner a link to set up their business account (replaces older links).
+  const sendInvite = () =>
+    run(async () => {
+      await adminFetch(`/api/v1/admin/owner-claims/${id}/business-invite`, {
+        method: 'POST',
+        body: {},
+      });
+      return 'Invite sent to the owner’s email.';
+    });
   if (status !== 'PENDING' && status !== 'VERIFIED') return null;
   return (
     <div>
@@ -605,7 +614,12 @@ export function OwnerActions({
             Remove Owner tag
           </button>{' '}
           {primary ? (
-            <strong>Primary owner (manages the team)</strong>
+            <>
+              <strong>Primary owner (manages the team)</strong>{' '}
+              <button style={ui.buttonSecondary} disabled={busy} onClick={sendInvite}>
+                Send business-site invite
+              </button>
+            </>
           ) : (
             <button style={ui.buttonSecondary} disabled={busy} onClick={() => act('make-primary')}>
               Make primary owner
