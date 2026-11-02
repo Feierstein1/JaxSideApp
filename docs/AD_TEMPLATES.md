@@ -11,11 +11,11 @@ Every ad, whatever the template, always shows:
 - a **21+** line when the owner ticks "alcohol deal" (Q30);
 - a report button, and **Interested / Not interested** (phone-app change, B3.6).
 
-| Template | Where it shows | Picture | Smallest picture | Headline | More text | Picture size limit |
-|---|---|---|---|---|---|---|
-| **Banner** | A slim strip between two posts | Required, 1200 × 300 (4 : 1) | 800 × 200 | 40 characters | none | 1.5 MB (GIF 2 MB) |
-| **Post** | Looks like a post in the list | Optional, 1080 × 1080 (square) | 600 × 600 | 60 characters | 280 characters | 2 MB (GIF 3 MB) |
-| **Feature** | A large card with a tall picture | Required, 1080 × 1350 (4 : 5) | 720 × 900 | 60 characters | 140 characters | 3 MB (GIF 4 MB) |
+| Template    | Where it shows                   | Picture                        | Smallest picture | Headline      | More text      | Picture size limit |
+| ----------- | -------------------------------- | ------------------------------ | ---------------- | ------------- | -------------- | ------------------ |
+| **Banner**  | A slim strip between two posts   | Required, 1200 × 300 (4 : 1)   | 800 × 200        | 40 characters | none           | 1.5 MB (GIF 2 MB)  |
+| **Post**    | Looks like a post in the list    | Optional, 1080 × 1080 (square) | 600 × 600        | 60 characters | 280 characters | 2 MB (GIF 3 MB)    |
+| **Feature** | A large card with a tall picture | Required, 1080 × 1350 (4 : 5)  | 720 × 900        | 60 characters | 140 characters | 3 MB (GIF 4 MB)    |
 
 - Larger pictures in the same shape are fine (they're scaled down); a shape off by more
   than about 3% is refused with a plain message ("This picture is the wrong shape for a
