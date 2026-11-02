@@ -11,12 +11,6 @@ generator client {
   previewFeatures = ["partialIndexes"]
 }
 
-generator business {
-  provider = "prisma-client"
-  /// D169: the business portal (apps/business) generates its own client from this schema.
-  output   = "../../business/src/generated/prisma"
-}
-
 datasource db {
   provider = "postgresql"
 }

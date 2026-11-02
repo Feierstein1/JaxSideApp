@@ -10,8 +10,6 @@
 coverage
 docs
 deploy/staging/secrets
-# The owner website is deployed separately and is never part of the server image (D181).
-apps/business
 # The phone app isn't part of the server image; npm needs its package.json for the lockfile.
 apps/mobile
 !apps/mobile/package.json

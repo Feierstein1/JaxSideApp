@@ -52,30 +52,7 @@ export default tseslint.config(
                 '@jax/server/*',
                 '**/apps/server/**',
               ],
-              message: 'The phone app must not import the owner website or the server (D169).',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ['apps/business/**/*.{ts,tsx,js,jsx,mjs}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: [
-                '@jax/mobile',
-                '@jax/mobile/*',
-                '**/apps/mobile/**',
-                'react-native',
-                'expo',
-                'expo-*',
-              ],
-              message: 'The owner website must not import phone-app code (D169).',
+              message: 'The phone app must not import the server (or owner-website code) (D169).',
             },
           ],
         },
