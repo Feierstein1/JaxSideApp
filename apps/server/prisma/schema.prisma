@@ -1965,4 +1965,5 @@ model SecurityEvent {
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([kind, createdAt])
+  @@index([userId])
 }
