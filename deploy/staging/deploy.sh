@@ -15,13 +15,15 @@ KEY=~/.ssh/jaxside-staging.pem
 SSH="ssh -i $KEY -o ConnectTimeout=20 $HOST"
 REV=$(git rev-parse --short HEAD)
 
-if [ -n "$(git status --porcelain -- . ':!scripts/dev-remote.mjs')" ]; then
+# The owner website (apps/business) is built and deployed on its own and is never part of this
+# deploy (D181), so its files neither block a deploy nor travel with it.
+if [ -n "$(git status --porcelain -- . ':!scripts/dev-remote.mjs' ':!apps/business')" ]; then
   echo "Uncommitted changes; commit first (deploys ship the commit, not your working copy)." >&2
   exit 1
 fi
 
 echo "Deploying $REV…"
-git archive --format=tar HEAD | gzip | $SSH "rm -rf /opt/jaxside/src.new && mkdir -p /opt/jaxside/src.new && tar -xzf - -C /opt/jaxside/src.new && echo $REV > /opt/jaxside/src.new/REVISION"
+git archive --format=tar HEAD -- . ':!apps/business' | gzip | $SSH "rm -rf /opt/jaxside/src.new && mkdir -p /opt/jaxside/src.new && tar -xzf - -C /opt/jaxside/src.new && echo $REV > /opt/jaxside/src.new/REVISION"
 scp -i "$KEY" -q deploy/staging/docker-compose.yml deploy/staging/Caddyfile deploy/staging/backup.sh deploy/staging/cron "$HOST:/opt/jaxside/"
 if [ "${1:-}" = "--env" ]; then
   scp -i "$KEY" -q deploy/staging/secrets/staging.env "$HOST:/opt/jaxside/.env"
