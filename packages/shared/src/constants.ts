@@ -258,7 +258,11 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.ownerTeam.perMinute': 20,
   // D98 private messages
   'rateLimit.message.perMinute': 30,
-  'rateLimit.message.perDay': 1000,
+  // D176: 300 a day is plenty for one person; 5 per 10 s stops pasted floods; the same text may
+  // go out 3 times a day (anything longer than spam.duplicateMinLength), then it's refused.
+  'rateLimit.message.perDay': 300,
+  'rateLimit.message.burstPer10s': 5,
+  'rateLimit.messageSame.perDay': 3,
   'rateLimit.messageNewChat.perDay': 10,
   /** Reading chats and the unread count (a chat checks every 3 s while open). */
   'rateLimit.messageRead.perMinute': 120,
@@ -266,6 +270,7 @@ export const CONFIG_DEFAULTS = {
   'messages.newChatMinAccountDays': 3,
   // D76 friends and notifications
   'rateLimit.friendRequest.perHour': 30,
+  'rateLimit.friendRequest.perDay': 60,
   'rateLimit.friends.perMinute': 60,
   /** The bell is checked about every 30 s while the app is open. */
   'rateLimit.notifications.perMinute': 120,

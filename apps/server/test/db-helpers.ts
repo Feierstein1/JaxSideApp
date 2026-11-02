@@ -20,6 +20,7 @@ export async function relaxBurstLimits(): Promise<void> {
       { key: 'rateLimit.post.burstPer10s', value: 1000 },
       { key: 'rateLimit.comment.burstPer10s', value: 1000 },
       { key: 'rateLimit.vote.burstPer10s', value: 1000 },
+      { key: 'rateLimit.message.burstPer10s', value: 1000 },
     ],
     skipDuplicates: true,
   });

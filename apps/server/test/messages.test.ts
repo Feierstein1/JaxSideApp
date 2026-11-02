@@ -14,6 +14,7 @@ import { deleteAccount } from '@/server/auth/account';
 import { hashPassword } from '@/server/auth/crypto';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
+import { autoSuspendConfig, recentReporterCount } from '@/server/moderation/auto-suspend';
 import { db } from '@/server/db';
 import { readBoundaryFile } from '@/server/location/boundary-file';
 import { importServiceArea } from '@/server/location/service-area';
@@ -264,6 +265,64 @@ describe('messaging friends (D98)', () => {
       body: { reading: reading(), body: 'reuse it', photoIds: [photoId] },
     });
     expect(p.body.error.code).toBe('INVALID_PHOTO');
+  });
+});
+
+describe('spam guardrails on messages (D176)', () => {
+  const LONG = 'Check out my great new offer, it is only for you!';
+
+  // 🔒 A flood of pasted messages is stopped within seconds.
+  it('refuses more than 5 messages in 10 seconds', async () => {
+    await db.appConfiguration.update({
+      where: { key: 'rateLimit.message.burstPer10s' },
+      data: { value: 2 },
+    });
+    invalidateConfigCache();
+    expect((await send(ann, 'bob_m', 'one')).status).toBe(201);
+    expect((await send(ann, 'bob_m', 'two')).status).toBe(201);
+    expect((await send(ann, 'bob_m', 'three')).status).toBe(429);
+  });
+
+  it('allows 300 messages a day, no more', async () => {
+    await db.appConfiguration.create({ data: { key: 'rateLimit.message.perDay', value: 2 } });
+    invalidateConfigCache();
+    expect((await send(ann, 'bob_m', 'a')).status).toBe(201);
+    expect((await send(ann, 'bob_m', 'b')).status).toBe(201);
+    expect((await send(ann, 'bob_m', 'c')).status).toBe(429);
+  });
+
+  // 🔒 The same long text, to one friend or many, can go out only 3 times a day.
+  it('refuses the same long message a 4th time, to anyone', async () => {
+    await befriend(ann, cat);
+    expect((await send(ann, 'bob_m', LONG)).status).toBe(201);
+    expect((await send(ann, 'cat_m', LONG)).status).toBe(201);
+    expect((await send(ann, 'bob_m', LONG)).status).toBe(201);
+    const r = await send(ann, 'cat_m', LONG);
+    expect(r.status).toBe(429);
+    expect(r.body.error.code).toBe('DUPLICATE_MESSAGE');
+    // Another sender, different wording, and short replies are all unaffected.
+    await befriend(bob, cat);
+    expect((await send(bob, 'cat_m', LONG)).status).toBe(201);
+    expect((await send(ann, 'bob_m', `${LONG} Really!`)).status).toBe(201);
+    for (let i = 0; i < 4; i++) expect((await send(ann, 'bob_m', 'ok thanks')).status).toBe(201);
+  });
+
+  // 🔒 People who are spammed can report it, and those reports now count toward the automatic
+  // suspension (distinct qualifying reporters, as for posts and comments).
+  it('reports on someone’s messages count toward their automatic suspension', async () => {
+    const sent = await send(ann, 'bob_m', 'buy now');
+    const messageId = sent.body.message.id as string;
+    const reporters = [bob, cat, await person('dan_m'), await person('eve_m')];
+    await db.report.createMany({
+      data: reporters.map((r) => ({
+        reporterUserId: r.id,
+        messageId,
+        reason: 'SPAM' as const,
+      })),
+    });
+    const cfg = await autoSuspendConfig();
+    expect(await recentReporterCount(db, ann.id, cfg, new Date())).toBe(4);
+    expect(await recentReporterCount(db, bob.id, cfg, new Date())).toBe(0);
   });
 });
 

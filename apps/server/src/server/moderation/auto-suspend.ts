@@ -47,11 +47,12 @@ export async function recentReporterCount(
     LEFT JOIN "BusinessPost" bp ON bp.id = r."businessPostId"
     LEFT JOIN "Comment" c ON c.id = r."commentId"
     LEFT JOIN "Photo" ph ON ph.id = r."photoId"
+    LEFT JOIN "Message" m ON m.id = r."messageId"
     WHERE r.status = 'OPEN' AND r."createdAt" >= ${since}
       AND u."emailVerifiedAt" IS NOT NULL AND u."createdAt" <= ${joinedBefore}
       AND (r."reportedUserId" = ${userId}::uuid OR gp."authorId" = ${userId}::uuid
         OR bp."authorId" = ${userId}::uuid OR c."authorUserId" = ${userId}::uuid
-        OR ph."uploaderId" = ${userId}::uuid)`;
+        OR ph."uploaderId" = ${userId}::uuid OR m."senderId" = ${userId}::uuid)`;
   return row?.n ?? 0;
 }
 

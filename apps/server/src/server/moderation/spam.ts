@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
 import type { User } from '@/generated/prisma/client';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { ApiError } from '../http';
+import { hit } from '../rate-limit';
 import type { Hold } from './screening';
 import { normalizedForms } from './screening';
 
@@ -54,6 +56,29 @@ async function assertNotDuplicate(user: User, text: string, now: Date) {
       409,
       'DUPLICATE_CONTENT',
       'You already posted this. Posting the same thing again isn’t allowed.',
+    );
+  }
+}
+
+/**
+ * D176: the same long message sent over and over (to one friend or many) is mass messaging.
+ * Counted per sender and text for a day, in the rate-limit counters, so no message text is
+ * kept or compared. Refused after `rateLimit.messageSame.perDay` copies.
+ */
+export async function assertNotMassMessage(userId: string, text: string, now = new Date()) {
+  const [minLength, limit] = await Promise.all([
+    getConfig('spam.duplicateMinLength'),
+    getConfig('rateLimit.messageSame.perDay'),
+  ]);
+  const mine = comparable(text);
+  if (mine.length < minLength) return;
+  const digest = createHash('sha256').update(mine).digest('hex').slice(0, 32);
+  const count = await hit(`message-same:${userId}:${digest}`, 86_400, now);
+  if (count > limit) {
+    throw new ApiError(
+      429,
+      'DUPLICATE_MESSAGE',
+      'You’ve sent this same message several times already. Please don’t send it again.',
     );
   }
 }

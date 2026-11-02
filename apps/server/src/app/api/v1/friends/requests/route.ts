@@ -26,6 +26,11 @@ export const POST = route(async (req) => {
       limitKey: 'rateLimit.friendRequest.perHour',
       windowSeconds: 3600,
     },
+    {
+      key: `friend-request-day:user:${user.id}`,
+      limitKey: 'rateLimit.friendRequest.perDay',
+      windowSeconds: 86_400,
+    },
   ]);
   return NextResponse.json(await sendFriendRequest(user.id, username));
 });

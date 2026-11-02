@@ -12,6 +12,11 @@ export const CONFIG_DESCRIPTIONS: Partial<Record<keyof typeof CONFIG_DEFAULTS, s
 
   'rateLimit.login.per15MinPerIp': 'Failed logins allowed per IP per 15 minutes (D29)',
   'rateLimit.login.per15MinPerAccount': 'Failed logins allowed per account per 15 minutes (D29)',
+  'rateLimit.message.perDay': 'Private messages per person per day (D176)',
+  'rateLimit.message.burstPer10s': 'Private messages per person per 10 seconds (D176)',
+  'rateLimit.messageSame.perDay':
+    'Times one person may send the exact same long message a day, to anyone (D176)',
+  'rateLimit.friendRequest.perDay': 'Friend requests per person per day (D176)',
   'rateLimit.login.perMinutePerIp':
     'Failed logins allowed per IP per minute, then a short block (D175)',
   'rateLimit.login.perMinutePerAccount':

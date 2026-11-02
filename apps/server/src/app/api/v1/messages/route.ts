@@ -25,6 +25,11 @@ export const POST = route(async (req) => {
   const { user } = await requireUser(req, { requireVerifiedEmail: true });
   const input = await parseBody(req, sendMessageSchema);
   await enforce([
+    {
+      key: `message-burst:user:${user.id}`,
+      limitKey: 'rateLimit.message.burstPer10s',
+      windowSeconds: 10,
+    },
     { key: `message:user:${user.id}`, limitKey: 'rateLimit.message.perMinute', windowSeconds: 60 },
     {
       key: `message-day:user:${user.id}`,
