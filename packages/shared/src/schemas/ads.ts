@@ -4,7 +4,7 @@ import { AD_LIVE_MAX, AD_TEMPLATES, checkAdText, type AdTemplateKind } from '../
 /**
  * B3.2: what the ad editor sends. A draft may be unfinished (it's saved as the owner
  * goes); `adSubmitProblems` says what's still missing before it can go to JaxSide for
- * approval. Limits per template come from `AD_TEMPLATES` (D175).
+ * approval. Limits per template come from `AD_TEMPLATES` (D177).
  */
 
 const MAX_HEADLINE = Math.max(...Object.values(AD_TEMPLATES).map((t) => t.headlineMax));
@@ -83,7 +83,7 @@ export function adSubmitProblems(ad: AdDraft, now: Date): string[] {
   return problems;
 }
 
-/** The plan check, in plain words (D167, Q33: live and scheduled ads take a slot). */
+/** The plan check, in plain words (D167, Q35: live and scheduled ads take a slot). */
 export function planLimitProblem(liveOrScheduled: number, planLimit: number): string | null {
   const limit = Math.min(planLimit, AD_LIVE_MAX);
   if (limit === 0) return 'Your plan doesn’t include ads.';

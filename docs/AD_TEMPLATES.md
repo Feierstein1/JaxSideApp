@@ -1,4 +1,4 @@
-# Ad templates (proposal, D175)
+# Ad templates (proposal, D177)
 
 Three fixed templates. Owners pick one, add a picture or GIF and a little text, and see a
 preview exactly as it will look in the app. No custom layouts or code. The numbers are
@@ -37,4 +37,4 @@ Instagram.
   reader's location reading only. At least one is required.
 - **How often:** about one ad after every N posts (an admin setting; never first, never
   two in a row, at most one per business in a list); guests see them a little more often.
-- **Plan slots:** live ads and scheduled ones count against the plan's limit (Q33).
+- **Plan slots:** live ads and scheduled ones count against the plan's limit (Q35).

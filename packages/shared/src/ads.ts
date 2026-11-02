@@ -1,5 +1,5 @@
 /**
- * Ads (D165–D168, D175): the pure rules both servers use. The app server uses them to mix
+ * Ads (D165–D168, D177): the pure rules both servers use. The app server uses them to mix
  * ads into feeds; the business website uses them for the editor, the preview and the
  * plan limits. Nothing here touches a database, the network or the clock (pass `now`).
  *
@@ -17,7 +17,7 @@ export type AdTemplateKind = 'BANNER' | 'POST' | 'FEATURE';
 export type AdStatusKind = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'PAUSED' | 'ENDED';
 
 /**
- * D175: the fixed templates (no custom layouts or code). Proposed sizes, to be tuned once
+ * D177: the fixed templates (no custom layouts or code). Proposed sizes, to be tuned once
  * the owner sees them in the app. Images are stored at these pixel sizes (or larger in the
  * same shape); the phone shows them scaled to the card width.
  */
@@ -189,7 +189,7 @@ export function adDisplayState(
 }
 
 /**
- * D175: the ads that take one of the plan's live slots. Live ads, and scheduled ones too,
+ * D177: the ads that take one of the plan's live slots. Live ads, and scheduled ones too,
  * since they'll go live without anyone pressing a button (counting them stops a business
  * from lining up more than its plan allows). Paused, ended and unapproved ads don't.
  */
