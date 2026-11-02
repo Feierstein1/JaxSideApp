@@ -58,6 +58,12 @@ export default async function AdsPage({ params }: { params: Promise<{ placeId: s
             </div>
             <div style={{ color: COLORS.textMuted, fontSize: 14, marginTop: 4 }}>
               {TEXT.ads.templateNames[a.template]} · {a.schedule}
+              {owner && a.status !== 'DRAFT' && a.status !== 'PENDING_REVIEW' ? (
+                <>
+                  {' · '}
+                  <Link href={`/places/${place.id}/ads/${a.id}/stats`}>{TEXT.adStats.link}</Link>
+                </>
+              ) : null}
             </div>
             {a.rejectedBecause !== null ? (
               <p style={{ color: COLORS.error }}>

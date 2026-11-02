@@ -98,6 +98,20 @@ export const TEXT = {
       'Guests and people who turned off area statistics aren’t counted.',
     ],
   },
+  adStats: {
+    title: 'How your ad did',
+    views: 'views',
+    interested: 'interested',
+    notInterested: 'not interested',
+    last30: 'Last 30 days',
+    allTime: 'Since it started',
+    byDay: 'Day by day',
+    day: 'Day',
+    none: 'No views yet. Numbers appear the day after your ad starts running.',
+    link: 'Results',
+    about:
+      'Counts only: JaxSide never tells you who saw your ad or tapped Interested. Days with fewer than 10 show as “fewer than 10”.',
+  },
   ads: {
     libraryTitle: 'Ads',
     planLine: (plan: string, running: number, limit: number) =>
