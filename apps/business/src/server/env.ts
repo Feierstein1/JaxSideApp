@@ -21,6 +21,14 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  /** This site's own address, for links in its emails. */
+  BUSINESS_BASE_URL: z.string().url().default('http://localhost:3100'),
+  /** B1.8: email (Mailpit in development). Without SMTP_HOST, emails are only logged. */
+  SMTP_HOST: z.string().min(1).optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(1025),
+  SMTP_FROM: z.string().min(3).default('JaxSide for Business <no-reply@localhost>'),
+  SMTP_USER: z.string().min(1).optional(),
+  SMTP_PASS: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof schema>;

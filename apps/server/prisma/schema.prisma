@@ -480,6 +480,7 @@ model BusinessPlace {
   businessAccess  BusinessPlaceAccess[]
   businessInvites BusinessInvite[]
   ads             Ad[]
+  businessNotices BusinessNotice[]
 
   @@unique([sourceName, sourceId])
   @@index([location], type: Gist)
@@ -1677,6 +1678,9 @@ model BusinessAccount {
   suspendedAt        DateTime? @db.Timestamptz(3)
   /// Revoked by its Owner or an admin; never signs in again.
   revokedAt          DateTime? @db.Timestamptz(3)
+  /// B1.8: email a summary of new activity (at most once a day; needs an email).
+  emailNotices       Boolean   @default(false)
+  noticesEmailedAt   DateTime? @db.Timestamptz(3)
 
   createdBy     BusinessAccount?      @relation("BusinessEmployees", fields: [createdById], references: [id], onDelete: SetNull)
   employees     BusinessAccount[]     @relation("BusinessEmployees")
@@ -1692,6 +1696,7 @@ model BusinessAccount {
   posts         BusinessPost[]
   comments      Comment[]
   notifications Notification[]
+  notices       BusinessNotice[]
 
   @@index([createdById])
 }
@@ -1731,6 +1736,8 @@ model BusinessPlaceAccess {
   grantedById  String?          @db.Uuid
   createdAt    DateTime         @default(now()) @db.Timestamptz(3)
   revokedAt    DateTime?        @db.Timestamptz(3)
+  /// B1.8: this person's inbox shows the place's activity after this (null = since they joined).
+  inboxSeenAt  DateTime?        @db.Timestamptz(3)
   account      BusinessAccount  @relation("AccessHolder", fields: [accountId], references: [id], onDelete: Cascade)
   place        BusinessPlace    @relation(fields: [placeId], references: [id], onDelete: Cascade)
   ownerClaim   OwnerClaim?      @relation(fields: [ownerClaimId], references: [id], onDelete: SetNull)
@@ -1916,4 +1923,36 @@ model AdDailyStats {
   ad            Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
 
   @@id([adId, day])
+}
+
+enum BusinessNoticeKind {
+  PLACE_ADDED // a place was added to the account (invite, or moved by an admin)
+  PLACE_REMOVED // the account lost a place (moved by an admin, Owner tag removed)
+  AD_APPROVED // B3.3
+  AD_REJECTED // B3.3
+  FROM_JAXSIDE // anything else an admin tells the business
+}
+
+/**
+ * B1.8: a message from JaxSide to a business login, shown in its inbox. The place's own
+ * activity (new posts and comments) isn't stored here: the inbox works it out from the
+ * discussion tables, so the app never has to write anything for it.
+ */
+model BusinessNotice {
+  id        String             @id @default(uuid(7)) @db.Uuid
+  accountId String             @db.Uuid
+  placeId   String?            @db.Uuid
+  kind      BusinessNoticeKind
+  title     String             @db.VarChar(120)
+  body      String?            @db.VarChar(500)
+  /// A page on the business website (a path such as /places/…), never an outside link.
+  link      String?            @db.VarChar(300)
+  createdAt DateTime           @default(now()) @db.Timestamptz(3)
+  readAt    DateTime?          @db.Timestamptz(3)
+  account   BusinessAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  place     BusinessPlace?     @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, createdAt(sort: Desc)])
+  @@index([accountId], where: raw("\"readAt\" IS NULL"))
+  @@index([placeId])
 }

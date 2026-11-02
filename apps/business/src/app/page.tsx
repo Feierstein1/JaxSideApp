@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { COLORS } from '@jax/shared';
+import { unreadCount } from '@/server/inbox';
 import { myPlaces } from '@/server/places';
 import { TEXT } from '@/text';
 import { requireAccount } from './require-account';
@@ -41,6 +42,9 @@ export default async function HomePage() {
           </li>
         ))}
       </ul>
+      <p>
+        <Link href="/inbox">{TEXT.inbox.link(await unreadCount(account))}</Link>
+      </p>
       <p>
         <Link href="/security">{TEXT.home.security}</Link>
       </p>

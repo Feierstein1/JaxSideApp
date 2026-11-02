@@ -3,6 +3,7 @@ import { TEXT } from '@/text';
 import { PasswordForm } from '../password/password-form';
 import { requireAccount } from '../require-account';
 import { Card, ui } from '../ui';
+import { EmailNoticesSwitch } from '../inbox/inbox-forms';
 import { TwoFactorPanel } from './two-factor-panel';
 
 export default async function SecurityPage() {
@@ -15,6 +16,8 @@ export default async function SecurityPage() {
       <h2 style={{ marginTop: 32 }}>{TEXT.twoFactor.title}</h2>
       <p style={ui.muted}>{account.totpEnabledAt ? TEXT.twoFactor.on : TEXT.twoFactor.off}</p>
       <TwoFactorPanel on={account.totpEnabledAt !== null} />
+      <h2 style={{ marginTop: 32 }}>{TEXT.inbox.emailTitle}</h2>
+      <EmailNoticesSwitch on={account.emailNotices} hasEmail={account.email !== null} />
     </Card>
   );
 }

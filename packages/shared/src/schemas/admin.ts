@@ -105,3 +105,15 @@ export const screeningRuleUpdateSchema = z
 
 /** Try a sentence against the rules. */
 export const screeningTestSchema = z.strictObject({ text: z.string().min(1).max(2000) });
+
+/** B1.7 / D172: the admin portal's Businesses section. */
+export const adminBusinessActionSchema = z.strictObject({
+  action: z.enum(['suspend', 'unsuspend', 'revoke', 'reset-password']),
+  note: z.string().trim().max(500).optional(),
+});
+
+export const adminMoveBusinessOwnerSchema = z.strictObject({
+  toEmail: z.string().trim().toLowerCase().max(254).pipe(z.email()),
+  removeOldTeam: z.boolean(),
+  note: z.string().trim().max(500).optional(),
+});

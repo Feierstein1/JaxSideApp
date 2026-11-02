@@ -176,6 +176,11 @@ describe('business-site invites', () => {
       body: { action: 'revoke' },
     });
     expect(await db.businessPlaceAccess.count({ where: { revokedAt: null } })).toBe(0);
+    // B1.8: the owner is told in the business inbox.
+    expect(await db.businessNotice.findFirst({ where: { accountId: owner.id } })).toMatchObject({
+      kind: 'PLACE_REMOVED',
+      title: 'Bold Bean was removed from your account',
+    });
     expect(await db.businessInvite.count({ where: { expiresAt: { gt: new Date() } } })).toBe(0);
   });
 });

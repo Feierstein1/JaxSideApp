@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { COLORS } from '@jax/shared';
 import { ApiError } from '@/server/http';
+import { unreadCount } from '@/server/inbox';
 import { can, myPlaces, requirePlace, type Ability } from '@/server/places';
 import { TEXT } from '@/text';
 import { requireAccount } from '../../require-account';
@@ -46,6 +47,9 @@ export default async function PlacePage({ params }: { params: Promise<{ placeId:
           </li>
         ))}
       </ul>
+      <p>
+        <Link href="/inbox">{TEXT.inbox.link(await unreadCount(account))}</Link>
+      </p>
       <p>
         <Link href="/security">{TEXT.home.security}</Link>
       </p>

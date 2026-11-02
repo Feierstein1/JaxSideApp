@@ -18,6 +18,7 @@ export default async function PortalLayout({ children }: { children: ReactNode }
         <NavLink href="/admin/removals">Removals</NavLink>
         <NavLink href="/admin/ratings">Ratings</NavLink>
         <NavLink href="/admin/owners">Owners</NavLink>
+        <NavLink href="/admin/businesses">Businesses</NavLink>
         <NavLink href="/admin/messages">Messages</NavLink>
         <NavLink href="/admin/users">Users</NavLink>
         <NavLink href="/admin/polls">Polls</NavLink>

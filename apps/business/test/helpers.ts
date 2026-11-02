@@ -23,6 +23,7 @@ export async function resetBusinessData() {
   await db.adMedia.deleteMany();
   await db.subscription.deleteMany();
   await db.plan.deleteMany();
+  await db.businessNotice.deleteMany();
   await db.businessInvite.deleteMany();
   await db.businessPlaceAccess.deleteMany();
   await db.businessSession.deleteMany();

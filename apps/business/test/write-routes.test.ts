@@ -9,6 +9,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as login from '@/app/api/auth/login/route';
+import * as notices from '@/app/api/account/notices/route';
+import * as inboxSeen from '@/app/api/inbox/seen/route';
 import * as commentDelete from '@/app/api/places/[placeId]/comments/[commentId]/delete/route';
 import * as postDelete from '@/app/api/places/[placeId]/posts/[postId]/delete/route';
 import * as replies from '@/app/api/places/[placeId]/posts/[postId]/replies/route';
@@ -46,6 +48,8 @@ type Entry = {
 };
 
 const ROUTES: Entry[] = [
+  { path: 'inbox/seen', method: 'POST', handler: inboxSeen.POST, kind: 'session', body: true },
+  { path: 'account/notices', method: 'POST', handler: notices.POST, kind: 'session', body: true },
   {
     path: 'places/[placeId]/posts',
     method: 'POST',

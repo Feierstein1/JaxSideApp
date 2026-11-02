@@ -103,3 +103,10 @@ export const businessReplySchema = z.strictObject({
 
 /** Remove something the business wrote. */
 export const businessDeleteSchema = z.strictObject({});
+
+// ───────────── B1.8: inbox and the daily summary email ─────────────
+
+/** Mark one place's activity seen, or (no placeId) everything, notices included. */
+export const businessInboxSeenSchema = z.strictObject({ placeId: z.uuid().optional() });
+
+export const businessEmailNoticesSchema = z.strictObject({ on: z.boolean() });

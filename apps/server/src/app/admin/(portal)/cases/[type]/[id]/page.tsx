@@ -37,7 +37,10 @@ export default async function CasePage(ctx: {
             </>
           ) : c.author && 'business' in c.author ? (
             // D172: from the business website; the login is the employee who wrote it.
-            `by the business (login: ${c.author.signInName})`
+            <>
+              by the business (login:{' '}
+              <a href={`/admin/businesses/${c.author.accountId}`}>{c.author.signInName}</a>)
+            </>
           ) : c.author ? (
             'by a GUEST'
           ) : null}

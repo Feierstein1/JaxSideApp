@@ -269,17 +269,18 @@ export async function listNotifications(userId: string): Promise<NotificationVie
     // D157: an owner acting in their own place is "The Owner", never their username;
     // D172: so is the place's business answering from the business website.
     actorIsOwner: owners.has(r.id) || r.actorBusinessId !== null,
-    actor: owners.has(r.id) || r.actorBusinessId !== null
-      ? null
-      : r.actor
-        ? {
-            username: r.actor.username,
-            color: r.actor.profile?.color ?? 'teal',
-            avatarUrl: r.actor.profile?.avatarPhotoId
-              ? signedPhotoUrl(r.actor.profile.avatarPhotoId)
-              : null,
-          }
-        : null,
+    actor:
+      owners.has(r.id) || r.actorBusinessId !== null
+        ? null
+        : r.actor
+          ? {
+              username: r.actor.username,
+              color: r.actor.profile?.color ?? 'teal',
+              avatarUrl: r.actor.profile?.avatarPhotoId
+                ? signedPhotoUrl(r.actor.profile.avatarPhotoId)
+                : null,
+            }
+          : null,
     pendingRequestId:
       r.type === 'FRIEND_REQUEST' && r.actorId ? (pendingBy.get(r.actorId) ?? null) : null,
     target: postTarget(r),

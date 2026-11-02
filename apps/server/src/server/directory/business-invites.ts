@@ -94,6 +94,20 @@ export async function revokeBusinessAccessForClaim(claimId: string, now = new Da
     select: { placeId: true, accountId: true },
   });
   for (const a of linked) {
+    // B1.8: the owner is told in the business inbox (the place itself is no longer theirs).
+    const place = await db.businessPlace.findUnique({
+      where: { id: a.placeId },
+      select: { name: true },
+    });
+    await db.businessNotice.create({
+      data: {
+        accountId: a.accountId,
+        kind: 'PLACE_REMOVED',
+        title: `${place?.name ?? 'A place'} was removed from your account`,
+        body: 'JaxSide removed your Owner tag for this place. Contact JaxSide if you think this is a mistake.',
+        createdAt: now,
+      },
+    });
     // The owner's account and every employee login it made lose this place.
     await db.businessPlaceAccess.updateMany({
       where: {
