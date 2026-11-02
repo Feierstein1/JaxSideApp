@@ -13,6 +13,7 @@ export * from './schemas/submission';
 export * from './schemas/polls';
 export * from './schemas/topics';
 export * from './schemas/business';
+export * from './schemas/ads';
 export * from './policies';
 export * from './guides';
 export * from './profile-colors';
