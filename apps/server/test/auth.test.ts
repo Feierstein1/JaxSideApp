@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST as registerPOST } from '@/app/api/v1/auth/register/route';
 import { POST as loginPOST } from '@/app/api/v1/auth/login/route';
 import { POST as logoutPOST } from '@/app/api/v1/auth/logout/route';
@@ -11,6 +11,8 @@ import { GET as meGET } from '@/app/api/v1/me/route';
 import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
 import { assertAgeEligible } from '@/server/auth/service';
+import { noteLoginBurst } from '@/server/auth/security-events';
+import { adminSummary } from '@/server/admin/summary';
 import { hashToken } from '@/server/auth/crypto';
 import { decryptUserEmail } from '@/server/crypto/field-encryption';
 import { setMailer } from '@/server/mail/mailer';
@@ -269,6 +271,69 @@ describe('login / logout (P1.15)', () => {
       body: { identifier: 'nobody-else', password: 'wrong-password' },
     });
     expect(r.status).toBe(429);
+  });
+
+  // D180: a burst that trips the blocker is recorded for the admin dashboard, and the account's
+  // owner is emailed (once an hour). The attacker's answer is the same wrong-password reply.
+  describe('sign-in burst alerts (D180)', () => {
+    const wrongTimes = async (identifier: string, n: number) => {
+      for (let i = 0; i < n; i++) {
+        const r = await call(loginPOST, 'POST', {
+          body: { identifier, password: `wrong-password-${i}` },
+        });
+        expect(r.status).toBe(401);
+      }
+    };
+    const alerts = () => mail.sent.filter((m) => m.subject.startsWith('Someone tried to sign in'));
+
+    it('records the burst and emails the owner of a real account', async () => {
+      await call(registerPOST, 'POST', { body: registration() });
+      await db.user.update({
+        where: { usernameNormalized: 'riverrat' },
+        data: { emailVerifiedAt: new Date() },
+      });
+      await wrongTimes('riverrat', 4);
+      expect(await db.securityEvent.count()).toBe(0); // not tripped yet
+      await wrongTimes('riverrat', 1);
+      const [event] = await db.securityEvent.findMany();
+      expect(event!.kind).toBe('LOGIN_BURST_ACCOUNT');
+      expect(event!.userId).not.toBeNull();
+      expect(event!.ipCode).toMatch(/^[0-9a-f]{12}$/);
+      await vi.waitFor(() => expect(alerts()).toHaveLength(1));
+      expect(alerts()[0]!.to).toBe('river@example.test');
+      expect((await adminSummary()).loginBursts).toBe(1);
+    });
+
+    it('emails an account at most once an hour', async () => {
+      await call(registerPOST, 'POST', { body: registration() });
+      const user = await db.user.findUniqueOrThrow({
+        where: { usernameNormalized: 'riverrat' },
+      });
+      await db.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
+      await noteLoginBurst('LOGIN_BURST_ACCOUNT', user.id, 'a'.repeat(64), new Date());
+      await noteLoginBurst('LOGIN_BURST_ACCOUNT', user.id, 'a'.repeat(64), new Date());
+      await vi.waitFor(() => expect(alerts()).toHaveLength(1));
+      expect(await db.securityEvent.count()).toBe(2);
+      await new Promise((r) => setTimeout(r, 200));
+      expect(alerts()).toHaveLength(1);
+    });
+
+    // 🔒 An unknown name looks the same from outside and sends no email.
+    it('an unknown name is recorded without an account and sends no email', async () => {
+      await wrongTimes('ghost', 5);
+      const [event] = await db.securityEvent.findMany();
+      expect(event!.kind).toBe('LOGIN_BURST_ACCOUNT');
+      expect(event!.userId).toBeNull();
+      await new Promise((r) => setTimeout(r, 200));
+      expect(alerts()).toHaveLength(0);
+    });
+
+    it('records one place trying many accounts', async () => {
+      for (let i = 0; i < 8; i++) await wrongTimes(`nobody${i}`, 1);
+      const [event] = await db.securityEvent.findMany();
+      expect(event!.kind).toBe('LOGIN_BURST_IP');
+      expect(event!.userId).toBeNull();
+    });
   });
 
   // 🔒 Per-account throttle: after 10 failures even the right password is refused.

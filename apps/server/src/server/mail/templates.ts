@@ -54,6 +54,24 @@ export function verificationEmail(
   };
 }
 
+/** D180: sent at most once an hour when a burst of wrong passwords is blocked on an account. */
+export function loginAlertEmail(to: string): OutgoingMail {
+  const lines = [
+    'Someone entered the wrong password for your JaxSide account several times in a minute. They were blocked from trying again for a moment, and nothing was changed.',
+    'If that was you, there is nothing to do. If it was not, you can change your password in the app under Account.',
+  ];
+  return {
+    to,
+    subject: 'Someone tried to sign in to your account',
+    text: lines.join('\n\n'),
+    html: renderEmail({
+      preheader: 'Several wrong passwords were entered and blocked.',
+      heading: 'Someone tried to sign in to your account',
+      intro: lines,
+    }),
+  };
+}
+
 export function registrationAttemptEmail(to: string, baseUrl: string): OutgoingMail {
   return {
     to,

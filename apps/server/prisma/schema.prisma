@@ -236,6 +236,8 @@ model User {
 
   guidesSeen GuideSeen[] @relation("GuidesSeen")
 
+  securityEvents SecurityEvent[]
+
   @@index([status])
 }
 
@@ -1955,4 +1957,18 @@ model BusinessNotice {
   @@index([accountId, createdAt(sort: Desc)])
   @@index([accountId], where: raw("\"readAt\" IS NULL"))
   @@index([placeId])
+}
+
+/// D180: a sign-in burst that tripped the one-minute blocker (5 wrong passwords for one account,
+/// or 8 from one place, in a minute). For the admin dashboard; kept 90 days. `ipCode` is the
+/// first characters of the keyed IP hash (never the address).
+model SecurityEvent {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  kind      String   @db.VarChar(40)
+  userId    String?  @db.Uuid
+  ipCode    String?  @db.VarChar(16)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([kind, createdAt])
 }

@@ -11,6 +11,7 @@ import {
 import type { EmailToken, EmailTokenPurpose, Installation } from '@/generated/prisma/client';
 import { assertInstallationNotBanned } from '../installations';
 import { springTrap } from '../moderation/honeypot';
+import { noteLoginBurst } from './security-events';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { getEnv } from '../env';
@@ -348,11 +349,21 @@ export async function checkCredentials(
   await assertUnder(accountRule, now);
   if (opts.refuseBannedInstallation) assertInstallationNotBanned(ctx.installation ?? null);
 
-  const fail = async () => {
+  const fail = async (userId: string | null = null) => {
     await hit(ipRule.key, ipRule.windowSeconds, now);
     await hit(accountRule.key, accountRule.windowSeconds, now);
-    await hit(ipMinuteRule.key, ipMinuteRule.windowSeconds, now);
-    await hit(accountMinuteRule.key, accountMinuteRule.windowSeconds, now);
+    const ipCount = await hit(ipMinuteRule.key, ipMinuteRule.windowSeconds, now);
+    const accountCount = await hit(accountMinuteRule.key, accountMinuteRule.windowSeconds, now);
+    // D180: the failure that uses up the minute's allowance trips the blocker; note it once.
+    const [accountLimit, ipLimit] = await Promise.all([
+      getConfig(accountMinuteRule.limitKey),
+      getConfig(ipMinuteRule.limitKey),
+    ]);
+    if (accountCount === accountLimit) {
+      await noteLoginBurst('LOGIN_BURST_ACCOUNT', userId, ctx.ipSubject, now);
+    } else if (ipCount === ipLimit) {
+      await noteLoginBurst('LOGIN_BURST_IP', null, ctx.ipSubject, now);
+    }
     return INVALID_CREDENTIALS();
   };
 
@@ -369,7 +380,7 @@ export async function checkCredentials(
     throw await fail();
   }
   if (!(await verifyPassword(user.passwordHash, input.password))) {
-    throw await fail();
+    throw await fail(user.id);
   }
   return user;
 }

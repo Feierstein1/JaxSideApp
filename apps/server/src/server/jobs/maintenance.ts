@@ -89,6 +89,9 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
   // P13.3: also every 10 minutes (jobs/counters.ts); kept here as a backstop.
   const rateLimitCounters = await purgeExpiredCounters(now);
 
+  // D180: sign-in burst records are kept 90 days.
+  await db.securityEvent.deleteMany({ where: { createdAt: { lt: ago(90) } } });
+
   // P4.4: guests expire after N days without activity (server-side clock).
   const guestsExpired = await db.guestSession.updateMany({
     where: { status: 'ACTIVE', expiresAt: { lt: now } },
