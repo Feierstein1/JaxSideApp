@@ -6,6 +6,8 @@ import { createSession } from '@/server/auth/sessions';
 import { generateToken, hashToken, verifyPassword } from '@/server/auth/crypto';
 import { db } from '@/server/db';
 import { importOsmPlaces } from '@/server/directory/osm';
+import { readBoundaryFile } from '@/server/location/boundary-file';
+import { importServiceArea } from '@/server/location/service-area';
 import { adminHeaders } from './admin-helpers';
 import { relaxBurstLimits, resetDb } from './db-helpers';
 import { callRoute as call, type AnyHandler as H } from './route-call';
@@ -37,6 +39,7 @@ const act = (id: string, body: object, headers = admin) =>
 beforeEach(async () => {
   await resetDb();
   await relaxBurstLimits();
+  await importServiceArea(db, readBoundaryFile());
   await importOsmPlaces(db, [
     {
       type: 'node',

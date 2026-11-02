@@ -193,3 +193,218 @@ export function MoveOwnerForm({ placeId }: { placeId: string }) {
     </form>
   );
 }
+
+type PlanFields = {
+  id?: string;
+  name: string;
+  liveAdLimit: number;
+  priceCents: number | null;
+  includesInsights: boolean;
+  active: boolean;
+};
+
+/** B3.1: create a plan, or (with `plan`) edit one. */
+export function PlanForm({ plan }: { plan?: PlanFields }) {
+  const [open, setOpen] = useState(!plan);
+  const [name, setName] = useState(plan?.name ?? '');
+  const [liveAdLimit, setLimit] = useState(plan?.liveAdLimit ?? 1);
+  const [price, setPrice] = useState(
+    plan?.priceCents === null || plan?.priceCents === undefined
+      ? ''
+      : (plan.priceCents / 100).toFixed(2),
+  );
+  const [includesInsights, setInsights] = useState(plan?.includesInsights ?? false);
+  const [active, setActive] = useState(plan?.active ?? true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  if (!open) {
+    return (
+      <button style={ui.buttonSecondary} onClick={() => setOpen(true)}>
+        Edit
+      </button>
+    );
+  }
+  return (
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        setError(undefined);
+        try {
+          const priceCents = price.trim() === '' ? null : Math.round(Number(price) * 100);
+          if (priceCents !== null && !Number.isFinite(priceCents))
+            throw new Error('Enter a price like 29.00, or leave it empty.');
+          await adminFetch(plan?.id ? `/api/v1/admin/plans/${plan.id}` : '/api/v1/admin/plans', {
+            method: 'POST',
+            body: { name, liveAdLimit, priceCents, includesInsights, active },
+          });
+          window.location.reload();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Something went wrong');
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <label style={ui.label}>
+        Name
+        <input
+          style={ui.input}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={60}
+          required
+        />
+      </label>
+      <label style={ui.label}>
+        Ads live at once (0–3)
+        <input
+          style={ui.input}
+          type="number"
+          min={0}
+          max={3}
+          value={liveAdLimit}
+          onChange={(e) => setLimit(Number(e.target.value))}
+        />
+      </label>
+      <label style={ui.label}>
+        Monthly price in dollars (empty = not set yet)
+        <input
+          style={ui.input}
+          inputMode="decimal"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+        />
+      </label>
+      <label style={{ display: 'block', margin: '8px 0' }}>
+        <input
+          type="checkbox"
+          checked={includesInsights}
+          onChange={(e) => setInsights(e.target.checked)}
+        />{' '}
+        Includes area counts (insights)
+      </label>
+      <label style={{ display: 'block', margin: '8px 0' }}>
+        <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />{' '}
+        Offered to businesses
+      </label>
+      <button style={ui.button} disabled={busy}>
+        {plan ? 'Save' : 'Add plan'}
+      </button>
+      {error ? (
+        <p role="alert" style={ui.error}>
+          {error}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+/** B3.1: give the business a plan for free, or end its current one. */
+export function CompPlanForm({
+  accountId,
+  plans,
+  hasPlan,
+}: {
+  accountId: string;
+  plans: { id: string; name: string }[];
+  hasPlan: boolean;
+}) {
+  const [planId, setPlanId] = useState(plans[0]?.id ?? '');
+  const [endsAt, setEndsAt] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  async function send(path: string, body: object, confirm: string) {
+    if (!window.confirm(confirm)) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await adminFetch(path, { method: 'POST', body });
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (plans.length === 0) {
+    return (
+      <p style={ui.muted}>
+        No plans yet. <a href="/admin/businesses/plans">Add one</a> first.
+      </p>
+    );
+  }
+  return (
+    <div>
+      <label style={ui.label}>
+        Plan
+        <select style={ui.input} value={planId} onChange={(e) => setPlanId(e.target.value)}>
+          {plans.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={ui.label}>
+        Free until (empty = until you end it)
+        <input
+          style={ui.input}
+          type="date"
+          value={endsAt}
+          onChange={(e) => setEndsAt(e.target.value)}
+        />
+      </label>
+      <label style={ui.label}>
+        Note (kept in the audit log)
+        <input
+          style={ui.input}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={300}
+        />
+      </label>
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <button
+          style={ui.button}
+          disabled={busy}
+          onClick={() =>
+            send(
+              `/api/v1/admin/businesses/${accountId}/subscription`,
+              {
+                planId,
+                // End of that day, Jacksonville time (EST offset; a few hours either way is fine).
+                ...(endsAt ? { endsAt: `${endsAt}T23:59:00-05:00` } : {}),
+                ...(note.trim() ? { note: note.trim() } : {}),
+              },
+              hasPlan ? 'Replace the current plan with this free one?' : 'Give this plan for free?',
+            )
+          }
+        >
+          Give plan for free
+        </button>
+        {hasPlan ? (
+          <button
+            style={ui.buttonSecondary}
+            disabled={busy}
+            onClick={() =>
+              send(
+                `/api/v1/admin/businesses/${accountId}/subscription/end`,
+                note.trim() ? { note: note.trim() } : {},
+                'End the current plan now? Their ads stop running.',
+              )
+            }
+          >
+            End current plan
+          </button>
+        ) : null}
+      </div>
+      {error ? (
+        <p role="alert" style={ui.error}>
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}

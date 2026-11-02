@@ -117,3 +117,31 @@ export const adminMoveBusinessOwnerSchema = z.strictObject({
   removeOldTeam: z.boolean(),
   note: z.string().trim().max(500).optional(),
 });
+
+/** B3.1 / D168: a subscription plan (admin-edited data; any number of tiers, Q28 prices open). */
+export const adminPlanSchema = z.strictObject({
+  name: z.string().trim().min(2).max(60),
+  liveAdLimit: z.number().int().min(0).max(3),
+  /** Monthly price in cents; null while prices aren't decided. */
+  priceCents: z.number().int().min(0).max(10_000_000).nullable(),
+  includesInsights: z.boolean(),
+  /** Offered to new businesses (existing subscriptions keep their plan either way). */
+  active: z.boolean(),
+});
+
+/** B3.1: give a business a plan for free (a promo), from now or a date, open-ended or until a date. */
+export const adminCompSchema = z
+  .strictObject({
+    planId: z.uuid(),
+    startsAt: z.iso.datetime({ offset: true }).optional(),
+    endsAt: z.iso.datetime({ offset: true }).nullable().optional(),
+    note: z.string().trim().max(300).optional(),
+  })
+  .refine((v) => !v.endsAt || !v.startsAt || new Date(v.endsAt) > new Date(v.startsAt), {
+    message: 'The end must be after the start',
+    path: ['endsAt'],
+  });
+
+export const adminEndSubscriptionSchema = z.strictObject({
+  note: z.string().trim().max(300).optional(),
+});

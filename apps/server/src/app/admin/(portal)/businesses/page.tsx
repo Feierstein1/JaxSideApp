@@ -20,6 +20,9 @@ export default async function BusinessesPage({
   return (
     <>
       <h1>Businesses</h1>
+      <p>
+        <a href="/admin/businesses/plans">Plans</a>
+      </p>
       <p style={ui.muted}>
         Owner accounts on the business website. A business account is separate from the
         owner&rsquo;s personal app account; the place&rsquo;s verified claim links the two.

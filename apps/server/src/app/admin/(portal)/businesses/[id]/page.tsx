@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
 import { getBusiness } from '@/server/admin/businesses';
+import { listPlans } from '@/server/admin/plans';
 import { ApiError } from '@/server/http';
 import { ui } from '../../../admin-ui';
-import { BusinessActions, MoveOwnerForm } from '../../../business-forms';
+import { BusinessActions, CompPlanForm, MoveOwnerForm } from '../../../business-forms';
 import { requireAdminPage } from '../../../require-admin-page';
 import { Pill, Table, td, when, words } from '../../admin-table';
 
@@ -156,6 +157,16 @@ export default async function BusinessPage({ params }: { params: Promise<{ id: s
         </p>
       ))}
       <p style={ui.muted}>Saved ads: {b.adCount}</p>
+      {b.kind === 'owner' && b.status !== 'REVOKED' ? (
+        <div style={ui.card}>
+          <h3 style={{ marginTop: 0 }}>Give a plan</h3>
+          <CompPlanForm
+            accountId={b.id}
+            plans={(await listPlans()).filter((p) => p.active)}
+            hasPlan={b.subscriptions.some((s) => s.status === 'ACTIVE')}
+          />
+        </div>
+      ) : null}
 
       {b.invitesUsed.length ? (
         <>
