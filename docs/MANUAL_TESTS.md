@@ -545,6 +545,7 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] Android and iPhone: **Add photos** lets you tick several photos at once (a post takes 4; a message takes 4); a profile picture still takes one.
 - [ ] Android: Settings → Apps → JaxSide → Permissions now lists **Microphone**. Record a voice post: the first time it asks, Allow works; a video with sound records too.
 - [ ] iPhone: a voice post asks for the microphone with our wording; Settings → JaxSide shows Microphone.
+- [ ] Android home screen: the JaxSide icon sits centered in its circle or rounded square, with the whole emblem (including the small diamond at the bottom) visible and nothing cut off; the themed (one-color) icon is centered too. (Needs the new build.)
 - [ ] Type a wrong password 6 times in a minute: the 6th try says to wait (even with the right password) and works again after about a minute.
 
 ### Phone-test fixes (D162)

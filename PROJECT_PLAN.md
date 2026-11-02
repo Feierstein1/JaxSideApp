@@ -904,3 +904,4 @@ Events/meetups/RSVPs · sponsored content / ads / subscriptions · phone push no
 | 2026-11-02 | D181 | Staging deploy held until the owner website is done; deploy script and Docker build now leave `apps/business` out |
 | 2026-11-02 | D182 | B3.2 ad library, editor with live preview, picture uploads (re-encoded, metadata dropped, private storage). 170 business tests |
 | 2026-11-02 | D183 | Ad results page (Owner), JaxSide header and favicon, move-out guide. 172 business tests |
+| 2026-11-02 | Icon | Android icon artwork shrunk to 78% and moved up 20 px so the emblem is no longer cut off at the bottom of the launcher mask; themed (one-color) icon re-centered. iPhone icon unchanged. Native asset: ships with the next build |
