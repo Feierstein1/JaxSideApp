@@ -1,0 +1,171 @@
+# JaxSide LLC: process notes and checklist
+
+Hand-off for the agent who guides the owner through forming the company and getting the store
+accounts. Last updated 2026-11-02. The owner does the filings and payments; the agent explains,
+checks wording, and keeps this file current. Items marked **(unverified)** came from memory or a
+third party and must be checked on the official site before relying on them.
+
+## 1. Why this exists
+
+JaxSide will be published under a company, not the owner's personal name, for three reasons the
+owner accepted:
+
+- **Liability:** the app hosts what other people post, has legal duties (for example reporting
+  child-abuse material), and may one day sell aggregate data. An LLC keeps claims against the
+  app separate from the owner's personal assets. This only holds if the LLC is treated as a
+  separate business (separate bank account, signing as the company, annual report filed).
+- **Privacy:** an Apple personal account shows the owner's legal name as the seller. A Google
+  business account shows its address publicly on the Play Store page, so the address used
+  matters (see section 4).
+- **Google's 12-tester rule:** personal Google accounts must run a closed test with 12+ Android
+  testers for 14 days before going public. Business accounts skip it.
+
+Decided and not to be reopened without the owner: **a new Florida LLC, owned by the owner, named
+"JaxSide LLC", with a registered agent's address (not the owner's home) on the public filing.**
+Using a family member's LLC and transferring the app later was considered and rejected (their
+company would carry the liability, the Terms and user data would name them, and the transfer has
+friction).
+
+## 2. Current status (2026-11-02)
+
+- [x] Name chosen: **JaxSide LLC**. The owner states JaxSide is not trademarked. (Recommended
+      check, if not already done: the Sunbiz name search and the US trademark search at
+      tmsearch.uspto.gov.)
+- [x] Owner is on the official Florida filing site (sunbiz.org). Not filed yet.
+- [x] Decided on the filing form's extras: **skip** the Certificate of Status ($5) and the
+      Certified Copy ($30). The free PDF of the filed Articles is enough; order a certified copy
+      later only if a bank insists.
+- [x] Decided to use a **registered agent** for the registered-agent, principal-place-of-business
+      and mailing addresses. Chosen provider: **none yet.**
+- [ ] **Waiting:** no reply yet from any registered-agent company about using their address.
+      The owner was emailing MyRegAgents (they have no live chat) and may have contacted others.
+      The questions sent are in section 5. **The LLC cannot be filed until this is settled**,
+      because the form needs the agent's name and address.
+- [ ] File the Articles of Organization on Sunbiz ($125 **(unverified)**).
+- [ ] Get an EIN (free, irs.gov).
+- [ ] Get a D-U-N-S number (free, Dun & Bradstreet).
+- [ ] Open a business bank account.
+- [ ] Public website and a business email at jaxside.com.
+- [ ] Apple Developer Program (organization) and Google Play Console (organization) accounts.
+
+## 3. Order of work
+
+LLC → EIN and D-U-N-S (both right after, the D-U-N-S can take days to a couple of weeks) →
+business bank account → website and business email → store accounts.
+
+The app itself is still being tested, so the stores are not urgent. The LLC and D-U-N-S have the
+longest waits, which is why they should start now. The app's launch tasks (policy web pages, a
+review-only account for App Review, switching the staging server to production) are tracked in
+`PROJECT_PLAN.md`, not here.
+
+## 4. Facts and decisions so far
+
+**Florida filing (sunbiz.org).**
+
+- Use the official site only. Lookalike sites charge several times the real fee to file the
+  same form. Do not buy an LLC "formation package"; the owner files directly.
+- Name must end in LLC, L.L.C. or Limited Liability Company, and be distinguishable from
+  existing Florida names (Search Records → Search by Entity Name).
+- Filing fee about $125; annual report about $138.75, due January 1 to May 1 each year, or
+  the LLC can go inactive **(all unverified; confirm current amounts on Sunbiz)**.
+- The filing and annual reports are public. Sunbiz shows the managers or authorized members, so
+  the owner's name will appear on the record unless an organizer or filing service is used. The
+  owner has not yet been walked through the Manager/Member section; this is the other privacy
+  choice and should be handled next.
+- Changing addresses later: principal and mailing address can be updated free on the annual
+  report, otherwise a $25 amendment; changing the registered agent is about $25 **(unverified)**.
+  The original filing stays online as a public PDF permanently, which is why the owner chose to
+  start with the agent's address instead of changing later.
+- Address fields: Principal Place of Business needs a real street address (no PO box). Mailing
+  address can be any mail address. Registered agent must have a Florida street address and
+  accept the role (the agent tells the owner what to enter for the acceptance signature).
+
+**Registered agent and address.** Needs two things from one provider: it acts as Florida
+registered agent, **and** it allows its address to be used as the principal and mailing address
+on the filing, with mail scanning or forwarding. Some agents allow their address only in the
+agent field. The same address must be used everywhere (LLC filing, D-U-N-S, store accounts); a
+mismatch is the most common reason verification stalls.
+
+Providers mentioned (none checked or chosen):
+
+- **MyRegAgents:** about $99 a year **(unverified, from another agent's research)**; its site is
+  said to advertise using its Florida address as the physical, principal, mailing and
+  registered-agent address, with an online document portal, same-day scanning of documents
+  received, and scanning for **three** non-state mail items (limit period and extra-item fees
+  unknown). Whether the address works for D-U-N-S and Apple/Google verification is **not
+  confirmed**.
+- **Northwest Registered Agent**, **Registered Agents Inc**: named as options; not researched.
+
+**Store accounts (business).**
+
+- Apple Developer Program: $99 a year; needs a legal entity, a D-U-N-S number matching the
+  company name and address, and a company website. The account holder must be someone who can
+  sign for the LLC. Apple may phone or email to verify.
+- Google Play Console: $25 once; needs the legal entity and a D-U-N-S number for organizations;
+  the developer address shows on the public store page.
+- A business email at `jaxside.com`, a public website with the Privacy Policy and an
+  account-deletion page, and a phone number the stores can reach are expected.
+- App IDs are already set to `com.jaxside.app` for both stores.
+
+**Money and structure.**
+
+- Open a business bank account under the EIN and pay app costs (AWS, Expo, store fees, domain,
+  the registered agent) from it.
+- Sign contracts and store agreements as the company. Keep the annual report filed.
+- The EIN and D-U-N-S number are free; beware sites that charge for them.
+- Payments from advertisers (Stripe) are planned later and need the LLC, EIN and bank account
+  (`docs/BUSINESS_PORTAL_BUILD_BRIEF.md`).
+
+## 5. Questions sent to registered-agent companies
+
+Sent to MyRegAgents (the owner may use this text with others):
+
+1. Can I use your Florida address as the LLC's Principal Place of Business, Mailing Address and
+   Registered Agent address on the Articles of Organization?
+2. The LLC will publish a mobile app, so I need a D-U-N-S number and verified Apple and Google
+   Play developer accounts, which check that the business address matches across records. Will
+   your address work for D-U-N-S and for Apple and Google business verification? Have other
+   customers used it that way without problems?
+3. Your site mentions scanning for three non-state mail items. Is that per month or per year?
+   What does each extra item cost? I expect letters from D-U-N-S, Apple, Google, the IRS and my
+   bank in the first months.
+4. Can you forward physical originals if needed, and at what cost?
+5. I am filing on Sunbiz myself. What exactly do I enter for the agent's name, address and
+   acceptance signature?
+6. What is the full yearly price, and are there setup or other fees?
+
+**Decision rule once answers arrive:** sign up for the registered-agent service only (not
+formation) if the provider confirms questions 1 and 2 in writing and the mail terms are
+reasonable. If a provider hedges on question 2, treat that as a warning and try another.
+
+## 6. What the next steps need
+
+- **Filing the Articles:** the agent's exact name and street address, the LLC name, who the
+  manager or authorized person is (the Sunbiz public-record question in section 4), the owner's
+  contact email.
+- **EIN:** the filed Articles, the owner's SSN or ITIN as responsible party (entered only on
+  irs.gov by the owner).
+- **D-U-N-S:** exact legal name and address as filed, a phone number, a business email, the
+  website (can be added later).
+- **Bank account:** the Articles, the EIN letter, ID.
+
+## 7. Handing information back to the app project
+
+When the LLC exists, give the app's agents (see `PROJECT_PLAN.md`):
+
+- the **exact legal name** and **registered address** (Terms of Service, Privacy Policy,
+  advertiser terms, giveaway rules `docs/GIVEAWAY_RULES.md`, store listings);
+- the **business email addresses** (support, invites);
+- when the store accounts are verified and the **team IDs** needed for builds and submission.
+
+## 8. Rules for the agent on this task
+
+- Never ask for or store the owner's SSN, ID numbers, passwords or card numbers; the owner types
+  those only on official sites.
+- Only point to official sites (sunbiz.org, irs.gov, the D-U-N-S provider, developer.apple.com,
+  play.google.com/console) and tell the owner when something looks like a lookalike.
+- Do not recommend paid extras the owner doesn't need; every cost is the owner's decision.
+- Check anything marked unverified before relying on it, and update this file with what you
+  confirm and the date.
+- This is practical guidance, not legal or tax advice. If a question needs a professional (for
+  example an operating agreement for several members, or tax treatment), say so.
