@@ -9,6 +9,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as login from '@/app/api/auth/login/route';
+import * as teamMember from '@/app/api/places/[placeId]/team/[accountId]/route';
+import * as team from '@/app/api/places/[placeId]/team/route';
 import * as inviteAccept from '@/app/api/invites/accept/route';
 import * as inviteAcceptNew from '@/app/api/invites/accept-new/route';
 import * as logout from '@/app/api/auth/logout/route';
@@ -27,7 +29,8 @@ import {
   type Browser,
 } from './helpers';
 
-type Handler = (req: Request, ctx: unknown) => Promise<Response>;
+// `never`: each route declares its own params; the table only needs to call them.
+type Handler = (req: Request, ctx: never) => Promise<Response>;
 type Entry = {
   path: string;
   method: 'POST';
@@ -39,6 +42,20 @@ type Entry = {
 };
 
 const ROUTES: Entry[] = [
+  {
+    path: 'places/[placeId]/team',
+    method: 'POST',
+    handler: team.POST,
+    kind: 'session',
+    body: true,
+  },
+  {
+    path: 'places/[placeId]/team/[accountId]',
+    method: 'POST',
+    handler: teamMember.POST,
+    kind: 'session',
+    body: true,
+  },
   {
     path: 'invites/accept-new',
     method: 'POST',
@@ -86,6 +103,10 @@ const ROUTES: Entry[] = [
   },
 ];
 
+/** Route params for dynamic routes (made-up ids; the guards answer before they're used). */
+const ZERO = '00000000-0000-7000-8000-000000000000';
+const PARAMS = { params: Promise.resolve({ placeId: ZERO, accountId: ZERO }) } as never;
+
 const API_DIR = path.resolve(import.meta.dirname, '../src/app/api');
 
 function writeRoutesOnDisk(): string[] {
@@ -129,11 +150,11 @@ describe('business write routes', () => {
   for (const e of ROUTES.filter((r) => r.kind === 'session')) {
     describe(`${e.method} ${e.path}`, () => {
       it('refuses a request with no session (401)', async () => {
-        expect((await e.handler(req(e, {}), {})).status).toBe(401);
+        expect((await e.handler(req(e, {}), PARAMS)).status).toBe(401);
       });
 
       it('refuses a signed-in request without the CSRF token (403)', async () => {
-        const res = await e.handler(req(e, { cookie: `jax_biz=${s.session}` }), {});
+        const res = await e.handler(req(e, { cookie: `jax_biz=${s.session}` }), PARAMS);
         expect(res.status).toBe(403);
       });
 
@@ -144,7 +165,7 @@ describe('business write routes', () => {
             'x-csrf-token': s.csrf!,
             origin: 'https://evil.example',
           }),
-          {},
+          PARAMS,
         );
         expect(res.status).toBe(403);
       });
@@ -153,7 +174,7 @@ describe('business write routes', () => {
         it('refuses unknown fields once signed in (400)', async () => {
           const res = await e.handler(
             authed('POST', `/api/${e.path}`, s, { unexpected: true }),
-            {},
+            PARAMS,
           );
           expect(res.status).toBe(400);
         });
@@ -164,11 +185,13 @@ describe('business write routes', () => {
   for (const e of ROUTES.filter((r) => r.kind === 'public')) {
     describe(`${e.method} ${e.path}`, () => {
       it('refuses a request from another site (403)', async () => {
-        expect((await e.handler(req(e, { origin: 'https://evil.example' }), {})).status).toBe(403);
+        expect((await e.handler(req(e, { origin: 'https://evil.example' }), PARAMS)).status).toBe(
+          403,
+        );
       });
 
       it('refuses unknown fields (400)', async () => {
-        expect((await e.handler(post(`/api/${e.path}`, { unexpected: true }), {})).status).toBe(
+        expect((await e.handler(post(`/api/${e.path}`, { unexpected: true }), PARAMS)).status).toBe(
           400,
         );
       });

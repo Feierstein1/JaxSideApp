@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { emailSchema, passwordSchema } from './auth';
+import { STAFF_NAME_MAX } from './directory';
 
 /**
  * Business website (D169). Shapes only; accounts are checked on the business server.
@@ -52,3 +53,34 @@ export const businessInviteAcceptNewSchema = z.strictObject({
 
 /** Add the invited place to the business account that's signed in. */
 export const businessInviteAcceptSchema = z.strictObject({ token: inviteTokenSchema });
+
+// ───────────── B1.5: employees (logins the Owner creates) ─────────────
+
+/** Employee sign-in names: lower-case letters, digits, dot, dash, underscore; never "@". */
+export const businessUsernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9][a-z0-9._-]{2,29}$/, 'Use 3–30 letters, numbers, dots, dashes or underscores');
+
+/** D157: optional first name shown after "The Owner" on posts. */
+export const businessStaffNameSchema = z.string().trim().min(1).max(STAFF_NAME_MAX);
+
+export const businessRoleSchema = z.enum(['MANAGER', 'STAFF']);
+
+/** Add someone to a place: a new login, or one of the Owner's existing employees. */
+export const businessTeamAddSchema = z.strictObject({
+  username: businessUsernameSchema,
+  role: businessRoleSchema,
+  staffName: businessStaffNameSchema.optional(),
+});
+
+export const businessTeamUpdateSchema = z.discriminatedUnion('action', [
+  z.strictObject({ action: z.literal('role'), role: businessRoleSchema }),
+  z.strictObject({
+    action: z.literal('staff-name'),
+    staffName: businessStaffNameSchema.nullable(),
+  }),
+  z.strictObject({ action: z.literal('reset-password') }),
+  z.strictObject({ action: z.literal('remove') }),
+]);

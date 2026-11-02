@@ -8,6 +8,8 @@ import { requireAccount } from '../../require-account';
 import { SignOutButton } from '../../sign-out-button';
 
 const SECTIONS: Ability[] = ['discussion', 'team', 'ads', 'insights', 'billing'];
+/** Sections that have their own page so far (the rest say "coming soon"). */
+const BUILT: Partial<Record<Ability, string>> = { team: 'team' };
 
 /** B1.4: one place. 🔒 Only accounts with access see it; anyone else gets "not found". */
 export default async function PlacePage({ params }: { params: Promise<{ placeId: string }> }) {
@@ -31,8 +33,16 @@ export default async function PlacePage({ params }: { params: Promise<{ placeId:
       <ul style={{ paddingLeft: 18 }}>
         {SECTIONS.filter((s) => can(place.role, s)).map((s) => (
           <li key={s} style={{ marginBottom: 8 }}>
-            <strong>{TEXT.places.sections[s]}</strong>{' '}
-            <span style={{ color: COLORS.textMuted }}>{TEXT.places.soon}</span>
+            {s in BUILT ? (
+              <Link href={`/places/${place.id}/${BUILT[s]}`}>
+                <strong>{TEXT.places.sections[s]}</strong>
+              </Link>
+            ) : (
+              <>
+                <strong>{TEXT.places.sections[s]}</strong>{' '}
+                <span style={{ color: COLORS.textMuted }}>{TEXT.places.soon}</span>
+              </>
+            )}
           </li>
         ))}
       </ul>

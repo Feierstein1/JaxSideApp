@@ -48,6 +48,32 @@ export const TEXT = {
       billing: 'Plan and billing',
     },
   },
+  team: {
+    title: 'Team',
+    intro:
+      'Give each person their own login, so you can see who wrote each reply. Posts still show as "The Owner" to the public.',
+    you: 'you',
+    shownAs: (name: string) => `shown as "The Owner · ${name}"`,
+    notSignedInYet: 'hasn’t signed in yet',
+    addTitle: 'Add someone',
+    addHelp:
+      'Pick a username for them. You’ll get a temporary password to give them; they choose their own the first time they sign in.',
+    username: 'Username',
+    role: 'Role',
+    roleHelp:
+      'Staff can read and reply. Managers can also draft ads. Only you manage the team, ads going live and billing.',
+    staffName: 'Name shown on posts (optional)',
+    add: 'Add to team',
+    tempIntro: 'Give them these to sign in. This password is shown only once.',
+    tempPassword: 'Temporary password',
+    tempNote: 'They’ll be asked to choose a new password right away.',
+    same: '(same as before)',
+    makeManager: 'Make Manager',
+    makeStaff: 'Make Staff',
+    resetPassword: 'Reset password',
+    remove: 'Remove',
+    removeConfirm: 'Remove this person from this place? They can’t sign in to it anymore.',
+  },
   invite: {
     title: 'Set up your business account',
     intro: (place: string) => `You're verified as the owner of ${place}.`,
