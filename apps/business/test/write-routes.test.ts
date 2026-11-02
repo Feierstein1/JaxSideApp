@@ -9,6 +9,12 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as login from '@/app/api/auth/login/route';
+import * as adDelete from '@/app/api/ads/[adId]/delete/route';
+import * as adMove from '@/app/api/ads/[adId]/move/route';
+import * as adOne from '@/app/api/ads/[adId]/route';
+import * as adSubmit from '@/app/api/ads/[adId]/submit/route';
+import * as ads from '@/app/api/ads/route';
+import * as adMedia from '@/app/api/places/[placeId]/ads/media/route';
 import * as notices from '@/app/api/account/notices/route';
 import * as inboxSeen from '@/app/api/inbox/seen/route';
 import * as commentDelete from '@/app/api/places/[placeId]/comments/[commentId]/delete/route';
@@ -48,6 +54,31 @@ type Entry = {
 };
 
 const ROUTES: Entry[] = [
+  { path: 'ads', method: 'POST', handler: ads.POST, kind: 'session', body: true },
+  { path: 'ads/[adId]', method: 'POST', handler: adOne.POST, kind: 'session', body: true },
+  {
+    path: 'ads/[adId]/submit',
+    method: 'POST',
+    handler: adSubmit.POST,
+    kind: 'session',
+    body: true,
+  },
+  { path: 'ads/[adId]/move', method: 'POST', handler: adMove.POST, kind: 'session', body: true },
+  {
+    path: 'ads/[adId]/delete',
+    method: 'POST',
+    handler: adDelete.POST,
+    kind: 'session',
+    body: true,
+  },
+  // Raw picture bytes, not JSON: the guards still run first; the file is checked after.
+  {
+    path: 'places/[placeId]/ads/media',
+    method: 'POST',
+    handler: adMedia.POST,
+    kind: 'session',
+    body: false,
+  },
   { path: 'inbox/seen', method: 'POST', handler: inboxSeen.POST, kind: 'session', body: true },
   { path: 'account/notices', method: 'POST', handler: notices.POST, kind: 'session', body: true },
   {
@@ -142,7 +173,13 @@ const ROUTES: Entry[] = [
 /** Route params for dynamic routes (made-up ids; the guards answer before they're used). */
 const ZERO = '00000000-0000-7000-8000-000000000000';
 const PARAMS = {
-  params: Promise.resolve({ placeId: ZERO, accountId: ZERO, postId: ZERO, commentId: ZERO }),
+  params: Promise.resolve({
+    placeId: ZERO,
+    accountId: ZERO,
+    postId: ZERO,
+    commentId: ZERO,
+    adId: ZERO,
+  }),
 } as never;
 
 const API_DIR = path.resolve(import.meta.dirname, '../src/app/api');

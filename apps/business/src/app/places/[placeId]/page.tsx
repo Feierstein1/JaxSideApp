@@ -3,18 +3,20 @@ import { notFound } from 'next/navigation';
 import { COLORS } from '@jax/shared';
 import { ApiError } from '@/server/http';
 import { unreadCount } from '@/server/inbox';
-import { can, myPlaces, requirePlace, type Ability } from '@/server/places';
+import { can, myPlaces, requirePlace } from '@/server/places';
 import { TEXT } from '@/text';
 import { requireAccount } from '../../require-account';
 import { SignOutButton } from '../../sign-out-button';
 
-const SECTIONS: Ability[] = ['discussion', 'team', 'ads', 'insights', 'billing'];
+type Section = keyof typeof TEXT.places.sections;
+const SECTIONS: Section[] = ['discussion', 'team', 'ads', 'insights', 'billing'];
 /** Sections that have their own page so far (the rest say "coming soon"). */
-const BUILT: Partial<Record<Ability, string>> = {
+const BUILT: Partial<Record<Section, string>> = {
   discussion: 'discussion',
   team: 'team',
   insights: 'insights',
   billing: 'billing',
+  ads: 'ads',
 };
 
 /** B1.4: one place. 🔒 Only accounts with access see it; anyone else gets "not found". */

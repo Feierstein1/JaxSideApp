@@ -29,6 +29,12 @@ const schema = z.object({
   SMTP_FROM: z.string().min(3).default('JaxSide for Business <no-reply@localhost>'),
   SMTP_USER: z.string().min(1).optional(),
   SMTP_PASS: z.string().min(1).optional(),
+  /** B3.2: private storage for ad pictures (the app's media bucket, under `ads/`). */
+  S3_ENDPOINT: z.string().url().optional(),
+  S3_REGION: z.string().min(1).default('us-east-1'),
+  S3_ACCESS_KEY: z.string().min(1).optional(),
+  S3_SECRET_KEY: z.string().min(1).optional(),
+  S3_BUCKET_MEDIA: z.string().min(3).default('jax-media'),
 });
 
 export type Env = z.infer<typeof schema>;

@@ -21,6 +21,8 @@ export const CAN = {
   discussion: ['OWNER', 'MANAGER', 'STAFF'],
   team: ['OWNER'],
   ads: ['OWNER', 'MANAGER'],
+  // Sending ads for approval, pausing, resuming and ending them (D165: Managers only draft).
+  publishAds: ['OWNER'],
   billing: ['OWNER'],
   insights: ['OWNER'],
 } as const satisfies Record<string, readonly BusinessRole[]>;

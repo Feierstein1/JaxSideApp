@@ -92,3 +92,10 @@ export function planLimitProblem(liveOrScheduled: number, planLimit: number): st
     ? 'Your plan runs 1 ad at a time. Pause or end the live one first.'
     : `Your plan runs ${limit} ads at a time. Pause or end one first.`;
 }
+
+/** B3.2: the Owner's moves on an ad (withdraw from review, pause, resume, end). */
+export const adMoveSchema = z.strictObject({
+  move: z.enum(['withdraw', 'pause', 'resume', 'end']),
+});
+
+export const adDeleteSchema = z.strictObject({});
