@@ -33,6 +33,9 @@ interface CommentRow {
   /** D157: the place's name when the author is one of its verified owners. */
   owner_place: string | null;
   owner_staff_name: string | null;
+  /** D172: a reply from the place's business (business website): its place and staff name. */
+  business_place: string | null;
+  business_staff_name: string | null;
   score: number;
   my_vote: number | null;
 }
@@ -50,19 +53,26 @@ function toView(r: CommentRow, viewer: CommentViewer): CommentView {
     editedAt: r.editedAt?.toISOString() ?? null,
     // Guests show only the GUEST label, never an internal ID (§5).
     author:
-      r.authorKind === 'GUEST'
-        ? { guest: true }
-        : r.author_status === 'DELETED' || !r.username
-          ? { deleted: true }
-          : r.owner_place
-            ? // D157: an owner in their own place's discussion is "The Owner".
-              { theOwner: true as const, place: r.owner_place, staffName: r.owner_staff_name }
-            : {
-                username: r.username,
-                medals: r.medals ?? [],
-                avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
-                ...(r.staff_badge ? { admin: true as const } : {}), // D141
-              },
+      r.authorKind === 'BUSINESS'
+        ? // D172: always "The Owner"; which login wrote it stays with the business's Owner.
+          {
+            theOwner: true as const,
+            place: r.business_place ?? '',
+            staffName: r.business_staff_name,
+          }
+        : r.authorKind === 'GUEST'
+          ? { guest: true }
+          : r.author_status === 'DELETED' || !r.username
+            ? { deleted: true }
+            : r.owner_place
+              ? // D157: an owner in their own place's discussion is "The Owner".
+                { theOwner: true as const, place: r.owner_place, staffName: r.owner_staff_name }
+              : {
+                  username: r.username,
+                  medals: r.medals ?? [],
+                  avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
+                  ...(r.staff_badge ? { admin: true as const } : {}), // D141
+                },
     score: r.score,
     myVote: (r.my_vote ?? 0) as -1 | 0 | 1,
     isMine:
@@ -91,15 +101,24 @@ export const NO_USER = '00000000-0000-0000-0000-000000000000';
  */
 function ownerColumns(kind: DiscussionKind, postId: string) {
   if (kind !== 'business') {
-    return Prisma.sql`NULL::text AS owner_place, NULL::text AS owner_staff_name`;
+    return Prisma.sql`NULL::text AS owner_place, NULL::text AS owner_staff_name,
+      NULL::text AS business_place, NULL::text AS business_staff_name`;
   }
+  // D172: replies written on the business website.
+  const business = Prisma.sql`FROM "BusinessPost" bp JOIN "BusinessPlace" pl ON pl.id = bp."placeId"
+    WHERE bp.id = ${postId}::uuid AND t."authorKind" = 'BUSINESS'`;
   const claim = Prisma.sql`FROM "OwnerClaim" oc
     JOIN "BusinessPost" bp ON bp."placeId" = oc."placeId"
     JOIN "BusinessPlace" pl ON pl.id = oc."placeId"
     WHERE bp.id = ${postId}::uuid AND oc."userId" = t."authorUserId" AND oc.status = 'VERIFIED'`;
   return Prisma.sql`
     (SELECT pl.name ${claim} LIMIT 1) AS owner_place,
-    (SELECT oc."staffName" ${claim} LIMIT 1) AS owner_staff_name`;
+    (SELECT oc."staffName" ${claim} LIMIT 1) AS owner_staff_name,
+    (SELECT pl.name ${business}) AS business_place,
+    (SELECT a."staffName" FROM "BusinessPost" bp
+       JOIN "BusinessPlaceAccess" a ON a."placeId" = bp."placeId"
+       WHERE bp.id = ${postId}::uuid AND a."accountId" = t."authorBusinessId"
+       ORDER BY a."revokedAt" DESC NULLS FIRST LIMIT 1) AS business_staff_name`;
 }
 
 export async function listComments(kind: DiscussionKind, postId: string, viewer: CommentViewer) {

@@ -146,7 +146,8 @@ export async function evaluateForPostAuthor(kind: 'general' | 'business', postId
       ? await db.generalPost.findUnique({ where: { id: postId }, select: { authorId: true } })
       : await db.businessPost.findUnique({ where: { id: postId }, select: { authorId: true } });
   // P15.12: only the medals an upvote can move (each rule is a query; votes are the busiest write).
-  if (post) {
+  // D172: a post by a business (business website) has no person to award.
+  if (post?.authorId) {
     await evaluateAchievements(new Date(), post.authorId, db, [
       'net_positive_distinct_posts',
       'zip_areas_with_good_posts',

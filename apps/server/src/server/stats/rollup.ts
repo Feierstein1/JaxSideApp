@@ -71,10 +71,11 @@ async function countDay(day: string) {
       acts AS (
         SELECT p."placeId", 'post' AS kind, p."authorId" AS person
         FROM "BusinessPost" p, r WHERE p."createdAt" >= r.lo AND p."createdAt" < r.hi
+          AND p."authorId" IS NOT NULL -- D172: the business's own posts aren't community activity
         UNION ALL
         SELECT bp."placeId", 'comment', c."authorUserId"
         FROM "Comment" c JOIN "BusinessPost" bp ON bp.id = c."businessPostId", r
-        WHERE c."createdAt" >= r.lo AND c."createdAt" < r.hi),
+        WHERE c."createdAt" >= r.lo AND c."createdAt" < r.hi AND c."authorKind" <> 'BUSINESS'),
       fav AS (SELECT f."placeId", count(*)::int AS n FROM "FavoritePlace" f, r
               WHERE f."createdAt" >= r.lo AND f."createdAt" < r.hi GROUP BY 1),
       vot AS (SELECT bp."placeId", count(*)::int AS n

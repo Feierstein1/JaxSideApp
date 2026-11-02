@@ -9,6 +9,14 @@ export const HOST = 'business.test';
 /** Clears every business table and the site's rate-limit counters (not the app's data). */
 export async function resetBusinessData() {
   await db.$executeRaw`DELETE FROM "RateLimitCounter" WHERE key LIKE 'biz:%'`;
+  // Discussion rows in the test places first (a place with posts can't be deleted).
+  const inTestPlaces = { place: { sourceName: 'test' } };
+  await db.notification.deleteMany({ where: { businessPost: inTestPlaces } });
+  await db.report.deleteMany({
+    where: { OR: [{ businessPost: inTestPlaces }, { comment: { businessPost: inTestPlaces } }] },
+  });
+  await db.comment.deleteMany({ where: { businessPost: inTestPlaces } });
+  await db.businessPost.deleteMany({ where: inTestPlaces });
   await db.adDailyStats.deleteMany();
   await db.adReview.deleteMany();
   await db.ad.deleteMany();
@@ -48,6 +56,22 @@ export async function makePlace(name = 'Bold Bean', lat = 30.33, lng = -81.66) {
 }
 
 /** Removes places and people made here (the app's tests own the rest of its data). */
+/** A phone-app person (BANNED: see makeOwnerClaim), e.g. the author of a post. */
+export async function makeAppUser(username = `bt_${randomUUID().slice(0, 8)}`) {
+  return db.user.create({
+    data: {
+      username,
+      usernameNormalized: username.toLowerCase(),
+      passwordHash: 'x',
+      ageCutoffYear: 2007,
+      tosAcceptedAt: new Date(),
+      tosVersion: 'test',
+      adultConfirmedAt: new Date(),
+      status: 'BANNED',
+    },
+  });
+}
+
 export async function removeTestPlaces() {
   await db.businessPlace.deleteMany({ where: { sourceName: 'test' } }); // claims go with them
   await db.user.deleteMany({ where: { username: { startsWith: 'bt_' } } });

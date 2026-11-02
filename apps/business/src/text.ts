@@ -48,6 +48,31 @@ export const TEXT = {
       billing: 'Plan and billing',
     },
   },
+  discussion: {
+    title: 'Discussion',
+    intro:
+      'What people say about your place in the JaxSide app. You can post and reply from anywhere; it shows as "The Owner".',
+    empty: 'No posts yet.',
+    newPost: 'Post to your place’s discussion',
+    post: 'Post as The Owner',
+    reply: 'Reply',
+    replyAs: 'Reply as The Owner',
+    theOwner: 'The Owner',
+    writtenBy: (login: string) => `written by ${login}`,
+    guest: 'Guest',
+    deleted: 'Deleted account',
+    comments: (n: number) => (n === 1 ? '1 comment' : `${n} comments`),
+    older: 'Older posts →',
+    held: 'waiting for review',
+    heldNotice:
+      'Saved, but it’s waiting for a JaxSide moderator to check it before anyone else sees it.',
+    postAnyway: 'Post anyway',
+    commentDeleted: 'Comment deleted',
+    commentRemoved: 'Removed by a moderator',
+    locked: 'This post has reached its comment limit.',
+    remove: 'Remove',
+    removeConfirm: 'Remove this? People won’t see it anymore.',
+  },
   team: {
     title: 'Team',
     intro:

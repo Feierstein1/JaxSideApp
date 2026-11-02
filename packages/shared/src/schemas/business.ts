@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { emailSchema, passwordSchema } from './auth';
 import { STAFF_NAME_MAX } from './directory';
+import { commentBodySchema, postBodySchema } from './discussion';
 
 /**
  * Business website (D169). Shapes only; accounts are checked on the business server.
@@ -84,3 +85,21 @@ export const businessTeamUpdateSchema = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('reset-password') }),
   z.strictObject({ action: z.literal('remove') }),
 ]);
+
+// ───────────── B1.6: the place's discussion, from the business website ─────────────
+
+/** A new post in the place's discussion (text; no location needed, D172). */
+export const businessPostCreateSchema = z.strictObject({
+  body: postBodySchema,
+  confirmWarning: z.literal(true).optional(),
+});
+
+/** A reply to a post (or to a comment on it) in the place's discussion. */
+export const businessReplySchema = z.strictObject({
+  body: commentBodySchema,
+  parentCommentId: z.uuid().optional(),
+  confirmWarning: z.literal(true).optional(),
+});
+
+/** Remove something the business wrote. */
+export const businessDeleteSchema = z.strictObject({});

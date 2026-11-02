@@ -55,6 +55,7 @@ enum GuestStatus {
 enum AuthorKind {
   USER
   GUEST
+  BUSINESS // D172: the place's business, through the business website
 }
 
 enum ContentStatus {
@@ -705,23 +706,28 @@ model GeneralPost {
 }
 
 /// Business room post (§7.2). Always tied to one canonical place.
+/// D172: written by a phone-app user (authorId) or by the place's business through the
+/// business website (businessAuthorId); exactly one of the two (CHECK). A business post
+/// always shows as "The Owner".
 model BusinessPost {
-  id              String        @id @default(uuid(7)) @db.Uuid
-  placeId         String        @db.Uuid
-  authorId        String        @db.Uuid
-  body            String        @db.VarChar(2000)
-  status          ContentStatus @default(VISIBLE)
-  score           Int           @default(0)
-  upCount         Int           @default(0)
-  downCount       Int           @default(0)
-  commentCount    Int           @default(0)
-  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
-  editedAt        DateTime?     @db.Timestamptz(3)
+  id               String           @id @default(uuid(7)) @db.Uuid
+  placeId          String           @db.Uuid
+  authorId         String?          @db.Uuid
+  businessAuthorId String?          @db.Uuid
+  body             String           @db.VarChar(2000)
+  status           ContentStatus    @default(VISIBLE)
+  score            Int              @default(0)
+  upCount          Int              @default(0)
+  downCount        Int              @default(0)
+  commentCount     Int              @default(0)
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
+  editedAt         DateTime?        @db.Timestamptz(3)
   /// D107: when the status last changed (set by a database trigger); retention counts from it.
-  statusChangedAt DateTime?     @db.Timestamptz(3)
-  place           BusinessPlace @relation(fields: [placeId], references: [id])
-  author          User          @relation(fields: [authorId], references: [id])
+  statusChangedAt  DateTime?        @db.Timestamptz(3)
+  place            BusinessPlace    @relation(fields: [placeId], references: [id])
+  author           User?            @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  businessAuthor   BusinessAccount? @relation(fields: [businessAuthorId], references: [id], onDelete: Restrict)
 
   comments   Comment[]
   votes      Vote[]
@@ -733,37 +739,42 @@ model BusinessPost {
 
   @@index([placeId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([authorId, createdAt(sort: Desc)])
+  @@index([businessAuthorId])
   // P13.7: the retention purge of deleted / removed content
   @@index([statusChangedAt], where: raw("\"statusChangedAt\" IS NOT NULL"))
 }
 
-/// Comment on exactly one post (CHECK). Author is a User or a Guest (authorKind).
-/// authorGuestId may become null after guest data purge; authorKind keeps the GUEST label (§16).
+/// Comment on exactly one post (CHECK). Author is a User, a Guest or (D172) the place's
+/// business (authorKind; CHECK). authorGuestId may become null after guest data purge;
+/// authorKind keeps the GUEST label (§16).
 model Comment {
-  id              String        @id @default(uuid(7)) @db.Uuid
-  generalPostId   String?       @db.Uuid
-  businessPostId  String?       @db.Uuid
-  parentCommentId String?       @db.Uuid
-  depth           Int           @default(0) @db.SmallInt
-  authorKind      AuthorKind
-  authorUserId    String?       @db.Uuid
-  authorGuestId   String?       @db.Uuid
-  body            String        @db.VarChar(1000)
-  status          ContentStatus @default(VISIBLE)
-  score           Int           @default(0)
-  upCount         Int           @default(0)
-  downCount       Int           @default(0)
-  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
-  editedAt        DateTime?     @db.Timestamptz(3)
+  id               String           @id @default(uuid(7)) @db.Uuid
+  generalPostId    String?          @db.Uuid
+  businessPostId   String?          @db.Uuid
+  parentCommentId  String?          @db.Uuid
+  depth            Int              @default(0) @db.SmallInt
+  authorKind       AuthorKind
+  authorUserId     String?          @db.Uuid
+  authorGuestId    String?          @db.Uuid
+  /// D172: a reply from the business website (business posts only; shows as "The Owner").
+  authorBusinessId String?          @db.Uuid
+  body             String           @db.VarChar(1000)
+  status           ContentStatus    @default(VISIBLE)
+  score            Int              @default(0)
+  upCount          Int              @default(0)
+  downCount        Int              @default(0)
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
+  editedAt         DateTime?        @db.Timestamptz(3)
   /// D107: when the status last changed (set by a database trigger); retention counts from it.
-  statusChangedAt DateTime?     @db.Timestamptz(3)
-  generalPost     GeneralPost?  @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
-  businessPost    BusinessPost? @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
-  parent          Comment?      @relation("Thread", fields: [parentCommentId], references: [id], onDelete: Cascade)
-  replies         Comment[]     @relation("Thread")
-  authorUser      User?         @relation(fields: [authorUserId], references: [id])
-  authorGuest     GuestSession? @relation(fields: [authorGuestId], references: [id], onDelete: SetNull)
+  statusChangedAt  DateTime?        @db.Timestamptz(3)
+  generalPost      GeneralPost?     @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
+  businessPost     BusinessPost?    @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
+  parent           Comment?         @relation("Thread", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies          Comment[]        @relation("Thread")
+  authorUser       User?            @relation(fields: [authorUserId], references: [id])
+  authorGuest      GuestSession?    @relation(fields: [authorGuestId], references: [id], onDelete: SetNull)
+  authorBusiness   BusinessAccount? @relation(fields: [authorBusinessId], references: [id], onDelete: Restrict)
 
   votes      Vote[]
   reports    Report[]
@@ -776,6 +787,7 @@ model Comment {
   @@index([parentCommentId])
   @@index([authorUserId, createdAt(sort: Desc)])
   @@index([authorGuestId])
+  @@index([authorBusinessId])
   // P13.1: the guest-comment purge only
   @@index([createdAt], where: raw("\"authorKind\" = 'GUEST'"))
   // P13.7: the retention purge of deleted / removed content
@@ -971,23 +983,26 @@ enum NotificationType {
 }
 
 model Notification {
-  id             String           @id @default(uuid(7)) @db.Uuid
-  userId         String           @db.Uuid
-  type           NotificationType
-  actorId        String?          @db.Uuid
-  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
-  readAt         DateTime?        @db.Timestamptz(3)
+  id              String           @id @default(uuid(7)) @db.Uuid
+  userId          String           @db.Uuid
+  type            NotificationType
+  actorId         String?          @db.Uuid
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  readAt          DateTime?        @db.Timestamptz(3)
   /// D156: the post (and comment) a comment, reply or mention notification points to.
-  generalPostId  String?          @db.Uuid
-  businessPostId String?          @db.Uuid
-  commentId      String?          @db.Uuid
+  generalPostId   String?          @db.Uuid
+  businessPostId  String?          @db.Uuid
+  commentId       String?          @db.Uuid
   /// D156: unread comments on one post are one row ("5 new comments").
-  count          Int              @default(1)
-  user           User             @relation("NotificationFor", fields: [userId], references: [id], onDelete: Cascade)
-  actor          User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
-  generalPost    GeneralPost?     @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
-  businessPost   BusinessPost?    @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
-  comment        Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  count           Int              @default(1)
+  user            User             @relation("NotificationFor", fields: [userId], references: [id], onDelete: Cascade)
+  actor           User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  /// D172: the place's business answered (business website); shown as "The Owner".
+  actorBusinessId String?          @db.Uuid
+  actorBusiness   BusinessAccount? @relation(fields: [actorBusinessId], references: [id], onDelete: Cascade)
+  generalPost     GeneralPost?     @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
+  businessPost    BusinessPost?    @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
+  comment         Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   // P13.1: the unread bell count; createdAt for the purge
@@ -995,6 +1010,7 @@ model Notification {
   @@index([createdAt])
   // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
   @@index([actorId])
+  @@index([actorBusinessId], where: raw("\"actorBusinessId\" IS NOT NULL"))
   // D156: foreign keys (deleting a post or comment removes its notifications).
   @@index([generalPostId], where: raw("\"generalPostId\" IS NOT NULL"))
   @@index([businessPostId], where: raw("\"businessPostId\" IS NOT NULL"))
@@ -1672,6 +1688,10 @@ model BusinessAccount {
   ads           Ad[]                  @relation("AdOwner")
   adsCreated    Ad[]                  @relation("AdCreator")
   media         AdMedia[]
+  // D172: what the business wrote in its place's discussion (the real author, for the Owner).
+  posts         BusinessPost[]
+  comments      Comment[]
+  notifications Notification[]
 
   @@index([createdById])
 }

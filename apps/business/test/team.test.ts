@@ -7,7 +7,6 @@ import { invalidateScreeningCache } from '@/server/screening';
 import { temporaryPassword } from '@/server/team';
 import { authed, makeAccount, makePlace, resetBusinessData, signIn, type Browser } from './helpers';
 
-
 // Route params as Next passes them (`never`: each route types its own).
 const ctx = (params: Record<string, string>) => ({ params: Promise.resolve(params) }) as never;
 

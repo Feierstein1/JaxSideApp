@@ -31,12 +31,23 @@ export async function notify(
   await tx.notification.create({ data: { userId, type, actorId } });
 }
 
+/**
+ * Notifications whose sender still has an active account, or (D172) that came from a
+ * business on the business website (shown as "The Owner"; a revoked login stops them).
+ */
+const FROM_LIVE_ACTOR = {
+  OR: [
+    { actor: { status: 'ACTIVE' as const } },
+    { actorBusinessId: { not: null }, actorBusiness: { revokedAt: null } },
+  ],
+};
+
 export async function unreadCount(userId: string): Promise<number> {
   return db.notification.count({
     where: {
       userId,
       readAt: null,
-      actor: { status: 'ACTIVE' },
+      ...FROM_LIVE_ACTOR,
       createdAt: { gt: await windowStart() },
     },
   });
@@ -154,7 +165,8 @@ export async function notifyComment(opts: {
     const recipients: [string, Activity][] = [];
     if (parent?.authorUserId) recipients.push([parent.authorUserId, 'COMMENT_REPLY']);
     for (const id of await mentionedIds(opts.body)) recipients.push([id, 'MENTION']);
-    if (post) recipients.push([post.authorId, 'POST_COMMENT']);
+    // D172: a post by the place's business has no app user to notify (its own inbox, B1.8).
+    if (post?.authorId) recipients.push([post.authorId, 'POST_COMMENT']);
     await send({ ...opts, recipients });
   } catch (err) {
     // A notification must never fail the comment itself.
@@ -228,7 +240,7 @@ export async function listNotifications(userId: string): Promise<NotificationVie
   const rows = await db.notification.findMany({
     where: {
       userId,
-      actor: { status: 'ACTIVE' },
+      ...FROM_LIVE_ACTOR,
       createdAt: { gt: await windowStart() },
     },
     orderBy: { createdAt: 'desc' },
@@ -254,9 +266,10 @@ export async function listNotifications(userId: string): Promise<NotificationVie
   return rows.map((r) => ({
     id: r.id,
     type: r.type,
-    // D157: an owner acting in their own place is "The Owner", never their username.
-    actorIsOwner: owners.has(r.id),
-    actor: owners.has(r.id)
+    // D157: an owner acting in their own place is "The Owner", never their username;
+    // D172: so is the place's business answering from the business website.
+    actorIsOwner: owners.has(r.id) || r.actorBusinessId !== null,
+    actor: owners.has(r.id) || r.actorBusinessId !== null
       ? null
       : r.actor
         ? {

@@ -40,9 +40,10 @@ interface PostRow {
   upCount: number;
   downCount: number;
   commentCount: number;
-  authorId: string;
-  username: string;
-  author_status: string;
+  /** Null when the place's business wrote it (D172). */
+  authorId: string | null;
+  username: string | null;
+  author_status: string | null;
   staff_badge: boolean;
   medals: MedalBadge[];
   author_color: string;
@@ -51,6 +52,9 @@ interface PostRow {
   voice: { id: string; durationMs: number } | null;
   is_owner: boolean;
   owner_staff_name: string | null;
+  /** D172: written by the place's business on the business website. */
+  by_business: boolean;
+  business_staff_name: string | null;
   video: { id: string; durationMs: number; width: number | null; height: number | null } | null;
   my_vote: number | null;
   distance: number | null;
@@ -67,15 +71,18 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
     body: r.body,
     createdAt: r.createdAt.toISOString(),
     editedAt: r.editedAt?.toISOString() ?? null,
-    author:
-      r.author_status === 'DELETED'
+    author: r.by_business
+      ? // D172: from the business website: always "The Owner"; which login wrote it is
+        // kept for the business's Owner and moderators only.
+        { theOwner: true, place: r.place_name!, staffName: r.business_staff_name }
+      : r.author_status === 'DELETED'
         ? { deleted: true }
         : r.is_owner
           ? // D157: in their own place's discussion an owner is "The Owner" (no username,
             // photo or medals); who wrote it is kept for moderators only.
             { theOwner: true, place: r.place_name!, staffName: r.owner_staff_name }
           : {
-              username: r.username,
+              username: r.username!,
               medals: r.medals,
               color: r.author_color,
               avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
@@ -141,9 +148,13 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
                   AND oc."userId" = p."authorId" AND oc.status = 'VERIFIED') AS is_owner,
           (SELECT oc."staffName" FROM "OwnerClaim" oc WHERE oc."placeId" = pl.id
                   AND oc."userId" = p."authorId" AND oc.status = 'VERIFIED'
-            LIMIT 1) AS owner_staff_name`
+            LIMIT 1) AS owner_staff_name,
+          p."businessAuthorId" IS NOT NULL AS by_business,
+          (SELECT a."staffName" FROM "BusinessPlaceAccess" a
+            WHERE a."accountId" = p."businessAuthorId" AND a."placeId" = pl.id
+            ORDER BY a."revokedAt" DESC NULLS FIRST LIMIT 1) AS business_staff_name`
       : Prisma.sql`NULL::uuid AS place_id, NULL::text AS place_name, false AS is_owner,
-          NULL::text AS owner_staff_name`;
+          NULL::text AS owner_staff_name, false AS by_business, NULL::text AS business_staff_name`;
   const join =
     kind === 'business'
       ? Prisma.sql`JOIN "BusinessPlace" pl ON pl.id = p."placeId"`
@@ -169,7 +180,7 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
             LIMIT 1) AS video,
            v.value AS my_vote, ${distance} AS distance, ${place}, ${topic}
     FROM ${TABLE[kind]} p
-    JOIN "User" u ON u.id = p."authorId"
+    LEFT JOIN "User" u ON u.id = p."authorId" -- D172: none when the business wrote it
     LEFT JOIN "Profile" pr ON pr."userId" = u.id
     ${join}
     LEFT JOIN "Vote" v ON v.${VOTE_COLUMN[kind]} = p.id AND v."voterId" = ${viewerId}::uuid`;

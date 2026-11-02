@@ -142,7 +142,16 @@ export async function listCases(opts: { type?: CaseType } = {}) {
   );
 }
 
-type Author = { id: string; username: string; status: string } | { guest: true } | null;
+type Author =
+  | { id: string; username: string; status: string }
+  | { guest: true }
+  /** D172: written on the business website by this business login (the real author). */
+  | { business: true; accountId: string; signInName: string }
+  | null;
+
+const businessLogin = { select: { id: true, email: true, username: true } } as const;
+const asBusiness = (a: { id: string; email: string | null; username: string | null } | null) =>
+  a ? { business: true as const, accountId: a.id, signInName: a.username ?? a.email ?? '' } : null;
 
 /** The reported thing's text, status and author. */
 async function subject(
@@ -156,17 +165,25 @@ async function subject(
   if (ref.type === 'business') {
     const p = await db.businessPost.findUnique({
       where: { id: ref.id },
-      include: { author: user },
+      include: { author: user, businessAuthor: businessLogin },
     });
-    return p && { body: p.body, status: p.status, author: p.author };
+    return (
+      p && { body: p.body, status: p.status, author: p.author ?? asBusiness(p.businessAuthor) }
+    );
   }
   if (ref.type === 'comment') {
-    const c = await db.comment.findUnique({ where: { id: ref.id }, include: { authorUser: user } });
+    const c = await db.comment.findUnique({
+      where: { id: ref.id },
+      include: { authorUser: user, authorBusiness: businessLogin },
+    });
     return (
       c && {
         body: c.body,
         status: c.status,
-        author: c.authorUser ?? (c.authorKind === 'GUEST' ? { guest: true } : null),
+        author:
+          c.authorUser ??
+          asBusiness(c.authorBusiness) ??
+          (c.authorKind === 'GUEST' ? { guest: true } : null),
       }
     );
   }

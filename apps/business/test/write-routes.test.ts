@@ -9,6 +9,10 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as login from '@/app/api/auth/login/route';
+import * as commentDelete from '@/app/api/places/[placeId]/comments/[commentId]/delete/route';
+import * as postDelete from '@/app/api/places/[placeId]/posts/[postId]/delete/route';
+import * as replies from '@/app/api/places/[placeId]/posts/[postId]/replies/route';
+import * as posts from '@/app/api/places/[placeId]/posts/route';
 import * as teamMember from '@/app/api/places/[placeId]/team/[accountId]/route';
 import * as team from '@/app/api/places/[placeId]/team/route';
 import * as inviteAccept from '@/app/api/invites/accept/route';
@@ -42,6 +46,34 @@ type Entry = {
 };
 
 const ROUTES: Entry[] = [
+  {
+    path: 'places/[placeId]/posts',
+    method: 'POST',
+    handler: posts.POST,
+    kind: 'session',
+    body: true,
+  },
+  {
+    path: 'places/[placeId]/posts/[postId]/replies',
+    method: 'POST',
+    handler: replies.POST,
+    kind: 'session',
+    body: true,
+  },
+  {
+    path: 'places/[placeId]/posts/[postId]/delete',
+    method: 'POST',
+    handler: postDelete.POST,
+    kind: 'session',
+    body: true,
+  },
+  {
+    path: 'places/[placeId]/comments/[commentId]/delete',
+    method: 'POST',
+    handler: commentDelete.POST,
+    kind: 'session',
+    body: true,
+  },
   {
     path: 'places/[placeId]/team',
     method: 'POST',
@@ -105,7 +137,9 @@ const ROUTES: Entry[] = [
 
 /** Route params for dynamic routes (made-up ids; the guards answer before they're used). */
 const ZERO = '00000000-0000-7000-8000-000000000000';
-const PARAMS = { params: Promise.resolve({ placeId: ZERO, accountId: ZERO }) } as never;
+const PARAMS = {
+  params: Promise.resolve({ placeId: ZERO, accountId: ZERO, postId: ZERO, commentId: ZERO }),
+} as never;
 
 const API_DIR = path.resolve(import.meta.dirname, '../src/app/api');
 

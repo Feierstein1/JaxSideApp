@@ -9,7 +9,7 @@ import { SignOutButton } from '../../sign-out-button';
 
 const SECTIONS: Ability[] = ['discussion', 'team', 'ads', 'insights', 'billing'];
 /** Sections that have their own page so far (the rest say "coming soon"). */
-const BUILT: Partial<Record<Ability, string>> = { team: 'team' };
+const BUILT: Partial<Record<Ability, string>> = { discussion: 'discussion', team: 'team' };
 
 /** B1.4: one place. 🔒 Only accounts with access see it; anyone else gets "not found". */
 export default async function PlacePage({ params }: { params: Promise<{ placeId: string }> }) {

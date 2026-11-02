@@ -45,6 +45,8 @@ export default async function ReportsQueue() {
               <td style={td}>
                 {c.author && 'username' in c.author ? (
                   <a href={`/admin/users/${c.author.id}`}>@{c.author.username}</a>
+                ) : c.author && 'business' in c.author ? (
+                  `Business (${c.author.signInName})`
                 ) : c.author ? (
                   'GUEST'
                 ) : (
