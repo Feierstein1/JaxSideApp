@@ -42,10 +42,15 @@
         {
           "photosPermission": "JaxSide lets you add photos from your library to posts and your profile. Photos are cleaned of location and camera details before they're shared.",
           "cameraPermission": "JaxSide uses the camera only when you record a video for a post.",
-          "microphonePermission": false
+          "microphonePermission": "JaxSide uses the microphone only when you record a voice post or a video for a post."
         }
       ],
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "JaxSide uses the microphone only when you record a voice post or a video for a post."
+        }
+      ],
       "expo-font",
       "expo-video",
       [

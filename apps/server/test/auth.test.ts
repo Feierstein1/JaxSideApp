@@ -226,8 +226,54 @@ describe('login / logout (P1.15)', () => {
     expect(wrong.body).toEqual(unknown.body);
   });
 
+  // The one-minute limits (D175) have their own tests; lift them for the longer loops below.
+  const liftMinuteLimits = async () => {
+    await db.appConfiguration.createMany({
+      data: ['rateLimit.login.perMinutePerIp', 'rateLimit.login.perMinutePerAccount'].map(
+        (key) => ({ key, value: 1000 }),
+      ),
+    });
+    invalidateConfigCache();
+  };
+
+  // 🔒 D175: more than 5 failed attempts for one account in a minute are blocked for a short
+  // time, even with the right password; other accounts are unaffected.
+  it('blocks the 6th failed attempt in a minute for an account, briefly', async () => {
+    await call(registerPOST, 'POST', { body: registration() });
+    for (let i = 0; i < 5; i++) {
+      const r = await call(loginPOST, 'POST', {
+        body: { identifier: 'riverrat', password: `wrong-password-${i}` },
+      });
+      expect(r.status).toBe(401);
+    }
+    const blocked = await call(loginPOST, 'POST', {
+      body: { identifier: 'riverrat', password: PASSWORD },
+    });
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error.details.retryAfterSeconds).toBeLessThanOrEqual(60);
+    const other = await call(loginPOST, 'POST', {
+      body: { identifier: 'someone-else', password: 'wrong-password' },
+    });
+    expect(other.status).toBe(401);
+  });
+
+  // 🔒 D175: 8 failures a minute from one IP (spread over many accounts) block that IP briefly.
+  it('blocks one IP after 8 failed attempts in a minute', async () => {
+    for (let i = 0; i < 8; i++) {
+      const r = await call(loginPOST, 'POST', {
+        body: { identifier: `nobody${i}`, password: 'wrong-password' },
+      });
+      expect(r.status).toBe(401);
+    }
+    const r = await call(loginPOST, 'POST', {
+      body: { identifier: 'nobody-else', password: 'wrong-password' },
+    });
+    expect(r.status).toBe(429);
+  });
+
   // 🔒 Per-account throttle: after 10 failures even the right password is refused.
   it('locks the account identifier after 10 failed attempts in 15 minutes', async () => {
+    await liftMinuteLimits();
     await call(registerPOST, 'POST', { body: registration() });
     for (let i = 0; i < 10; i++) {
       const r = await call(loginPOST, 'POST', {
@@ -254,6 +300,7 @@ describe('login / logout (P1.15)', () => {
 
   // 🔒 D29: 15 failed attempts per IP per 15 minutes, spread across many accounts.
   it('after 15 failed logins from one IP, the 16th attempt is refused even with a correct password', async () => {
+    await liftMinuteLimits();
     await call(registerPOST, 'POST', { body: registration() });
     for (let i = 0; i < 15; i++) {
       const r = await call(loginPOST, 'POST', {

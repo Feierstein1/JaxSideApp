@@ -326,9 +326,24 @@ export async function checkCredentials(
     windowSeconds: 15 * 60,
   };
 
-  // Both limits count FAILED attempts only (D29). Successful logins never count, so
+  // D175: a one-minute limit stops rapid-fire attempts quickly; the 15-minute limits above
+  // stay as the slower net.
+  const ipMinuteRule = {
+    key: `login-fail-min:ip:${ctx.ipSubject}`,
+    limitKey: 'rateLimit.login.perMinutePerIp' as const,
+    windowSeconds: 60,
+  };
+  const accountMinuteRule = {
+    key: `login-fail-min:acct:${subjectHash(identifier)}`,
+    limitKey: 'rateLimit.login.perMinutePerAccount' as const,
+    windowSeconds: 60,
+  };
+
+  // All limits count FAILED attempts only (D29). Successful logins never count, so
   // people sharing one IP (carrier NAT, café wifi) aren't blocked by each other's
   // normal sign-ins, and a user who knows their password isn't locked out.
+  await assertUnder(ipMinuteRule, now);
+  await assertUnder(accountMinuteRule, now);
   await assertUnder(ipRule, now);
   await assertUnder(accountRule, now);
   if (opts.refuseBannedInstallation) assertInstallationNotBanned(ctx.installation ?? null);
@@ -336,6 +351,8 @@ export async function checkCredentials(
   const fail = async () => {
     await hit(ipRule.key, ipRule.windowSeconds, now);
     await hit(accountRule.key, accountRule.windowSeconds, now);
+    await hit(ipMinuteRule.key, ipMinuteRule.windowSeconds, now);
+    await hit(accountMinuteRule.key, accountMinuteRule.windowSeconds, now);
     return INVALID_CREDENTIALS();
   };
 

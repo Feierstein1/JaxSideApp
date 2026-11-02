@@ -165,6 +165,9 @@ export const CONFIG_DEFAULTS = {
   // Login limits count failed attempts only (D29).
   'rateLimit.login.per15MinPerAccount': 10,
   'rateLimit.login.per15MinPerIp': 15,
+  // D175: a short block on rapid-fire failures (typing or guessing), on top of the 15-minute limits.
+  'rateLimit.login.perMinutePerAccount': 5,
+  'rateLimit.login.perMinutePerIp': 8,
   'rateLimit.passwordReset.perHourPerIp': 5,
   'rateLimit.passwordReset.perHourPerAccount': 3,
   'rateLimit.post.perMinute': 2,

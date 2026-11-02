@@ -1059,6 +1059,8 @@ beforeAll(async () => {
       'rateLimit.codeAttempt.per15MinPerIp',
       'rateLimit.login.per15MinPerIp',
       'rateLimit.login.per15MinPerAccount',
+      'rateLimit.login.perMinutePerIp',
+      'rateLimit.login.perMinutePerAccount',
       'rateLimit.verifyEmailResend.perHour',
     ].map((key) => ({ key, value: 1000 })),
   });

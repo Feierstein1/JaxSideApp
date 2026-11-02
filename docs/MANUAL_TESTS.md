@@ -540,6 +540,13 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [ ] A post with more than 20 comments shows 20, then **Show more comments (N more)** adds 20 more.
 - [ ] Opening a comment from a notification shows it even when it's past the first 20.
 
+### Phone-test fixes, round 2 (D175) (needs the new build)
+
+- [ ] Android and iPhone: **Add photos** lets you tick several photos at once (a post takes 4; a message takes 4); a profile picture still takes one.
+- [ ] Android: Settings → Apps → JaxSide → Permissions now lists **Microphone**. Record a voice post: the first time it asks, Allow works; a video with sound records too.
+- [ ] iPhone: a voice post asks for the microphone with our wording; Settings → JaxSide shows Microphone.
+- [ ] Type a wrong password 6 times in a minute: the 6th try says to wait (even with the right password) and works again after about a minute.
+
 ### Phone-test fixes (D162)
 
 - [ ] As an account with the ADMIN badge, made today: place votes, poll votes, ratings and Add Topic work with no wait.

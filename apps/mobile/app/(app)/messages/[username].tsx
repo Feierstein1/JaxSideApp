@@ -10,7 +10,7 @@ import {
   type ReportTarget,
 } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
-import { photoUri, pickPhoto, uploadPhoto, type Uploaded } from '@/discussion/photos';
+import { photoUri, pickPhotos, uploadPhoto, type Uploaded } from '@/discussion/photos';
 import { sendScreened } from '@/discussion/screening';
 import { postTime } from '@/format';
 import { haptic } from '@/motion';
@@ -101,12 +101,14 @@ export default function Chat() {
   }
 
   async function addPhoto() {
-    const asset = await pickPhoto();
-    if (!asset) return;
+    const assets = await pickPhotos({ limit: MESSAGE_PHOTOS_MAX - photos.length });
+    if (!assets.length) return;
     setUploading(true);
     try {
-      const up = await uploadPhoto(asset);
-      setPhotos((p) => [...p, { ...up, localUri: asset.uri }]);
+      for (const asset of assets) {
+        const up = await uploadPhoto(asset);
+        setPhotos((p) => [...p, { ...up, localUri: asset.uri }]);
+      }
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t add the photo.');
     } finally {

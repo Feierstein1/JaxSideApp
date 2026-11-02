@@ -12,6 +12,10 @@ export const CONFIG_DESCRIPTIONS: Partial<Record<keyof typeof CONFIG_DEFAULTS, s
 
   'rateLimit.login.per15MinPerIp': 'Failed logins allowed per IP per 15 minutes (D29)',
   'rateLimit.login.per15MinPerAccount': 'Failed logins allowed per account per 15 minutes (D29)',
+  'rateLimit.login.perMinutePerIp':
+    'Failed logins allowed per IP per minute, then a short block (D175)',
+  'rateLimit.login.perMinutePerAccount':
+    'Failed logins allowed per account per minute, then a short block (D175)',
 };
 
 /** Initial achievement definitions (P6.8). Criteria are evaluated server-side only. */

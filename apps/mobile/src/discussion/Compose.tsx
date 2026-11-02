@@ -11,7 +11,7 @@ import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { DecoBox } from '@/deco';
 import { Banner, FormError, KeyboardSafeView, type IconName } from '@/ui';
 import { createPost, markFeedsDirty, type PostTarget } from './api';
-import { pickPhoto, uploadPhoto, type Uploaded } from './photos';
+import { pickPhotos, uploadPhoto, type Uploaded } from './photos';
 import { sendScreened } from './screening';
 import { VideoPlayer } from './VideoPlayer';
 import { pickVideo, uploadVideo, VIDEO_MAX_SECONDS, type UploadedVideo } from './videos';
@@ -65,12 +65,15 @@ export function Compose({ target, placeName }: { target: PostTarget; placeName?:
   async function addPhoto() {
     setError(undefined);
     if (!(await ensureGuide('photo'))) return;
-    const asset = await pickPhoto();
-    if (!asset) return;
+    // D175: pick as many as still fit (up to PHOTOS_MAX in all) and upload them one by one.
+    const assets = await pickPhotos({ limit: PHOTOS_MAX - photos.length });
+    if (!assets.length) return;
     setUploading(true);
     try {
-      const up = await uploadPhoto(asset);
-      setPhotos((p) => [...p, { ...up, localUri: asset.uri }]);
+      for (const asset of assets) {
+        const up = await uploadPhoto(asset);
+        setPhotos((p) => [...p, { ...up, localUri: asset.uri }]);
+      }
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t add the photo.');
     } finally {
@@ -374,7 +377,7 @@ export function Compose({ target, placeName }: { target: PostTarget; placeName?:
               >
                 <Ionicons name="image" size={22} color={DARK.accent} />
                 <Text style={{ color: DARK.accent, fontWeight: '800', fontSize: 15.5 }}>
-                  {photos.length ? 'Add another photo' : 'Add a photo'}
+                  {photos.length ? 'Add more photos' : 'Add photos'}
                 </Text>
                 <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
                   {photos.length}/{PHOTOS_MAX}

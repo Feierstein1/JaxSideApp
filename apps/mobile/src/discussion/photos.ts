@@ -16,21 +16,35 @@ import { shrinkTo } from './photo-size';
 
 export type Uploaded = Pick<PhotoView, 'id' | 'width' | 'height' | 'url'>;
 
-/** Library picker. Returns null if the person cancels or doesn't allow access. */
-export async function pickPhoto(opts: { square?: boolean } = {}) {
+/**
+ * Library picker. Returns the chosen photos (up to `limit`, default one), or an empty list if
+ * the person cancels or doesn't allow access. D175: several photos can be picked at once;
+ * a square crop (profile photo) is always a single photo.
+ */
+export async function pickPhotos(opts: { square?: boolean; limit?: number } = {}) {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!perm.granted) return null;
+  if (!perm.granted) return [];
+  const limit = opts.square ? 1 : Math.max(1, opts.limit ?? 1);
   const r = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
     // Untouched here: photos are shrunk to JPEG below, and GIFs must keep their frames (D74).
     quality: 1,
     allowsEditing: !!opts.square,
     aspect: opts.square ? [1, 1] : undefined,
+    // Editing and multi-select can't be combined, so only a plain pick can take several.
+    allowsMultipleSelection: limit > 1,
+    selectionLimit: limit,
     exif: false,
     preferredAssetRepresentationMode:
       ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Current,
   });
-  return r.canceled ? null : (r.assets[0] ?? null);
+  // Some Android pickers ignore the limit, so cut the list to it here too.
+  return r.canceled ? [] : r.assets.slice(0, limit);
+}
+
+/** One photo (profile picture), or null. */
+export async function pickPhoto(opts: { square?: boolean } = {}) {
+  return (await pickPhotos({ square: opts.square }))[0] ?? null;
 }
 
 async function shrink(asset: { uri: string; width: number; height: number }) {
