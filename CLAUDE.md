@@ -23,3 +23,17 @@ Location-verified, pseudonymous social network for Jacksonville, FL (iOS/Android
 - No secrets in git. `.env.example` holds placeholders only.
 - No public deployment and no paid services without explicit user approval.
 - Don't build out-of-scope features (see the tracker's "Out of Scope" section).
+
+## Other JaxSide repos (D184)
+
+The owner website lives in its own repo (`C:\Users\kenfe\Projects\JaxSideBusiness`) and
+shares only the database with this one. How the repos fit together, and the rules both keep:
+
+@../JaxSide-hub/CONTRACT.md
+
+- **At the start of every session, read `../JaxSide-hub/inbox/for-app.md`** and act on open
+  notes; move handled ones to "Done" with the date.
+- **When you change something the website needs** (a table it uses, a shared rule in
+  `packages/shared`, an app-side job it relies on), add a dated note to
+  `../JaxSide-hub/inbox/for-business.md`, and a line to `../JaxSide-hub/DECISIONS.md` if
+  it's a decision.
