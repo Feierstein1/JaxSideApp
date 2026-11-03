@@ -473,10 +473,11 @@ model BusinessPlace {
   placeStats  PlaceStatsDaily[]
 
   // D169: business portal (no columns here; the business tables point at the place).
-  businessAccess  BusinessPlaceAccess[]
-  businessInvites BusinessInvite[]
-  ads             Ad[]
-  businessNotices BusinessNotice[]
+  businessAccess       BusinessPlaceAccess[]
+  businessInvites      BusinessInvite[]
+  ads                  Ad[]
+  businessNotices      BusinessNotice[]
+  verificationRequests BusinessVerificationRequest[]
 
   @@unique([sourceName, sourceId])
   @@index([location], type: Gist)
@@ -1674,25 +1675,29 @@ model BusinessAccount {
   suspendedAt        DateTime? @db.Timestamptz(3)
   /// Revoked by its Owner or an admin; never signs in again.
   revokedAt          DateTime? @db.Timestamptz(3)
+  /// D185: the Google account ID ("sub") for Sign in with Google (owners only). A login that
+  /// only ever uses Google gets a random, unusable passwordHash.
+  googleSub          String?   @unique @db.VarChar(255)
   /// B1.8: email a summary of new activity (at most once a day; needs an email).
   emailNotices       Boolean   @default(false)
   noticesEmailedAt   DateTime? @db.Timestamptz(3)
 
-  createdBy     BusinessAccount?      @relation("BusinessEmployees", fields: [createdById], references: [id], onDelete: SetNull)
-  employees     BusinessAccount[]     @relation("BusinessEmployees")
-  sessions      BusinessSession[]
-  placeAccess   BusinessPlaceAccess[] @relation("AccessHolder")
-  accessGranted BusinessPlaceAccess[] @relation("AccessGranter")
-  invitesUsed   BusinessInvite[]
-  subscriptions Subscription[]
-  ads           Ad[]                  @relation("AdOwner")
-  adsCreated    Ad[]                  @relation("AdCreator")
-  media         AdMedia[]
+  createdBy            BusinessAccount?              @relation("BusinessEmployees", fields: [createdById], references: [id], onDelete: SetNull)
+  employees            BusinessAccount[]             @relation("BusinessEmployees")
+  sessions             BusinessSession[]
+  placeAccess          BusinessPlaceAccess[]         @relation("AccessHolder")
+  accessGranted        BusinessPlaceAccess[]         @relation("AccessGranter")
+  invitesUsed          BusinessInvite[]
+  subscriptions        Subscription[]
+  verificationRequests BusinessVerificationRequest[]
+  ads                  Ad[]                          @relation("AdOwner")
+  adsCreated           Ad[]                          @relation("AdCreator")
+  media                AdMedia[]
   // D172: what the business wrote in its place's discussion (the real author, for the Owner).
-  posts         BusinessPost[]
-  comments      Comment[]
-  notifications Notification[]
-  notices       BusinessNotice[]
+  posts                BusinessPost[]
+  comments             Comment[]
+  notifications        Notification[]
+  notices              BusinessNotice[]
 
   @@index([createdById])
 }
@@ -1721,23 +1726,28 @@ enum BusinessRole {
 
 /// Who can run which place, and as what. One live Owner per place (partial unique index).
 model BusinessPlaceAccess {
-  id           String           @id @default(uuid(7)) @db.Uuid
-  accountId    String           @db.Uuid
-  placeId      String           @db.Uuid
-  role         BusinessRole
+  id             String                @id @default(uuid(7)) @db.Uuid
+  accountId      String                @db.Uuid
+  placeId        String                @db.Uuid
+  role           BusinessRole
   /// D157: shown after "The Owner" on posts ("The Owner · Sarah"); optional.
-  staffName    String?          @db.VarChar(30)
+  staffName      String?               @db.VarChar(30)
   /// B1.3: the verified phone-app claim this Owner access came from.
-  ownerClaimId String?          @db.Uuid
-  grantedById  String?          @db.Uuid
-  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
-  revokedAt    DateTime?        @db.Timestamptz(3)
+  ownerClaimId   String?               @db.Uuid
+  grantedById    String?               @db.Uuid
+  createdAt      DateTime              @default(now()) @db.Timestamptz(3)
+  revokedAt      DateTime?             @db.Timestamptz(3)
   /// B1.8: this person's inbox shows the place's activity after this (null = since they joined).
-  inboxSeenAt  DateTime?        @db.Timestamptz(3)
-  account      BusinessAccount  @relation("AccessHolder", fields: [accountId], references: [id], onDelete: Cascade)
-  place        BusinessPlace    @relation(fields: [placeId], references: [id], onDelete: Cascade)
-  ownerClaim   OwnerClaim?      @relation(fields: [ownerClaimId], references: [id], onDelete: SetNull)
-  grantedBy    BusinessAccount? @relation("AccessGranter", fields: [grantedById], references: [id], onDelete: SetNull)
+  inboxSeenAt    DateTime?             @db.Timestamptz(3)
+  /// D185: how this Owner access was verified (Owner rows only; null for Manager / Staff).
+  verifiedBy     BusinessVerification?
+  verifiedAt     DateTime?             @db.Timestamptz(3)
+  /// D185: the Google Business Profile listing it was verified with ("locations/…").
+  googleLocation String?               @db.VarChar(200)
+  account        BusinessAccount       @relation("AccessHolder", fields: [accountId], references: [id], onDelete: Cascade)
+  place          BusinessPlace         @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  ownerClaim     OwnerClaim?           @relation(fields: [ownerClaimId], references: [id], onDelete: SetNull)
+  grantedBy      BusinessAccount?      @relation("AccessGranter", fields: [grantedById], references: [id], onDelete: SetNull)
 
   @@unique([accountId, placeId], map: "BusinessPlaceAccess_one_live", where: raw("\"revokedAt\" IS NULL"))
   @@unique([placeId], map: "BusinessPlaceAccess_one_owner", where: raw("role = 'OWNER' AND \"revokedAt\" IS NULL"))
@@ -1966,4 +1976,51 @@ model SecurityEvent {
 
   @@index([kind, createdAt])
   @@index([userId])
+}
+
+/// D185: how a business's Owner access to a place was verified.
+enum BusinessVerification {
+  GOOGLE // the owner's Google account manages the place's Google Business Profile listing
+  ADMIN // a JaxSide admin verified them (the "Ask JaxSide to verify me" fallback, or a move)
+  LEGACY_CLAIM // verified in the phone app before D185 (email / website / phone code)
+}
+
+enum VerificationRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/**
+ * D185: "Ask JaxSide to verify me", for owners who can't verify with Google. Sent from the
+ * owner website by a signed-in business account; lands in the admin portal's Owners queue.
+ * `placeId` is set for a place already in the directory; a brand-new place has only the
+ * name and address the owner typed (the admin adds the place, then approves).
+ */
+model BusinessVerificationRequest {
+  id               String                    @id @default(uuid(7)) @db.Uuid
+  accountId        String                    @db.Uuid
+  placeId          String?                   @db.Uuid
+  placeName        String                    @db.VarChar(200)
+  placeAddress     String?                   @db.VarChar(300)
+  /// How the admin reaches the person (they choose; nothing else is asked).
+  contactName      String                    @db.VarChar(100)
+  contactPhone     String?                   @db.VarChar(40)
+  note             String?                   @db.VarChar(1000)
+  status           VerificationRequestStatus @default(PENDING)
+  createdAt        DateTime                  @default(now()) @db.Timestamptz(3)
+  decidedAt        DateTime?                 @db.Timestamptz(3)
+  /// The admin (User id); a plain id kept for the record.
+  decidedByAdminId String?                   @db.Uuid
+  /// Shown to the business when a request is turned down.
+  decisionNote     String?                   @db.VarChar(500)
+  account          BusinessAccount           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  place            BusinessPlace?            @relation(fields: [placeId], references: [id], onDelete: SetNull)
+
+  /// One open request per business and place.
+  @@unique([accountId, placeId], map: "BusinessVerificationRequest_one_open", where: raw("status = 'PENDING'"))
+  @@index([status, createdAt])
+  @@index([accountId])
+  @@index([placeId])
 }

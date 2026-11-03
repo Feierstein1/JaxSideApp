@@ -633,7 +633,7 @@ Separate website in `apps/business` with its own API, same database (D169). Noth
 **B6 Google verification (D185):**
 
 - [ ] B6.1 (owner) Google Cloud project, Business Profile API access request, OAuth consent screen; checklist from me
-- [ ] B6.2 (this repo) Database: claim method GOOGLE and the Google listing ID / account ID on the owner's place access, a verification request table for the fallback; migration here, schema copied to JaxSideBusiness
+- [ ] B6.2 (this repo) Database: `BusinessAccount.googleSub`, `verifiedBy` (GOOGLE / ADMIN / LEGACY_CLAIM) + `verifiedAt` + `googleLocation` on the Owner access (no new phone-claim method: Google owners have no app claim), a verification request table for the fallback; migration here, schema copied to JaxSideBusiness — written 2026-11-02 (migration `google_verification`, back-fills today's owners); synced to JaxSideBusiness (`npm run schema:sync`, new); **to do: apply to dev / test / staging databases and add schema tests when Docker is up**
 - [ ] B6.3 (JaxSideBusiness) Sign in with Google, list the owner's Google listings, match to places, create the business account and Owner access; "Ask JaxSide to verify me" form
 - [ ] B6.4 (this repo) Admin portal: the fallback requests in the Owners queue (approve creates the business access)
 - [ ] B6.5 (this repo, phone app) "I own this place" info screen with the website link; "Owner verified" badge; old claim methods and the app's owner team removed; "The Owner" no longer shown for personal accounts (D157 ends); server routes for the old methods and invites retired
