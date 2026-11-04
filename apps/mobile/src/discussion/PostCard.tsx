@@ -87,7 +87,7 @@ export function openAuthor(a: AnyAuthor) {
 const CLAMP = 8;
 /** D79: a post this well received gets a small "Popular" tag. */
 const POPULAR = 10;
-/** D140: posts from the last 24 hours get a NEW tag in the top-right corner. */
+/** D140: posts from the last 24 hours get a NEW tag on the name's line, far right. */
 const NEW_FOR_MS = 24 * 3_600_000;
 
 /**
@@ -153,35 +153,6 @@ export function PostCard({
           stroke={isAdmin ? DARK.adminEdge : undefined}
           strokeWidth={isAdmin ? 1.5 : 1}
         >
-          {isNew ? (
-            // D140: just inside the clipped top-right corner, above the name row.
-            <View
-              accessible
-              accessibilityLabel="New, posted in the last day"
-              style={{
-                position: 'absolute',
-                top: 3,
-                right: 18,
-                paddingHorizontal: 6,
-                height: 15,
-                borderRadius: 3,
-                justifyContent: 'center',
-                backgroundColor: DARK.accent,
-                zIndex: 1,
-              }}
-            >
-              <Text
-                style={{
-                  color: DARK.onAccent,
-                  fontSize: 9.5,
-                  fontWeight: '800',
-                  letterSpacing: 1,
-                }}
-              >
-                NEW
-              </Text>
-            </View>
-          ) : null}
           {/* The author's color as a stripe down the left edge (below the clipped corner). */}
           <View
             style={{
@@ -237,9 +208,44 @@ export function PostCard({
                     />
                   ) : null}
                   {'medals' in author ? <MedalIcons medals={author.medals} size={16} /> : null}
-                  {/* D157: the place's owner team, in its own discussion. */}
-                  {isOwner ? <OwnerPill /> : null}
+                  {isNew ? (
+                    // D140 / D199: on the name's line, at the far right.
+                    <View
+                      accessible
+                      accessibilityLabel="New, posted in the last day"
+                      style={{
+                        marginLeft: 'auto',
+                        paddingHorizontal: 6,
+                        height: 18,
+                        borderRadius: 3,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: DARK.accent,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: DARK.onAccent,
+                          fontSize: 10,
+                          fontWeight: '800',
+                          letterSpacing: 1,
+                          lineHeight: 12,
+                          textAlign: 'center',
+                          textAlignVertical: 'center',
+                          includeFontPadding: false,
+                        }}
+                      >
+                        NEW
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
+                {/* D157 / D199: the place's owner team, "Verified" under The Owner's name. */}
+                {isOwner ? (
+                  <View style={{ flexDirection: 'row', marginTop: 3 }}>
+                    <OwnerPill />
+                  </View>
+                ) : null}
                 {isAdmin ? <AdminTag /> : null}
                 <Text
                   style={{ color: DARK.textMuted, fontSize: 13, fontWeight: '500', marginTop: 1 }}
