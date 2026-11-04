@@ -102,6 +102,47 @@ function ActivityRow({ n }: { n: NotificationView }) {
   );
 }
 
+/** D188: "You won a giveaway" (from JaxSide, no sender); opens the claim screen. */
+function GiveawayRow({ n }: { n: NotificationView }) {
+  const line = `You won a giveaway: ${n.giveaway!.title}`;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${line}. ${timeAgo(n.createdAt)}. Opens your prize.`}
+      onPress={() => router.push(`/account/giveaway/${n.giveaway!.winId}`)}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACE.md,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        minHeight: 64,
+        opacity: pressed ? 0.8 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: DARK.accent,
+        }}
+      >
+        <Ionicons name="gift" size={22} color={DARK.onAccent} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontWeight: n.read ? '600' : '800' }}>{line}</Text>
+        <Text style={[TYPE.caption, { color: DARK.textMuted }]}>
+          Tap to claim your prize · {timeAgo(n.createdAt)}
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={DARK.textMuted} />
+    </Pressable>
+  );
+}
+
 /**
  * D76: the bell's list. Opening it marks everything read; requests can be answered here.
  * D79: dark page, requests waiting for an answer first, then everything else.
@@ -140,7 +181,8 @@ export default function Notifications() {
   }
 
   const waiting = items?.filter((n) => n.actor && n.pendingRequestId) ?? [];
-  const rest = items?.filter((n) => (n.actor || n.actorIsOwner) && !n.pendingRequestId) ?? [];
+  const rest =
+    items?.filter((n) => (n.actor || n.actorIsOwner || n.giveaway) && !n.pendingRequestId) ?? [];
   const isActivity = (n: NotificationView) => n.target !== null;
 
   return (
@@ -167,7 +209,7 @@ export default function Notifications() {
         <EmptyState
           icon="notifications-off-outline"
           title="You’re all caught up"
-          body="Comments on your posts, replies, @mentions and friend requests show up here."
+          body="Comments on your posts, replies, @mentions, friend requests and giveaway prizes show up here."
         />
       ) : (
         <>
@@ -200,7 +242,9 @@ export default function Notifications() {
           {rest.length ? (
             <ListGroup first={!waiting.length} title="Earlier">
               {rest.map((n) =>
-                isActivity(n) ? (
+                n.giveaway ? (
+                  <GiveawayRow key={n.id} n={n} />
+                ) : isActivity(n) ? (
                   <ActivityRow key={n.id} n={n} />
                 ) : (
                   <FriendRow

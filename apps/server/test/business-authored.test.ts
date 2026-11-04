@@ -92,7 +92,13 @@ describe('🔒 business-written posts and replies in the app (D172)', () => {
     });
     expect(room.status).toBe(200);
     const shown = room.body.posts.find((p: { id: string }) => p.id === bizPost.id);
-    expect(shown.author).toEqual({ theOwner: true, place: 'Bold Bean', staffName: 'Sam' });
+    // D189: no picture set, so none shown.
+    expect(shown.author).toEqual({
+      theOwner: true,
+      place: 'Bold Bean',
+      staffName: 'Sam',
+      avatarUrl: null,
+    });
     expect(shown.isMine).toBe(false);
 
     const detail = await call(bizPostPOST as H, 'POST', {
@@ -104,6 +110,7 @@ describe('🔒 business-written posts and replies in the app (D172)', () => {
       theOwner: true,
       place: 'Bold Bean',
       staffName: 'Sam',
+      avatarUrl: null,
     });
 
     const bell = await call(bellGET as H, 'GET', { token: fan.token });

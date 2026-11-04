@@ -3,11 +3,30 @@ import { getBusiness } from '@/server/admin/businesses';
 import { listPlans } from '@/server/admin/plans';
 import { ApiError } from '@/server/http';
 import { ui } from '../../../admin-ui';
-import { BusinessActions, CompPlanForm, MoveOwnerForm } from '../../../business-forms';
+import {
+  BusinessActions,
+  BusinessStrikeForm,
+  CompPlanForm,
+  MoveOwnerForm,
+} from '../../../business-forms';
+import { NotifyForReport, VoidStrike } from '../../../forms';
 import { requireAdminPage } from '../../../require-admin-page';
 import { Pill, Table, td, when, words } from '../../admin-table';
 
 export const dynamic = 'force-dynamic';
+
+const STRIKES = new Set(['WARN', 'SUSPEND', 'BAN']);
+const WHAT: Record<string, string> = { business: 'place post', comment: 'reply' };
+
+/** The ladder step a strike gives now (D191: same ladder as people). */
+function stepLabel(next: { action: string; hours?: number } | null) {
+  if (!next) return null;
+  if (next.action === 'WARN') return 'warning';
+  if (next.action === 'BAN') return 'ban';
+  return next.hours! % 24 === 0
+    ? `${next.hours! / 24} day suspension`
+    : `${next.hours} h suspension`;
+}
 
 /** B1.7: one business login: places, team, sign-ins, claims, activity, plan; and actions. */
 export default async function BusinessPage({ params }: { params: Promise<{ id: string }> }) {
@@ -23,6 +42,8 @@ export default async function BusinessPage({ params }: { params: Promise<{ id: s
   }
   const live = b.places.filter((p) => !p.revokedAt);
   const past = b.places.filter((p) => p.revokedAt);
+  const step = stepLabel(b.nextStrike);
+  const strikesUrl = `/api/v1/admin/businesses/${b.id}/strikes`;
   return (
     <>
       <p>
@@ -35,7 +56,19 @@ export default async function BusinessPage({ params }: { params: Promise<{ id: s
         {b.twoFactorOn ? <Pill>two-step sign-in on</Pill> : null}
         {b.mustChangePassword ? <Pill>must choose a new password</Pill> : null}
         {b.lockedUntil ? <Pill tone="alert">locked until {when(b.lockedUntil)}</Pill> : null}
+        {b.suspendedUntil ? (
+          <Pill tone="alert">strike suspension until {when(b.suspendedUntil)}</Pill>
+        ) : null}
       </p>
+      {b.avatarUrl ? (
+        <img
+          src={b.avatarUrl}
+          alt="This login’s profile picture"
+          width={96}
+          height={96}
+          style={{ borderRadius: 48, objectFit: 'cover' }}
+        />
+      ) : null}
       {b.owner ? (
         <p>
           Staff login of <a href={`/admin/businesses/${b.owner.id}`}>{b.owner.email}</a>
@@ -48,8 +81,81 @@ export default async function BusinessPage({ params }: { params: Promise<{ id: s
 
       <div style={ui.card}>
         <h2 style={{ marginTop: 0 }}>Actions</h2>
-        <BusinessActions id={b.id} status={b.status} kind={b.kind} />
+        <BusinessActions
+          id={b.id}
+          status={b.status}
+          kind={b.kind}
+          hasPicture={b.avatarUrl !== null}
+        />
       </div>
+
+      <h2 style={{ marginBottom: 0 }}>Strikes (D191)</h2>
+      <p style={ui.muted}>
+        Same ladder as people. Strikes go to this login only (an Owner’s ban closes its staff logins
+        too); each one shows in their bell on the business website.
+      </p>
+      {step ? <BusinessStrikeForm id={b.id} step={step} /> : null}
+      {b.strikes.length === 0 ? (
+        <p style={ui.muted}>Nothing on record.</p>
+      ) : (
+        <Table head={['Action', 'Reason (shown to them)', 'Internal note', 'By', 'When', '']}>
+          {b.strikes.map((a) => (
+            <tr key={a.id} style={a.voidedAt ? { opacity: 0.5 } : undefined}>
+              <td style={td}>
+                {words(a.action)}
+                {a.durationHours ? ` (${a.durationHours} h)` : ''}
+                {a.voidedAt ? ` (cancelled: ${a.voidReason ?? ''})` : ''}
+              </td>
+              <td style={{ ...td, maxWidth: 320 }}>{a.reason}</td>
+              <td style={td}>{a.internalNote ?? ''}</td>
+              <td style={td}>@{a.by}</td>
+              <td style={td}>{when(a.createdAt)}</td>
+              <td style={td}>
+                {STRIKES.has(a.action) && a.action !== 'BAN' && !a.voidedAt ? (
+                  <VoidStrike userId={b.id} strikeId={a.id} url={strikesUrl} />
+                ) : null}
+              </td>
+            </tr>
+          ))}
+        </Table>
+      )}
+
+      <h2 style={{ marginBottom: 0 }}>Reports about what this login wrote</h2>
+      {b.reports.length === 0 ? (
+        <p style={ui.muted}>None.</p>
+      ) : (
+        <Table head={['Reason', 'Details', 'About', 'Reported by', 'Status', 'When', '']}>
+          {b.reports.map((r) => (
+            <tr key={r.id}>
+              <td style={td}>{words(r.reason)}</td>
+              <td style={{ ...td, maxWidth: 320 }}>{r.details ?? ''}</td>
+              <td style={td}>
+                {r.caseHref && r.what ? <a href={r.caseHref}>{WHAT[r.what] ?? r.what}</a> : ''}
+              </td>
+              <td style={td}>{r.reporter}</td>
+              <td style={td}>
+                <Pill tone={r.status === 'OPEN' ? 'alert' : 'muted'}>{words(r.status)}</Pill>
+              </td>
+              <td style={td}>{when(r.createdAt)}</td>
+              <td style={td}>
+                {r.strike ? (
+                  <span style={ui.muted}>
+                    Notified ({words(r.strike.action)}) {when(r.strike.createdAt)}
+                  </span>
+                ) : step ? (
+                  <NotifyForReport
+                    userId={b.id}
+                    reportId={r.id}
+                    step={step}
+                    url={strikesUrl}
+                    suggested={`Your ${r.what ? (WHAT[r.what] ?? 'post') : 'post'} was reported for ${words(r.reason)}. Please follow the Community Guidelines.`}
+                  />
+                ) : null}
+              </td>
+            </tr>
+          ))}
+        </Table>
+      )}
 
       <h2>Places</h2>
       {live.length === 0 ? <p style={ui.muted}>No places now.</p> : null}

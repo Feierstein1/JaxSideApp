@@ -41,7 +41,13 @@ export interface FriendRequestView {
 export interface NotificationView {
   id: string;
   /** D156: POST_COMMENT, COMMENT_REPLY and MENTION point to a post (and comment). */
-  type: 'FRIEND_REQUEST' | 'FRIEND_ACCEPTED' | 'POST_COMMENT' | 'COMMENT_REPLY' | 'MENTION';
+  type:
+    | 'FRIEND_REQUEST'
+    | 'FRIEND_ACCEPTED'
+    | 'POST_COMMENT'
+    | 'COMMENT_REPLY'
+    | 'MENTION'
+    | 'GIVEAWAY_WIN';
   actor: FriendUser | null;
   /** FRIEND_REQUEST still waiting: its request ID, so it can be answered from the bell. */
   pendingRequestId: string | null;
@@ -56,6 +62,8 @@ export interface NotificationView {
   count: number;
   /** D157: it was the place's owner team ("The Owner"); `actor` is null then. */
   actorIsOwner: boolean;
+  /** D188: GIVEAWAY_WIN: the win to open (from JaxSide, so `actor` is null). */
+  giveaway?: { winId: string; title: string } | null;
   createdAt: string;
   read: boolean;
 }

@@ -18,7 +18,7 @@ import { VoteControl } from './VoteControl';
 
 type AnyAuthor =
   | { username: string }
-  | { theOwner: true; place: string; staffName: string | null }
+  | { theOwner: true; place: string; staffName: string | null; avatarUrl?: string | null }
   | { guest: true }
   | { deleted: true };
 
@@ -30,8 +30,14 @@ export function authorName(a: AnyAuthor): string {
   return 'deleted user';
 }
 
-/** D157: The Owner's picture: the storefront on teal, like the place itself. */
-export function OwnerAvatar({ size }: { size: number }) {
+/**
+ * D157: The Owner's picture: the storefront on teal, like the place itself, or (D189) the
+ * business login's own picture when it has one.
+ */
+export function OwnerAvatar({ size, url = null }: { size: number; url?: string | null }) {
+  if (url) {
+    return <ProfileAvatar name="The Owner" url={url} size={size} ringColor={DARK.accent} />;
+  }
   return (
     <View
       accessible
@@ -202,7 +208,7 @@ export function PostCard({
                 accessibilityLabel={isUser ? `${name}'s profile` : undefined}
               >
                 {isOwner ? (
-                  <OwnerAvatar size={42} />
+                  <OwnerAvatar size={42} url={author.avatarUrl} />
                 ) : (
                   <ProfileAvatar
                     name={name}

@@ -33,12 +33,14 @@ export async function notify(
 
 /**
  * Notifications whose sender still has an active account, or (D172) that came from a
- * business on the business website (shown as "The Owner"; a revoked login stops them).
+ * business on the business website (shown as "The Owner"; a revoked login stops them),
+ * or (D188) a giveaway win, which comes from JaxSide itself.
  */
 const FROM_LIVE_ACTOR = {
   OR: [
     { actor: { status: 'ACTIVE' as const } },
     { actorBusinessId: { not: null }, actorBusiness: { revokedAt: null } },
+    { giveawayWinnerId: { not: null } },
   ],
 };
 
@@ -234,6 +236,7 @@ export async function listNotifications(userId: string): Promise<NotificationVie
       actor: {
         select: { id: true, username: true, profile: true },
       },
+      giveawayWinner: { select: { id: true, giveaway: { select: { title: true } } } },
     },
   });
   // Requests still waiting can be answered right from the bell.
@@ -270,6 +273,9 @@ export async function listNotifications(userId: string): Promise<NotificationVie
     target: postTarget(r),
     where: where.get(r.generalPostId ?? r.businessPostId ?? '') ?? null,
     count: r.count,
+    giveaway: r.giveawayWinner
+      ? { winId: r.giveawayWinner.id, title: r.giveawayWinner.giveaway.title }
+      : null,
     createdAt: r.createdAt.toISOString(),
     read: r.readAt !== null,
   }));

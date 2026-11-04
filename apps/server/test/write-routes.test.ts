@@ -29,6 +29,7 @@ import * as installations from '@/app/api/v1/installations/route';
 import * as locationStatus from '@/app/api/v1/location/status/route';
 import * as meDelete from '@/app/api/v1/me/delete/route';
 import * as meEmailConfirm from '@/app/api/v1/me/email/confirm/route';
+import * as meGiveaway from '@/app/api/v1/me/giveaways/[id]/route';
 import * as meEmail from '@/app/api/v1/me/email/route';
 import * as mePassword from '@/app/api/v1/me/password/route';
 import * as prefs from '@/app/api/v1/me/preferences/route';
@@ -267,6 +268,16 @@ const ROWS: Row[] = [
     id: null,
     location: false,
     body: () => ({ newEmail: 'n@example.test', password: 'x' }),
+  },
+  {
+    // D188: accept or decline a prize (any UUID: the guards run before the lookup).
+    route: 'me/giveaways/[id]',
+    method: 'POST',
+    handler: h(meGiveaway, 'POST'),
+    auth: true,
+    id: 'post',
+    location: false,
+    body: () => ({ accept: true }),
   },
   {
     route: 'me/email/confirm',

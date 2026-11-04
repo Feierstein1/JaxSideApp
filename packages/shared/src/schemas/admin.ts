@@ -38,7 +38,13 @@ export const caseDecisionSchema = z.strictObject({
 
 /** P5.6 from the portal: actions on a user. */
 export const userActionSchema = z.discriminatedUnion('action', [
-  z.strictObject({ action: z.literal('strike'), reason: reasonText, internalNote }),
+  z.strictObject({
+    action: z.literal('strike'),
+    reason: reasonText,
+    internalNote,
+    /** "Notify" from the user's page: the strike is tied to this report about them. */
+    reportId: z.uuid().optional(),
+  }),
   z.strictObject({
     action: z.literal('suspend'),
     hours: z
@@ -108,9 +114,20 @@ export const screeningTestSchema = z.strictObject({ text: z.string().min(1).max(
 
 /** B1.7 / D172: the admin portal's Businesses section. */
 export const adminBusinessActionSchema = z.strictObject({
-  action: z.enum(['suspend', 'unsuspend', 'revoke', 'reset-password']),
+  action: z.enum(['suspend', 'unsuspend', 'revoke', 'reset-password', 'remove-picture']),
   note: z.string().trim().max(500).optional(),
 });
+
+/** D191: a strike on a business login (`reportId`: "Notify" from a report), or cancelling one. */
+export const adminBusinessStrikeSchema = z.discriminatedUnion('action', [
+  z.strictObject({
+    action: z.literal('strike'),
+    reason: reasonText,
+    internalNote,
+    reportId: z.uuid().optional(),
+  }),
+  z.strictObject({ action: z.literal('void'), strikeId: z.uuid(), reason: reasonText }),
+]);
 
 export const adminMoveBusinessOwnerSchema = z.strictObject({
   toEmail: z.string().trim().toLowerCase().max(254).pipe(z.email()),

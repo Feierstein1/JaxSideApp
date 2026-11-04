@@ -235,9 +235,10 @@ export const attachVideo = (
 
 // ───────────────────────────── Signed links ─────────────────────────────
 
-function sig(id: string, exp: number) {
+/** `kind` keeps a photo link from opening a business picture with the same ID, and back. */
+function sig(id: string, exp: number, kind: 'photo' | 'business-picture' = 'photo') {
   return createHmac('sha256', getEnv().SESSION_SECRET)
-    .update(`photo:${id}:${exp}`)
+    .update(`${kind}:${id}:${exp}`)
     .digest('base64url');
 }
 
@@ -248,17 +249,37 @@ export function signedPhotoUrl(id: string, now = new Date()) {
   return `/api/v1/photos/${id}?exp=${exp}&sig=${sig(id, exp)}`;
 }
 
+/** D189: a business login's profile picture, the same way (works for an hour). */
+export function signedBusinessPictureUrl(id: string, now = new Date()) {
+  const exp = Math.ceil(now.getTime() / 1000 / 600) * 600 + LINK_TTL_SECONDS;
+  return `/api/v1/business-pictures/${id}?exp=${exp}&sig=${sig(id, exp, 'business-picture')}`;
+}
+
 export function checkSignature(
   id: string,
   exp: string | null,
   given: string | null,
   now = new Date(),
+  kind: 'photo' | 'business-picture' = 'photo',
 ) {
   const e = Number(exp);
   if (!Number.isInteger(e) || e < now.getTime() / 1000 || !given) return false;
   const a = Buffer.from(given);
-  const b = Buffer.from(sig(id, e));
+  const b = Buffer.from(sig(id, e, kind));
   return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/** D189: bytes for a business login's live profile picture, or null. */
+export async function readBusinessPicture(id: string) {
+  const m = await db.adMedia.findUnique({
+    where: { id },
+    include: { avatarOf: { select: { revokedAt: true } } },
+  });
+  if (!m || m.status !== 'ACTIVE' || !m.storageKey) return null;
+  // Only while it's a login's picture and that login isn't revoked.
+  if (!m.avatarOf || m.avatarOf.revokedAt) return null;
+  const body = await objectStore().get(m.storageKey);
+  return body ? { body, mimeType: m.mimeType ?? 'image/jpeg' } : null;
 }
 
 /** P6.4: bytes for a live photo, or null (removed, never processed, unknown). */

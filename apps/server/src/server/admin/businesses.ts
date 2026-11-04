@@ -1,9 +1,18 @@
 import { randomInt } from 'node:crypto';
+import type { z } from 'zod';
+import type { adminBusinessStrikeSchema } from '@jax/shared';
 import type { Prisma } from '@/generated/prisma/client';
 import { hashPassword } from '../auth/crypto';
 import { db } from '../db';
 import { ApiError } from '../http';
+import {
+  issueBusinessStrike,
+  nextBusinessStrikeStep,
+  voidBusinessStrike,
+} from '../moderation/business-enforcement';
+import { STRIKE_ACTIONS } from '../moderation/enforcement';
 import { audit } from './audit';
+import { REPORTER_INCLUDE, refOf, reporterLabel } from './queue';
 
 /**
  * B1.7 / D172: the admin portal's Businesses section (the owner of JaxSide only; no admin
@@ -14,8 +23,80 @@ import { audit } from './audit';
 const notFound = () => new ApiError(404, 'NOT_FOUND', 'Business account not found');
 const DAY = 86_400_000;
 
-const status = (a: { revokedAt: Date | null; suspendedAt: Date | null }) =>
-  a.revokedAt ? 'REVOKED' : a.suspendedAt ? 'SUSPENDED' : 'ACTIVE';
+const status = (
+  a: { revokedAt: Date | null; suspendedAt: Date | null; suspendedUntil: Date | null },
+  now = new Date(),
+) =>
+  a.revokedAt
+    ? 'REVOKED'
+    : a.suspendedAt || (a.suspendedUntil && a.suspendedUntil > now)
+      ? 'SUSPENDED'
+      : 'ACTIVE';
+
+/** D191: reports about what a business login wrote in its places' discussions. */
+export const reportsAgainstBusinessWhere = (accountId: string): Prisma.ReportWhereInput => ({
+  OR: [
+    { businessPost: { businessAuthorId: accountId } },
+    { comment: { authorBusinessId: accountId } },
+  ],
+});
+
+const REPORTS_SHOWN = 50;
+
+/** D191: the newest reports about a login, with any strike already given for each. */
+async function reportsAgainstBusiness(accountId: string) {
+  const rows = await db.report.findMany({
+    where: reportsAgainstBusinessWhere(accountId),
+    orderBy: { createdAt: 'desc' },
+    take: REPORTS_SHOWN,
+    include: {
+      ...REPORTER_INCLUDE,
+      modActions: {
+        where: { targetBusinessId: accountId, action: { in: STRIKE_ACTIONS }, voidedAt: null },
+        select: { action: true, createdAt: true },
+        take: 1,
+      },
+    },
+  });
+  return rows.map((r) => {
+    const ref = refOf(r);
+    const strike = r.modActions[0];
+    return {
+      id: r.id,
+      reason: r.reason,
+      details: r.details,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+      reporter: reporterLabel(r),
+      caseHref: ref ? `/admin/cases/${ref.type}/${ref.id}` : null,
+      what: ref?.type ?? null,
+      strike: strike ? { action: strike.action, createdAt: strike.createdAt.toISOString() } : null,
+    };
+  });
+}
+
+/** D191: every strike and note on a login, newest first (internal notes are admin-only). */
+async function businessStrikes(accountId: string) {
+  const rows = await db.moderationAction.findMany({
+    where: { targetBusinessId: accountId },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    include: { admin: { select: { username: true } } },
+  });
+  return rows.map((m) => ({
+    id: m.id,
+    action: m.action,
+    reason: m.reason,
+    internalNote: m.internalNote,
+    durationHours: m.durationHours,
+    expiresAt: m.expiresAt?.toISOString() ?? null,
+    reportId: m.reportId,
+    by: m.admin.username,
+    createdAt: m.createdAt.toISOString(),
+    voidedAt: m.voidedAt?.toISOString() ?? null,
+    voidReason: m.voidReason,
+  }));
+}
 
 /** Owner accounts (employees are listed on their owner's page), newest first. */
 export async function listBusinesses(q: string) {
@@ -162,10 +243,18 @@ export async function getBusiness(id: string, now = new Date()) {
     signInName: a.username ?? a.email ?? '',
     kind: a.createdById ? ('employee' as const) : ('owner' as const),
     owner: a.createdBy ? { id: a.createdBy.id, email: a.createdBy.email ?? '' } : null,
-    status: status(a),
+    status: status(a, now),
+    suspendedUntil:
+      a.suspendedUntil && a.suspendedUntil > now ? a.suspendedUntil.toISOString() : null,
     createdAt: a.createdAt.toISOString(),
     lastSignInAt: a.sessions[0]?.createdAt.toISOString() ?? null,
     activeSessions,
+    // D189: through the admin route (it serves removed pictures too, for moderation).
+    avatarUrl: a.avatarMediaId ? `/api/v1/admin/business-pictures/${a.avatarMediaId}` : null,
+    // D191: strikes on this login, what the next one does, and the reports about it.
+    strikes: await businessStrikes(a.id),
+    nextStrike: await nextBusinessStrikeStep(a.id, a.revokedAt !== null),
+    reports: await reportsAgainstBusiness(a.id),
     twoFactorOn: a.totpEnabledAt !== null,
     mustChangePassword: a.mustChangePassword,
     lockedUntil: a.lockedUntil && a.lockedUntil > now ? a.lockedUntil.toISOString() : null,
@@ -191,7 +280,7 @@ export async function getBusiness(id: string, now = new Date()) {
     team: a.employees.map((e) => ({
       id: e.id,
       username: e.username ?? '',
-      status: status(e),
+      status: status(e, now),
       mustChangePassword: e.mustChangePassword,
       lastSignInAt: e.sessions[0]?.createdAt.toISOString() ?? null,
       places: e.placeAccess.map((p) => ({
@@ -271,12 +360,15 @@ async function scope(tx: Prisma.TransactionClient, id: string) {
   return { account: a, ids };
 }
 
-export type BusinessAction = 'suspend' | 'unsuspend' | 'revoke' | 'reset-password';
+export type BusinessAction =
+  'suspend' | 'unsuspend' | 'revoke' | 'reset-password' | 'remove-picture';
 
 /**
  * Suspend (sign-in refused, sessions end; lifts again), revoke (permanent: the logins and
  * their place access end) or reset a password (a temporary one, shown once to the admin).
  * For an owner, suspend and revoke cover the whole business: its employee logins too.
+ * Unsuspend also ends a strike's suspension (D191). Remove picture (D189) takes down this
+ * login's profile picture (kept in storage as evidence, never shown again).
  */
 export async function actOnBusiness(
   adminId: string,
@@ -305,9 +397,23 @@ export async function actOnBusiness(
       case 'unsuspend':
         await tx.businessAccount.updateMany({
           where: { id: { in: ids }, revokedAt: null },
-          data: { suspendedAt: null },
+          data: { suspendedAt: null, suspendedUntil: null },
         });
         break;
+      case 'remove-picture': {
+        if (!account.avatarMediaId) {
+          throw new ApiError(409, 'NO_PICTURE', 'This login has no profile picture.');
+        }
+        await tx.adMedia.update({
+          where: { id: account.avatarMediaId },
+          data: { status: 'REMOVED', removedAt: now },
+        });
+        await tx.businessAccount.update({
+          where: { id: account.id },
+          data: { avatarMediaId: null },
+        });
+        break;
+      }
       case 'revoke':
         await tx.businessAccount.updateMany({
           where: { id: { in: ids }, revokedAt: null },
@@ -436,4 +542,60 @@ export async function moveBusinessOwner(
       tx,
     );
   });
+}
+
+/**
+ * D191: a strike on a business login (with `reportId`, "Notify" from a report about what
+ * it wrote: that report must be about this login and gets at most one standing strike),
+ * or cancelling one.
+ */
+export async function businessStrikeAction(
+  adminId: string,
+  accountId: string,
+  input: z.infer<typeof adminBusinessStrikeSchema>,
+) {
+  let result: unknown = null;
+  if (input.action === 'strike') {
+    if (input.reportId) {
+      const report = await db.report.findFirst({
+        where: { id: input.reportId, ...reportsAgainstBusinessWhere(accountId) },
+        select: {
+          modActions: {
+            where: { targetBusinessId: accountId, action: { in: STRIKE_ACTIONS }, voidedAt: null },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      });
+      if (!report) throw new ApiError(404, 'NOT_FOUND', 'Report not found');
+      if (report.modActions.length) {
+        throw new ApiError(409, 'ALREADY_NOTIFIED', 'They already have a strike for this report');
+      }
+    }
+    result = await issueBusinessStrike({
+      adminId,
+      accountId,
+      reason: input.reason,
+      internalNote: input.internalNote,
+      reportId: input.reportId,
+    });
+  } else {
+    await voidBusinessStrike({
+      adminId,
+      accountId,
+      actionId: input.strikeId,
+      reason: input.reason,
+    });
+  }
+  await audit(
+    adminId,
+    `BUSINESS_${input.action.toUpperCase()}`,
+    { type: 'business-account', id: accountId },
+    {
+      reason: input.reason,
+      ...(input.action === 'strike' && input.reportId ? { reportId: input.reportId } : {}),
+      ...(input.action === 'void' ? { strikeId: input.strikeId } : {}),
+    },
+  );
+  return result;
 }

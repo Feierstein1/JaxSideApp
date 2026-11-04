@@ -232,6 +232,11 @@ model User {
 
   securityEvents SecurityEvent[]
 
+  activeDays       UserActiveDay[]
+  giveawaysCreated Giveaway[]       @relation("GiveawayCreator")
+  giveawayWins     GiveawayWinner[] @relation("GiveawayWins")
+  giveawayPicks    GiveawayWinner[] @relation("GiveawayPicker")
+
   @@index([status])
 }
 
@@ -897,36 +902,40 @@ model UserAchievement {
 
 /// Report against exactly one target (CHECK). Reporter is a User or Guest (CHECK).
 model Report {
-  id              String        @id @default(uuid(7)) @db.Uuid
-  reporterUserId  String?       @db.Uuid
-  reporterGuestId String?       @db.Uuid
-  generalPostId   String?       @db.Uuid
-  businessPostId  String?       @db.Uuid
-  commentId       String?       @db.Uuid
-  photoId         String?       @db.Uuid
-  reportedUserId  String?       @db.Uuid
+  id                 String           @id @default(uuid(7)) @db.Uuid
+  reporterUserId     String?          @db.Uuid
+  reporterGuestId    String?          @db.Uuid
+  /// D194: a business login reported it (website, its own place's discussion). Goes to the
+  /// admin queue only: never counts toward auto-hide (D73) or auto-suspend (D74).
+  reporterBusinessId String?          @db.Uuid
+  generalPostId      String?          @db.Uuid
+  businessPostId     String?          @db.Uuid
+  commentId          String?          @db.Uuid
+  photoId            String?          @db.Uuid
+  reportedUserId     String?          @db.Uuid
   /// D98: a reported private message (null once it's unsent or its sender deleted).
-  messageId       String?       @db.Uuid
+  messageId          String?          @db.Uuid
   /// D133: a reported topic (its title or description).
-  cityTopicId     String?       @db.Uuid
+  cityTopicId        String?          @db.Uuid
   /// D98: snapshot of the reported message and the 10 around it, kept 1 year as evidence.
-  messageEvidence Json?
-  reason          ReportReason
-  details         String?       @db.VarChar(1000)
-  status          ReportStatus  @default(OPEN)
-  resolvedById    String?       @db.Uuid
-  resolvedAt      DateTime?     @db.Timestamptz(3)
-  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
-  reporterUser    User?         @relation("Reporter", fields: [reporterUserId], references: [id], onDelete: SetNull)
-  reporterGuest   GuestSession? @relation(fields: [reporterGuestId], references: [id], onDelete: SetNull)
-  generalPost     GeneralPost?  @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
-  businessPost    BusinessPost? @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
-  comment         Comment?      @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  photo           Photo?        @relation(fields: [photoId], references: [id], onDelete: Cascade)
-  message         Message?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
-  cityTopic       CityTopic?    @relation(fields: [cityTopicId], references: [id], onDelete: Cascade)
-  reportedUser    User?         @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
-  resolvedBy      User?         @relation("ReportResolver", fields: [resolvedById], references: [id])
+  messageEvidence    Json?
+  reason             ReportReason
+  details            String?          @db.VarChar(1000)
+  status             ReportStatus     @default(OPEN)
+  resolvedById       String?          @db.Uuid
+  resolvedAt         DateTime?        @db.Timestamptz(3)
+  createdAt          DateTime         @default(now()) @db.Timestamptz(3)
+  reporterUser       User?            @relation("Reporter", fields: [reporterUserId], references: [id], onDelete: SetNull)
+  reporterGuest      GuestSession?    @relation(fields: [reporterGuestId], references: [id], onDelete: SetNull)
+  reporterBusiness   BusinessAccount? @relation("BusinessReporter", fields: [reporterBusinessId], references: [id], onDelete: SetNull)
+  generalPost        GeneralPost?     @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
+  businessPost       BusinessPost?    @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
+  comment            Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  photo              Photo?           @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  message            Message?         @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  cityTopic          CityTopic?       @relation(fields: [cityTopicId], references: [id], onDelete: Cascade)
+  reportedUser       User?            @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  resolvedBy         User?            @relation("ReportResolver", fields: [resolvedById], references: [id])
 
   modActions ModerationAction[]
 
@@ -936,6 +945,7 @@ model Report {
   @@index([commentId])
   @@index([photoId])
   @@index([reportedUserId])
+  @@index([reporterBusinessId, createdAt])
   // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
   @@index([messageId])
   @@index([cityTopicId])
@@ -978,29 +988,34 @@ enum NotificationType {
   COMMENT_REPLY
   /// D156: someone wrote @you in a post or comment.
   MENTION
+  /// D188: you won a giveaway; open it to accept or decline the prize.
+  GIVEAWAY_WIN
 }
 
 model Notification {
-  id              String           @id @default(uuid(7)) @db.Uuid
-  userId          String           @db.Uuid
-  type            NotificationType
-  actorId         String?          @db.Uuid
-  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
-  readAt          DateTime?        @db.Timestamptz(3)
+  id               String           @id @default(uuid(7)) @db.Uuid
+  userId           String           @db.Uuid
+  type             NotificationType
+  actorId          String?          @db.Uuid
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  readAt           DateTime?        @db.Timestamptz(3)
   /// D156: the post (and comment) a comment, reply or mention notification points to.
-  generalPostId   String?          @db.Uuid
-  businessPostId  String?          @db.Uuid
-  commentId       String?          @db.Uuid
+  generalPostId    String?          @db.Uuid
+  businessPostId   String?          @db.Uuid
+  commentId        String?          @db.Uuid
   /// D156: unread comments on one post are one row ("5 new comments").
-  count           Int              @default(1)
-  user            User             @relation("NotificationFor", fields: [userId], references: [id], onDelete: Cascade)
-  actor           User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  count            Int              @default(1)
+  user             User             @relation("NotificationFor", fields: [userId], references: [id], onDelete: Cascade)
+  actor            User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
   /// D172: the place's business answered (business website); shown as "The Owner".
-  actorBusinessId String?          @db.Uuid
-  actorBusiness   BusinessAccount? @relation(fields: [actorBusinessId], references: [id], onDelete: Cascade)
-  generalPost     GeneralPost?     @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
-  businessPost    BusinessPost?    @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
-  comment         Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  actorBusinessId  String?          @db.Uuid
+  actorBusiness    BusinessAccount? @relation(fields: [actorBusinessId], references: [id], onDelete: Cascade)
+  generalPost      GeneralPost?     @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
+  businessPost     BusinessPost?    @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
+  comment          Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  /// D188: the giveaway win this notification is about (no actor: it comes from JaxSide).
+  giveawayWinnerId String?          @db.Uuid
+  giveawayWinner   GiveawayWinner?  @relation(fields: [giveawayWinnerId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   // P13.1: the unread bell count; createdAt for the purge
@@ -1013,6 +1028,7 @@ model Notification {
   @@index([generalPostId], where: raw("\"generalPostId\" IS NOT NULL"))
   @@index([businessPostId], where: raw("\"businessPostId\" IS NOT NULL"))
   @@index([commentId], where: raw("\"commentId\" IS NOT NULL"))
+  @@index([giveawayWinnerId], where: raw("\"giveawayWinnerId\" IS NOT NULL"))
   // P13.7: purge of read notifications
   @@index([readAt], where: raw("\"readAt\" IS NOT NULL"))
 }
@@ -1173,6 +1189,8 @@ model ModerationAction {
   targetUserId         String?              @db.Uuid
   targetGuestId        String?              @db.Uuid
   targetInstallationId String?              @db.Uuid
+  /// D191: a strike (or note) on a business login. Never together with targetUserId.
+  targetBusinessId     String?              @db.Uuid
   generalPostId        String?              @db.Uuid
   businessPostId       String?              @db.Uuid
   commentId            String?              @db.Uuid
@@ -1186,6 +1204,7 @@ model ModerationAction {
   createdAt            DateTime             @default(now()) @db.Timestamptz(3)
   admin                User                 @relation("ModActor", fields: [adminId], references: [id])
   targetUser           User?                @relation("ModTargetUser", fields: [targetUserId], references: [id])
+  targetBusiness       BusinessAccount?     @relation(fields: [targetBusinessId], references: [id], onDelete: Cascade)
   targetGuest          GuestSession?        @relation(fields: [targetGuestId], references: [id], onDelete: SetNull)
   targetInstallation   Installation?        @relation(fields: [targetInstallationId], references: [id])
   generalPost          GeneralPost?         @relation(fields: [generalPostId], references: [id], onDelete: SetNull)
@@ -1197,6 +1216,7 @@ model ModerationAction {
   appeals              Appeal[]
 
   @@index([targetUserId, createdAt])
+  @@index([targetBusinessId, createdAt])
   @@index([targetGuestId])
   @@index([targetInstallationId])
   @@index([adminId, createdAt])
@@ -1680,6 +1700,11 @@ model BusinessAccount {
   googleSub          String?   @unique @db.VarChar(255)
   /// B1.8: email a summary of new activity (at most once a day; needs an email).
   emailNotices       Boolean   @default(false)
+  /// D191: a strike's suspension; sign-in refused until then (an admin's open-ended
+  /// suspension stays in suspendedAt).
+  suspendedUntil     DateTime? @db.Timestamptz(3)
+  /// D189: the login's profile picture (an uploaded image, shown next to what it writes).
+  avatarMediaId      String?   @unique @db.Uuid
   noticesEmailedAt   DateTime? @db.Timestamptz(3)
 
   createdBy            BusinessAccount?              @relation("BusinessEmployees", fields: [createdById], references: [id], onDelete: SetNull)
@@ -1692,7 +1717,12 @@ model BusinessAccount {
   verificationRequests BusinessVerificationRequest[]
   ads                  Ad[]                          @relation("AdOwner")
   adsCreated           Ad[]                          @relation("AdCreator")
-  media                AdMedia[]
+  media                AdMedia[]                     @relation("MediaOwner")
+  avatarMedia          AdMedia?                      @relation("BusinessAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
+  /// D191: strikes and notes on this login.
+  modActions           ModerationAction[]
+  /// D194: reports this login filed in its places' discussions.
+  reportsFiled         Report[]                      @relation("BusinessReporter")
   // D172: what the business wrote in its place's discussion (the real author, for the Owner).
   posts                BusinessPost[]
   comments             Comment[]
@@ -1837,20 +1867,22 @@ enum AdStatus {
 
 /// Ad image or GIF uploaded by a business account (Photo needs a personal uploader).
 model AdMedia {
-  id            String          @id @default(uuid(7)) @db.Uuid
-  accountId     String          @db.Uuid
-  storageKey    String?         @unique @db.VarChar(200)
-  quarantineKey String?         @unique @db.VarChar(200)
-  status        PhotoStatus     @default(PENDING_UPLOAD)
-  mimeType      String?         @db.VarChar(40)
+  id            String           @id @default(uuid(7)) @db.Uuid
+  accountId     String           @db.Uuid
+  storageKey    String?          @unique @db.VarChar(200)
+  quarantineKey String?          @unique @db.VarChar(200)
+  status        PhotoStatus      @default(PENDING_UPLOAD)
+  mimeType      String?          @db.VarChar(40)
   width         Int?
   height        Int?
   bytes         Int?
-  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
-  processedAt   DateTime?       @db.Timestamptz(3)
-  removedAt     DateTime?       @db.Timestamptz(3)
-  account       BusinessAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+  processedAt   DateTime?        @db.Timestamptz(3)
+  removedAt     DateTime?        @db.Timestamptz(3)
+  account       BusinessAccount  @relation("MediaOwner", fields: [accountId], references: [id], onDelete: Cascade)
   ads           Ad[]
+  /// D189: the login using this image as its profile picture.
+  avatarOf      BusinessAccount? @relation("BusinessAvatar")
 
   @@index([accountId, createdAt])
   @@index([status, createdAt])
@@ -1937,6 +1969,7 @@ enum BusinessNoticeKind {
   AD_APPROVED // B3.3
   AD_REJECTED // B3.3
   FROM_JAXSIDE // anything else an admin tells the business
+  STRIKE // D191: a strike on this login (or, for the Owner, on one of its employees)
 }
 
 /**
@@ -2023,4 +2056,114 @@ model BusinessVerificationRequest {
   @@index([status, createdAt])
   @@index([accountId])
   @@index([placeId])
+}
+
+// ───────────────────────────── Giveaways (D188) ─────────────────────────────
+
+/// D188: a day (Jacksonville time) a signed-in person used the app; giveaway tickets.
+/// One row per person per day, nothing else (no times, places or screens). Deleted with the
+/// account and after `retention.activeDayDays`.
+model UserActiveDay {
+  userId String   @db.Uuid
+  day    DateTime @db.Date
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
+  @@index([day])
+}
+
+enum GiveawayStatus {
+  ACTIVE
+  CANCELLED
+}
+
+/// D188: how a giveaway's winners are chosen.
+enum GiveawayPick {
+  RANDOM
+  MANUAL
+}
+
+enum GiveawayWinnerStatus {
+  /// Told in the app; waiting for their answer until `respondBy`.
+  NOTIFIED
+  /// Said yes: the prize goes to the email on their account.
+  ACCEPTED
+  DECLINED
+  /// No answer by `respondBy`.
+  EXPIRED
+  PRIZE_SENT
+  /// Removed by the admin (e.g. found ineligible); the slot can be drawn again.
+  DISQUALIFIED
+}
+
+/// D188: a giveaway run from the admin portal. Criteria are optional and measured over the
+/// entry period (startsAt to endsAt); accounts must always be ACTIVE users (never admins).
+model Giveaway {
+  id                    String           @id @default(uuid(7)) @db.Uuid
+  title                 String           @db.VarChar(100)
+  /// Shown to the winner ("$25 Amazon gift card").
+  prize                 String           @db.VarChar(200)
+  /// Admins only.
+  notes                 String?          @db.VarChar(2000)
+  startsAt              DateTime         @db.Timestamptz(3)
+  endsAt                DateTime         @db.Timestamptz(3)
+  pickMethod            GiveawayPick
+  winnerCount           Int              @db.SmallInt
+  /// Days a winner has to accept.
+  respondDays           Int              @default(5) @db.SmallInt
+  // Criteria (null = not used)
+  minPosts              Int?             @db.SmallInt
+  minPostDays           Int?             @db.SmallInt
+  minComments           Int?             @db.SmallInt
+  minApprovedPlaces     Int?             @db.SmallInt
+  requireConfirmedEmail Boolean          @default(true)
+  requireNoStrikes      Boolean          @default(false)
+  joinedAfter           DateTime?        @db.Timestamptz(3)
+  joinedBefore          DateTime?        @db.Timestamptz(3)
+  /// Account at least this many days old when the entry period ends.
+  minAccountAgeDays     Int?             @db.SmallInt
+  /// Opened the app (signed in) on at least this many days in the entry period.
+  minActiveDays         Int?             @db.SmallInt
+  /// D188: the random draw gives one ticket per day they opened the app in the entry period.
+  ticketsPerActiveDay   Boolean          @default(false)
+  excludePastWinners    Boolean          @default(false)
+  status                GiveawayStatus   @default(ACTIVE)
+  createdById           String           @db.Uuid
+  createdAt             DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime         @updatedAt @db.Timestamptz(3)
+  createdBy             User             @relation("GiveawayCreator", fields: [createdById], references: [id])
+  winners               GiveawayWinner[]
+
+  @@index([createdAt])
+  @@index([createdById])
+}
+
+/// D188: one picked winner. The email is only ever read after they accept (reveal, audited).
+model GiveawayWinner {
+  id              String               @id @default(uuid(7)) @db.Uuid
+  giveawayId      String               @db.Uuid
+  userId          String               @db.Uuid
+  status          GiveawayWinnerStatus @default(NOTIFIED)
+  pickedBy        GiveawayPick
+  /// How many accounts were eligible when this winner was picked (a record of the draw).
+  poolSize        Int
+  /// D188: this winner's tickets and the pool's total, when the draw was weighted.
+  tickets         Int?
+  poolTickets     Int?
+  pickedById      String               @db.Uuid
+  createdAt       DateTime             @default(now()) @db.Timestamptz(3)
+  respondBy       DateTime             @db.Timestamptz(3)
+  respondedAt     DateTime?            @db.Timestamptz(3)
+  emailRevealedAt DateTime?            @db.Timestamptz(3)
+  prizeSentAt     DateTime?            @db.Timestamptz(3)
+  /// Admins only (e.g. the gift card order number, or why they were disqualified).
+  adminNote       String?              @db.VarChar(500)
+  giveaway        Giveaway             @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+  user            User                 @relation("GiveawayWins", fields: [userId], references: [id], onDelete: Cascade)
+  pickedByUser    User                 @relation("GiveawayPicker", fields: [pickedById], references: [id])
+  notifications   Notification[]
+
+  @@unique([giveawayId, userId])
+  @@index([userId])
+  @@index([pickedById])
 }

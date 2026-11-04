@@ -3,6 +3,7 @@ import type {
   FriendRequestView,
   FriendUser,
   FriendView,
+  GiveawayWinView,
   NotificationView,
 } from '@jax/shared';
 import { api } from '@/api';
@@ -31,6 +32,9 @@ export const social = {
   },
   notifications: () => api.get<{ notifications: NotificationView[] }>('/api/v1/notifications'),
   markRead: () => api.post('/api/v1/notifications/read', {}),
+  /** D188: your giveaway wins, and accepting or declining one. */
+  wins: () => api.get<{ wins: GiveawayWinView[] }>('/api/v1/me/giveaways'),
+  answerWin: (id: string, accept: boolean) => api.post(`/api/v1/me/giveaways/${id}`, { accept }),
   friendsFavorited: (placeId: string) =>
     api.get<{ friends: FriendUser[] }>(`/api/v1/places/${placeId}/friends-favorited`),
   setHidePosts: (hidePostsFromFriends: boolean) =>

@@ -213,6 +213,75 @@ export function UserActions({ userId, status }: { userId: string; status: string
 }
 
 /**
+ * "Notify" on one report about this person: a strike tied to the report, so they see the
+ * reason on Account standing. It's the next step of the ladder, which the button names.
+ */
+export function NotifyForReport({
+  userId,
+  reportId,
+  suggested,
+  step,
+  url = `/api/v1/admin/users/${userId}/actions`,
+}: {
+  userId: string;
+  reportId: string;
+  suggested: string;
+  /** e.g. "warning", "24 h suspension", "ban". */
+  step: string;
+  /** D191: a business login's strikes route instead of a person's actions. */
+  url?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState(suggested);
+  const { busy, error, done, run } = useSubmit();
+  const send = () =>
+    run(async () => {
+      if (step !== 'warning' && !confirm(`This is their next strike: a ${step}. Continue?`))
+        return 'Cancelled.';
+      await adminFetch(url, {
+        method: 'POST',
+        body: { action: 'strike', reason, reportId },
+      });
+      setTimeout(() => window.location.reload(), 600);
+      return 'Sent.';
+    });
+  if (!open) {
+    return (
+      <button style={ui.buttonSecondary} onClick={() => setOpen(true)}>
+        Notify ({step})
+      </button>
+    );
+  }
+  return (
+    <div style={{ minWidth: 260 }}>
+      <label style={ui.label}>
+        Message (shown to them on Account standing)
+        <textarea
+          style={textarea}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          maxLength={1000}
+        />
+      </label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button style={ui.button} disabled={busy} onClick={send}>
+          Send {step}
+        </button>
+        <button style={ui.buttonSecondary} disabled={busy} onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+      {error ? (
+        <p role="alert" style={ui.error}>
+          {error}
+        </p>
+      ) : null}
+      {done ? <p role="status">{done}</p> : null}
+    </div>
+  );
+}
+
+/**
  * D141: the ADMIN badge under someone's name on posts, comments and their profile. Only a
  * label for the community; admin access is still only given with the promote command.
  */
@@ -394,7 +463,16 @@ export function AddPlaceForm() {
   );
 }
 
-export function VoidStrike({ userId, strikeId }: { userId: string; strikeId: string }) {
+export function VoidStrike({
+  userId,
+  strikeId,
+  url = `/api/v1/admin/users/${userId}/actions`,
+}: {
+  userId: string;
+  strikeId: string;
+  /** D191: a business login's strikes route instead of a person's actions. */
+  url?: string;
+}) {
   const { busy, error, run } = useSubmit();
   return (
     <>
@@ -405,7 +483,7 @@ export function VoidStrike({ userId, strikeId }: { userId: string; strikeId: str
           run(async () => {
             const reason = prompt('Why cancel this strike? (recorded)');
             if (!reason) return 'Cancelled.';
-            await adminFetch(`/api/v1/admin/users/${userId}/actions`, {
+            await adminFetch(url, {
               method: 'POST',
               body: { action: 'void', strikeId, reason },
             });

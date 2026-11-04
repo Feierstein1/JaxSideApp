@@ -2,7 +2,7 @@ import { medalKeysSql } from '../achievements';
 import { COMMENT_MAX, type CommentView, type DiscussionKind, type MedalBadge } from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
 import { getConfig } from '../config';
-import { signedPhotoUrl } from '../media/photos';
+import { signedBusinessPictureUrl, signedPhotoUrl } from '../media/photos';
 import { db } from '../db';
 import { ApiError } from '../http';
 import { TABLE } from './posts';
@@ -33,6 +33,8 @@ interface CommentRow {
   /** D172: a reply from the place's business (business website): its place and staff name. */
   business_place: string | null;
   business_staff_name: string | null;
+  /** D189: the writing login's profile picture. */
+  business_avatar_id: string | null;
   score: number;
   my_vote: number | null;
 }
@@ -56,6 +58,7 @@ function toView(r: CommentRow, viewer: CommentViewer): CommentView {
             theOwner: true as const,
             place: r.business_place ?? '',
             staffName: r.business_staff_name,
+            avatarUrl: r.business_avatar_id ? signedBusinessPictureUrl(r.business_avatar_id) : null,
           }
         : r.authorKind === 'GUEST'
           ? { guest: true }
@@ -93,7 +96,8 @@ export const NO_USER = '00000000-0000-0000-0000-000000000000';
 /** D172: in a place's discussion, replies from its business show as "The Owner". */
 function ownerColumns(kind: DiscussionKind, postId: string) {
   if (kind !== 'business') {
-    return Prisma.sql`NULL::text AS business_place, NULL::text AS business_staff_name`;
+    return Prisma.sql`NULL::text AS business_place, NULL::text AS business_staff_name,
+      NULL::uuid AS business_avatar_id`;
   }
   // D172: replies written on the business website.
   const business = Prisma.sql`FROM "BusinessPost" bp JOIN "BusinessPlace" pl ON pl.id = bp."placeId"
@@ -103,7 +107,10 @@ function ownerColumns(kind: DiscussionKind, postId: string) {
     (SELECT a."staffName" FROM "BusinessPost" bp
        JOIN "BusinessPlaceAccess" a ON a."placeId" = bp."placeId"
        WHERE bp.id = ${postId}::uuid AND a."accountId" = t."authorBusinessId"
-       ORDER BY a."revokedAt" DESC NULLS FIRST LIMIT 1) AS business_staff_name`;
+       ORDER BY a."revokedAt" DESC NULLS FIRST LIMIT 1) AS business_staff_name,
+    (SELECT ba."avatarMediaId" FROM "BusinessAccount" ba
+            JOIN "AdMedia" m ON m.id = ba."avatarMediaId" AND m.status = 'ACTIVE'
+            WHERE ba.id = t."authorBusinessId" AND ba."revokedAt" IS NULL) AS business_avatar_id`;
 }
 
 export async function listComments(kind: DiscussionKind, postId: string, viewer: CommentViewer) {

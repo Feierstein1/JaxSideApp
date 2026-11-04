@@ -40,6 +40,11 @@ export default async function ReportsQueue() {
                     <Pill>Automatic</Pill>
                   </div>
                 ) : null}
+                {c.fromBusiness ? (
+                  <div>
+                    <Pill>Business report</Pill>
+                  </div>
+                ) : null}
               </td>
               <td style={{ ...td, maxWidth: 380 }}>{c.preview}</td>
               <td style={td}>

@@ -118,10 +118,10 @@ export interface PostView {
         admin?: true;
       }
     /**
-     * D157: a verified owner (or owner team member) in their own place's discussion. Never
-     * their username: "The Owner", with the staff name if one is set.
+     * D172: written on the business website. Never a username: "The Owner", with the staff
+     * name if one is set and (D189) the writing login's picture if it has one.
      */
-    | { theOwner: true; place: string; staffName: string | null }
+    | { theOwner: true; place: string; staffName: string | null; avatarUrl: string | null }
     | { deleted: true };
   score: number;
   upCount: number;
@@ -179,8 +179,8 @@ export interface CommentView {
   /** D141: `admin` marks a JaxSide staff member (ADMIN under the name). */
   author:
     | { username: string; medals: MedalBadge[]; avatarUrl: string | null; admin?: true }
-    /** D157: the place's owner team, in its own discussion. */
-    | { theOwner: true; place: string; staffName: string | null }
+    /** D172: the place's business, from the business website (D189: with its picture). */
+    | { theOwner: true; place: string; staffName: string | null; avatarUrl: string | null }
     | { guest: true }
     | { deleted: true };
   score: number;

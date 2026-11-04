@@ -36,17 +36,81 @@ friction).
       Certified Copy ($30). The free PDF of the filed Articles is enough; order a certified copy
       later only if a bank insists.
 - [x] Decided to use a **registered agent** for the registered-agent, principal-place-of-business
-      and mailing addresses. Chosen provider: **none yet.**
+      and mailing addresses. Chosen provider: **Sunshine Corporate Filings
+      (floridaregisteredagent.com)**, picked by the owner 2026-11-03 after a phone call. The
+      call confirmed they serve businesses that get D-U-N-S numbers; little else was answered.
+      The owner heard "about 25 scans a year for $49", but the site lists 25 scans as Premium
+      ($99) and 10 as Deluxe ($49), so check at checkout. Suite number, forwarding cost and the
+      Sunbiz acceptance wording are still unconfirmed.
+      From the site text the owner pasted (2026-11-03): the free shared address is "only for
+      privacy purposes when filing public documents"; a unique address "for all your business
+      needs" needs a paid scanning plan. So **buy Deluxe or Premium with the agent service,
+      before filing**, and use the suite address everywhere. Recommended: Premium ($49 + $99 =
+      $148/yr), since new LLCs get a lot of solicitation mail and Premium includes junk-mail
+      shredding. State mail is scanned free. Skip their upsells: formation ($35+), annual-report
+      filing ($100 + state fee; cancel "renewal service" in the client account if filing
+      yourself), their domain/email/website (use jaxside.com), and the Double LLC.
+      **Ordered 2026-11-03** (agent + mail scanning, company name "JaxSide LLC"). The portal
+      lists the registered agent as **Registered Agents Inc, 7901 4th St N, STE 300,
+      St. Petersburg, FL 33702**: use that name on Sunbiz, not "Sunshine Corporate Filings"
+      (Sunshine's chat gave the latter; a staff member said to copy the portal exactly). STE 300
+      is the building's suite, not the owner's own; the unique suite for principal and mailing
+      addresses was not yet shown. Do not file until it is.
+      **Unique address (2026-11-03): `7901 4th St N #35372, St Petersburg, FL 33702`** (the
+      post office's standard format, the only one the order form offered). Use this exact text
+      as Principal and Mailing address on Sunbiz, D-U-N-S, Apple, Google and the bank.
+      USPS Form 1583 submitted to Sunshine 2026-11-03 (no notarization required by them).
+- [ ] **Sunbiz form filled 2026-11-03, not yet submitted.** Decisions: effective date blank
+      (effective on filing, so the EIN/D-U-N-S can start now; first annual report due
+      Jan 1 to May 1, 2027); no certificate or certified copy; RA = business "Registered Agents
+      Inc", STE 300 address; owner listed once as **AMBR** at the suite address. **Blocker:**
+      the "Registered Agent Signature" must be a named individual at the agent who has given
+      permission; Mark (Sunshine's AI chat) could not supply it, so ask a human rep.
+      Resolved 2026-11-03: a Sunshine representative said to type **David Roberts**.
+- [x] **Articles submitted and $125 paid 2026-11-03** (mailing address recorded as same as
+      principal). Receipt email received; waiting on the "filed" email with the document
+      number (about 8 business days per Sunshine). Do not apply for the EIN before it arrives.
+      When filed, enter the formation date and document number in the Sunshine portal.
 - [ ] **Waiting:** no reply yet from any registered-agent company about using their address.
-      The owner was emailing MyRegAgents (they have no live chat) and may have contacted others.
+      The owner emailed MyRegAgents (no live chat) on 2026-10-30; no reply by 2026-11-02, so
+      phoning alternatives (section 4) is the next step. Superseded 2026-11-03: Sunshine
+      chosen; next step is signing up and getting the suite number before filing.
       The questions sent are in section 5. **The LLC cannot be filed until this is settled**,
       because the form needs the agent's name and address.
-- [ ] File the Articles of Organization on Sunbiz ($125 **(unverified)**).
+- [x] File the Articles of Organization on Sunbiz ($125, confirmed on the form; submitted
+      2026-11-03, awaiting approval).
+- [ ] Single-member operating agreement (free template; not filed with the state; banks may
+      ask for it).
 - [ ] Get an EIN (free, irs.gov).
 - [ ] Get a D-U-N-S number (free, Dun & Bradstreet).
-- [ ] Open a business bank account.
+- [ ] Open a business bank account. **Deferred by the owner (2026-11-03)** until shortly
+      before ads bring in money; the app has no revenue for a few months. Until then, keep a
+      log of LLC costs paid personally (date, vendor, amount) as owner contributions.
 - [ ] Public website and a business email at jaxside.com.
 - [ ] Apple Developer Program (organization) and Google Play Console (organization) accounts.
+- [ ] **Google Business Profile for JaxSide LLC** (owner request 2026-11-03). Needed for the
+      owner-verification plan (D185, `PROJECT_PLAN.md` B6.1, Q40): Google grants Business
+      Profile API access only to someone who manages a profile "verified and active for 60+
+      days", with a website representing that business. **Start early**: the 60 days only begin
+      once the profile is verified. Eligibility problem: Google requires a place customers visit
+      or a business that travels to customers; a rented mail address "isn't eligible", and
+      Sunshine's suite is that kind of address. Options: (a) list JaxSide as a service-area
+      business with the owner's home address **hidden**, only if the owner really meets local
+      businesses in person; (b) apply using a client's verified profile the owner manages
+      (Google allows "one of the clients they manage"). Decide before creating the profile.
+
+**Spending (owner's tally, 2026-11-03): about $300.** Known items: agent + Premium scanning
+$148/yr, Sunbiz filing $125. Coming: Apple $99/yr, Google $25 once, business email about
+$6–7/mo, annual report $138.75 by May 1 each year (first 2027), agent renewal about Nov 2027.
+
+**Recurring fees and risks to watch:** annual report on sunbiz.org (Jan 1 to May 1; $400 late
+fee; the LLC is dissolved if it is never filed); turn off Sunshine's paid annual-report filing
+if filing yourself; keep the agent paid (a lapsed agent can lead to dissolution); ignore
+official-looking solicitation mail (certificates, "annual records", labor posters, BOI fines;
+FinCEN exempted US-formed companies from BOI reporting in March 2025, **re-check before
+relying on it**); keep business money in a business account and sign as the company; no
+personal guarantees without thinking it through; tax and insurance questions go to a CPA or
+broker.
 
 ## 3. Order of work
 
@@ -94,7 +158,21 @@ Providers mentioned (none checked or chosen):
   received, and scanning for **three** non-state mail items (limit period and extra-item fees
   unknown). Whether the address works for D-U-N-S and Apple/Google verification is **not
   confirmed**.
-- **Northwest Registered Agent**, **Registered Agents Inc**: named as options; not researched.
+  No reply to the owner's email after 3 business days (sent Fri 2026-10-30).
+- **Sunshine Corporate Filings (floridaregisteredagent.com)**, checked on its site 2026-11-02:
+  agent $49 a year; its St. Petersburg address (7901 4th St N, Ste 300, a building it says it
+  owns) may be listed as principal and mailing address on state filings; 3 non-state mail scans
+  a year included; Deluxe adds 10 scans and a **unique suite number** for $49 a year; Premium
+  adds 25 scans and a suite number for $99 a year; Virtual Office $19 a month with unlimited
+  scans. Phone (813) 575-1161. Its free-scan limit is the same as MyRegAgents', so the two may
+  be related (unconfirmed). Physical forwarding cost and D-U-N-S/Apple suitability not stated.
+- **Northwest Registered Agent** (site blocked automated reading; figures from search
+  summaries, **unverified**): agent $125 a year; Florida mail forwarding from $20 a month with a
+  unique suite number and unlimited same-day scanning or weekly forwarding.
+- **Registered Agents Inc:** only old (2020) pricing found; not pursued.
+- A **unique suite number** matters: without one, the LLC shares a bare address with thousands
+  of companies, which is a likely cause of D-U-N-S or Apple verification trouble. Get it before
+  filing so the Articles show the full address from day one.
 
 **Store accounts (business).**
 
@@ -106,6 +184,18 @@ Providers mentioned (none checked or chosen):
 - A business email at `jaxside.com`, a public website with the Privacy Policy and an
   account-deletion page, and a phone number the stores can reach are expected.
 - App IDs are already set to `com.jaxside.app` for both stores.
+- **Apple denial risk (researched 2026-11-02).** Apple's forums have many posts about
+  organization enrollments declined with no reason, but they are mostly complaints, so they
+  overstate how often it happens. Apple's enrollment page lists the checks: legal entity
+  (no DBAs), D-U-N-S for that entity, binding authority (owner qualifies), a work email on the
+  company's domain, and a working public website on that domain ("minimal content" or a
+  registrar parking page is rejected); notarized documents may be requested. It says nothing
+  about registered-agent or virtual addresses; no source found ties them to denials. The
+  avoidable causes reported: name/address/phone not matching the D-U-N-S record exactly,
+  applying within 2 business days of getting the D-U-N-S, a placeholder website, a Gmail
+  address, and missing Apple's verification call. Fallbacks if declined: keep working the
+  support case and ask for a reset; or enroll as an individual (shows the owner's legal name)
+  and later move the app to the company account with Apple's app transfer.
 
 **Money and structure.**
 

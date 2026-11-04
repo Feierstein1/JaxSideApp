@@ -93,8 +93,8 @@ describe('the queue (P5.14)', () => {
     const r = await call(caseGET as H, 'GET', { headers: admin, params: { type: 'general', id } });
     expect(r.status).toBe(200);
     expect(r.body.reports.map((x: { reporter: string }) => x.reporter).sort()).toEqual([
+      '@bob_q',
       'automatic screening',
-      'bob_q',
     ]);
     expect(r.body.authorHistory).toMatchObject({ reportsAgainst: 2, contentRemoved: 0 });
     // Never the author's email, even for admins (reveal-with-reason is P5.18).
@@ -238,7 +238,10 @@ describe('user tools (P5.6, P5.14)', () => {
   it('search, record, suspend and cancel a strike, all audited', async () => {
     const none = await call(usersGET as H, 'GET', { headers: admin });
     expect(none.body.users).toEqual([]);
-    const found = await call(usersGET as H, 'GET', { headers: admin, query: { q: '@ALI' } });
+    const found = await call(usersGET as H, 'GET', {
+      headers: admin,
+      query: { q: '@ALI', filter: 'all' },
+    });
     expect(found.body.users.map((u: { username: string }) => u.username)).toEqual(['alice_q']);
     const act = (body: Record<string, unknown>) =>
       call(userActionPOST as H, 'POST', { headers: admin, params: { id: aliceId }, body });

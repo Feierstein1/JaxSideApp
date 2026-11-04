@@ -1,10 +1,14 @@
 import type { z } from 'zod';
 import type { userActionSchema } from '@jax/shared';
 import { normalizeUsername } from '@jax/shared';
+import { Prisma } from '@/generated/prisma/client';
+import { getConfig } from '../config';
 import { db } from '../db';
 import { ApiError } from '../http';
 import { enforce } from '../rate-limit';
 import {
+  STRIKE_ACTIONS,
+  activeStrikes,
   banUser,
   issueStrike,
   liftEnforcement,
@@ -12,7 +16,7 @@ import {
   voidStrike,
 } from '../moderation/enforcement';
 import { audit } from './audit';
-import { userHistory } from './queue';
+import { REPORTER_INCLUDE, refOf, reporterLabel, reportsAgainstWhere, userHistory } from './queue';
 
 /**
  * P5.14 user tools: search, a person's record, and enforcement actions (P5.6).
@@ -30,16 +34,190 @@ export async function adminRateLimit(adminId: string) {
   ]);
 }
 
-export async function searchUsers(q: string) {
-  const term = normalizeUsername(q.trim().replace(/^@/, ''));
-  if (!term) return [];
-  const rows = await db.user.findMany({
-    where: { usernameNormalized: { startsWith: term } },
-    orderBy: { usernameNormalized: 'asc' },
-    take: 25,
-    select: { id: true, username: true, status: true, role: true, createdAt: true },
+export const USERS_PAGE_SIZE = 20;
+export const USER_FILTERS = ['strikes', 'banned', 'suspended', 'all'] as const;
+export type UserFilter = (typeof USER_FILTERS)[number];
+
+const STRIKE_SQL = Prisma.sql`m.action IN ('WARN', 'SUSPEND', 'BAN') AND m."voidedAt" IS NULL`;
+
+/** Lower-cased search text with LIKE's wildcards escaped (usernames often contain `_`). */
+const likeTerm = (q: string) =>
+  normalizeUsername(q.replace(/^\s*@/, '')).replace(/[\\%_]/g, '\\$&');
+
+/**
+ * The Users page: any part of a username, filtered to people with strikes (the default),
+ * banned, suspended, or everyone; 20 per page. Strikes are ones not cancelled; "counting"
+ * are the ones still inside the decay window (they set the next step of the ladder).
+ */
+export async function listUsers(opts: { q?: string; filter?: UserFilter; page?: number } = {}) {
+  const term = likeTerm((opts.q ?? '').slice(0, 40));
+  const filter = opts.filter ?? 'strikes';
+  const page = Math.max(1, Math.floor(opts.page ?? 1));
+  const skip = (page - 1) * USERS_PAGE_SIZE;
+  let ids: string[];
+  let total: number;
+  if (filter === 'strikes') {
+    // Most recent strike first.
+    const name = term ? Prisma.sql`AND u."usernameNormalized" LIKE ${`%${term}%`}` : Prisma.empty;
+    const [rows, counted] = await Promise.all([
+      db.$queryRaw<{ id: string }[]>`
+        SELECT u.id FROM "ModerationAction" m JOIN "User" u ON u.id = m."targetUserId"
+        WHERE ${STRIKE_SQL} ${name}
+        GROUP BY u.id ORDER BY max(m."createdAt") DESC, u.id
+        LIMIT ${USERS_PAGE_SIZE} OFFSET ${skip}`,
+      db.$queryRaw<{ n: bigint }[]>`
+        SELECT count(DISTINCT u.id) AS n FROM "ModerationAction" m JOIN "User" u ON u.id = m."targetUserId"
+        WHERE ${STRIKE_SQL} ${name}`,
+    ]);
+    ids = rows.map((r) => r.id);
+    total = Number(counted[0]?.n ?? 0);
+  } else {
+    const where: Prisma.UserWhereInput = {
+      ...(term ? { usernameNormalized: { contains: term } } : {}),
+      ...(filter === 'banned' ? { status: 'BANNED' as const } : {}),
+      ...(filter === 'suspended' ? { status: 'SUSPENDED' as const } : {}),
+    };
+    const [rows, n] = await Promise.all([
+      db.user.findMany({
+        where,
+        orderBy: term ? { usernameNormalized: 'asc' } : { createdAt: 'desc' },
+        skip,
+        take: USERS_PAGE_SIZE,
+        select: { id: true },
+      }),
+      db.user.count({ where }),
+    ]);
+    ids = rows.map((r) => r.id);
+    total = n;
+  }
+  const decayDays = await getConfig('strikes.decayDays');
+  const strikeWhere = {
+    targetUserId: { in: ids },
+    action: { in: STRIKE_ACTIONS },
+    voidedAt: null,
+  };
+  const [users, strikes, counting] = await Promise.all([
+    db.user.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+        username: true,
+        status: true,
+        role: true,
+        suspendedUntil: true,
+        createdAt: true,
+      },
+    }),
+    db.moderationAction.groupBy({
+      by: ['targetUserId'],
+      where: strikeWhere,
+      _count: { _all: true },
+      _max: { createdAt: true },
+    }),
+    db.moderationAction.groupBy({
+      by: ['targetUserId'],
+      where: { ...strikeWhere, createdAt: { gt: new Date(Date.now() - decayDays * 86_400_000) } },
+      _count: { _all: true },
+    }),
+  ]);
+  const byId = new Map(users.map((u) => [u.id, u]));
+  const all = new Map(strikes.map((s) => [s.targetUserId, s]));
+  const live = new Map(counting.map((s) => [s.targetUserId, s._count._all]));
+  return {
+    page,
+    pageSize: USERS_PAGE_SIZE,
+    total,
+    pages: Math.max(1, Math.ceil(total / USERS_PAGE_SIZE)),
+    users: ids.flatMap((id) => {
+      const u = byId.get(id);
+      if (!u) return [];
+      const s = all.get(id);
+      return [
+        {
+          id: u.id,
+          username: u.username,
+          status: u.status,
+          role: u.role,
+          suspendedUntil: u.suspendedUntil?.toISOString() ?? null,
+          createdAt: u.createdAt.toISOString(),
+          strikes: s?._count._all ?? 0,
+          countingStrikes: live.get(id) ?? 0,
+          lastStrikeAt: s?._max.createdAt?.toISOString() ?? null,
+        },
+      ];
+    }),
+  };
+}
+
+/** Accounts created today, this week (from Monday), this month and ever, in Jacksonville time. */
+export async function signupCounts(now = new Date()) {
+  const [r] = await db.$queryRaw<{ today: bigint; week: bigint; month: bigint; total: bigint }[]>`
+    WITH t AS (SELECT ${now}::timestamptz AT TIME ZONE 'America/New_York' AS local)
+    SELECT
+      count(*) FILTER (WHERE u."createdAt" >= date_trunc('day', t.local) AT TIME ZONE 'America/New_York') AS today,
+      count(*) FILTER (WHERE u."createdAt" >= date_trunc('week', t.local) AT TIME ZONE 'America/New_York') AS week,
+      count(*) FILTER (WHERE u."createdAt" >= date_trunc('month', t.local) AT TIME ZONE 'America/New_York') AS month,
+      count(*) AS total
+    FROM "User" u, t
+    WHERE u."createdAt" <= ${now}::timestamptz`;
+  return {
+    today: Number(r?.today ?? 0),
+    week: Number(r?.week ?? 0),
+    month: Number(r?.month ?? 0),
+    total: Number(r?.total ?? 0),
+  };
+}
+
+const REPORTS_SHOWN = 50;
+
+/**
+ * The newest reports about a person, each with a link to its case and whether a strike
+ * was already given for it ("Notify" in the portal is a strike tied to the report).
+ */
+export async function reportsAgainstUser(userId: string) {
+  const rows = await db.report.findMany({
+    where: reportsAgainstWhere(userId),
+    orderBy: { createdAt: 'desc' },
+    take: REPORTS_SHOWN,
+    include: {
+      ...REPORTER_INCLUDE,
+      modActions: {
+        where: { targetUserId: userId, action: { in: STRIKE_ACTIONS }, voidedAt: null },
+        select: { action: true, createdAt: true },
+        take: 1,
+      },
+    },
   });
-  return rows.map((u) => ({ ...u, createdAt: u.createdAt.toISOString() }));
+  return rows.map((r) => {
+    const ref = refOf(r);
+    const strike = r.modActions[0];
+    return {
+      id: r.id,
+      reason: r.reason,
+      details: r.details,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+      reporter: reporterLabel(r),
+      caseHref: ref ? `/admin/cases/${ref.type}/${ref.id}` : null,
+      what: ref?.type ?? null,
+      strike: strike ? { action: strike.action, createdAt: strike.createdAt.toISOString() } : null,
+    };
+  });
+}
+
+/** What "Strike" or "Notify" would do next on the ladder (D9), or null if banned. */
+async function nextStrikeStep(userId: string, status: string) {
+  if (status === 'BANNED' || status === 'DELETED') return null;
+  const [strikes, first, second, banAt] = await Promise.all([
+    activeStrikes(userId),
+    getConfig('strikes.firstSuspensionHours'),
+    getConfig('strikes.secondSuspensionHours'),
+    getConfig('strikes.banAtStrike'),
+  ]);
+  const n = strikes.length + 1;
+  if (n >= banAt) return { action: 'BAN' as const, strike: n };
+  if (n === 1) return { action: 'WARN' as const, strike: n };
+  return { action: 'SUSPEND' as const, strike: n, hours: n === 2 ? first : second };
 }
 
 export async function getUserRecord(userId: string) {
@@ -51,7 +229,7 @@ export async function getUserRecord(userId: string) {
     },
   });
   if (!u) throw new ApiError(404, 'NOT_FOUND', 'User not found');
-  const [posts, comments] = await Promise.all([
+  const [posts, comments, reports, nextStrike] = await Promise.all([
     db.generalPost.findMany({
       where: { authorId: userId },
       orderBy: { createdAt: 'desc' },
@@ -64,6 +242,8 @@ export async function getUserRecord(userId: string) {
       take: 10,
       select: { id: true, body: true, status: true, createdAt: true },
     }),
+    reportsAgainstUser(userId),
+    nextStrikeStep(userId, u.status),
   ]);
   return {
     id: u.id,
@@ -76,14 +256,40 @@ export async function getUserRecord(userId: string) {
     joinedAt: u.createdAt.toISOString(),
     legalHold: !!u.legalHoldAt,
     bio: u.profile?.bio ?? null,
+    color: u.profile?.color ?? 'teal',
+    // Through the admin photo route (it serves removed photos too, for moderation).
+    avatarUrl: u.profile?.avatarPhotoId ? `/api/v1/admin/photos/${u.profile.avatarPhotoId}` : null,
     previousUsernames: u.usernameHistory.map((h) => ({
       username: h.username,
       changedAt: h.changedAt.toISOString(),
     })),
     recentPosts: posts.map((p) => ({ ...p, createdAt: p.createdAt.toISOString() })),
     recentComments: comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
+    reports,
+    nextStrike,
     history: await userHistory(userId),
   };
+}
+
+/**
+ * "Notify" from a report: the report must be about this person (someone else's report
+ * looks the same as a missing one), and gets at most one strike that still stands.
+ */
+async function checkReportForStrike(userId: string, reportId: string) {
+  const report = await db.report.findFirst({
+    where: { id: reportId, ...reportsAgainstWhere(userId) },
+    select: {
+      modActions: {
+        where: { targetUserId: userId, action: { in: STRIKE_ACTIONS }, voidedAt: null },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  });
+  if (!report) throw new ApiError(404, 'NOT_FOUND', 'Report not found');
+  if (report.modActions.length) {
+    throw new ApiError(409, 'ALREADY_NOTIFIED', 'They already have a strike for this report');
+  }
 }
 
 export async function userAction(
@@ -96,7 +302,8 @@ export async function userAction(
   let result: unknown = null;
   switch (input.action) {
     case 'strike':
-      result = await issueStrike({ ...base, internalNote: note });
+      if (input.reportId) await checkReportForStrike(userId, input.reportId);
+      result = await issueStrike({ ...base, internalNote: note, reportId: input.reportId });
       break;
     case 'suspend':
       await suspendUser({ ...base, internalNote: note, hours: input.hours });
@@ -143,6 +350,7 @@ export async function userAction(
     {
       reason: input.reason,
       ...(input.action === 'suspend' ? { hours: input.hours } : {}),
+      ...(input.action === 'strike' && input.reportId ? { reportId: input.reportId } : {}),
       ...(input.action === 'staffBadge' ? { on: input.on } : {}),
     },
   );
@@ -173,4 +381,17 @@ export async function listAppeals(status: 'OPEN' | 'ACCEPTED' | 'REJECTED' = 'OP
       createdAt: a.action.createdAt.toISOString(),
     },
   }));
+}
+
+/** The Users page's query string (`q`, `filter`, `page`); anything unknown falls back. */
+export function parseUserQuery(params: { get(name: string): string | null }) {
+  const filter = params.get('filter');
+  const page = Number(params.get('page'));
+  return {
+    q: (params.get('q') ?? '').slice(0, 40),
+    filter: (USER_FILTERS as readonly string[]).includes(filter ?? '')
+      ? (filter as UserFilter)
+      : 'strikes',
+    page: Number.isInteger(page) && page >= 1 && page <= 10_000 ? page : 1,
+  };
 }

@@ -1,6 +1,6 @@
-import { COLORS } from '@jax/shared';
 import { adminSummary } from '@/server/admin/summary';
 import { requireAdminPage } from '../require-admin-page';
+import { StatGrid, StatTile } from './admin-table';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,32 +20,17 @@ export default async function Dashboard() {
   return (
     <>
       <h1>Dashboard</h1>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 16,
-        }}
-      >
+      <StatGrid>
         {TILES.map((t) => (
-          <a
+          <StatTile
             key={t.key}
             href={t.href}
-            style={{
-              background: COLORS.background,
-              border: `1px solid ${COLORS.cardBorder}`,
-              borderLeft: `6px solid ${COLORS.primary}`,
-              borderRadius: 10,
-              padding: 18,
-              color: COLORS.text,
-              textDecoration: 'none',
-            }}
-          >
-            <div style={{ fontSize: 34, fontWeight: 700 }}>{counts[t.key]}</div>
-            <div style={{ color: COLORS.textMuted }}>{t.label}</div>
-          </a>
+            label={t.label}
+            value={counts[t.key]}
+            alert={counts[t.key] > 0}
+          />
         ))}
-      </div>
+      </StatGrid>
     </>
   );
 }

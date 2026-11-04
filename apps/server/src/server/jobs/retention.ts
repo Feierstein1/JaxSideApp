@@ -36,6 +36,7 @@ export interface RetentionReport {
   locationFlagsDeleted: number;
   installationsDeleted: number;
   contactMessagesDeleted: number;
+  activeDaysDeleted: number;
 }
 
 export async function runRetention(now: Date): Promise<RetentionReport> {
@@ -51,6 +52,7 @@ export async function runRetention(now: Date): Promise<RetentionReport> {
     flagCut,
     installCut,
     contactCut,
+    activeDayCut,
   ] = await Promise.all([
     days('retention.notificationReadDays'),
     days('retention.notificationUnreadDays'),
@@ -61,6 +63,7 @@ export async function runRetention(now: Date): Promise<RetentionReport> {
     days('retention.locationFlagDays'),
     days('retention.installationUnseenDays'),
     days('retention.resolvedContactDays'),
+    days('retention.activeDayDays'),
   ]);
 
   const notificationsDeleted = await deleteInBatches(
@@ -97,6 +100,9 @@ export async function runRetention(now: Date): Promise<RetentionReport> {
         where: { status: 'RESOLVED', resolvedAt: { lt: contactCut } },
       })
     ).count,
+    // D188: giveaway tickets (days someone used the app).
+    activeDaysDeleted: (await db.userActiveDay.deleteMany({ where: { day: { lt: activeDayCut } } }))
+      .count,
   };
 }
 

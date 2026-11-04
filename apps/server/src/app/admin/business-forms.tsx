@@ -9,10 +9,13 @@ export function BusinessActions({
   id,
   status,
   kind,
+  hasPicture = false,
 }: {
   id: string;
   status: string;
   kind: 'owner' | 'employee';
+  /** D189: the login has a profile picture (Remove picture). */
+  hasPicture?: boolean;
 }) {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -21,7 +24,7 @@ export function BusinessActions({
   const [temp, setTemp] = useState<string>();
 
   async function act(
-    action: 'suspend' | 'unsuspend' | 'revoke' | 'reset-password',
+    action: 'suspend' | 'unsuspend' | 'revoke' | 'reset-password' | 'remove-picture',
     confirm: string,
   ) {
     if (!window.confirm(confirm)) return;
@@ -97,6 +100,20 @@ export function BusinessActions({
         >
           Reset password
         </button>
+        {hasPicture ? (
+          <button
+            style={ui.buttonSecondary}
+            disabled={busy}
+            onClick={() =>
+              act(
+                'remove-picture',
+                'Remove this login’s profile picture? It stops showing everywhere (kept as evidence).',
+              )
+            }
+          >
+            Remove picture
+          </button>
+        ) : null}
         <button
           style={ui.buttonSecondary}
           disabled={busy}
@@ -399,6 +416,82 @@ export function CompPlanForm({
             End current plan
           </button>
         ) : null}
+      </div>
+      {error ? (
+        <p role="alert" style={ui.error}>
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * D191: a strike on a business login that isn't tied to a report (e.g. a bad profile
+ * picture). The message goes to their bell on the website; the next ladder step applies.
+ */
+export function BusinessStrikeForm({ id, step }: { id: string; step: string }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [internalNote, setInternalNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  async function send() {
+    if (step !== 'warning' && !window.confirm(`This is their next strike: a ${step}. Continue?`))
+      return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await adminFetch(`/api/v1/admin/businesses/${id}/strikes`, {
+        method: 'POST',
+        body: {
+          action: 'strike',
+          reason: reason.trim(),
+          ...(internalNote.trim() ? { internalNote: internalNote.trim() } : {}),
+        },
+      });
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button style={ui.buttonSecondary} onClick={() => setOpen(true)}>
+        Give a strike ({step})
+      </button>
+    );
+  }
+  return (
+    <div style={{ maxWidth: 520 }}>
+      <label style={ui.label}>
+        Message (shown to them in their bell and on Account standing)
+        <textarea
+          style={{ ...ui.input, minHeight: 70, fontFamily: 'inherit' }}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          maxLength={1000}
+        />
+      </label>
+      <label style={ui.label}>
+        Internal note (admins only)
+        <input
+          style={ui.input}
+          value={internalNote}
+          onChange={(e) => setInternalNote(e.target.value)}
+          maxLength={2000}
+        />
+      </label>
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <button style={ui.button} disabled={busy || reason.trim().length < 3} onClick={send}>
+          Send {step}
+        </button>
+        <button style={ui.buttonSecondary} disabled={busy} onClick={() => setOpen(false)}>
+          Cancel
+        </button>
       </div>
       {error ? (
         <p role="alert" style={ui.error}>

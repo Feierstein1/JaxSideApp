@@ -1,4 +1,5 @@
 import type { User } from '@/generated/prisma/client';
+import { recordActiveDay } from '../active-days';
 import { ApiError } from '../http';
 import { assertGuestUsable, findGuest, touchGuest, type LiveGuest } from './guests';
 import { findLiveSession, revokeSession, touchSession } from './sessions';
@@ -33,6 +34,7 @@ async function userFromToken(token: string, opts: RequireUserOptions, now: Date)
     throw new ApiError(403, 'EMAIL_NOT_VERIFIED', 'Confirm your email address first');
   }
   await touchSession(session.id, session.lastUsedAt, now);
+  await recordActiveDay(session.user.id, now); // D188: giveaway tickets
   return { user: session.user, session };
 }
 

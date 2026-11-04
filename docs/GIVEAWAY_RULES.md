@@ -1,6 +1,7 @@
 # Launch giveaway: official rules (DRAFT)
 
-Status: draft for the owner. Nothing here is built; the winner is picked by hand (D164).
+Status: draft for the owner. Built in the admin portal (D188, replaces D164's hand-drawn plan):
+Giveaways page, random draw with optional daily entries, the winner accepts in the app.
 Items in **[brackets]** are blanks to fill in before the rules are published. Not legal advice:
 Florida's rules for prize promotions (Fla. Stat. 849.094) should be checked against the final
 numbers, and a lawyer's read of these rules is optional but cheap insurance.
@@ -43,6 +44,11 @@ Duplicate, copied, empty or automated posts do not count.
 There is no other way to enter. Your account's activity is your entry; there is nothing to
 fill in. We count qualifying posts from our own records, and our count is final.
 
+**[Optional, if the giveaway uses daily entries:]** Each eligible account gets **one entry for
+each day** (Eastern Time) of the Entry Period on which it used the JaxSide app while signed in,
+and at least one entry. Opening the app more than once on the same day still counts as one
+entry. No purchase is needed for any entry.
+
 ### 5. Disqualification
 
 We may disqualify any account, and its entry, that:
@@ -56,7 +62,9 @@ We may disqualify any account, and its entry, that:
 
 Within **[X]** days after the Entry Period ends, we will pick **[one / number]** winner at random
 from all eligible accounts, using a random number generator. Each eligible account has the same
-chance. Your odds depend on the number of eligible entries received.
+chance **[or, with daily entries: each entry has the same chance, so an account's chance grows
+with its number of entries; an account can win only once]**. Your odds depend on the number of
+eligible entries received.
 
 ### 7. Prize
 
@@ -66,8 +74,8 @@ Winners are responsible for any taxes on the prize.
 
 ### 8. Winner notification
 
-The winner is told in the JaxSide app and by email to the address on the account. The winner
-must, within **[5]** days:
+The winner is told in the JaxSide app (the notifications bell), where they accept or decline.
+The winner must, within **[5]** days:
 
 - confirm that the account is still active and theirs, and
 - confirm that the email address on the account is where the gift card should be sent.
@@ -104,8 +112,10 @@ email. See the JaxSide Privacy Policy.
 - [ ] Marketing material must repeat "No purchase necessary" and point to the full rules, which
       should be on a public page (e.g. jaxside.com/giveaway).
 - [ ] Prizes of $600+ need IRS reporting; not an issue for a small gift card.
-- [ ] Your drawing query must list only accounts that are ACTIVE (not banned or suspended),
-      have a confirmed email, were created in the Entry Period, and have at least N visible
-      posts on at least M different days.
-- [ ] **Getting the winner's email:** emails are stored encrypted (D35), so a plain SQL query
-      shows usernames but not addresses. See the open question in the tracker.
+- [ ] Set the giveaway's criteria to match these rules (Giveaways → New giveaway): confirmed
+      email, at least N posts on at least M different days, "joined on or after" the Entry
+      Period's start if only new accounts may enter. Active, non-admin accounts are always
+      required.
+- [x] **Getting the winner's email:** built (D188). The Giveaways page shows it after the
+      winner accepts in the app; each look is recorded in the audit log.
+- [ ] **Daily entries:** if you use them, add the Privacy Policy line first (Q41).

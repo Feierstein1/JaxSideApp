@@ -179,7 +179,7 @@ describe('automatic suspension (D74)', () => {
     expect(c.reports).toHaveLength(18);
     expect(c.accountReports!.length).toBe(8); // the 8 reports on posts
     expect(c.accountReports![0]).toMatchObject({ reason: 'HATE' });
-    expect(c.accountReports![0]!.reporter).toMatch(/^reph\d_s$/);
+    expect(c.accountReports![0]!.reporter).toMatch(/^@reph\d_s$/);
     expect(c.accountReports![0]!.on.preview).toMatch(/from carl/);
     await db.report.createMany({
       data: Array.from({ length: 5 }, () => ({

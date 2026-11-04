@@ -1,5 +1,11 @@
 import { medalKeysSql } from '../achievements';
-import { attachPhotos, attachVideo, attachVoice, signedPhotoUrl } from '../media/photos';
+import {
+  attachPhotos,
+  attachVideo,
+  attachVoice,
+  signedBusinessPictureUrl,
+  signedPhotoUrl,
+} from '../media/photos';
 import {
   milesToMeters,
   type DiscussionKind,
@@ -53,6 +59,8 @@ interface PostRow {
   /** D172: written by the place's business on the business website. */
   by_business: boolean;
   business_staff_name: string | null;
+  /** D189: the writing login's profile picture. */
+  business_avatar_id: string | null;
   video: { id: string; durationMs: number; width: number | null; height: number | null } | null;
   my_vote: number | null;
   distance: number | null;
@@ -72,7 +80,12 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
     author: r.by_business
       ? // D172: from the business website: always "The Owner"; which login wrote it is
         // kept for the business's Owner and moderators only.
-        { theOwner: true, place: r.place_name!, staffName: r.business_staff_name }
+        {
+          theOwner: true,
+          place: r.place_name!,
+          staffName: r.business_staff_name,
+          avatarUrl: r.business_avatar_id ? signedBusinessPictureUrl(r.business_avatar_id) : null,
+        }
       : r.author_status === 'DELETED'
         ? { deleted: true }
         : // D185: a personal account always posts as the person, even as an owner.
@@ -142,9 +155,13 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
           p."businessAuthorId" IS NOT NULL AS by_business,
           (SELECT a."staffName" FROM "BusinessPlaceAccess" a
             WHERE a."accountId" = p."businessAuthorId" AND a."placeId" = pl.id
-            ORDER BY a."revokedAt" DESC NULLS FIRST LIMIT 1) AS business_staff_name`
+            ORDER BY a."revokedAt" DESC NULLS FIRST LIMIT 1) AS business_staff_name,
+          (SELECT ba."avatarMediaId" FROM "BusinessAccount" ba
+            JOIN "AdMedia" m ON m.id = ba."avatarMediaId" AND m.status = 'ACTIVE'
+            WHERE ba.id = p."businessAuthorId" AND ba."revokedAt" IS NULL) AS business_avatar_id`
       : Prisma.sql`NULL::uuid AS place_id, NULL::text AS place_name,
-          false AS by_business, NULL::text AS business_staff_name`;
+          false AS by_business, NULL::text AS business_staff_name,
+          NULL::uuid AS business_avatar_id`;
   const join =
     kind === 'business'
       ? Prisma.sql`JOIN "BusinessPlace" pl ON pl.id = p."placeId"`

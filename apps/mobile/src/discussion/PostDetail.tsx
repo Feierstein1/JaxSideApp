@@ -565,7 +565,7 @@ function CommentRow({
             accessibilityLabel={'username' in c.author ? `${name}'s profile` : undefined}
           >
             {'theOwner' in c.author ? (
-              <OwnerAvatar size={34} />
+              <OwnerAvatar size={34} url={c.author.avatarUrl} />
             ) : (
               <ProfileAvatar
                 name={name}

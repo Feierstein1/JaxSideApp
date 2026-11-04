@@ -66,6 +66,8 @@ export const CONFIG_DEFAULTS = {
   'retention.removedMediaDays': 30,
   /** Location flags (impossible / suspicious travel, mocked location). */
   'retention.locationFlagDays': 90,
+  /** D188: days someone used the app (giveaway tickets); a year plus a month of giveaways. */
+  'retention.activeDayDays': 400,
   /** App installations not seen for this long (never banned ones). */
   'retention.installationUnseenDays': 365,
   /** Resolved Contact-us tickets. */
@@ -194,6 +196,8 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.report.perMinute': 3,
   'rateLimit.report.perDay': 20,
   'rateLimit.appeal.perDay': 3,
+  /** D188: accepting or declining a giveaway prize. */
+  'rateLimit.giveawayResponse.perMinute': 10,
   'rateLimit.verifyEmailResend.perHour': 3,
   /** Wrong email codes per IP, across all accounts (D31). */
   'rateLimit.codeAttempt.per15MinPerIp': 20,

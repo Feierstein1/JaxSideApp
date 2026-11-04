@@ -1,35 +1,57 @@
 import type { ReactNode } from 'react';
-import { NavLink, SignOutButton, TopBar, ui } from '../admin-ui';
+import { Sidebar, ui, type NavGroup } from '../admin-ui';
 import { requireAdminPage } from '../require-admin-page';
 
 export const dynamic = 'force-dynamic';
+
+const NAV: NavGroup[] = [
+  { title: 'Overview', links: [{ href: '/admin', label: 'Dashboard' }] },
+  {
+    title: 'Moderation',
+    links: [
+      { href: '/admin/reports', label: 'Reports' },
+      { href: '/admin/appeals', label: 'Appeals' },
+      { href: '/admin/users', label: 'Users' },
+      { href: '/admin/removals', label: 'Removals' },
+      { href: '/admin/screening', label: 'Screening' },
+    ],
+  },
+  {
+    title: 'Places & business',
+    links: [
+      { href: '/admin/submissions', label: 'Place suggestions' },
+      { href: '/admin/places', label: 'All places' },
+      { href: '/admin/ratings', label: 'Ratings' },
+      { href: '/admin/owners', label: 'Owners' },
+      { href: '/admin/businesses', label: 'Businesses' },
+    ],
+  },
+  {
+    title: 'Community',
+    links: [
+      { href: '/admin/messages', label: 'Messages' },
+      { href: '/admin/polls', label: 'Polls' },
+      { href: '/admin/giveaways', label: 'Giveaways' },
+      { href: '/admin/topics', label: 'Topics' },
+      { href: '/admin/stats', label: 'Area stats' },
+    ],
+  },
+  {
+    title: 'System',
+    links: [
+      { href: '/admin/security', label: 'Security' },
+      { href: '/admin/audit', label: 'Audit log' },
+    ],
+  },
+];
 
 /** Every page under /admin (except sign-in) needs a valid admin session (P5.11). */
 export default async function PortalLayout({ children }: { children: ReactNode }) {
   const admin = await requireAdminPage();
   return (
-    <div style={ui.page}>
-      <TopBar username={admin.username}>
-        <NavLink href="/admin">Dashboard</NavLink>
-        <NavLink href="/admin/reports">Reports</NavLink>
-        <NavLink href="/admin/appeals">Appeals</NavLink>
-        <NavLink href="/admin/submissions">Places</NavLink>
-        <NavLink href="/admin/places">All places</NavLink>
-        <NavLink href="/admin/removals">Removals</NavLink>
-        <NavLink href="/admin/ratings">Ratings</NavLink>
-        <NavLink href="/admin/owners">Owners</NavLink>
-        <NavLink href="/admin/businesses">Businesses</NavLink>
-        <NavLink href="/admin/messages">Messages</NavLink>
-        <NavLink href="/admin/users">Users</NavLink>
-        <NavLink href="/admin/polls">Polls</NavLink>
-        <NavLink href="/admin/topics">Topics</NavLink>
-        <NavLink href="/admin/screening">Screening</NavLink>
-        <NavLink href="/admin/stats">Area stats</NavLink>
-        <NavLink href="/admin/security">Security</NavLink>
-        <NavLink href="/admin/audit">Audit log</NavLink>
-        <SignOutButton />
-      </TopBar>
-      <main style={ui.main}>{children}</main>
+    <div style={{ ...ui.page, display: 'flex' }}>
+      <Sidebar username={admin.username} groups={NAV} />
+      <main style={{ ...ui.main, flex: 1, minWidth: 0 }}>{children}</main>
     </div>
   );
 }

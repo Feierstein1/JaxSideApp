@@ -30,7 +30,7 @@ const COLUMN: Record<
   topic: 'cityTopicId',
 };
 
-function refOf(r: {
+export function refOf(r: {
   generalPostId: string | null;
   businessPostId: string | null;
   commentId: string | null;
@@ -92,12 +92,20 @@ export async function listCases(opts: { type?: CaseType } = {}) {
       reason: true,
       reporterUserId: true,
       reporterGuestId: true,
+      reporterBusinessId: true,
       createdAt: true,
     },
   });
   const cases = new Map<
     string,
-    { ref: CaseRef; reasons: Set<ReportReason>; count: number; automatic: boolean; first: Date }
+    {
+      ref: CaseRef;
+      reasons: Set<ReportReason>;
+      count: number;
+      automatic: boolean;
+      fromBusiness: boolean;
+      first: Date;
+    }
   >();
   for (const r of reports) {
     const ref = refOf(r);
@@ -108,11 +116,14 @@ export async function listCases(opts: { type?: CaseType } = {}) {
       reasons: new Set<ReportReason>(),
       count: 0,
       automatic: false,
+      fromBusiness: false,
       first: r.createdAt,
     };
     c.reasons.add(r.reason);
     c.count++;
-    if (!r.reporterUserId && !r.reporterGuestId) c.automatic = true;
+    if (r.reporterBusinessId)
+      c.fromBusiness = true; // D194
+    else if (!r.reporterUserId && !r.reporterGuestId) c.automatic = true;
     cases.set(key, c);
   }
 
@@ -125,6 +136,7 @@ export async function listCases(opts: { type?: CaseType } = {}) {
         reasons: [...c.reasons],
         reportCount: c.count,
         automatic: c.automatic,
+        fromBusiness: c.fromBusiness,
         firstReportedAt: c.first.toISOString(),
         preview: s ? preview(s.body) : '[gone]',
         contentStatus: s?.status ?? null,
@@ -269,7 +281,7 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
       orderBy: { createdAt: 'desc' },
       take: opts.allReports ? 5000 : CASE_REPORTS_SHOWN,
       include: {
-        reporterUser: { select: { username: true } },
+        ...REPORTER_INCLUDE,
         resolvedBy: { select: { username: true } },
       },
     }),
@@ -342,7 +354,7 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
             orderBy: { createdAt: 'desc' },
             take: opts.allReports ? 5000 : CASE_REPORTS_SHOWN,
             include: {
-              reporterUser: { select: { username: true } },
+              ...REPORTER_INCLUDE,
               generalPost: { select: { body: true } },
               businessPost: { select: { body: true } },
               comment: { select: { body: true } },
@@ -352,7 +364,7 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
           id: r.id,
           reason: r.reason,
           details: r.details,
-          reporter: r.reporterUser?.username ?? 'automatic screening',
+          reporter: reporterLabel(r),
           status: r.status,
           createdAt: r.createdAt.toISOString(),
           on: r.generalPostId
@@ -412,7 +424,7 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
       id: r.id,
       reason: r.reason,
       details: r.details,
-      reporter: r.reporterUser?.username ?? (r.reporterGuestId ? 'guest' : 'automatic screening'),
+      reporter: reporterLabel(r),
       status: r.status,
       createdAt: r.createdAt.toISOString(),
       resolvedBy: r.resolvedBy?.username ?? null,
@@ -422,6 +434,54 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
 }
 
 /** For admins only: strikes (including cancelled ones), reports against, content removed. */
+/** Reports about a person: their profile, or a post, comment, photo or message of theirs. */
+export const reportsAgainstWhere = (userId: string): Prisma.ReportWhereInput => ({
+  OR: [
+    { reportedUserId: userId },
+    { generalPost: { authorId: userId } },
+    { businessPost: { authorId: userId } },
+    { comment: { authorUserId: userId } },
+    { photo: { uploaderId: userId } },
+    { message: { senderId: userId } },
+  ],
+});
+
+/** What the portal needs to say who filed a report (D194: including a business login). */
+export const REPORTER_INCLUDE = {
+  reporterUser: { select: { username: true } },
+  reporterBusiness: {
+    select: {
+      username: true,
+      email: true,
+      placeAccess: {
+        where: { revokedAt: null },
+        orderBy: { createdAt: 'asc' },
+        take: 1,
+        select: { place: { select: { name: true } } },
+      },
+    },
+  },
+} satisfies Prisma.ReportInclude;
+
+/** "@ann", "guest", "a business: Bold Bean (sam.bb)" or "automatic screening". */
+export function reporterLabel(r: {
+  reporterGuestId: string | null;
+  reporterUser?: { username: string } | null;
+  reporterBusiness?: {
+    username: string | null;
+    email: string | null;
+    placeAccess: { place: { name: string } }[];
+  } | null;
+}): string {
+  if (r.reporterUser) return `@${r.reporterUser.username}`;
+  if (r.reporterBusiness) {
+    const place = r.reporterBusiness.placeAccess[0]?.place.name ?? 'no place now';
+    const login = r.reporterBusiness.username ?? r.reporterBusiness.email ?? '';
+    return `a business: ${place} (${login})`;
+  }
+  return r.reporterGuestId ? 'guest' : 'automatic screening';
+}
+
 export async function userHistory(userId: string) {
   const [actions, reportsAgainst, removed, flags] = await Promise.all([
     db.moderationAction.findMany({
@@ -430,16 +490,7 @@ export async function userHistory(userId: string) {
       take: 50,
       include: { admin: { select: { username: true } } },
     }),
-    db.report.count({
-      where: {
-        OR: [
-          { reportedUserId: userId },
-          { generalPost: { authorId: userId } },
-          { businessPost: { authorId: userId } },
-          { comment: { authorUserId: userId } },
-        ],
-      },
-    }),
+    db.report.count({ where: reportsAgainstWhere(userId) }),
     Promise.all([
       db.generalPost.count({ where: { authorId: userId, status: 'REMOVED' } }),
       db.businessPost.count({ where: { authorId: userId, status: 'REMOVED' } }),

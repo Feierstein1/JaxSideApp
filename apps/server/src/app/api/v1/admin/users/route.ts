@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/server/admin/auth';
-import { searchUsers } from '@/server/admin/users';
+import { listUsers, parseUserQuery } from '@/server/admin/users';
 import { route } from '@/server/http';
 
 export const dynamic = 'force-dynamic';
 
-/** P5.14: find a person by username (prefix). */
+/** P5.14: find people by any part of the username; filter by strikes, banned, suspended. */
 export const GET = route(async (req) => {
   await requireAdmin(req);
-  const q = (new URL(req.url).searchParams.get('q') ?? '').slice(0, 40);
-  return NextResponse.json({ users: await searchUsers(q) });
+  return NextResponse.json(await listUsers(parseUserQuery(new URL(req.url).searchParams)));
 });
