@@ -18,7 +18,10 @@ export type UploadKind = keyof typeof KINDS;
 export async function enforceUploadLimit(userId: string, kind: UploadKind, now = new Date()) {
   const { limitKey, noun } = KINDS[kind];
   try {
-    await enforce([{ key: `upload-day:${kind}:user:${userId}`, limitKey, windowSeconds: 86_400 }], now);
+    await enforce(
+      [{ key: `upload-day:${kind}:user:${userId}`, limitKey, windowSeconds: 86_400 }],
+      now,
+    );
   } catch (err) {
     if (err instanceof ApiError && err.code === 'RATE_LIMITED') {
       const wait = (err.details as { retryAfterSeconds?: number } | undefined)?.retryAfterSeconds;
