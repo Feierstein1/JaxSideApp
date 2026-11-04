@@ -7,6 +7,7 @@ import {
   type ComponentProps,
   type ComponentRef,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import {
   ActivityIndicator,
@@ -163,7 +164,7 @@ export function PageTitle({
  */
 export function Screen({
   children,
-  keyboard = false,
+  keyboard = true,
   scroll = true,
   padded = true,
   step = true,
@@ -203,20 +204,11 @@ export function Screen({
 }
 
 /**
- * D81: keeps what you're typing above the keyboard on both Android and iPhone. When the
- * keyboard opens it measures how much of this view the keyboard covers and adds that much
- * space at the bottom, so the content (e.g. the comment box) sits right on top of the
- * keyboard. React Native's KeyboardAvoidingView doesn't do this on Android now that Expo
- * draws apps edge to edge (the phone no longer shrinks the screen for the keyboard).
+ * D81 / D192: how much of `ref`'s view the keyboard covers (0 when it is closed), so the view can
+ * add that much space at its bottom. Shared by KeyboardSafeView (screens) and Sheet (pop-up
+ * sheets), so every place you can type stays above the keyboard.
  */
-export function KeyboardSafeView({
-  children,
-  style,
-}: {
-  children: ReactNode;
-  style?: StyleProp<ViewStyle>;
-}) {
-  const ref = useRef<ComponentRef<typeof View>>(null);
+function useKeyboardInset(ref: RefObject<ComponentRef<typeof View> | null>) {
   const [inset, setInset] = useState(0);
   useEffect(() => {
     const ios = Platform.OS === 'ios';
@@ -235,7 +227,26 @@ export function KeyboardSafeView({
       show.remove();
       hide.remove();
     };
-  }, []);
+  }, [ref]);
+  return inset;
+}
+
+/**
+ * D81: keeps what you're typing above the keyboard on both Android and iPhone. When the
+ * keyboard opens it measures how much of this view the keyboard covers and adds that much
+ * space at the bottom, so the content (e.g. the comment box) sits right on top of the
+ * keyboard. React Native's KeyboardAvoidingView doesn't do this on Android now that Expo
+ * draws apps edge to edge (the phone no longer shrinks the screen for the keyboard).
+ */
+export function KeyboardSafeView({
+  children,
+  style,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const ref = useRef<ComponentRef<typeof View>>(null);
+  const inset = useKeyboardInset(ref);
   return (
     <View ref={ref} style={[{ flex: 1 }, style]}>
       <View style={{ flex: 1 }}>{children}</View>
@@ -1216,6 +1227,10 @@ export function Sheet({
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const slide = useRef(new Animated.Value(0)).current;
+  const rootRef = useRef<ComponentRef<typeof View>>(null);
+  // D192: a sheet with a text box (edit a post, report) rises above the keyboard; otherwise
+  // the keyboard hides what you type until it is closed.
+  const keyboard = useKeyboardInset(rootRef);
   useEffect(() => {
     if (!open) return;
     slide.setValue(reduced ? 1 : 0);
@@ -1237,7 +1252,7 @@ export function Sheet({
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+      <View ref={rootRef} style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
           style={[StyleSheet.absoluteFill, { backgroundColor: DARK.scrim }]}
           onPress={onClose}
@@ -1249,8 +1264,10 @@ export function Sheet({
             backgroundColor: DARK.card,
             borderTopLeftRadius: RADIUS.xl,
             borderTopRightRadius: RADIUS.xl,
-            paddingBottom: insets.bottom + SPACE.md,
+            // The keyboard covers the phone's bottom edge, so no extra room for it then.
+            paddingBottom: (keyboard > 0 ? 0 : insets.bottom) + SPACE.md,
             maxHeight: '88%',
+            flexShrink: 1,
             transform: [
               { translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [400, 0] }) },
             ],
@@ -1291,6 +1308,7 @@ export function Sheet({
           ) : null}
           {children}
         </Animated.View>
+        <View style={{ height: keyboard }} />
       </View>
     </Modal>
   );

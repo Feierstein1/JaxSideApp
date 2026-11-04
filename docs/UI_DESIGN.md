@@ -104,8 +104,10 @@ a dashed gold button under the text. A place's post shows a fixed "Posted in [pl
 **Account:** one page. Profile card (color band, photo with camera badge, name, joined, Edit
 bio / Color / View buttons), About, Medals, then grouped settings cards.
 
-**Keyboard:** anything with typing sits in `KeyboardSafeView` (or `Screen keyboard`), which
-lifts the content above the keyboard on Android and iPhone. Don't use `KeyboardAvoidingView`.
+**Keyboard (D192):** every place you can type stays above the keyboard on Android and iPhone:
+`Screen` (keyboard-safe by default), `KeyboardSafeView` for custom layouts, and `Sheet` (it
+rises above the keyboard by itself). Don't use `KeyboardAvoidingView`. A test
+(`src/keyboard-standard.test.ts`) fails for a new file with a text box that uses none of them.
 
 **Forms:** filled dark fields with a leading icon, gold outline while typing, error line with
 an icon; primary button gold with black text, secondary raised grey, danger red outline.

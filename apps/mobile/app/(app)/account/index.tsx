@@ -35,6 +35,7 @@ import {
   Card,
   FormError,
   type IconName,
+  KeyboardSafeView,
   ListGroup,
   ListRow,
   Segmented,
@@ -60,14 +61,17 @@ export default function AccountScreen() {
   if (state.status === 'guest') return <GuestAccount />;
   if (state.status !== 'signedIn') return null;
   return (
-    <ScrollView
-      style={{ backgroundColor: DARK.page }}
-      contentContainerStyle={{ padding: GUTTER, paddingBottom: 56 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <ProfileSection />
-      <Settings />
-    </ScrollView>
+    // D192: the bio box and the email-code box sit mid-page; keep them above the keyboard.
+    <KeyboardSafeView>
+      <ScrollView
+        style={{ backgroundColor: DARK.page }}
+        contentContainerStyle={{ padding: GUTTER, paddingBottom: 56 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <ProfileSection />
+        <Settings />
+      </ScrollView>
+    </KeyboardSafeView>
   );
 }
 
