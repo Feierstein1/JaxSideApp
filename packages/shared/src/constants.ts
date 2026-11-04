@@ -182,7 +182,10 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.comment.perDay': 100,
   'rateLimit.vote.perMinute': 60,
   'rateLimit.vote.perDay': 1000,
-  'rateLimit.upload.perDay': 30,
+  // D198: a separate daily cap for each kind of upload, so one kind can't use up the others.
+  'rateLimit.upload.photosPerDay': 30,
+  'rateLimit.upload.voicePerDay': 15,
+  'rateLimit.upload.videosPerDay': 5,
   /** P6.2 photo limits. */
   'photos.maxUploadMB': 10,
   // D75 voice posts (60 s of AAC is about 1 MB).

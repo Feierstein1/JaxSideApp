@@ -3,7 +3,7 @@ import type { User } from '@/generated/prisma/client';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { ApiError } from '../http';
-import { enforce } from '../rate-limit';
+import { enforceUploadLimit } from './upload-limit';
 import { objectStore } from './store';
 import { boxes, children, durationMs, handler, only, scrubMetadata, type Fail } from './clean/mp4';
 import { signedPhotoUrl } from './photos';
@@ -66,17 +66,7 @@ export async function uploadVoice(user: User, body: Buffer, now = new Date()) {
   if (body.length > maxMB * 1024 * 1024) {
     throw new ApiError(413, 'TOO_LARGE', `Voice clips can be up to ${maxMB} MB.`);
   }
-  // Shares the daily upload allowance with photos.
-  await enforce(
-    [
-      {
-        key: `upload-day:user:${user.id}`,
-        limitKey: 'rateLimit.upload.perDay',
-        windowSeconds: 86_400,
-      },
-    ],
-    now,
-  );
+  await enforceUploadLimit(user.id, 'voice', now);
   const clean = await processVoice(body, maxSeconds);
   const storageKey = `voice/${randomBytes(24).toString('hex')}.m4a`;
   await objectStore().put(storageKey, clean.data, 'audio/mp4');

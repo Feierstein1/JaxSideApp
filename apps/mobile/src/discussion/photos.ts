@@ -5,6 +5,7 @@ import type { PhotoView } from '@jax/shared';
 import { API_BASE_URL } from '@/api';
 import { ApiRequestError, INSTALLATION_HEADER } from '@/api/client';
 import { installationStore, secureTokenStore } from '@/auth/secure-token-store';
+import { showAlert } from '@/dialog';
 import { shrinkTo } from './photo-size';
 
 /**
@@ -107,11 +108,15 @@ export async function postRawFile<T>(path: string, uri: string, contentType: str
     // not JSON (e.g. a proxy error page)
   }
   if (res.status < 200 || res.status >= 300) {
-    throw new ApiRequestError(
-      res.status,
-      json.error?.code ?? 'HTTP_ERROR',
-      json.error?.message ?? `Upload failed (error ${res.status}).`,
-    );
+    const message = json.error?.message ?? `Upload failed (error ${res.status}).`;
+    // D198: the daily cap for photos, voice clips or videos gets a pop-up, not just a line of red text.
+    if (json.error?.code === 'UPLOAD_LIMIT') {
+      showAlert('Daily upload limit reached', message, undefined, {
+        icon: 'time-outline',
+        tone: 'warning',
+      });
+    }
+    throw new ApiRequestError(res.status, json.error?.code ?? 'HTTP_ERROR', message);
   }
   return json as T;
 }

@@ -202,7 +202,7 @@ describe('processing (P6.2, P6.3, ✅MS5)', () => {
   });
 
   it('daily upload limit', async () => {
-    await db.appConfiguration.create({ data: { key: 'rateLimit.upload.perDay', value: 2 } });
+    await db.appConfiguration.create({ data: { key: 'rateLimit.upload.photosPerDay', value: 2 } });
     invalidateConfigCache();
     const codes = [];
     for (let i = 0; i < 3; i++) codes.push((await upload(ann.token, gpsJpeg)).status);

@@ -185,3 +185,19 @@ describe('video posts (D102)', () => {
     expect((await upload(video())).status).toBe(413);
   });
 });
+
+describe('daily video cap (D198)', () => {
+  it('allows 5 videos a day, then explains with UPLOAD_LIMIT', async () => {
+    const codes: number[] = [];
+    let last: { body?: { error?: { code?: string; message?: string } } } = {};
+    for (let i = 0; i < 6; i++) {
+      const r = await upload(video());
+      codes.push(r.status);
+      last = r;
+    }
+    expect(codes).toEqual([201, 201, 201, 201, 201, 429]);
+    expect(last.body?.error?.code).toBe('UPLOAD_LIMIT');
+    expect(last.body?.error?.message).toMatch(/limit for videos.*tomorrow/);
+  });
+});
+

@@ -4,7 +4,7 @@ import { getConfig } from '../config';
 import { db } from '../db';
 import { getEnv } from '../env';
 import { ApiError } from '../http';
-import { enforce } from '../rate-limit';
+import { enforceUploadLimit } from './upload-limit';
 import { imageClassifier } from './classifier';
 import { cleanImage } from './clean/image';
 import { MediaRefused } from './clean/refused';
@@ -43,16 +43,7 @@ export async function uploadPhoto(user: User, body: Buffer, now = new Date()) {
   if (body.length > maxBytes) {
     throw new ApiError(413, 'TOO_LARGE', `Photos can be up to ${maxBytes / 1024 / 1024} MB.`);
   }
-  await enforce(
-    [
-      {
-        key: `upload-day:user:${user.id}`,
-        limitKey: 'rateLimit.upload.perDay',
-        windowSeconds: 86_400,
-      },
-    ],
-    now,
-  );
+  await enforceUploadLimit(user.id, 'photo', now);
   const clean = await processImage(body);
   // P6.6: optional automated screening (none configured by default). Until a review
   // flow for held photos exists, "hold" is treated like "block".

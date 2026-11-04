@@ -111,13 +111,13 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
-| POST | `/api/v1/videos` | user (confirmed email) |  | D102: upload one video (the MP4/MOV bytes as the body, up to 30 s and 25 MB). Confirmed users only; shares the daily upload limit; checked and cleaned before storing. Attach it to a post by ID. |
+| POST | `/api/v1/videos` | user (confirmed email) |  | D102: upload one video (the MP4/MOV bytes as the body, up to 30 s and 25 MB). Confirmed users only; up to 5 videos a day (D198; over it: 429 `UPLOAD_LIMIT`); checked and cleaned before storing. Attach it to a post by ID. |
 
 ## voice
 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
-| POST | `/api/v1/voice` | user (confirmed email) |  | D75: upload one voice clip (the .m4a bytes as the body). Confirmed users only; shares the daily upload limit with photos; checked before storing. Attach it to a post by ID. |
+| POST | `/api/v1/voice` | user (confirmed email) |  | D75: upload one voice clip (the .m4a bytes as the body). Confirmed users only; up to 15 voice clips a day (D198; over it: 429 `UPLOAD_LIMIT`); checked before storing. Attach it to a post by ID. |
 
 ## health
 
@@ -269,7 +269,7 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
-| POST | `/api/v1/photos` | user (confirmed email) |  | P6.1/P6.2: upload one photo (the raw image bytes as the body). Registered users with a confirmed email only; rate-limited; the server checks and re-encodes it before anything is stored (D65). Returns an ID to attach to a post or set as your avatar. |
+| POST | `/api/v1/photos` | user (confirmed email) |  | P6.1/P6.2: upload one photo (the raw image bytes as the body). Registered users with a confirmed email only; up to 30 photos a day (D198; over it: 429 `UPLOAD_LIMIT`); the server checks and re-encodes it before anything is stored (D65). Returns an ID to attach to a post or set as your avatar. |
 | GET | `/api/v1/photos/:id` | signed link (from a post or profile) |  | P6.4: serves a photo through a short-lived signed link (posts and profiles carry the links; the storage bucket itself is private). Expired or forged links get 403; removed, unattached-and-stale, or unknown photos 404. |
 
 ## reports
