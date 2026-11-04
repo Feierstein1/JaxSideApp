@@ -8,9 +8,7 @@ import {
   PATCH as memberPATCH,
 } from '@/app/api/v1/places/[id]/owner-team/[claimId]/route';
 import { GET as teamGET, POST as teamPOST } from '@/app/api/v1/places/[id]/owner-team/route';
-import { POST as roomListPOST } from '@/app/api/v1/places/[id]/posts/list/route';
 import { POST as roomPostPOST } from '@/app/api/v1/places/[id]/posts/route';
-import { POST as postsPOST } from '@/app/api/v1/posts/route';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
@@ -23,8 +21,8 @@ import { relaxBurstLimits, resetDb } from './db-helpers';
 import { callRoute as call, type AnyHandler as H } from './route-call';
 import { createTestUser } from './user-factory';
 
-// D157: "The Owner": a place's owner team posts and comments in its discussion without
-// usernames; one primary owner manages the team.
+// D157: a place's owner team; one primary owner manages it. D185: in the app they post as
+// themselves; only the business website posts as "The Owner".
 
 const DAY = 86_400_000;
 const HERE = { latitude: 30.3151, longitude: -81.686 };
@@ -143,12 +141,13 @@ describe('the primary owner and the team (D157)', () => {
   });
 });
 
-describe('posting as The Owner (D157)', () => {
-  // 🔒 Nobody else ever receives an owner's username for their place's posts.
-  it('shows owner posts and comments as The Owner, with the staff name, never the username', async () => {
+describe('owners post as themselves in the app (D185)', () => {
+  // 🔒 A verified owner's personal account never gets "The Owner": only the business website does.
+  it('shows owner posts, comments and bell entries under their own username', async () => {
     await addMember(owner, 'staff_t', 'Sarah');
     const p = await roomPost(owner, 'Happy hour starts at 4 today!');
-    expect(p.author).toEqual({ theOwner: true, place: 'Bold Bean', staffName: null });
+    expect(p.author).toMatchObject({ username: 'owner_t' });
+    expect(p.author.theOwner).toBeUndefined();
 
     const fanPost = await roomPost(fan, 'Is the patio open?');
     await call(bizCommentPOST as H, 'POST', {
@@ -161,66 +160,25 @@ describe('posting as The Owner (D157)', () => {
       id: fanPost.id,
       body: { reading: reading() },
     });
-    expect(detail.body.comments[0].author).toEqual({
-      theOwner: true,
-      place: 'Bold Bean',
-      staffName: 'Sarah',
-    });
-    const room = await call(roomListPOST as H, 'POST', {
-      token: fan.token,
-      id: place,
-      body: { reading: reading() },
-    });
-    const everything = JSON.stringify([room.body, detail.body]);
-    expect(everything).not.toContain('owner_t');
-    expect(everything).not.toContain('staff_t');
+    expect(detail.body.comments[0].author).toMatchObject({ username: 'staff_t' });
+    expect(JSON.stringify(detail.body)).not.toContain('theOwner');
 
-    // The fan's bell: "The Owner" commented, no username.
     const bell = (await call(bellGET as H, 'GET', { token: fan.token })).body.notifications;
-    expect(bell[0]).toMatchObject({ type: 'POST_COMMENT', actorIsOwner: true, actor: null });
-    expect(JSON.stringify(bell)).not.toContain('staff_t');
-  });
-
-  // 🔒 Answering The Owner's reply doesn't add "@username" (D105's automatic tag).
-  it('never tags an owner by username when someone answers them', async () => {
-    const fanPost = await roomPost(fan, 'Do you have oat milk?');
-    const top = (
-      await call(bizCommentPOST as H, 'POST', {
-        token: fan.token,
-        id: fanPost.id,
-        body: { reading: reading(), body: 'Asking for a friend' },
-      })
-    ).body.id as string;
-    const ownerReply = (
-      await call(bizCommentPOST as H, 'POST', {
-        token: owner.token,
-        id: fanPost.id,
-        body: { reading: reading(), body: 'We do!', parentCommentId: top },
-      })
-    ).body.id as string;
-    await call(bizCommentPOST as H, 'POST', {
-      token: fan.token,
-      id: fanPost.id,
-      body: { reading: reading(), body: 'Thanks!', parentCommentId: ownerReply },
+    expect(bell[0]).toMatchObject({
+      type: 'POST_COMMENT',
+      actorIsOwner: false,
+      actor: { username: 'staff_t' },
     });
-    const bodies = (await db.comment.findMany({ select: { body: true } })).map((c) => c.body);
-    expect(bodies).toContain('Thanks!');
-    expect(bodies.join(' ')).not.toContain('owner_t');
   });
 
-  it('keeps owners as themselves outside their place, and out of friends’ activity there', async () => {
+  it('lists an owner’s place posts in friends’ activity like anyone else’s', async () => {
     await db.friendship.create({
       data: { ...pair(owner.id, fan.id), requesterId: owner.id, status: 'ACCEPTED' },
     });
     await roomPost(owner, 'New menu out now');
-    const area = await call(postsPOST as H, 'POST', {
-      token: owner.token,
-      body: { reading: reading(), body: 'Nice day in Riverside' },
-    });
-    expect(area.body.post.author).toMatchObject({ username: 'owner_t' });
     const feed = (await call(activityGET as H, 'GET', { token: fan.token })).body.items as {
       kind: string;
     }[];
-    expect(feed.map((i) => i.kind)).toEqual(['general']); // the place post isn't listed
+    expect(feed.map((i) => i.kind)).toEqual(['business']);
   });
 });

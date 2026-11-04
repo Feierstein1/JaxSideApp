@@ -50,8 +50,6 @@ interface PostRow {
   avatar_photo_id: string | null;
   photos: { id: string; width: number; height: number }[] | null;
   voice: { id: string; durationMs: number } | null;
-  is_owner: boolean;
-  owner_staff_name: string | null;
   /** D172: written by the place's business on the business website. */
   by_business: boolean;
   business_staff_name: string | null;
@@ -77,18 +75,15 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
         { theOwner: true, place: r.place_name!, staffName: r.business_staff_name }
       : r.author_status === 'DELETED'
         ? { deleted: true }
-        : r.is_owner
-          ? // D157: in their own place's discussion an owner is "The Owner" (no username,
-            // photo or medals); who wrote it is kept for moderators only.
-            { theOwner: true, place: r.place_name!, staffName: r.owner_staff_name }
-          : {
-              username: r.username!,
-              medals: r.medals,
-              color: r.author_color,
-              avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
-              // D141: staff, so people can tell when an admin is speaking.
-              ...(r.staff_badge ? { admin: true } : {}),
-            },
+        : // D185: a personal account always posts as the person, even as an owner.
+          {
+            username: r.username!,
+            medals: r.medals,
+            color: r.author_color,
+            avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
+            // D141: staff, so people can tell when an admin is speaking.
+            ...(r.staff_badge ? { admin: true } : {}),
+          },
     score: r.score,
     upCount: r.upCount,
     downCount: r.downCount,
@@ -144,17 +139,12 @@ function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {
   const place =
     kind === 'business'
       ? Prisma.sql`pl.id AS place_id, pl.name AS place_name,
-          EXISTS (SELECT 1 FROM "OwnerClaim" oc WHERE oc."placeId" = pl.id
-                  AND oc."userId" = p."authorId" AND oc.status = 'VERIFIED') AS is_owner,
-          (SELECT oc."staffName" FROM "OwnerClaim" oc WHERE oc."placeId" = pl.id
-                  AND oc."userId" = p."authorId" AND oc.status = 'VERIFIED'
-            LIMIT 1) AS owner_staff_name,
           p."businessAuthorId" IS NOT NULL AS by_business,
           (SELECT a."staffName" FROM "BusinessPlaceAccess" a
             WHERE a."accountId" = p."businessAuthorId" AND a."placeId" = pl.id
             ORDER BY a."revokedAt" DESC NULLS FIRST LIMIT 1) AS business_staff_name`
-      : Prisma.sql`NULL::uuid AS place_id, NULL::text AS place_name, false AS is_owner,
-          NULL::text AS owner_staff_name, false AS by_business, NULL::text AS business_staff_name`;
+      : Prisma.sql`NULL::uuid AS place_id, NULL::text AS place_name,
+          false AS by_business, NULL::text AS business_staff_name`;
   const join =
     kind === 'business'
       ? Prisma.sql`JOIN "BusinessPlace" pl ON pl.id = p."placeId"`

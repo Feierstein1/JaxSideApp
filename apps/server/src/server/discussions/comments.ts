@@ -30,9 +30,6 @@ interface CommentRow {
   staff_badge: boolean | null;
   avatar_photo_id: string | null;
   medals: MedalBadge[] | null;
-  /** D157: the place's name when the author is one of its verified owners. */
-  owner_place: string | null;
-  owner_staff_name: string | null;
   /** D172: a reply from the place's business (business website): its place and staff name. */
   business_place: string | null;
   business_staff_name: string | null;
@@ -64,15 +61,13 @@ function toView(r: CommentRow, viewer: CommentViewer): CommentView {
           ? { guest: true }
           : r.author_status === 'DELETED' || !r.username
             ? { deleted: true }
-            : r.owner_place
-              ? // D157: an owner in their own place's discussion is "The Owner".
-                { theOwner: true as const, place: r.owner_place, staffName: r.owner_staff_name }
-              : {
-                  username: r.username,
-                  medals: r.medals ?? [],
-                  avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
-                  ...(r.staff_badge ? { admin: true as const } : {}), // D141
-                },
+            : // D185: a personal account always comments as the person, even as an owner.
+              {
+                username: r.username,
+                medals: r.medals ?? [],
+                avatarUrl: r.avatar_photo_id ? signedPhotoUrl(r.avatar_photo_id) : null,
+                ...(r.staff_badge ? { admin: true as const } : {}), // D141
+              },
     score: r.score,
     myVote: (r.my_vote ?? 0) as -1 | 0 | 1,
     isMine:
@@ -95,25 +90,15 @@ export interface CommentViewer {
 /** Matches no row: used where a guest has no user ID (votes, blocks). */
 export const NO_USER = '00000000-0000-0000-0000-000000000000';
 
-/**
- * D157: in a place's discussion, comments by that place's verified owners show as "The Owner"
- * (the place name and the commenter's staff name, never their username).
- */
+/** D172: in a place's discussion, replies from its business show as "The Owner". */
 function ownerColumns(kind: DiscussionKind, postId: string) {
   if (kind !== 'business') {
-    return Prisma.sql`NULL::text AS owner_place, NULL::text AS owner_staff_name,
-      NULL::text AS business_place, NULL::text AS business_staff_name`;
+    return Prisma.sql`NULL::text AS business_place, NULL::text AS business_staff_name`;
   }
   // D172: replies written on the business website.
   const business = Prisma.sql`FROM "BusinessPost" bp JOIN "BusinessPlace" pl ON pl.id = bp."placeId"
     WHERE bp.id = ${postId}::uuid AND t."authorKind" = 'BUSINESS'`;
-  const claim = Prisma.sql`FROM "OwnerClaim" oc
-    JOIN "BusinessPost" bp ON bp."placeId" = oc."placeId"
-    JOIN "BusinessPlace" pl ON pl.id = oc."placeId"
-    WHERE bp.id = ${postId}::uuid AND oc."userId" = t."authorUserId" AND oc.status = 'VERIFIED'`;
   return Prisma.sql`
-    (SELECT pl.name ${claim} LIMIT 1) AS owner_place,
-    (SELECT oc."staffName" ${claim} LIMIT 1) AS owner_staff_name,
     (SELECT pl.name ${business}) AS business_place,
     (SELECT a."staffName" FROM "BusinessPost" bp
        JOIN "BusinessPlaceAccess" a ON a."placeId" = bp."placeId"
@@ -232,23 +217,11 @@ export async function createComment(opts: {
       }
       const answered = parent.authorUser;
       const self = opts.author.kind === 'USER' && parent.authorUserId === opts.author.userId;
-      const answeredIsOwner =
-        opts.kind === 'business' &&
-        !!parent.authorUserId &&
-        !!(await tx.ownerClaim.findFirst({
-          where: {
-            userId: parent.authorUserId,
-            status: 'VERIFIED',
-            place: { posts: { some: { id: opts.postId } } },
-          },
-          select: { id: true },
-        }));
       if (
         anchor.id !== opts.parentCommentId &&
         answered &&
         answered.status !== 'DELETED' &&
         !self &&
-        !answeredIsOwner &&
         !startsWithTag(body, answered.username)
       ) {
         body = `@${answered.username} ${body}`;

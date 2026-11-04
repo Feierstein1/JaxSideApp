@@ -316,9 +316,6 @@ export async function friendActivity(
       FROM "BusinessPost" p JOIN "BusinessPlace" pl ON pl.id = p."placeId"
       WHERE p.status = 'VISIBLE' AND pl.status = 'ACTIVE' AND p."authorId" IN ${authors}
         AND p."createdAt" > ${window}
-        -- D157: an owner's posts in their own place are "The Owner"'s, not theirs to show.
-        AND NOT EXISTS (SELECT 1 FROM "OwnerClaim" oc WHERE oc."placeId" = pl.id
-                        AND oc."userId" = p."authorId" AND oc.status = 'VERIFIED')
     ) a
     WHERE true ${after}
     ORDER BY a.created_at DESC, a.id DESC

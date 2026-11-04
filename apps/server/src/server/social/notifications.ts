@@ -190,21 +190,6 @@ export async function notifyPostMentions(opts: {
   }
 }
 
-/** D157: notifications caused by a place's verified owner on one of that place's posts. */
-async function ownerActors(
-  rows: { id: string; actorId: string | null; businessPostId: string | null }[],
-) {
-  const candidates = rows.filter((r) => r.actorId && r.businessPostId);
-  if (!candidates.length) return new Set<string>();
-  const hits = await db.$queryRaw<{ id: string }[]>`
-    SELECT n.id FROM "Notification" n
-    JOIN "BusinessPost" bp ON bp.id = n."businessPostId"
-    JOIN "OwnerClaim" oc ON oc."placeId" = bp."placeId" AND oc."userId" = n."actorId"
-                        AND oc.status = 'VERIFIED'
-    WHERE n.id IN (${Prisma.join(candidates.map((r) => Prisma.sql`${r.id}::uuid`))})`;
-  return new Set(hits.map((h) => h.id));
-}
-
 /** Where a post is, for "near Riverside": the area, the place, or the citywide topic. */
 async function placesFor(rows: { generalPostId: string | null; businessPostId: string | null }[]) {
   const general = rows.flatMap((r) => (r.generalPostId ? [r.generalPostId] : []));
@@ -262,15 +247,14 @@ export async function listNotifications(userId: string): Promise<NotificationVie
   });
   const pendingBy = new Map(pending.map((p) => [p.requesterId, p.id]));
   const where = await placesFor(rows);
-  const owners = await ownerActors(rows);
   return rows.map((r) => ({
     id: r.id,
     type: r.type,
-    // D157: an owner acting in their own place is "The Owner", never their username;
-    // D172: so is the place's business answering from the business website.
-    actorIsOwner: owners.has(r.id) || r.actorBusinessId !== null,
+    // D172: the place's business answering from the business website is "The Owner";
+    // D185: a personal account always shows as the person.
+    actorIsOwner: r.actorBusinessId !== null,
     actor:
-      owners.has(r.id) || r.actorBusinessId !== null
+      r.actorBusinessId !== null
         ? null
         : r.actor
           ? {

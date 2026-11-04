@@ -108,8 +108,8 @@ describe('verifying an owner (D103)', () => {
     const ok = await confirm(ann, r.body.claim.id, lastCode());
     expect(ok.body.claim.status).toBe('VERIFIED');
     const post = await roomPost(ann, 'Fresh pastries today');
-    // D157: in their own place an owner is "The Owner" (no username).
-    expect(post.body.post.author).toEqual({ theOwner: true, place: 'Bold Bean', staffName: null });
+    // D185: a personal account posts as the person, even in their own place.
+    expect(post.body.post.author.theOwner).toBeUndefined();
     const general = await call(postsPOST as H, 'POST', {
       token: ann.token,
       body: { reading: reading(), body: 'Nice evening' },
