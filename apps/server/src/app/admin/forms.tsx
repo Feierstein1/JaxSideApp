@@ -71,7 +71,7 @@ export function CaseDecision({
     <div style={ui.card}>
       <h2 style={{ marginTop: 0 }}>Decision</h2>
       <label style={ui.label}>
-        Reason (recorded; shown to the author if they get a strike)
+        Reason (optional, except to escalate; shown to the author if they get a strike)
         <textarea
           style={textarea}
           value={reason}
@@ -80,7 +80,7 @@ export function CaseDecision({
         />
       </label>
       <label style={ui.label}>
-        Internal note (admins only)
+        Internal note (optional, admins only)
         <textarea
           style={textarea}
           value={note}
@@ -153,7 +153,7 @@ export function UserActions({ userId, status }: { userId: string; status: string
     <div style={ui.card}>
       <h2 style={{ marginTop: 0 }}>Actions</h2>
       <label style={ui.label}>
-        Reason (shown to the person for strikes, suspensions and bans)
+        Reason (shown to the person for strikes, suspensions and bans; optional for those)
         <textarea
           style={textarea}
           value={reason}
@@ -162,7 +162,7 @@ export function UserActions({ userId, status }: { userId: string; status: string
         />
       </label>
       <label style={ui.label}>
-        Internal note (admins only)
+        Internal note (optional, admins only)
         <textarea
           style={textarea}
           value={note}

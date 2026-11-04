@@ -1,4 +1,5 @@
 import { Prisma, type ContentStatus, type ReportReason } from '@/generated/prisma/client';
+import { DEFAULT_ENFORCEMENT_REASON } from '@jax/shared';
 import { db } from '../db';
 import { ApiError } from '../http';
 import { issueStrike, type StrikeOutcome } from '../moderation/enforcement';
@@ -221,7 +222,10 @@ async function subject(
     );
   }
   if (ref.type === 'photo') {
-    const ph = await db.photo.findUnique({ where: { id: ref.id }, include: { uploader: user } });
+    const ph = await db.photo.findUnique({
+      where: { id: ref.id },
+      include: { uploader: user, uploaderBusiness: businessLogin }, // D195
+    });
     return (
       ph && {
         body: '[photo]',
@@ -231,7 +235,7 @@ async function subject(
             : ph.status === 'REMOVED'
               ? 'REMOVED'
               : 'HELD_FOR_REVIEW',
-        author: ph.uploader,
+        author: ph.uploader ?? asBusiness(ph.uploaderBusiness),
       }
     );
   }
@@ -605,17 +609,26 @@ async function setStatus(
   return visibleBefore;
 }
 
+/** D196: what's recorded when the admin decides a case without a reason. */
+const DEFAULT_CASE_REASON: Record<Decision, string> = {
+  remove: DEFAULT_ENFORCEMENT_REASON,
+  approve: 'Reviewed: allowed',
+  dismiss: 'Reviewed: no rule broken',
+  escalate: 'Child-safety escalation',
+};
+
 export async function decideCase(input: {
   adminId: string;
   ref: CaseRef;
   decision: Decision;
-  /** Shown to the author if a strike is given; kept on the record either way. */
-  reason: string;
+  /** Shown to the author if a strike is given; kept on the record either way. Blank: D196. */
+  reason?: string;
   internalNote?: string;
   strike?: boolean;
   now?: Date;
 }): Promise<{ strike: StrikeOutcome | null }> {
   const now = input.now ?? new Date();
+  const reason = input.reason ?? DEFAULT_CASE_REASON[input.decision];
   const s = await subject(input.ref);
   if (!s) throw new ApiError(404, 'NOT_FOUND', 'Not found');
   const authorId = s.author && 'id' in s.author ? s.author.id : null;
@@ -658,7 +671,7 @@ export async function decideCase(input: {
       data: {
         adminId: input.adminId,
         action: contentAction,
-        reason: input.reason,
+        reason,
         internalNote: input.internalNote ?? null,
         targetUserId: authorId,
         // A moderation action points at posts, comments and photos; topics and messages are
@@ -677,10 +690,7 @@ export async function decideCase(input: {
         data: {
           legalHoldAt: now,
           legalHoldNote:
-            `Child-safety escalation ${now.toISOString().slice(0, 10)}: ${input.reason}`.slice(
-              0,
-              500,
-            ),
+            `Child-safety escalation ${now.toISOString().slice(0, 10)}: ${reason}`.slice(0, 500),
         },
       });
     }
@@ -700,7 +710,7 @@ export async function decideCase(input: {
     strike = await issueStrike({
       adminId: input.adminId,
       userId: authorId,
-      reason: input.reason,
+      reason: input.reason ?? DEFAULT_ENFORCEMENT_REASON,
       internalNote: input.internalNote,
       now,
     });

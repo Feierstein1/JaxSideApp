@@ -147,6 +147,35 @@ describe('decisions (P5.14, P5.15, P5.16, ✅MS3)', () => {
     expect((await db.report.findFirstOrThrow()).status).toBe('DISMISSED');
   });
 
+  it('D196: remove and dismiss need no reason; the author sees a standard one on a strike', async () => {
+    const id = await newPost('rude post here today');
+    await report(bob, { type: 'general', id });
+    const r = await decide('general', id, { decision: 'remove', reason: '', strike: true });
+    expect(r.status).toBe(200);
+    expect(
+      await db.moderationAction.findFirstOrThrow({ where: { action: 'REMOVE_CONTENT' } }),
+    ).toMatchObject({ reason: 'Broke the Community Guidelines', internalNote: null });
+    const standing = await call(standingGET as H, 'GET', { token: alice });
+    expect(standing.body.strikes[0]).toMatchObject({
+      action: 'WARN',
+      reason: 'Broke the Community Guidelines',
+    });
+
+    const fine = await newPost('a perfectly fine post');
+    await report(bob, { type: 'general', id: fine });
+    expect((await decide('general', fine, { decision: 'dismiss' })).status).toBe(200);
+    expect((await db.report.findFirstOrThrow({ where: { generalPostId: fine } })).status).toBe(
+      'DISMISSED',
+    );
+  });
+
+  it('D196: a child-safety escalation still needs a reason', async () => {
+    const id = await newPost('something to escalate');
+    await report(bob, { type: 'general', id });
+    expect((await decide('general', id, { decision: 'escalate' })).status).toBe(400);
+    expect((await db.generalPost.findUniqueOrThrow({ where: { id } })).status).toBe('VISIBLE');
+  });
+
   it('approve: held content goes live and is counted', async () => {
     const postId = await newPost('a calm post to reply to');
     await db.screeningRule.create({

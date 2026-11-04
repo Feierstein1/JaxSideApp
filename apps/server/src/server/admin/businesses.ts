@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import type { z } from 'zod';
-import type { adminBusinessStrikeSchema } from '@jax/shared';
+import { DEFAULT_ENFORCEMENT_REASON, type adminBusinessStrikeSchema } from '@jax/shared';
 import type { Prisma } from '@/generated/prisma/client';
 import { hashPassword } from '../auth/crypto';
 import { db } from '../db';
@@ -38,6 +38,7 @@ export const reportsAgainstBusinessWhere = (accountId: string): Prisma.ReportWhe
   OR: [
     { businessPost: { businessAuthorId: accountId } },
     { comment: { authorBusinessId: accountId } },
+    { photo: { uploaderBusinessId: accountId } }, // D195: its pictures and videos
   ],
 });
 
@@ -555,6 +556,8 @@ export async function businessStrikeAction(
   input: z.infer<typeof adminBusinessStrikeSchema>,
 ) {
   let result: unknown = null;
+  // D196: a strike may come without a reason.
+  const reason = input.reason ?? DEFAULT_ENFORCEMENT_REASON;
   if (input.action === 'strike') {
     if (input.reportId) {
       const report = await db.report.findFirst({
@@ -575,7 +578,7 @@ export async function businessStrikeAction(
     result = await issueBusinessStrike({
       adminId,
       accountId,
-      reason: input.reason,
+      reason,
       internalNote: input.internalNote,
       reportId: input.reportId,
     });
@@ -584,7 +587,7 @@ export async function businessStrikeAction(
       adminId,
       accountId,
       actionId: input.strikeId,
-      reason: input.reason,
+      reason,
     });
   }
   await audit(
@@ -592,7 +595,7 @@ export async function businessStrikeAction(
     `BUSINESS_${input.action.toUpperCase()}`,
     { type: 'business-account', id: accountId },
     {
-      reason: input.reason,
+      reason,
       ...(input.action === 'strike' && input.reportId ? { reportId: input.reportId } : {}),
       ...(input.action === 'void' ? { strikeId: input.strikeId } : {}),
     },

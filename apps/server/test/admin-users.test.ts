@@ -202,6 +202,20 @@ describe("a person's page", () => {
     expect(rec.body.nextStrike).toMatchObject({ action: 'SUSPEND', strike: 2, hours: 24 });
   });
 
+  it('D196: strike, suspend and ban need no reason or note; a standard reason is shown', async () => {
+    const s = await setup();
+    expect((await act(s.target.id, { action: 'strike', reason: '' })).status).toBe(200);
+    expect((await act(s.target.id, { action: 'suspend', hours: 24 })).status).toBe(200);
+    expect((await act(s.other.id, { action: 'ban' })).status).toBe(200);
+    expect(
+      (await db.moderationAction.findMany({ select: { reason: true } })).map((a) => a.reason),
+    ).toEqual(Array(3).fill('Broke the Community Guidelines'));
+    expect((await db.user.findUniqueOrThrow({ where: { id: s.other.id } })).status).toBe('BANNED');
+    // Lifting and notes still say why.
+    expect((await act(s.other.id, { action: 'lift' })).status).toBe(400);
+    expect((await act(s.other.id, { action: 'note', reason: '' })).status).toBe(400);
+  });
+
   it('🔒 refuses a report about someone else, or one that does not exist', async () => {
     const s = await setup();
     const wrong = await act(s.target.id, {

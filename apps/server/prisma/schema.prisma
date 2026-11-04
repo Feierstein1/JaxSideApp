@@ -831,36 +831,42 @@ enum MediaKind {
 
 /// Uploaded media: photos, GIFs and voice clips (D65, D74, D75).
 model Photo {
-  id             String        @id @default(uuid(7)) @db.Uuid
-  uploaderId     String        @db.Uuid
-  kind           MediaKind     @default(IMAGE)
+  id                 String           @id @default(uuid(7)) @db.Uuid
+  /// The person who uploaded it; null when a business login did (D195).
+  uploaderId         String?          @db.Uuid
+  /// D195: a business login uploaded it on the owner website (for its place's posts).
+  /// Exactly one of uploaderId / uploaderBusinessId (CHECK).
+  uploaderBusinessId String?          @db.Uuid
+  kind               MediaKind        @default(IMAGE)
   /// Voice clips: length in milliseconds (checked by the server).
-  durationMs     Int?
+  durationMs         Int?
   /// Random key in the private media bucket (set after processing).
-  storageKey     String?       @unique @db.VarChar(200)
-  quarantineKey  String?       @unique @db.VarChar(200)
-  status         PhotoStatus   @default(PENDING_UPLOAD)
-  mimeType       String?       @db.VarChar(40)
-  width          Int?
-  height         Int?
-  bytes          Int?
-  generalPostId  String?       @db.Uuid
-  businessPostId String?       @db.Uuid
+  storageKey         String?          @unique @db.VarChar(200)
+  quarantineKey      String?          @unique @db.VarChar(200)
+  status             PhotoStatus      @default(PENDING_UPLOAD)
+  mimeType           String?          @db.VarChar(40)
+  width              Int?
+  height             Int?
+  bytes              Int?
+  generalPostId      String?          @db.Uuid
+  businessPostId     String?          @db.Uuid
   /// D98: a photo sent in a private message.
-  messageId      String?       @db.Uuid
-  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
-  processedAt    DateTime?     @db.Timestamptz(3)
-  removedAt      DateTime?     @db.Timestamptz(3)
-  uploader       User          @relation(fields: [uploaderId], references: [id])
-  generalPost    GeneralPost?  @relation(fields: [generalPostId], references: [id], onDelete: SetNull)
-  businessPost   BusinessPost? @relation(fields: [businessPostId], references: [id], onDelete: SetNull)
-  message        Message?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
-  avatarOf       Profile?      @relation("Avatar")
+  messageId          String?          @db.Uuid
+  createdAt          DateTime         @default(now()) @db.Timestamptz(3)
+  processedAt        DateTime?        @db.Timestamptz(3)
+  removedAt          DateTime?        @db.Timestamptz(3)
+  uploader           User?            @relation(fields: [uploaderId], references: [id], onDelete: Restrict)
+  uploaderBusiness   BusinessAccount? @relation(fields: [uploaderBusinessId], references: [id], onDelete: Restrict)
+  generalPost        GeneralPost?     @relation(fields: [generalPostId], references: [id], onDelete: SetNull)
+  businessPost       BusinessPost?    @relation(fields: [businessPostId], references: [id], onDelete: SetNull)
+  message            Message?         @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  avatarOf           Profile?         @relation("Avatar")
 
   reports    Report[]
   modActions ModerationAction[]
 
   @@index([uploaderId, createdAt])
+  @@index([uploaderBusinessId, createdAt])
   @@index([generalPostId])
   @@index([businessPostId])
   @@index([messageId])
@@ -1721,6 +1727,8 @@ model BusinessAccount {
   avatarMedia          AdMedia?                      @relation("BusinessAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
   /// D191: strikes and notes on this login.
   modActions           ModerationAction[]
+  /// D195: pictures and videos this login uploaded for its places' posts.
+  photos               Photo[]
   /// D194: reports this login filed in its places' discussions.
   reportsFiled         Report[]                      @relation("BusinessReporter")
   // D172: what the business wrote in its place's discussion (the real author, for the Owner).

@@ -5,7 +5,7 @@ import { db } from '../db';
 import { ApiError } from '../http';
 import { enforce } from '../rate-limit';
 import { objectStore } from './store';
-import { boxes, children, durationMs, handler, only, scrubMetadata, type Fail } from './mp4';
+import { boxes, children, durationMs, handler, only, scrubMetadata, type Fail } from './clean/mp4';
 import { signedPhotoUrl } from './photos';
 
 /**

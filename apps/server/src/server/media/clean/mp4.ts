@@ -1,4 +1,6 @@
 /**
+ * D195: shared with the owner website (see refused.ts); keep it self-contained.
+ *
  * Reading MP4 / QuickTime files box by box (D75 voice, D102 video). Without a transcoder
  * the server checks uploads structurally and wipes metadata in place: boxes are zeroed and
  * renamed to `free` (which players skip), so sizes and offsets never move and the media

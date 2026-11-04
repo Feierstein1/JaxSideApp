@@ -27,20 +27,36 @@ export const CASE_DECISIONS = ['remove', 'approve', 'dismiss', 'escalate'] as co
 
 const reasonText = z.string().trim().min(3, 'Give a short reason').max(1000);
 const internalNote = z.string().trim().max(2000).optional();
+/** D196: may be left blank (removing, dismissing, strikes, suspensions, bans); the server fills one in. */
+const optionalReason = z
+  .string()
+  .trim()
+  .max(1000)
+  .optional()
+  .transform((v) => v || undefined);
 
-export const caseDecisionSchema = z.strictObject({
-  decision: z.enum(CASE_DECISIONS),
-  /** Recorded; shown to the person if they get a strike. */
-  reason: reasonText,
-  internalNote,
-  strike: z.boolean().optional(),
-});
+/** D196: what the person sees on a strike, suspension or ban when the admin gave no reason. */
+export const DEFAULT_ENFORCEMENT_REASON = 'Broke the Community Guidelines';
+
+export const caseDecisionSchema = z
+  .strictObject({
+    decision: z.enum(CASE_DECISIONS),
+    /** Recorded; shown to the person if they get a strike. Blank: a standard one (D196). */
+    reason: optionalReason,
+    internalNote,
+    strike: z.boolean().optional(),
+  })
+  // A child-safety escalation goes on the legal hold, so it always says why.
+  .refine((d) => d.decision !== 'escalate' || (d.reason?.length ?? 0) >= 3, {
+    path: ['reason'],
+    message: 'Give a short reason',
+  });
 
 /** P5.6 from the portal: actions on a user. */
 export const userActionSchema = z.discriminatedUnion('action', [
   z.strictObject({
     action: z.literal('strike'),
-    reason: reasonText,
+    reason: optionalReason,
     internalNote,
     /** "Notify" from the user's page: the strike is tied to this report about them. */
     reportId: z.uuid().optional(),
@@ -52,10 +68,10 @@ export const userActionSchema = z.discriminatedUnion('action', [
       .int()
       .min(1)
       .max(24 * 365),
-    reason: reasonText,
+    reason: optionalReason,
     internalNote,
   }),
-  z.strictObject({ action: z.literal('ban'), reason: reasonText, internalNote }),
+  z.strictObject({ action: z.literal('ban'), reason: optionalReason, internalNote }),
   z.strictObject({ action: z.literal('lift'), reason: reasonText, internalNote }),
   z.strictObject({ action: z.literal('note'), reason: reasonText, internalNote }),
   z.strictObject({ action: z.literal('void'), strikeId: z.uuid(), reason: reasonText }),
@@ -122,7 +138,7 @@ export const adminBusinessActionSchema = z.strictObject({
 export const adminBusinessStrikeSchema = z.discriminatedUnion('action', [
   z.strictObject({
     action: z.literal('strike'),
-    reason: reasonText,
+    reason: optionalReason,
     internalNote,
     reportId: z.uuid().optional(),
   }),

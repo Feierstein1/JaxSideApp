@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { userActionSchema } from '@jax/shared';
+import { DEFAULT_ENFORCEMENT_REASON, type userActionSchema } from '@jax/shared';
 import { normalizeUsername } from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
 import { getConfig } from '../config';
@@ -297,7 +297,9 @@ export async function userAction(
   userId: string,
   input: z.infer<typeof userActionSchema>,
 ) {
-  const base = { adminId, userId, reason: input.reason };
+  // D196: strikes, suspensions and bans may come without a reason.
+  const reason = input.reason ?? DEFAULT_ENFORCEMENT_REASON;
+  const base = { adminId, userId, reason };
   const note = 'internalNote' in input ? input.internalNote : undefined;
   let result: unknown = null;
   switch (input.action) {
@@ -322,7 +324,7 @@ export async function userAction(
           adminId,
           targetUserId: userId,
           action: 'NOTE',
-          reason: input.reason,
+          reason,
           internalNote: note,
         },
       });
@@ -339,7 +341,7 @@ export async function userAction(
       const strike = await db.moderationAction.findUnique({ where: { id: input.strikeId } });
       if (!strike || strike.targetUserId !== userId)
         throw new ApiError(404, 'NOT_FOUND', 'Strike not found');
-      await voidStrike({ adminId, actionId: input.strikeId, reason: input.reason });
+      await voidStrike({ adminId, actionId: input.strikeId, reason });
       break;
     }
   }
@@ -348,7 +350,7 @@ export async function userAction(
     `USER_${input.action.toUpperCase()}`,
     { type: 'user', id: userId },
     {
-      reason: input.reason,
+      reason,
       ...(input.action === 'suspend' ? { hours: input.hours } : {}),
       ...(input.action === 'strike' && input.reportId ? { reportId: input.reportId } : {}),
       ...(input.action === 'staffBadge' ? { on: input.on } : {}),

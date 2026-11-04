@@ -447,7 +447,7 @@ export function BusinessStrikeForm({ id, step }: { id: string; step: string }) {
         method: 'POST',
         body: {
           action: 'strike',
-          reason: reason.trim(),
+          ...(reason.trim() ? { reason: reason.trim() } : {}),
           ...(internalNote.trim() ? { internalNote: internalNote.trim() } : {}),
         },
       });
@@ -468,7 +468,7 @@ export function BusinessStrikeForm({ id, step }: { id: string; step: string }) {
   return (
     <div style={{ maxWidth: 520 }}>
       <label style={ui.label}>
-        Message (shown to them in their bell and on Account standing)
+        Message (optional; shown to them in their bell and on Account standing)
         <textarea
           style={{ ...ui.input, minHeight: 70, fontFamily: 'inherit' }}
           value={reason}
@@ -486,7 +486,7 @@ export function BusinessStrikeForm({ id, step }: { id: string; step: string }) {
         />
       </label>
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-        <button style={ui.button} disabled={busy || reason.trim().length < 3} onClick={send}>
+        <button style={ui.button} disabled={busy} onClick={send}>
           Send {step}
         </button>
         <button style={ui.buttonSecondary} disabled={busy} onClick={() => setOpen(false)}>

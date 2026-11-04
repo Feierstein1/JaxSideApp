@@ -16,7 +16,11 @@ import { Pill, Table, td, when, words } from '../../admin-table';
 export const dynamic = 'force-dynamic';
 
 const STRIKES = new Set(['WARN', 'SUSPEND', 'BAN']);
-const WHAT: Record<string, string> = { business: 'place post', comment: 'reply' };
+const WHAT: Record<string, string> = {
+  business: 'place post',
+  comment: 'reply',
+  photo: 'picture or video', // D195
+};
 
 /** The ladder step a strike gives now (D191: same ladder as people). */
 function stepLabel(next: { action: string; hours?: number } | null) {
