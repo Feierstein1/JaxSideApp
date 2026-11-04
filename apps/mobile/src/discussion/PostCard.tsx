@@ -149,9 +149,12 @@ export function PostCard({
         <DecoBox
           shape="chamferTop"
           cut={14}
-          fill={pressed ? DARK.raised : isAdmin ? DARK.adminCard : DARK.card}
-          stroke={isAdmin ? DARK.adminEdge : undefined}
-          strokeWidth={isAdmin ? 1.5 : 1}
+          fill={
+            pressed ? DARK.raised : isAdmin ? DARK.adminCard : isOwner ? DARK.tealSoft : DARK.card
+          }
+          // D200: The Owner's posts get a teal-tinted card with a teal edge, like staff's gold.
+          stroke={isAdmin ? DARK.adminEdge : isOwner ? DARK.accent : undefined}
+          strokeWidth={isAdmin || isOwner ? 1.5 : 1}
         >
           {/* The author's color as a stripe down the left edge (below the clipped corner). */}
           <View
@@ -194,7 +197,13 @@ export function PostCard({
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                   <Text
                     numberOfLines={1}
-                    style={{ fontSize: 16, fontWeight: '800', flexShrink: 1, letterSpacing: -0.2 }}
+                    style={{
+                      fontSize: 16,
+                      fontWeight: '800',
+                      flexShrink: 1,
+                      letterSpacing: -0.2,
+                      ...(isOwner ? { color: DARK.tealText } : {}),
+                    }}
                     onPress={isUser ? () => openAuthor(author) : undefined}
                   >
                     {name}
@@ -207,7 +216,6 @@ export function PostCard({
                       accessibilityLabel="Your post"
                     />
                   ) : null}
-                  {'medals' in author ? <MedalIcons medals={author.medals} size={16} /> : null}
                   {isNew ? (
                     // D140 / D199: on the name's line, at the far right.
                     <View
@@ -247,11 +255,22 @@ export function PostCard({
                   </View>
                 ) : null}
                 {isAdmin ? <AdminTag /> : null}
-                <Text
-                  style={{ color: DARK.textMuted, fontSize: 13, fontWeight: '500', marginTop: 1 }}
-                >
-                  {meta}
-                </Text>
+                {/* D200: medals sit on the second line, with the time, so the name keeps its room. */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                  {'medals' in author && author.medals.length ? (
+                    <MedalIcons medals={author.medals} size={16} />
+                  ) : null}
+                  <Text
+                    style={{
+                      color: DARK.textMuted,
+                      fontSize: 13,
+                      fontWeight: '500',
+                      flexShrink: 1,
+                    }}
+                  >
+                    {meta}
+                  </Text>
+                </View>
                 {showWhere ? (
                   <View
                     accessible

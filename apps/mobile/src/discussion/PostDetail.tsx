@@ -554,7 +554,19 @@ function CommentRow({
                 paddingBottom: 6,
                 marginTop: 6,
               }
-            : {}),
+            : 'theOwner' in c.author
+              ? {
+                  // D200: The Owner's comments are teal-tinted with a teal edge.
+                  backgroundColor: DARK.tealSoft,
+                  borderWidth: 1.5,
+                  borderColor: DARK.accent,
+                  borderRadius: RADIUS.md,
+                  paddingLeft: 10,
+                  paddingRight: 8,
+                  paddingBottom: 6,
+                  marginTop: 6,
+                }
+              : {}),
         }}
       >
         {visible ? (
