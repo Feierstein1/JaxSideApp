@@ -25,7 +25,7 @@ export async function enforceUploadLimit(userId: string, kind: UploadKind, now =
       throw new ApiError(
         429,
         'UPLOAD_LIMIT',
-        `You’ve reached today’s limit for ${noun}. This keeps spam out of JaxSide. You can upload ${noun} again tomorrow${wait ? ` (in about ${waitText(wait)})` : ''}.`,
+        `Youâ€™ve reached todayâ€™s limit for ${noun}. This keeps spam out of JaxSide. You can upload ${noun} again tomorrow${wait ? ` (in about ${waitText(wait)})` : ''}.`,
         { retryAfterSeconds: wait, kind },
       );
     }
