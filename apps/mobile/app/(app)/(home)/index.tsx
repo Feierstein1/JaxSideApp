@@ -130,6 +130,8 @@ export default function HomeFeed() {
         load={load}
         reloadKey={`${reloads}:${q}:${type}`}
         onOpen={(p) => router.push(`/post/${p.id}`)}
+        // D206: ads between posts (not in search results).
+        adContext={q ? undefined : { kind: 'feed' }}
         header={listHeader}
         emptyIcon={q ? 'search-outline' : type === 'voice' ? 'mic-outline' : 'chatbubbles-outline'}
         emptyTitle={

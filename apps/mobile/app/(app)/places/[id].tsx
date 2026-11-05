@@ -250,6 +250,7 @@ export default function PlaceScreen() {
             load={loadRoom}
             reloadKey={`${type}:${reloads}`}
             onScrollY={onScrollY}
+            adContext={{ kind: 'place', id }} // D206
             onOpen={(p) => router.push(`/places/post/${p.id}`)}
             header={
               <>

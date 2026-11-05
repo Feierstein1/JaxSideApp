@@ -232,6 +232,7 @@ export default function TopicScreen() {
       <PostList
         load={load}
         reloadKey={`${id}:${sort}`}
+        adContext={{ kind: 'topic', id }} // D206
         onOpen={(p) => router.push(`/citywide/post/${p.id}`)}
         header={header}
         emptyIcon="chatbubbles-outline"

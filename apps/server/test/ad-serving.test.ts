@@ -129,6 +129,7 @@ describe('which ads a reader gets (D206)', () => {
     expect(r.status).toBe(200);
     expect(r.body.ads.map((a: { id: string }) => a.id).sort()).toEqual([city.id, here.id].sort());
     expect(r.body.ads[0]).toMatchObject({ template: 'BANNER', myChoice: null });
+    expect(r.body.layout).toEqual({ first: 4, every: 8, cooldownHours: 3 });
     expect(JSON.stringify(r.body)).not.toContain('owner@'); // never who made it
   });
 
@@ -178,7 +179,9 @@ describe('which ads a reader gets (D206)', () => {
 
   it('21+ ads never go to guests', async () => {
     await ad(owner.id, cafe, { adultsOnly: true });
-    expect((await ask(await guestToken())).body.ads).toEqual([]);
+    const asGuest = await ask(await guestToken());
+    expect(asGuest.body.ads).toEqual([]);
+    expect(asGuest.body.layout.every).toBe(6); // guests see ads a little more often
     expect((await ask(user.token)).body.ads).toHaveLength(1);
   });
 

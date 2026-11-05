@@ -56,6 +56,18 @@ export interface AdCard {
   myChoice: 'INTERESTED' | 'NOT_INTERESTED' | null;
 }
 
+/** D206: the admin's ad spacing and cooldown, sent with every `POST /ads` answer. */
+export interface AdLayout {
+  first: number;
+  every: number;
+  cooldownHours: number;
+}
+
+export interface AdsResponse {
+  ads: AdCard[];
+  layout: AdLayout;
+}
+
 /**
  * D206: where ads go in a list of posts. Returns the post counts after which an ad sits
  * (e.g. [4, 12, 19] = after the 4th, 12th and 19th post), between `from` (posts already

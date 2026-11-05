@@ -9,6 +9,7 @@ import {
   type IdCtx,
 } from '../discussions/handlers';
 import { assertLocationEligible } from '../location/eligibility';
+import { getConfig } from '../config';
 import { enforce } from '../rate-limit';
 import { topicAnchor } from '../topics';
 import { parseBody } from '../validate';
@@ -55,13 +56,19 @@ export async function adsForScreen(req: Request) {
   } else {
     at = await assertLocationEligible(who, input.reading, 'general.read');
   }
-  const ads = await pickAdsFor(
-    { userId: actor.kind === 'user' ? actor.user.id : null, point: at },
-    ctx,
-    input.count,
-    input.seen,
-  );
-  return NextResponse.json({ ads });
+  const [ads, first, every, cooldownHours] = await Promise.all([
+    pickAdsFor(
+      { userId: actor.kind === 'user' ? actor.user.id : null, point: at },
+      ctx,
+      input.count,
+      input.seen,
+    ),
+    getConfig('ads.firstSlot'),
+    getConfig(actor.kind === 'user' ? 'ads.every' : 'ads.everyGuest'),
+    getConfig('ads.cooldownHours'),
+  ]);
+  // The admin's spacing and cooldown, so the phone follows them without an app update.
+  return NextResponse.json({ ads, layout: { first, every, cooldownHours } });
 }
 
 /** POST /ads/views: a batch of ads the phone showed (half on screen for a second). */
