@@ -23,6 +23,7 @@ export function PostList({
   emptyAction,
   reloadKey,
   fab,
+  onScrollY,
 }: {
   load: (cursor?: string) => Promise<PostPage>;
   onOpen: (post: PostView) => void;
@@ -38,6 +39,8 @@ export function PostList({
    * own "Start a post" button instead, so there's one way to post, not two.
    */
   fab?: ReactElement;
+  /** D201: the list's scroll position, for a sticky title. */
+  onScrollY?: (y: number) => void;
 }) {
   const [posts, setPosts] = useState<PostView[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -93,6 +96,8 @@ export function PostList({
         style={{ backgroundColor: DARK.page }}
         contentContainerStyle={{ paddingTop: 4, paddingBottom: 110, flexGrow: 1 }}
         data={posts}
+        onScroll={onScrollY ? (e) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}
+        scrollEventThrottle={32}
         keyExtractor={(p) => p.id}
         renderItem={({ item }) => (
           <PostCard post={item} onOpen={() => onOpen(item)} onError={setError} />

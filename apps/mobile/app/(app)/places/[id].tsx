@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -20,7 +20,7 @@ import { getFreshReading } from '@/location/device';
 import { haptic } from '@/motion';
 import { OsmAttribution } from '@/places/Attribution';
 import { refreshLimiter } from '@/refresh-limit';
-import { PlaceHero, PlaceSkeleton } from '@/places/PlaceHeader';
+import { PlaceHero, PlaceSkeleton, StickyPlaceName } from '@/places/PlaceHeader';
 import { PlaceRatingCard } from '@/places/PlaceRating';
 import { social } from '@/social/api';
 import { Text } from '@/text';
@@ -40,6 +40,17 @@ export default function PlaceScreen() {
   const [place, setPlace] = useState<PlaceSummary>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  // D201: show the small sticky name once the big one has scrolled away.
+  const [stuck, setStuck] = useState(false);
+  const stuckRef = useRef(false);
+  const heroBottom = useRef(150);
+  const onScrollY = useCallback((y: number) => {
+    const next = y > heroBottom.current;
+    if (next !== stuckRef.current) {
+      stuckRef.current = next;
+      setStuck(next);
+    }
+  }, []);
   const toast = useToast(); // D70 / D78: "Added to favorites"
   const [type, setType] = useState<PostTypeFilter>('all'); // D75
   // D128: refresh the discussion (a new location fix, then reload), 30 a minute like Home.
@@ -181,12 +192,17 @@ export default function PlaceScreen() {
 
   const hero = (
     <>
-      <PlaceHero
-        place={place}
-        onFavorite={() => void toggleFavorite()}
-        favoriteBusy={busy}
-        friendFans={friendFans}
-      />
+      {/* The name is the hero's first block; the sticky one appears once that has scrolled off. */}
+      <View
+        onLayout={(e) => (heroBottom.current = Math.max(80, e.nativeEvent.layout.height * 0.3))}
+      >
+        <PlaceHero
+          place={place}
+          onFavorite={() => void toggleFavorite()}
+          favoriteBusy={busy}
+          friendFans={friendFans}
+        />
+      </View>
       {/* D144: like or dislike, only while you're here. */}
       <PlaceRatingCard place={place} onChange={(r) => setPlace({ ...place, ...r })} />
       <View
@@ -233,6 +249,7 @@ export default function PlaceScreen() {
           <PostList
             load={loadRoom}
             reloadKey={`${type}:${reloads}`}
+            onScrollY={onScrollY}
             onOpen={(p) => router.push(`/places/post/${p.id}`)}
             header={
               <>
@@ -272,7 +289,11 @@ export default function PlaceScreen() {
           />
         </>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 48 }}
+          onScroll={(e) => onScrollY(e.nativeEvent.contentOffset.y)}
+          scrollEventThrottle={32}
+        >
           {hero}
           {/* D78: a clear "locked" state that says how far you are. */}
           <View
@@ -311,6 +332,7 @@ export default function PlaceScreen() {
           <OsmAttribution dark />
         </ScrollView>
       )}
+      <StickyPlaceName place={place} show={stuck} />
       {toast.node}
     </View>
   );

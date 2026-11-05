@@ -1,8 +1,10 @@
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { ActivityIndicator, Animated, Easing, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { CATEGORY_ICONS, categoryColor, categoryGroup, DARK, type PlaceSummary } from '@jax/shared';
 import { categoryLabel, formatDistance, plural } from '@/format';
-import { haptic } from '@/motion';
+import { DecoBox } from '@/deco';
+import { haptic, useReducedMotion } from '@/motion';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
 import { Bone, PressableScale, Pulse, StatTile, type IconName } from '@/ui';
@@ -248,6 +250,72 @@ export function PlaceHero({
         </Pressable>
       </View>
     </View>
+  );
+}
+
+/**
+ * D201: the place's name, small, in the top-right corner once you scroll past the big one at
+ * the top of the page. It fades and slides in (and back out when you return to the top). Small
+ * art deco box with the category's icon and color; taps pass through to the page below.
+ */
+export function StickyPlaceName({ place, show }: { place: PlaceSummary; show: boolean }) {
+  const reduced = useReducedMotion();
+  const t = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(t, {
+      toValue: show ? 1 : 0,
+      duration: reduced ? 0 : show ? 260 : 200,
+      easing: show ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [show, reduced, t]);
+  const color = categoryColor(place.category);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{
+        position: 'absolute',
+        top: SPACE.sm,
+        right: SPACE.md,
+        maxWidth: '62%',
+        opacity: t,
+        transform: [
+          { translateY: t.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] }) },
+          { scale: t.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) },
+        ],
+      }}
+    >
+      <DecoBox shape="chamfer" cut={7} fill={DARK.card} stroke={color} strokeWidth={1.5}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 7,
+            paddingLeft: 6,
+            paddingRight: 12,
+            paddingVertical: 5,
+          }}
+        >
+          <View
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 6,
+              backgroundColor: color,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name={categoryIcon(place.category)} size={13} color={DARK.onTeal} />
+          </View>
+          <Text numberOfLines={1} style={{ fontSize: 13.5, fontWeight: '800', flexShrink: 1 }}>
+            {place.name}
+          </Text>
+        </View>
+      </DecoBox>
+    </Animated.View>
   );
 }
 
