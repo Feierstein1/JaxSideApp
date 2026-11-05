@@ -48,6 +48,9 @@ docker compose up -d
 sudo install -m 644 cron /etc/cron.d/jaxside
 chmod 755 backup.sh
 docker image prune -f >/dev/null
+# Each build leaves cache behind (36 GB had piled up by 2026-11-05). Keep the last week's
+# so back-to-back deploys stay quick; never fail a deploy over cleanup.
+docker builder prune -a -f --filter until=168h >/dev/null || true
 for i in $(seq 1 30); do
   if docker compose exec -T app node -e "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" </dev/null; then
     echo "Healthy: $(cat src/REVISION)"; exit 0
