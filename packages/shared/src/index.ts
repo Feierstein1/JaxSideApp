@@ -23,4 +23,5 @@ export * from './theme';
 export * from './screening';
 export * from './ads';
 export * from './ad-denials';
+export * from './ad-rules';
 export * from './plans';

@@ -24,12 +24,23 @@ describe('ad denial reasons (D211)', () => {
   });
 
   it('the decision needs a known reason to turn an ad down, and a note for "Something else"', () => {
-    const ok = (v: unknown) => adminAdDecisionSchema.safeParse(v).success;
+    // D213: every decision says which version of the ad the reviewer saw.
+    const seen = { seenUpdatedAt: '2026-11-05T18:00:00.000Z' };
+    const ok = (v: object) => adminAdDecisionSchema.safeParse({ ...seen, ...v }).success;
     expect(ok({ decision: 'approve' })).toBe(true);
     expect(ok({ decision: 'reject' })).toBe(false);
     expect(ok({ decision: 'reject', reasonCode: 'AI_FOOD' })).toBe(true);
     expect(ok({ decision: 'reject', reasonCode: 'NOPE' })).toBe(false);
     expect(ok({ decision: 'reject', reasonCode: 'OTHER' })).toBe(false);
     expect(ok({ decision: 'reject', reasonCode: 'OTHER', note: 'Add your hours' })).toBe(true);
+  });
+
+  it('D213: a strike comes only with a photo-rules denial, and the seen version is required', () => {
+    const seen = { seenUpdatedAt: '2026-11-05T18:00:00.000Z' };
+    const ok = (v: object) => adminAdDecisionSchema.safeParse({ ...seen, ...v }).success;
+    expect(ok({ decision: 'reject', reasonCode: 'AI_FOOD', strike: true })).toBe(true);
+    expect(ok({ decision: 'reject', reasonCode: 'EXPLICIT', strike: true })).toBe(false);
+    expect(ok({ decision: 'approve', strike: true })).toBe(false);
+    expect(adminAdDecisionSchema.safeParse({ decision: 'approve' }).success).toBe(false);
   });
 });

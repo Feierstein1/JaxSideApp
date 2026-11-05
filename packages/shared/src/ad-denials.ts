@@ -152,6 +152,10 @@ export function adDenial(code: string): { group: AdDenialGroup; reason: AdDenial
 }
 
 /** What the business reads: "Never allowed: … Note: …" (at most 500 characters). */
+/** D213: denials for the photo rules (D207) can come with a strike (D191). */
+export const PHOTO_DENIAL_CODES: readonly string[] =
+  AD_DENIAL_GROUPS.find((g) => g.code === 'PHOTOS')?.reasons.map((r) => r.code) ?? [];
+
 export function adDenialMessage(code: string, note?: string | null): string {
   const d = adDenial(code);
   const extra = note?.trim();

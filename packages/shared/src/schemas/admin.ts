@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AD_DENIAL_CODES } from '../ad-denials';
+import { AD_DENIAL_CODES, PHOTO_DENIAL_CODES } from '../ad-denials';
 import { AD_LIVE_MAX } from '../ads';
 import { loginRequestSchema } from './auth';
 
@@ -146,6 +146,10 @@ export const adminAdDecisionSchema = z
     decision: z.enum(['approve', 'reject']),
     reasonCode: z.enum(AD_DENIAL_CODES).optional(),
     note: z.string().trim().max(300).optional(),
+    /** D212 / D213: the ad's last change as the reviewer saw it; a newer change is refused. */
+    seenUpdatedAt: z.iso.datetime(),
+    /** D213: also give the business a strike (photo-rules denials only, D191). */
+    strike: z.boolean().optional(),
   })
   .refine((d) => d.decision === 'approve' || d.reasonCode, {
     path: ['reasonCode'],
@@ -154,7 +158,12 @@ export const adminAdDecisionSchema = z
   .refine((d) => d.reasonCode !== 'OTHER' || (d.note?.length ?? 0) >= 3, {
     path: ['note'],
     message: 'Say what needs to change',
-  });
+  })
+  .refine(
+    (d) =>
+      !d.strike || (d.decision === 'reject' && PHOTO_DENIAL_CODES.includes(d.reasonCode ?? '')),
+    { path: ['strike'], message: 'A strike comes only with a photo-rules denial' },
+  );
 export type AdminAdDecision = z.infer<typeof adminAdDecisionSchema>;
 
 /** B1.7 / D172: the admin portal's Businesses section. */
