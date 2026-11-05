@@ -124,7 +124,7 @@ describe('verifying an owner (D103)', () => {
     const b = await start(bob, cafe, { method: 'EMAIL', email: 'b@boldbean.com' });
     const r = await confirm(bob, b.body.claim.id, lastCode());
     expect(r.body.claim.status).toBe('PENDING');
-    expect((await listOwnerClaims('PENDING')).map((c) => c.id)).toContain(b.body.claim.id);
+    expect((await listOwnerClaims('PENDING')).rows.map((c) => c.id)).toContain(b.body.claim.id);
     await call(decidePOST as H, 'POST', {
       headers: admin,
       params: { id: b.body.claim.id },
@@ -138,7 +138,7 @@ describe('verifying an owner (D103)', () => {
   it('website/social code: the admin checks the link; reject or approve', async () => {
     const r = await start(ann, shop, { method: 'WEBSITE' });
     expect(r.body.claim.publicCode).toMatch(/^JAX-[A-Z2-9]{6}$/);
-    expect(await listOwnerClaims('PENDING')).toEqual([]); // no link yet
+    expect((await listOwnerClaims('PENDING')).rows).toEqual([]); // no link yet
     expect(
       (
         await call(proofPOST as H, 'POST', {
@@ -153,7 +153,7 @@ describe('verifying an owner (D103)', () => {
       id: r.body.claim.id,
       body: { proofUrl: 'https://instagram.com/tinyshop' },
     });
-    const [pending] = await listOwnerClaims('PENDING');
+    const [pending] = (await listOwnerClaims('PENDING')).rows;
     expect(pending).toMatchObject({ proofUrl: 'https://instagram.com/tinyshop' });
     await call(decidePOST as H, 'POST', {
       headers: admin,
@@ -169,7 +169,7 @@ describe('verifying an owner (D103)', () => {
       'NO_WEBSITE',
     );
     const r = await start(ann, cafe, { method: 'PHONE' });
-    const [forAdmin] = await listOwnerClaims('PENDING');
+    const [forAdmin] = (await listOwnerClaims('PENDING')).rows;
     expect(forAdmin!.place.phone).toBe('+1 904 555 0100');
     // The app never sees the code; only the portal does.
     expect(JSON.stringify(r.body)).not.toContain(forAdmin!.phoneCode!);

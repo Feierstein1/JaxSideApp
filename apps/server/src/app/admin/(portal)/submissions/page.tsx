@@ -3,6 +3,8 @@ import { listSubmissions, submitterHistory } from '@/server/directory/submission
 import { ui } from '../../admin-ui';
 import { requireAdminPage } from '../../require-admin-page';
 import { SubmissionQueue } from '../../submission-queue';
+import { pageNumber } from '@/server/admin/paging';
+import { Pager } from '../admin-table';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +15,13 @@ type Tab = (typeof TABS)[number];
 export default async function SubmissionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; category?: string; submitter?: string; since?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    category?: string;
+    submitter?: string;
+    since?: string;
+    page?: string;
+  }>;
 }) {
   await requireAdminPage();
   const q = await searchParams;
@@ -21,12 +29,14 @@ export default async function SubmissionsPage({
   const category = SUBMIT_CATEGORIES.find((c) => c === q.category);
   const submitter = q.submitter?.slice(0, 20) || undefined;
   const since = q.since ? new Date(q.since) : undefined;
-  const items = await listSubmissions({
+  const list = await listSubmissions({
     status,
     category,
     submitter,
     since: since && !isNaN(since.getTime()) ? since : undefined,
+    page: pageNumber(q.page),
   });
+  const items = list.rows;
   const history = await submitterHistory([...new Set(items.map((s) => s.submitter.id))]);
   const link = (t: Tab) => {
     const p = new URLSearchParams({ status: t });
@@ -75,6 +85,11 @@ export default async function SubmissionsPage({
         <button style={ui.button}>Filter</button>
       </form>
       <SubmissionQueue items={items} history={history} pending={status === 'PENDING'} />
+      <Pager
+        page={list}
+        base="/admin/submissions"
+        params={{ status, category, submitter, since: q.since }}
+      />
     </>
   );
 }

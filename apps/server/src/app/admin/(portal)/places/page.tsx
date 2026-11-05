@@ -2,7 +2,8 @@ import { adminSearchPlaces } from '@/server/directory/admin-places';
 import { ui } from '../../admin-ui';
 import { AddPlaceForm, RemovePlaceButton } from '../../forms';
 import { requireAdminPage } from '../../require-admin-page';
-import { Pill, Table, td, words } from '../admin-table';
+import { Pager, Pill, Table, td, words } from '../admin-table';
+import { pageNumber } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,11 +14,13 @@ export const dynamic = 'force-dynamic';
 export default async function AllPlacesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   await requireAdminPage();
-  const q = ((await searchParams).q ?? '').trim();
-  const rows = q ? await adminSearchPlaces(q) : [];
+  const sp = await searchParams;
+  const q = (sp.q ?? '').trim();
+  const list = q ? await adminSearchPlaces(q, pageNumber(sp.page)) : null;
+  const rows = list?.rows ?? [];
   return (
     <>
       <h1>All places</h1>
@@ -62,6 +65,7 @@ export default async function AllPlacesPage({
         </Table>
       ) : null}
       <AddPlaceForm />
+      {list ? <Pager page={list} base="/admin/places" params={{ q }} /> : null}
     </>
   );
 }

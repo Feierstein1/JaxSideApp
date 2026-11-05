@@ -1,9 +1,11 @@
 import { Prisma, type ContentStatus, type ReportReason } from '@/generated/prisma/client';
 import { DEFAULT_ENFORCEMENT_REASON } from '@jax/shared';
 import { db } from '../db';
+import { resetAdCache } from '../ads/serve';
 import { ApiError } from '../http';
 import { issueStrike, type StrikeOutcome } from '../moderation/enforcement';
 import { audit } from './audit';
+import { pageInfo, pageWindow, toPage } from './paging';
 
 /**
  * P5.14 moderation queue (§10.3, D61). Open reports are grouped into one **case** per
@@ -14,7 +16,15 @@ import { audit } from './audit';
  * (P5.15) and an audit entry (P5.16), and can add a strike to the author (P5.6).
  */
 
-export type CaseType = 'general' | 'business' | 'comment' | 'photo' | 'user' | 'message' | 'topic'; // D133
+export type CaseType =
+  | 'general'
+  | 'business'
+  | 'comment'
+  | 'photo'
+  | 'user'
+  | 'message'
+  | 'topic' // D133
+  | 'ad'; // D209
 export interface CaseRef {
   type: CaseType;
   id: string;
@@ -22,13 +32,14 @@ export interface CaseRef {
 
 const COLUMN: Record<
   Exclude<CaseType, 'user' | 'message'>,
-  'generalPostId' | 'businessPostId' | 'commentId' | 'photoId' | 'cityTopicId'
+  'generalPostId' | 'businessPostId' | 'commentId' | 'photoId' | 'cityTopicId' | 'adId'
 > = {
   general: 'generalPostId',
   business: 'businessPostId',
   comment: 'commentId',
   photo: 'photoId',
   topic: 'cityTopicId',
+  ad: 'adId',
 };
 
 export function refOf(r: {
@@ -40,7 +51,9 @@ export function refOf(r: {
   messageId?: string | null;
   messageEvidence?: unknown;
   cityTopicId?: string | null;
+  adId?: string | null;
 }): CaseRef | null {
+  if (r.adId) return { type: 'ad', id: r.adId }; // D209
   if (r.cityTopicId) return { type: 'topic', id: r.cityTopicId };
   // D98: a reported message (its snapshot keeps the case even after it's unsent).
   if (r.messageId) return { type: 'message', id: r.messageId };
@@ -76,66 +89,88 @@ const URGENT: ReportReason[] = ['CHILD_SAFETY', 'THREAT'];
 
 // ───────────────────────────── Queue ─────────────────────────────
 
-export async function listCases(opts: { type?: CaseType } = {}) {
-  const reports = await db.report.findMany({
-    where: { status: 'OPEN' },
-    orderBy: { createdAt: 'asc' },
-    take: 2000,
-    select: {
-      generalPostId: true,
-      businessPostId: true,
-      commentId: true,
-      photoId: true,
-      reportedUserId: true,
-      messageId: true,
-      messageEvidence: true,
-      cityTopicId: true,
-      reason: true,
-      reporterUserId: true,
-      reporterGuestId: true,
-      reporterBusinessId: true,
-      createdAt: true,
-    },
-  });
-  const cases = new Map<
-    string,
-    {
-      ref: CaseRef;
-      reasons: Set<ReportReason>;
-      count: number;
-      automatic: boolean;
-      fromBusiness: boolean;
-      first: Date;
-    }
-  >();
-  for (const r of reports) {
-    const ref = refOf(r);
-    if (!ref || (opts.type && ref.type !== opts.type)) continue;
-    const key = `${ref.type}:${ref.id}`;
-    const c = cases.get(key) ?? {
-      ref,
-      reasons: new Set<ReportReason>(),
-      count: 0,
-      automatic: false,
-      fromBusiness: false,
-      first: r.createdAt,
-    };
-    c.reasons.add(r.reason);
-    c.count++;
-    if (r.reporterBusinessId)
-      c.fromBusiness = true; // D194
-    else if (!r.reporterUserId && !r.reporterGuestId) c.automatic = true;
-    cases.set(key, c);
-  }
-
-  const out = await Promise.all(
-    [...cases.values()].map(async (c) => {
-      const s = await subject(c.ref);
+/**
+ * The open reports grouped into one case per reported item, most urgent first (child safety
+ * and threats, then held content, then the most reports, then the oldest), 20 a page (D210).
+ * Grouped and ordered in the database, so only one page of cases is ever loaded.
+ */
+export async function listCases(opts: { type?: CaseType; page?: number } = {}) {
+  const page = opts.page ?? 1;
+  const { skip, take } = pageWindow(page);
+  // The same order of columns as refOf().
+  const grouped = Prisma.sql`
+    WITH r AS (
+      SELECT CASE
+               WHEN "adId" IS NOT NULL THEN 'ad'
+               WHEN "cityTopicId" IS NOT NULL THEN 'topic'
+               WHEN "messageId" IS NOT NULL OR "messageEvidence"->>'messageId' IS NOT NULL
+                 THEN 'message'
+               WHEN "generalPostId" IS NOT NULL THEN 'general'
+               WHEN "businessPostId" IS NOT NULL THEN 'business'
+               WHEN "commentId" IS NOT NULL THEN 'comment'
+               WHEN "photoId" IS NOT NULL THEN 'photo'
+               WHEN "reportedUserId" IS NOT NULL THEN 'user'
+             END AS type,
+             COALESCE("adId", "cityTopicId", "messageId", ("messageEvidence"->>'messageId')::uuid,
+                      "generalPostId", "businessPostId", "commentId", "photoId",
+                      "reportedUserId") AS id,
+             reason::text AS reason, "reporterUserId", "reporterGuestId", "reporterBusinessId",
+             "createdAt"
+      FROM "Report" WHERE status = 'OPEN'
+    ), g AS (
+      SELECT type, id,
+             array_agg(DISTINCT reason) AS reasons,
+             count(*)::int AS n,
+             -- D194: a business reporter; otherwise no person at all is automatic screening.
+             bool_or("reporterBusinessId" IS NOT NULL) AS "fromBusiness",
+             bool_or("reporterBusinessId" IS NULL AND "reporterUserId" IS NULL
+                     AND "reporterGuestId" IS NULL) AS automatic,
+             min("createdAt") AS first,
+             bool_or(reason IN (${Prisma.join(URGENT)})) AS urgent
+      FROM r
+      WHERE type IS NOT NULL ${opts.type ? Prisma.sql`AND type = ${opts.type}` : Prisma.empty}
+      GROUP BY type, id
+    )`;
+  const [rows, count] = await Promise.all([
+    db.$queryRaw<
+      {
+        type: CaseType;
+        id: string;
+        reasons: ReportReason[];
+        n: number;
+        fromBusiness: boolean;
+        automatic: boolean;
+        first: Date;
+      }[]
+    >`
+      ${grouped}
+      SELECT * FROM (
+        SELECT g.*,
+               COALESCE(CASE g.type
+                 WHEN 'general' THEN
+                   (SELECT status::text FROM "GeneralPost" WHERE id = g.id) = 'HELD_FOR_REVIEW'
+                 WHEN 'business' THEN
+                   (SELECT status::text FROM "BusinessPost" WHERE id = g.id) = 'HELD_FOR_REVIEW'
+                 WHEN 'comment' THEN
+                   (SELECT status::text FROM "Comment" WHERE id = g.id) = 'HELD_FOR_REVIEW'
+                 WHEN 'photo' THEN
+                   (SELECT status::text NOT IN ('ACTIVE', 'REMOVED') FROM "Photo" WHERE id = g.id)
+                 WHEN 'topic' THEN (SELECT status::text FROM "CityTopic" WHERE id = g.id) = 'HELD'
+               END, false) AS held
+        FROM g
+      ) x
+      ORDER BY CASE WHEN urgent THEN 0 WHEN held THEN 1 ELSE 2 END, n DESC, first, type, id
+      LIMIT ${take} OFFSET ${skip}`,
+    db.$queryRaw<{ n: number }[]>`${grouped} SELECT count(*)::int AS n FROM g`,
+  ]);
+  const list = await Promise.all(
+    rows.map(async (c) => {
+      const s = await subject({ type: c.type, id: c.id } as CaseRef);
       return {
-        type: c.ref.type,
-        id: c.ref.id,
-        reasons: [...c.reasons],
-        reportCount: c.count,
+        type: c.type,
+        id: c.id,
+        reasons: c.reasons,
+        reportCount: c.n,
         automatic: c.automatic,
         fromBusiness: c.fromBusiness,
         firstReportedAt: c.first.toISOString(),
@@ -145,14 +180,7 @@ export async function listCases(opts: { type?: CaseType } = {}) {
       };
     }),
   );
-  const rank = (x: (typeof out)[number]) =>
-    x.reasons.some((r) => URGENT.includes(r)) ? 0 : x.contentStatus === 'HELD_FOR_REVIEW' ? 1 : 2;
-  return out.sort(
-    (a, b) =>
-      rank(a) - rank(b) ||
-      b.reportCount - a.reportCount ||
-      a.firstReportedAt.localeCompare(b.firstReportedAt),
-  );
+  return toPage(list, count[0]?.n ?? 0, page);
 }
 
 type Author =
@@ -165,6 +193,12 @@ type Author =
 const businessLogin = { select: { id: true, email: true, username: true } } as const;
 const asBusiness = (a: { id: string; email: string | null; username: string | null } | null) =>
   a ? { business: true as const, accountId: a.id, signInName: a.username ?? a.email ?? '' } : null;
+
+/** D209: the admin link to a reported ad's picture (the admin route serves any business image). */
+async function adImageForAdmin(adId: string) {
+  const a = await db.ad.findUnique({ where: { id: adId }, select: { mediaId: true } });
+  return a?.mediaId ? `/api/v1/admin/business-pictures/${a.mediaId}` : null;
+}
 
 /** The reported thing's text, status and author. */
 async function subject(
@@ -197,6 +231,20 @@ async function subject(
           c.authorUser ??
           asBusiness(c.authorBusiness) ??
           (c.authorKind === 'GUEST' ? { guest: true } : null),
+      }
+    );
+  }
+  if (ref.type === 'ad') {
+    // D209: a reported ad, from the business that runs it.
+    const a = await db.ad.findUnique({
+      where: { id: ref.id },
+      include: { account: businessLogin },
+    });
+    return (
+      a && {
+        body: `Ad: ${a.headline}${a.body ? ` · ${a.body}` : ''}`,
+        status: a.status === 'ENDED' ? 'REMOVED' : 'VISIBLE',
+        author: asBusiness(a.account),
       }
     );
   }
@@ -272,24 +320,36 @@ async function subject(
 
 // ───────────────────────────── Case detail ─────────────────────────────
 
-/** D74: a case page lists this many reports unless the moderator asks for all of them. */
-export const CASE_REPORTS_SHOWN = 20;
-
-export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {}) {
+/**
+ * One case. Every report is stored; the page shows a per-reason summary and the reports
+ * newest first, 20 a page (D74, D210); the account's own reports and history page too.
+ */
+export async function getCase(
+  ref: CaseRef,
+  opts: { reportsPage?: number; accountReportsPage?: number; historyPage?: number } = {},
+) {
   const s = await subject(ref);
   if (!s) throw new ApiError(404, 'NOT_FOUND', 'Not found');
-  // Every report is stored; the page shows the newest 20 plus a per-reason summary (D74).
-  const [reports, byReason] = await Promise.all([
+  const reportsPage = opts.reportsPage ?? 1;
+  const [reports, byReason, evidence] = await Promise.all([
     db.report.findMany({
       where: reportWhere(ref),
-      orderBy: { createdAt: 'desc' },
-      take: opts.allReports ? 5000 : CASE_REPORTS_SHOWN,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...pageWindow(reportsPage),
       include: {
         ...REPORTER_INCLUDE,
         resolvedBy: { select: { username: true } },
       },
     }),
     db.report.groupBy({ by: ['reason'], where: reportWhere(ref), _count: { _all: true } }),
+    // D98: the chat around a reported message comes from the newest report's snapshot.
+    ref.type === 'message'
+      ? db.report.findFirst({
+          where: { ...reportWhere(ref), messageEvidence: { not: Prisma.DbNull } },
+          orderBy: { createdAt: 'desc' },
+          select: { messageEvidence: true },
+        })
+      : null,
   ]);
 
   // Context: the post a comment belongs to, and the comment it replies to.
@@ -343,20 +403,24 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
       : null;
   // D74: for an account, every report on anything it posted too (who, why, on what), so an
   // automatic suspension can be checked for report abuse in one place.
+  const accountWhere: Prisma.ReportWhereInput = {
+    OR: [
+      { generalPost: { authorId: ref.id } },
+      { businessPost: { authorId: ref.id } },
+      { comment: { authorUserId: ref.id } },
+      { photo: { uploaderId: ref.id } },
+    ],
+  };
+  const accountReportsPage = opts.accountReportsPage ?? 1;
+  const accountReportsTotal =
+    ref.type === 'user' ? await db.report.count({ where: accountWhere }) : 0;
   const accountReports =
     ref.type === 'user'
       ? (
           await db.report.findMany({
-            where: {
-              OR: [
-                { generalPost: { authorId: ref.id } },
-                { businessPost: { authorId: ref.id } },
-                { comment: { authorUserId: ref.id } },
-                { photo: { uploaderId: ref.id } },
-              ],
-            },
-            orderBy: { createdAt: 'desc' },
-            take: opts.allReports ? 5000 : CASE_REPORTS_SHOWN,
+            where: accountWhere,
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            ...pageWindow(accountReportsPage),
             include: {
               ...REPORTER_INCLUDE,
               generalPost: { select: { body: true } },
@@ -388,13 +452,21 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
                 : { type: 'photo' as const, id: r.photoId!, preview: '[photo]' },
         }))
       : null;
+  const reportTotal = byReason.reduce((n, g) => n + g._count._all, 0);
   return {
     accountReports,
+    accountReportsPage:
+      ref.type === 'user' ? pageInfo(toPage([], accountReportsTotal, accountReportsPage)) : null,
     type: ref.type,
     id: ref.id,
     body: s.body,
     /** Admin-only image link (cookie-authenticated), for photo cases. */
-    photoUrl: ref.type === 'photo' ? `/api/v1/admin/photos/${ref.id}` : null,
+    photoUrl:
+      ref.type === 'photo'
+        ? `/api/v1/admin/photos/${ref.id}`
+        : ref.type === 'ad'
+          ? await adImageForAdmin(ref.id) // D209: the reported ad's picture
+          : null,
     /** D75: a voice post's clip, playable by the moderator (any status). */
     voiceUrl: voice ? `/api/v1/admin/photos/${voice.id}` : null,
     /** D102: a video post's clip, playable by the moderator. */
@@ -403,7 +475,7 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
     messageContext:
       ref.type === 'message'
         ? ((
-            reports.find((r) => r.messageEvidence)?.messageEvidence as {
+            evidence?.messageEvidence as {
               messages: {
                 id: string;
                 sender: string;
@@ -417,10 +489,11 @@ export async function getCase(ref: CaseRef, opts: { allReports?: boolean } = {})
         : null,
     contentStatus: s.status,
     author: s.author,
-    authorHistory: authorId ? await userHistory(authorId) : null,
+    authorHistory: authorId ? await userHistory(authorId, opts.historyPage) : null,
     context,
-    /** D74: totals per reason across every report, newest-first list below is capped. */
-    reportTotal: byReason.reduce((n, g) => n + g._count._all, 0),
+    /** D74: totals per reason across every report; the list below is one page of them. */
+    reportTotal,
+    reportsPage: pageInfo(toPage([], reportTotal, reportsPage)),
     reportsByReason: byReason
       .map((g) => ({ reason: g.reason, count: g._count._all }))
       .sort((a, b) => b.count - a.count),
@@ -486,14 +559,16 @@ export function reporterLabel(r: {
   return r.reporterGuestId ? 'guest' : 'automatic screening';
 }
 
-export async function userHistory(userId: string) {
-  const [actions, reportsAgainst, removed, flags] = await Promise.all([
+/** A person's record; their strikes, notes and other actions newest first, 20 a page (D210). */
+export async function userHistory(userId: string, actionsPage = 1) {
+  const [actions, actionsTotal, reportsAgainst, removed, flags] = await Promise.all([
     db.moderationAction.findMany({
       where: { targetUserId: userId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...pageWindow(actionsPage),
       include: { admin: { select: { username: true } } },
     }),
+    db.moderationAction.count({ where: { targetUserId: userId } }),
     db.report.count({ where: reportsAgainstWhere(userId) }),
     Promise.all([
       db.generalPost.count({ where: { authorId: userId, status: 'REMOVED' } }),
@@ -506,6 +581,7 @@ export async function userHistory(userId: string) {
     reportsAgainst,
     contentRemoved: removed,
     locationFlags: flags,
+    actionsPage: pageInfo(toPage([], actionsTotal, actionsPage)),
     actions: actions.map((a) => ({
       id: a.id,
       action: a.action,
@@ -547,6 +623,18 @@ async function setStatus(
       });
     }
     return true;
+  }
+  if (ref.type === 'ad') {
+    // D209: removing an ad ends it (the business can't simply resume an ended ad; it can
+    // edit it and send it for review again). Restoring puts it back as approved.
+    const a = await tx.ad.findUniqueOrThrow({ where: { id: ref.id } });
+    if (to === 'REMOVED' && a.status !== 'ENDED') {
+      await tx.ad.update({ where: { id: ref.id }, data: { status: 'ENDED' } });
+    } else if (to === 'VISIBLE' && a.status === 'ENDED') {
+      await tx.ad.update({ where: { id: ref.id }, data: { status: 'APPROVED' } });
+    }
+    resetAdCache();
+    return a.status !== 'ENDED';
   }
   if (ref.type === 'topic') {
     // D133: a removed topic is hidden everywhere (its posts with it); restoring reopens it.
@@ -678,7 +766,10 @@ export async function decideCase(input: {
         targetUserId: authorId,
         // A moderation action points at posts, comments and photos; topics and messages are
         // identified through the report and the audit log.
-        ...(input.ref.type === 'user' || input.ref.type === 'message' || input.ref.type === 'topic'
+        ...(input.ref.type === 'user' ||
+        input.ref.type === 'message' ||
+        input.ref.type === 'topic' ||
+        input.ref.type === 'ad'
           ? {}
           : { [COLUMN[input.ref.type]]: input.ref.id }),
         reportId: open[0]?.id ?? null,

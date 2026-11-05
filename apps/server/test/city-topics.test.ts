@@ -197,7 +197,7 @@ describe('reporting a topic', () => {
       },
     });
     expect(rep.status).toBe(202); // reports are accepted for review
-    const cases = await listCases();
+    const cases = (await listCases()).rows;
     expect(cases).toEqual([
       expect.objectContaining({
         type: 'topic',

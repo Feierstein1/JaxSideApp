@@ -1,4 +1,4 @@
-import { recentSecurityEvents } from '../auth/security-events';
+import { securityEventsLastDay } from '../auth/security-events';
 import { db } from '../db';
 
 /** P5.11: the dashboard's counts of work waiting. */
@@ -14,6 +14,6 @@ export async function adminSummary() {
     db.businessSubmission.count({ where: { status: 'PENDING' } }),
     db.contactMessage.count({ where: { status: 'OPEN' } }), // D90
   ]);
-  const { last24h: loginBursts } = await recentSecurityEvents(new Date(), 1); // D180
+  const loginBursts = await securityEventsLastDay(); // D180
   return { openReports, held, openAppeals, pendingSubmissions, openMessages, loginBursts };
 }

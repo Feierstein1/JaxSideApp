@@ -3,7 +3,8 @@ import { adminListTopics } from '@/server/topics';
 import { ui } from '../../admin-ui';
 import { requireAdminPage } from '../../require-admin-page';
 import { SuggestionActions, TopicForm, TopicStatusButton } from '../../topic-forms';
-import { when } from '../admin-table';
+import { Pager, when } from '../admin-table';
+import { pageNumber } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,20 +16,39 @@ export const dynamic = 'force-dynamic';
 export default async function TopicsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string; new?: string }>;
+  searchParams: Promise<{
+    edit?: string;
+    new?: string;
+    page?: string;
+    wpage?: string;
+    hpage?: string;
+    dpage?: string;
+    rpage?: string;
+  }>;
 }) {
   await requireAdminPage();
   const q = await searchParams;
-  const all = await adminListTopics();
-  const waiting = all.filter((t) => t.status === 'SUGGESTED');
-  const topics = all.filter(
-    (t) => t.status === 'ACTIVE' || t.status === 'CLOSED' || t.status === 'REMOVED',
+  // D210: each section is paged on its own (page, wpage, hpage, dpage, rpage).
+  const editId = q.edit && /^[0-9a-f-]{36}$/i.test(q.edit) ? q.edit : undefined;
+  const [waitingPage, topicsPage, rejectedPage, heldPage, deletedPage, edited] = await Promise.all([
+    adminListTopics({ statuses: ['SUGGESTED'], page: pageNumber(q.wpage) }),
+    adminListTopics({ statuses: ['ACTIVE', 'CLOSED', 'REMOVED'], page: pageNumber(q.page) }),
+    adminListTopics({ statuses: ['REJECTED'], page: pageNumber(q.rpage) }),
+    // D134: hidden after many reports, and deleted by their creators (kept a week).
+    adminListTopics({ statuses: ['HELD'], page: pageNumber(q.hpage) }),
+    adminListTopics({ statuses: ['DELETED'], page: pageNumber(q.dpage) }),
+    editId ? adminListTopics({ statuses: ['ACTIVE', 'CLOSED', 'REMOVED'], id: editId }) : null,
+  ]);
+  const waiting = waitingPage.rows;
+  const topics = topicsPage.rows;
+  const rejected = rejectedPage.rows;
+  const held = heldPage.rows;
+  const deleted = deletedPage.rows;
+  const editing = edited?.rows[0] ?? null;
+  const params = { page: q.page, wpage: q.wpage, hpage: q.hpage, dpage: q.dpage, rpage: q.rpage };
+  const pager = (page: typeof waitingPage, param: string) => (
+    <Pager page={page} base="/admin/topics" params={params} param={param} />
   );
-  const rejected = all.filter((t) => t.status === 'REJECTED').slice(0, 20);
-  // D134: hidden after many reports, and deleted by their creators (kept a week).
-  const held = all.filter((t) => t.status === 'HELD');
-  const deleted = all.filter((t) => t.status === 'DELETED');
-  const editing = q.edit ? topics.find((t) => t.id === q.edit) : null;
 
   return (
     <>
@@ -56,8 +76,8 @@ export default async function TopicsPage({
         </p>
       )}
 
-      <h2>Suggestions waiting ({waiting.length})</h2>
-      {waiting.length === 0 ? <p style={ui.muted}>None right now.</p> : null}
+      <h2>Suggestions waiting ({waitingPage.total})</h2>
+      {waitingPage.total === 0 ? <p style={ui.muted}>None right now.</p> : null}
       <div style={{ display: 'grid', gap: 12 }}>
         {waiting.map((t) => (
           <div key={t.id} style={ui.card}>
@@ -75,10 +95,11 @@ export default async function TopicsPage({
           </div>
         ))}
       </div>
+      {pager(waitingPage, 'wpage')}
 
-      {held.length ? (
+      {heldPage.total ? (
         <>
-          <h2>Held for review ({held.length})</h2>
+          <h2>Held for review ({heldPage.total})</h2>
           <p style={ui.muted}>
             Hidden automatically after 15 or more people reported them. Decide them in{' '}
             <a href="/admin/reports">Reports</a> (Approve brings one back, Remove takes it down).
@@ -91,11 +112,12 @@ export default async function TopicsPage({
               </li>
             ))}
           </ul>
+          {pager(heldPage, 'hpage')}
         </>
       ) : null}
-      {deleted.length ? (
+      {deletedPage.total ? (
         <>
-          <h2>Deleted by their creators ({deleted.length})</h2>
+          <h2>Deleted by their creators ({deletedPage.total})</h2>
           <p style={ui.muted}>
             Hidden from everyone; kept here for a week after deletion, then removed with their
             posts.
@@ -111,11 +133,12 @@ export default async function TopicsPage({
               </li>
             ))}
           </ul>
+          {pager(deletedPage, 'dpage')}
         </>
       ) : null}
 
       <h2>Topics</h2>
-      {topics.length === 0 ? <p style={ui.muted}>No topics yet.</p> : null}
+      {topicsPage.total === 0 ? <p style={ui.muted}>No topics yet.</p> : null}
       <div style={{ display: 'grid', gap: 12 }}>
         {topics.map((t) => (
           <div key={t.id} style={ui.card}>
@@ -134,8 +157,9 @@ export default async function TopicsPage({
           </div>
         ))}
       </div>
+      {pager(topicsPage, 'page')}
 
-      {rejected.length ? (
+      {rejectedPage.total ? (
         <>
           <h2>Recently rejected</h2>
           <ul>
@@ -145,6 +169,7 @@ export default async function TopicsPage({
               </li>
             ))}
           </ul>
+          {pager(rejectedPage, 'rpage')}
         </>
       ) : null}
     </>

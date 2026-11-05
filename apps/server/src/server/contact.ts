@@ -6,6 +6,7 @@ import { db } from './db';
 import { getEnv } from './env';
 import { ApiError } from './http';
 import { sendSafely } from './mail/mailer';
+import { pageWindow, toPage } from './admin/paging';
 
 /**
  * D90: Contact us. Signed-in people and guests can send a support ticket or a general
@@ -45,20 +46,27 @@ export async function createContactMessage(actor: Actor, input: ContactInput) {
   return { id: msg.id };
 }
 
+/** Contact messages (open ones oldest first), 20 a page (D210). */
 export async function listContactMessages(opts: {
   status: 'OPEN' | 'RESOLVED';
   category?: 'SUPPORT' | 'GENERAL';
+  page?: number;
 }) {
-  const rows = await db.contactMessage.findMany({
-    where: { status: opts.status, ...(opts.category ? { category: opts.category } : {}) },
-    orderBy: { createdAt: opts.status === 'OPEN' ? 'asc' : 'desc' },
-    take: 200,
-    include: {
-      user: { select: { id: true, username: true, status: true } },
-      resolvedBy: { select: { username: true } },
-    },
-  });
-  return rows.map((m) => ({
+  const page = opts.page ?? 1;
+  const where = { status: opts.status, ...(opts.category ? { category: opts.category } : {}) };
+  const [rows, total] = await Promise.all([
+    db.contactMessage.findMany({
+      where,
+      orderBy: [{ createdAt: opts.status === 'OPEN' ? 'asc' : 'desc' }, { id: 'asc' }],
+      ...pageWindow(page),
+      include: {
+        user: { select: { id: true, username: true, status: true } },
+        resolvedBy: { select: { username: true } },
+      },
+    }),
+    db.contactMessage.count({ where }),
+  ]);
+  const list = rows.map((m) => ({
     id: m.id,
     category: m.category,
     subject: m.subject,
@@ -74,6 +82,7 @@ export async function listContactMessages(opts: {
         : 'deleted',
     canReply: m.allowReply && !!m.user,
   }));
+  return toPage(list, total, page);
 }
 
 /**

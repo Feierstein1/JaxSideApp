@@ -3,7 +3,8 @@ import { adminRatingActivity } from '@/server/directory/ratings';
 import { ui } from '../../admin-ui';
 import { PlaceRatingControls } from '../../forms';
 import { requireAdminPage } from '../../require-admin-page';
-import { Pill, Table, td } from '../admin-table';
+import { Pager, Pill, Table, td } from '../admin-table';
+import { pageNumber } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,9 +13,14 @@ export const dynamic = 'force-dynamic';
  * most voting this week, busiest in the last day first, so a sudden pile-on stands out;
  * locked places always listed. Lock pauses voting; Clear deletes every vote on the place.
  */
-export default async function RatingsPage() {
+export default async function RatingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdminPage();
-  const rows = await adminRatingActivity();
+  const list = await adminRatingActivity(pageNumber((await searchParams).page));
+  const rows = list.rows;
   return (
     <>
       <h1>Place ratings</h1>
@@ -23,7 +29,7 @@ export default async function RatingsPage() {
         The % liked shows in the app after {CONFIG_DEFAULTS['places.ratingMinVotes']} votes. A lot
         of votes in one day can mean a pile-on: lock voting while you look, or clear the votes.
       </p>
-      {rows.length === 0 ? (
+      {list.total === 0 ? (
         <p style={ui.muted}>No votes in the last week.</p>
       ) : (
         <Table head={['Place', 'Liked', 'Votes', 'Last 24 h', 'Last 7 days', '']}>
@@ -48,6 +54,7 @@ export default async function RatingsPage() {
           })}
         </Table>
       )}
+      <Pager page={list} base="/admin/ratings" params={{}} />
     </>
   );
 }

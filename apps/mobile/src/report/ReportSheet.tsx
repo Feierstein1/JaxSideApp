@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
+  AD_REPORT_REASONS,
+  CONTENT_REPORT_REASONS,
   REPORT_DETAILS_MAX,
   REPORT_REASON_LABELS,
-  REPORT_REASONS,
   type ReportReason,
   type ReportTarget,
   DARK,
@@ -17,9 +18,37 @@ import { Banner, Button, Field, FormError, Sheet } from '@/ui';
 import { Text } from '@/text';
 import { ensureGuide } from '@/guides/guide';
 
+/** D209: before reporting an ad, what ads may be reported for and what isn't a reason. */
+const AD_DO = [
+  'It uses AI-made food or drink photos instead of the real thing',
+  'It’s an over-the-top AI flyer or image',
+  'The offer is false or misleading',
+  'It’s a scam, sexual or hateful',
+];
+const AD_DONT = [
+  'Report an ad just because you don’t like it (tap Not interested instead)',
+  'Report a business you compete with or have a grudge against',
+  'Report the same ad again and again',
+];
+
+function Rule({ ok, text }: { ok: boolean; text: string }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: SPACE.sm, alignItems: 'flex-start' }}>
+      <Ionicons
+        name={ok ? 'checkmark-circle' : 'close-circle'}
+        size={20}
+        color={ok ? DARK.tealText : DARK.textMuted}
+        style={{ marginTop: 1 }}
+      />
+      <Text style={[TYPE.body, { flex: 1 }]}>{text}</Text>
+    </View>
+  );
+}
+
 /**
  * P5.1: report a post, comment or profile. Pick a reason, optionally add details.
  * Reports go to moderators; the person reported isn't told who reported them.
+ * D209: an ad first shows what to report (and what not to), then only the ad reasons.
  */
 export function ReportSheet({
   target,
@@ -33,12 +62,18 @@ export function ReportSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [sent, setSent] = useState(false);
+  const isAd = target?.type === 'ad';
+  /** D209: the Do / Don't step, every time an ad is reported. */
+  const [rulesRead, setRulesRead] = useState(false);
+  const reasons: readonly ReportReason[] = isAd ? AD_REPORT_REASONS : CONTENT_REPORT_REASONS;
   /** D104: the first report shows its guide before the sheet opens; closing it cancels. */
   const [ready, setReady] = useState(false);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => {
     if (!target) return setReady(false);
+    // D209: an ad shows its own Do / Don't step instead of the first-report guide.
+    if (target.type === 'ad') return setReady(true);
     let live = true;
     void ensureGuide('report').then((ok) => {
       if (!live) return;
@@ -55,6 +90,7 @@ export function ReportSheet({
     setDetails('');
     setError(undefined);
     setSent(false);
+    setRulesRead(false);
     onClose();
   }
 
@@ -79,7 +115,11 @@ export function ReportSheet({
   }
 
   return (
-    <Sheet open={!!target && ready} onClose={close} title={sent ? undefined : 'Report'}>
+    <Sheet
+      open={!!target && ready}
+      onClose={close}
+      title={sent ? undefined : isAd ? 'Report this ad' : 'Report'}
+    >
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: SPACE.sm, gap: 6 }}
         keyboardShouldPersistTaps="handled"
@@ -91,17 +131,36 @@ export function ReportSheet({
               Thanks for reporting
             </Text>
             <Text style={[TYPE.callout, { color: DARK.textMuted, textAlign: 'center' }]}>
-              A moderator will review it. You can follow its status in Account → My reports. You can
-              also block this person from their profile.
+              {isAd
+                ? 'A moderator will review it. You can follow its status in Account → My reports.'
+                : 'A moderator will review it. You can follow its status in Account → My reports. You can also block this person from their profile.'}
             </Text>
             <Button title="Done" onPress={close} style={{ alignSelf: 'stretch' }} />
+          </View>
+        ) : isAd && !rulesRead ? (
+          <View style={{ gap: SPACE.sm }}>
+            <Text style={[TYPE.headline]}>Report an ad when</Text>
+            {AD_DO.map((t) => (
+              <Rule key={t} ok text={t} />
+            ))}
+            <Text style={[TYPE.headline, { marginTop: SPACE.sm }]}>Please don’t</Text>
+            {AD_DONT.map((t) => (
+              <Rule key={t} ok={false} text={t} />
+            ))}
+            <Text style={[TYPE.callout, { color: DARK.textMuted, marginTop: SPACE.xs }]}>
+              A person at JaxSide reviews every report. Repeated false reports can lead to a strike.
+            </Text>
+            <Button title="I understand" onPress={() => setRulesRead(true)} />
+            <Button variant="link" title="Cancel" onPress={close} />
           </View>
         ) : (
           <>
             <Text style={[TYPE.callout, { color: DARK.textMuted, marginBottom: 6 }]}>
-              What’s wrong? The person won’t be told who reported them.
+              {isAd
+                ? 'What’s wrong with this ad? The business won’t be told who reported it.'
+                : 'What’s wrong? The person won’t be told who reported them.'}
             </Text>
-            {REPORT_REASONS.map((r) => {
+            {reasons.map((r) => {
               const active = reason === r;
               return (
                 <Pressable

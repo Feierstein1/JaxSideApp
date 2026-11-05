@@ -10,6 +10,7 @@ import { screenText } from '../moderation/screening';
 import { enforce } from '../rate-limit';
 import { normalizeName } from './osm';
 import { castPlaceVote, changeVotes } from './place-changes';
+import { pageWindow, toPage } from '../admin/paging';
 
 /**
  * P5.8–P5.13 community-suggested places (§9.3, D63).
@@ -220,26 +221,36 @@ export async function listMySubmissions(userId: string): Promise<MySubmission[]>
 
 // ───────────────────────────── Admin queue ─────────────────────────────
 
+/** The suggestion queue (waiting ones oldest first), 20 a page (D210). */
 export async function listSubmissions(filter: {
   status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DUPLICATE' | 'MERGED' | 'EXPIRED';
   category?: string;
   submitter?: string;
   since?: Date;
+  page?: number;
 }) {
-  const rows = await db.businessSubmission.findMany({
-    where: {
-      status: filter.status ?? 'PENDING',
-      ...(filter.category ? { category: filter.category } : {}),
-      ...(filter.submitter
-        ? { submitter: { usernameNormalized: { startsWith: filter.submitter.toLowerCase() } } }
-        : {}),
-      ...(filter.since ? { createdAt: { gte: filter.since } } : {}),
-    },
-    orderBy: { createdAt: filter.status && filter.status !== 'PENDING' ? 'desc' : 'asc' },
-    take: 200,
-    include: { submitter: { select: { id: true, username: true, status: true } } },
-  });
-  return Promise.all(
+  const page = filter.page ?? 1;
+  const where: Prisma.BusinessSubmissionWhereInput = {
+    status: filter.status ?? 'PENDING',
+    ...(filter.category ? { category: filter.category } : {}),
+    ...(filter.submitter
+      ? { submitter: { usernameNormalized: { startsWith: filter.submitter.toLowerCase() } } }
+      : {}),
+    ...(filter.since ? { createdAt: { gte: filter.since } } : {}),
+  };
+  const [rows, total] = await Promise.all([
+    db.businessSubmission.findMany({
+      where,
+      orderBy: [
+        { createdAt: filter.status && filter.status !== 'PENDING' ? 'desc' : 'asc' },
+        { id: 'asc' },
+      ],
+      ...pageWindow(page),
+      include: { submitter: { select: { id: true, username: true, status: true } } },
+    }),
+    db.businessSubmission.count({ where }),
+  ]);
+  const list = await Promise.all(
     rows.map(async (s) => ({
       id: s.id,
       name: s.name,
@@ -263,6 +274,7 @@ export async function listSubmissions(filter: {
       })),
     })),
   );
+  return toPage(list, total, page);
 }
 
 /** How the submitter's earlier suggestions went (helps judge new ones). */

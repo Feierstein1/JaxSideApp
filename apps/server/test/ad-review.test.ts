@@ -68,7 +68,7 @@ beforeEach(async () => {
 describe('ad review (B3.3)', () => {
   it('lists waiting ads; approving puts it live and tells the business', async () => {
     const ad = await pending();
-    expect((await listPendingAds()).map((a) => a.id)).toEqual([ad.id]);
+    expect((await listPendingAds()).rows.map((a) => a.id)).toEqual([ad.id]);
     expect((await decide(ad.id, { decision: 'approve' })).status).toBe(200);
     const now = await db.ad.findUniqueOrThrow({ where: { id: ad.id } });
     expect(now.status).toBe('APPROVED');
@@ -79,26 +79,47 @@ describe('ad review (B3.3)', () => {
       kind: 'AD_APPROVED',
       link: `/places/${cafe}/ads/${ad.id}`,
     });
-    expect(await listPendingAds()).toEqual([]);
+    expect((await listPendingAds()).rows).toEqual([]);
     // It shows in the app right away.
     const shown = await pickAdsFor({ userId: null, point: CAFE }, { kind: 'feed' }, 2, []);
     expect(shown.map((a) => a.id)).toEqual([ad.id]);
   });
 
-  it('turning one down needs a reason, which the business sees', async () => {
+  it('turning one down needs a reason from the list, which the business sees', async () => {
     const ad = await pending();
     expect((await decide(ad.id, { decision: 'reject' })).status).toBe(400);
-    const r = await decide(ad.id, { decision: 'reject', reason: 'The price isn’t in the picture' });
+    expect((await decide(ad.id, { decision: 'reject', reasonCode: 'MADE_UP' })).status).toBe(400);
+    // D211: a free-text reason alone isn't accepted any more.
+    expect((await decide(ad.id, { decision: 'reject', reason: 'Bad' })).status).toBe(400);
+    const r = await decide(ad.id, {
+      decision: 'reject',
+      reasonCode: 'AI_FOOD',
+      note: 'The burger photo',
+    });
     expect(r.status).toBe(200);
+    const said =
+      'Photos aren’t real: Food and drink pictures must be real photos of what you serve, not made or changed with AI. Note: The burger photo';
     expect((await db.ad.findUniqueOrThrow({ where: { id: ad.id } })).status).toBe('DRAFT');
     expect(await db.adReview.findFirstOrThrow()).toMatchObject({
       decision: 'REJECTED',
-      reason: 'The price isn’t in the picture',
+      reason: said,
     });
     expect(await db.businessNotice.findFirstOrThrow()).toMatchObject({
       kind: 'AD_REJECTED',
-      body: 'The price isn’t in the picture',
+      body: said,
     });
+    const log = await db.adminAuditLog.findFirstOrThrow({ where: { action: 'AD_REJECT' } });
+    expect(log.metadata).toMatchObject({ reasonCode: 'AI_FOOD' });
+  });
+
+  it('“Something else” needs a note, which is what the business reads', async () => {
+    const ad = await pending();
+    expect((await decide(ad.id, { decision: 'reject', reasonCode: 'OTHER' })).status).toBe(400);
+    expect(
+      (await decide(ad.id, { decision: 'reject', reasonCode: 'OTHER', note: 'Add your hours' }))
+        .status,
+    ).toBe(200);
+    expect((await db.adReview.findFirstOrThrow()).reason).toBe('Add your hours');
   });
 
   it('won’t approve past the plan’s live ads, or an ad that isn’t waiting', async () => {

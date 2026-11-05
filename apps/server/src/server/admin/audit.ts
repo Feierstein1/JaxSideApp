@@ -1,5 +1,6 @@
 import type { Prisma } from '@/generated/prisma/client';
 import { db } from '../db';
+import { pageWindow, toPage } from './paging';
 
 /**
  * P5.16: every consequential admin action is written here (who, what, which target,
@@ -23,15 +24,20 @@ export async function audit(
   });
 }
 
-/** P5.16 viewer: newest first, with the admin's username. */
-export async function listAudit(opts: { before?: Date; limit?: number } = {}) {
-  const rows = await db.adminAuditLog.findMany({
-    where: opts.before ? { createdAt: { lt: opts.before } } : {},
-    orderBy: { createdAt: 'desc' },
-    take: Math.min(opts.limit ?? 100, 200),
-    include: { admin: { select: { username: true } } },
-  });
-  return rows.map((r) => ({
+/** P5.16 viewer: newest first, with the admin's username; 20 a page (D210). */
+export async function listAudit(opts: { before?: Date; page?: number } = {}) {
+  const page = opts.page ?? 1;
+  const where = opts.before ? { createdAt: { lt: opts.before } } : {};
+  const [rows, total] = await Promise.all([
+    db.adminAuditLog.findMany({
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...pageWindow(page),
+      include: { admin: { select: { username: true } } },
+    }),
+    db.adminAuditLog.count({ where }),
+  ]);
+  const entries = rows.map((r) => ({
     id: r.id,
     admin: r.admin.username,
     action: r.action,
@@ -40,4 +46,5 @@ export async function listAudit(opts: { before?: Date; limit?: number } = {}) {
     metadata: r.metadata,
     createdAt: r.createdAt.toISOString(),
   }));
+  return toPage(entries, total, page);
 }

@@ -148,3 +148,96 @@ export const when = (iso: string) =>
   });
 
 export const words = (s: string) => s.toLowerCase().replaceAll('_', ' ');
+
+/** A link to `base` with the current query string, some values changed (empty ones dropped). */
+export function hrefWith(
+  base: string,
+  params: Record<string, string | undefined>,
+  patch: Record<string, string | number | undefined>,
+) {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries({ ...params, ...patch })) {
+    if (v !== undefined && v !== '' && !(k.endsWith('page') && String(v) === '1')) {
+      p.set(k, String(v));
+    }
+  }
+  const s = p.toString();
+  return s ? `${base}?${s}` : base;
+}
+
+/**
+ * D210: "1–20 of 345" and Previous / Next for a paged list. `param` names the page in the
+ * query string (a page with two lists uses two names); the other values are kept.
+ */
+export function Pager({
+  page,
+  base,
+  params,
+  param = 'page',
+}: {
+  page: { page: number; pages: number; total: number; pageSize: number };
+  base: string;
+  params: Record<string, string | undefined>;
+  param?: string;
+}) {
+  if (page.total === 0) return null;
+  const first = (page.page - 1) * page.pageSize + 1;
+  const last = Math.min(page.page * page.pageSize, page.total);
+  const link = (n: number) => hrefWith(base, params, { [param]: n });
+  return (
+    <nav
+      aria-label="Pages"
+      style={{
+        display: 'flex',
+        gap: 14,
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        margin: '12px 0 4px',
+        fontSize: 13,
+      }}
+    >
+      <span style={{ color: COLORS.textMuted }}>
+        {first}–{last} of {page.total.toLocaleString('en-US')}
+      </span>
+      {page.pages > 1 ? (
+        <>
+          {page.page > 1 ? <a href={link(page.page - 1)}>← Previous</a> : null}
+          <span style={{ color: COLORS.textMuted }}>
+            Page {page.page} of {page.pages}
+          </span>
+          {page.page < page.pages ? <a href={link(page.page + 1)}>Next →</a> : null}
+        </>
+      ) : null}
+    </nav>
+  );
+}
+
+/** Pill-shaped links that switch between views of a page (the current one filled). */
+export function Tabs({ items }: { items: { href: string; label: string; on: boolean }[] }) {
+  return (
+    <nav
+      aria-label="Show"
+      style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 16px' }}
+    >
+      {items.map((t) => (
+        <a
+          key={t.href}
+          href={t.href}
+          aria-current={t.on ? 'page' : undefined}
+          style={{
+            padding: '6px 14px',
+            borderRadius: 999,
+            fontSize: 13,
+            fontWeight: 600,
+            textDecoration: 'none',
+            background: t.on ? COLORS.primary : COLORS.surfaceMuted,
+            color: t.on ? COLORS.onPrimary : COLORS.text,
+            border: `1px solid ${t.on ? COLORS.primary : COLORS.cardBorder}`,
+          }}
+        >
+          {t.label}
+        </a>
+      ))}
+    </nav>
+  );
+}

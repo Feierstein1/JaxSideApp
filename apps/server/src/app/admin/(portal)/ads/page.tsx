@@ -1,28 +1,95 @@
 import { listPendingAds } from '@/server/admin/ad-review';
+import { adOverview, adTab, interestShare, listAdsWithStats } from '@/server/admin/ad-stats';
+import { pageNumber } from '@/server/admin/paging';
 import { ui } from '../../admin-ui';
 import { AdDecisionForm } from '../../business-forms';
 import { requireAdminPage } from '../../require-admin-page';
-import { Pill, when, words } from '../admin-table';
+import {
+  Pager,
+  Pill,
+  StatGrid,
+  StatTile,
+  Table,
+  Tabs,
+  hrefWith,
+  td,
+  when,
+  words,
+} from '../admin-table';
 
 export const dynamic = 'force-dynamic';
 
+const n = (v: number) => v.toLocaleString('en-US');
+const share = (v: number | null) => (v === null ? '–' : `${Math.round(v * 100)}%`);
+
 /**
- * B3.3 / D206: ads waiting for approval, oldest first. Approving puts the ad live on its
- * schedule; turning one down sends it back to the business with the reason.
+ * B3.3 / D206 / D210: ads. "To review": approve each ad before it shows, or turn it down with
+ * a reason the business sees. "Live" and "Paused & ended": how each ad is doing (views and
+ * Interested / Not interested, from the daily totals; never who saw it).
  */
-export default async function AdsPage() {
+export default async function AdsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   await requireAdminPage();
-  const ads = await listPendingAds();
+  const sp = await searchParams;
+  const tab = adTab(sp.tab);
+  const page = pageNumber(sp.page);
+  const overview = await adOverview();
+  const params = { tab: tab === 'review' ? undefined : tab };
+  const tabs = [
+    { key: 'review', label: `To review (${n(overview.waiting)})` },
+    { key: 'live', label: `Live (${n(overview.live)})` },
+    { key: 'past', label: 'Paused & ended' },
+  ].map((t) => ({
+    href: hrefWith('/admin/ads', {}, { tab: t.key === 'review' ? undefined : t.key }),
+    label: t.label,
+    on: t.key === tab,
+  }));
+
   return (
     <>
-      <h1>Ads to review</h1>
+      <h1>Ads</h1>
+      <StatGrid min={160}>
+        <StatTile label="Live ads" value={n(overview.live)} />
+        <StatTile
+          label="Waiting for review"
+          value={n(overview.waiting)}
+          alert={overview.waiting > 0}
+        />
+        <StatTile label="Views today" value={n(overview.viewsToday)} />
+        <StatTile label="Views, last 30 days" value={n(overview.last30Days.views)} />
+        <StatTile label="Interested, 30 days" value={n(overview.last30Days.interested)} />
+        <StatTile label="Not interested, 30 days" value={n(overview.last30Days.notInterested)} />
+      </StatGrid>
+      <Tabs items={tabs} />
+      {tab === 'review' ? (
+        <Review page={page} params={params} />
+      ) : (
+        <Results tab={tab} page={page} params={params} />
+      )}
+    </>
+  );
+}
+
+async function Review({
+  page,
+  params,
+}: {
+  page: number;
+  params: Record<string, string | undefined>;
+}) {
+  const ads = await listPendingAds(page);
+  return (
+    <>
       <p style={ui.muted}>
         Every ad is checked before it shows in the app. Approve it, or turn it down and say what
         needs to change (the business sees your reason).
       </p>
-      {ads.length === 0 ? <p style={ui.muted}>Nothing waiting.</p> : null}
+      {ads.total === 0 ? <p style={ui.muted}>Nothing waiting.</p> : null}
       <div style={{ display: 'grid', gap: 16 }}>
-        {ads.map((a) => (
+        {ads.rows.map((a) => (
           <div key={a.id} style={ui.card}>
             <p style={{ marginTop: 0 }}>
               <Pill>{words(a.template)}</Pill>
@@ -57,6 +124,69 @@ export default async function AdsPage() {
           </div>
         ))}
       </div>
+      <Pager page={ads} base="/admin/ads" params={params} />
+    </>
+  );
+}
+
+async function Results({
+  tab,
+  page,
+  params,
+}: {
+  tab: 'live' | 'past';
+  page: number;
+  params: Record<string, string | undefined>;
+}) {
+  const ads = await listAdsWithStats(tab, page);
+  if (ads.total === 0) {
+    return <p style={ui.muted}>{tab === 'live' ? 'No ads are live.' : 'None yet.'}</p>;
+  }
+  return (
+    <>
+      <p style={ui.muted}>
+        Numbers for the last 30 days (Jacksonville days). A view is the ad on screen for a second,
+        once per person per day. “Interested %” is the share of people who answered either way.
+      </p>
+      <Table
+        head={[
+          'Ad',
+          'Place',
+          'Shown to',
+          'Views',
+          'Interested',
+          'Not interested',
+          'Interested %',
+          'Views, all time',
+          tab === 'live' ? 'Approved' : 'Status',
+        ]}
+      >
+        {ads.rows.map((a) => (
+          <tr key={a.id}>
+            <td style={td}>
+              <a href={`/admin/ads/${a.id}`}>{a.headline}</a>
+              <div style={ui.muted}>{words(a.template)}</div>
+            </td>
+            <td style={td}>{a.place.name}</td>
+            <td style={td}>{a.reach}</td>
+            <td style={td}>{n(a.last30Days.views)}</td>
+            <td style={td}>{n(a.last30Days.interested)}</td>
+            <td style={td}>{n(a.last30Days.notInterested)}</td>
+            <td style={td}>{share(interestShare(a.last30Days))}</td>
+            <td style={td}>{n(a.allTime.views)}</td>
+            <td style={td}>
+              {tab === 'past' ? (
+                <Pill>{words(a.status)}</Pill>
+              ) : a.approvedAt ? (
+                when(a.approvedAt)
+              ) : (
+                ''
+              )}
+            </td>
+          </tr>
+        ))}
+      </Table>
+      <Pager page={ads} base="/admin/ads" params={params} />
     </>
   );
 }

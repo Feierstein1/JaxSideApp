@@ -168,7 +168,7 @@ describe('automatic suspension (D74)', () => {
     expect((await db.autoSuspension.findFirstOrThrow()).status).toBe('CONFIRMED');
   });
 
-  it('the account’s case lists who reported what, summarized, newest 20 unless asked', async () => {
+  it('the account’s case lists who reported what, summarized, newest 20 a page', async () => {
     await reporters(10, 'h', targets());
     for (let i = 0; i < 15; i++) {
       const r = await user(`more${i}_s`);
@@ -190,7 +190,9 @@ describe('automatic suspension (D74)', () => {
     const capped = await getCase({ type: 'user', id: carl.id });
     expect(capped.reports).toHaveLength(20);
     expect(capped.reportsByReason.find((g) => g.reason === 'SPAM')?.count).toBe(5);
-    const all = await getCase({ type: 'user', id: carl.id }, { allReports: true });
-    expect(all.reports).toHaveLength(capped.reportTotal);
+    expect(capped.reportsPage).toMatchObject({ page: 1, pages: 2, total: capped.reportTotal });
+    const next = await getCase({ type: 'user', id: carl.id }, { reportsPage: 2 });
+    expect(next.reports).toHaveLength(capped.reportTotal - 20);
+    expect(next.reports.map((r) => r.id)).not.toContain(capped.reports[0]!.id);
   });
 });

@@ -1,5 +1,5 @@
 import { randomInt, timingSafeEqual } from 'node:crypto';
-import type { OwnerClaimStatus, OwnerMethod, User } from '@/generated/prisma/client';
+import type { OwnerClaimStatus, OwnerMethod, Prisma, User } from '@/generated/prisma/client';
 import { normalizeUsername } from '@jax/shared';
 import { hashToken } from '../auth/crypto';
 import { db } from '../db';
@@ -8,6 +8,7 @@ import { sendSafely } from '../mail/mailer';
 import { inviteAfterVerification, revokeBusinessAccessForClaim } from './business-invites';
 import { ownerCodeEmail } from '../mail/templates';
 import { screenText } from '../moderation/screening';
+import { pageWindow, toPage } from '../admin/paging';
 
 /**
  * D103 (Phase 12, decided in D92): verified business owners. An owner gets an **Owner** tag
@@ -317,28 +318,35 @@ export async function cancelOwnerClaim(userId: string, claimId: string, now = ne
 // ───────────────────────────── Admin ─────────────────────────────
 
 /** Claims an admin must act on: website proofs, phone calls, and second owners. */
-export async function listOwnerClaims(status: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'REVOKED') {
-  const rows = await db.ownerClaim.findMany({
-    where:
-      status === 'PENDING'
-        ? {
-            status: 'PENDING',
-            OR: [
-              { method: 'WEBSITE', proofUrl: { not: null } },
-              { method: 'PHONE' },
-              { method: 'EMAIL', codeHash: null }, // code confirmed, place already had an owner
-            ],
-          }
-        : { status },
-    orderBy: { createdAt: status === 'PENDING' ? 'asc' : 'desc' },
-    take: 200,
-    include: {
-      place: { select: { id: true, name: true, website: true, phone: true } },
-      user: { select: { id: true, username: true } },
-      decidedBy: { select: { username: true } },
-    },
-  });
-  return rows;
+export async function listOwnerClaims(
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'REVOKED',
+  page = 1,
+) {
+  const where: Prisma.OwnerClaimWhereInput =
+    status === 'PENDING'
+      ? {
+          status: 'PENDING',
+          OR: [
+            { method: 'WEBSITE', proofUrl: { not: null } },
+            { method: 'PHONE' },
+            { method: 'EMAIL', codeHash: null }, // code confirmed, place already had an owner
+          ],
+        }
+      : { status };
+  const [rows, total] = await Promise.all([
+    db.ownerClaim.findMany({
+      where,
+      orderBy: [{ createdAt: status === 'PENDING' ? 'asc' : 'desc' }, { id: 'asc' }],
+      ...pageWindow(page),
+      include: {
+        place: { select: { id: true, name: true, website: true, phone: true } },
+        user: { select: { id: true, username: true } },
+        decidedBy: { select: { username: true } },
+      },
+    }),
+    db.ownerClaim.count({ where }),
+  ]);
+  return toPage(rows, total, page);
 }
 
 export async function decideOwnerClaim(

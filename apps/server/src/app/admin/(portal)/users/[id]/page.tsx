@@ -4,7 +4,8 @@ import { getUserRecord } from '@/server/admin/users';
 import { ui } from '../../../admin-ui';
 import { NotifyForReport, StaffBadge, UserActions, VoidStrike } from '../../../forms';
 import { requireAdminPage } from '../../../require-admin-page';
-import { Pill, Table, td, when, words } from '../../admin-table';
+import { Pager, Pill, Table, td, when, words } from '../../admin-table';
+import { pageNumber, toPage } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,9 +32,20 @@ function stepLabel(next: { action: string; hours?: number } | null) {
 }
 
 /** P5.14: a person's record and enforcement actions. Never their email. */
-export default async function UserPage(ctx: { params: Promise<{ id: string }> }) {
+export default async function UserPage(ctx: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ rpage?: string; hpage?: string }>;
+}) {
   await requireAdminPage();
-  const u = await getUserRecord(await uuidParam(ctx));
+  const sp = await ctx.searchParams;
+  const u = await getUserRecord(await uuidParam(ctx), {
+    reportsPage: pageNumber(sp.rpage),
+    historyPage: pageNumber(sp.hpage),
+  });
+  // D210: the reports (rpage) and the history (hpage) are paged on their own.
+  const base = `/admin/users/${u.id}`;
+  const params = { rpage: sp.rpage, hpage: sp.hpage };
+  const reportsPage = toPage(u.reports, u.history.reportsAgainst, pageNumber(sp.rpage));
   const content = [
     ...u.recentPosts.map((p) => ({ ...p, kind: 'Post' })),
     ...u.recentComments.map((c) => ({ ...c, kind: 'Comment' })),
@@ -96,15 +108,10 @@ export default async function UserPage(ctx: { params: Promise<{ id: string }> })
       <StaffBadge userId={u.id} on={u.staffBadge} />
 
       <h2 style={{ marginBottom: 0 }}>Reports about them</h2>
-      {u.reports.length === 0 ? (
+      {u.history.reportsAgainst === 0 ? (
         <p style={ui.muted}>None.</p>
       ) : (
         <>
-          {u.history.reportsAgainst > u.reports.length ? (
-            <p style={ui.muted}>
-              Newest {u.reports.length} of {u.history.reportsAgainst}.
-            </p>
-          ) : null}
           <Table head={['Reason', 'Details', 'About', 'Reported by', 'Status', 'When', '']}>
             {u.reports.map((r) => (
               <tr key={r.id}>
@@ -135,11 +142,12 @@ export default async function UserPage(ctx: { params: Promise<{ id: string }> })
               </tr>
             ))}
           </Table>
+          <Pager page={reportsPage} base={base} params={params} param="rpage" />
         </>
       )}
 
       <h2 style={{ marginBottom: 0 }}>Moderation history</h2>
-      {u.history.actions.length === 0 ? (
+      {u.history.actionsPage.total === 0 ? (
         <p style={ui.muted}>Nothing on record.</p>
       ) : (
         <Table head={['Action', 'Reason', 'Internal note', 'By', 'When', '']}>
@@ -162,6 +170,9 @@ export default async function UserPage(ctx: { params: Promise<{ id: string }> })
           ))}
         </Table>
       )}
+      {u.history.actionsPage.total ? (
+        <Pager page={u.history.actionsPage} base={base} params={params} param="hpage" />
+      ) : null}
 
       <h2 style={{ marginBottom: 0 }}>Recent posts and comments</h2>
       {content.length === 0 ? (

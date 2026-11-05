@@ -1,8 +1,9 @@
+import { pageNumber } from '@/server/admin/paging';
 import { listContactMessages } from '@/server/contact';
 import { ui } from '../../admin-ui';
 import { ContactActions } from '../../forms';
 import { requireAdminPage } from '../../require-admin-page';
-import { Pill, when } from '../admin-table';
+import { Pager, Pill, when } from '../admin-table';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,13 +13,14 @@ const CATEGORY = { SUPPORT: 'Support ticket', GENERAL: 'General' } as const;
 export default async function MessagesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; category?: string }>;
+  searchParams: Promise<{ status?: string; category?: string; page?: string }>;
 }) {
   await requireAdminPage();
   const q = await searchParams;
   const status = q.status === 'RESOLVED' ? 'RESOLVED' : 'OPEN';
   const category = q.category === 'SUPPORT' || q.category === 'GENERAL' ? q.category : undefined;
-  const messages = await listContactMessages({ status, category });
+  const list = await listContactMessages({ status, category, page: pageNumber(q.page) });
+  const messages = list.rows;
   const link = (s: string, c?: string) => `/admin/messages?status=${s}${c ? `&category=${c}` : ''}`;
   return (
     <>
@@ -39,7 +41,7 @@ export default async function MessagesPage({
           </a>
         ))}
       </nav>
-      {messages.length === 0 ? <p style={ui.muted}>Nothing here.</p> : null}
+      {list.total === 0 ? <p style={ui.muted}>Nothing here.</p> : null}
       <div style={{ display: 'grid', gap: 16 }}>
         {messages.map((m) => (
           <div key={m.id} style={ui.card}>
@@ -66,6 +68,7 @@ export default async function MessagesPage({
           </div>
         ))}
       </div>
+      <Pager page={list} base="/admin/messages" params={{ status, category }} />
     </>
   );
 }

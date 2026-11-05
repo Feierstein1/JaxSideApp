@@ -16,6 +16,7 @@ import {
   voidStrike,
 } from '../moderation/enforcement';
 import { audit } from './audit';
+import { pageWindow, toPage } from './paging';
 import { REPORTER_INCLUDE, refOf, reporterLabel, reportsAgainstWhere, userHistory } from './queue';
 
 /**
@@ -168,17 +169,15 @@ export async function signupCounts(now = new Date()) {
   };
 }
 
-const REPORTS_SHOWN = 50;
-
 /**
- * The newest reports about a person, each with a link to its case and whether a strike
- * was already given for it ("Notify" in the portal is a strike tied to the report).
+ * Reports about a person, newest first, 20 a page (D210), each with a link to its case and
+ * whether a strike was already given for it ("Notify" is a strike tied to the report).
  */
-export async function reportsAgainstUser(userId: string) {
+export async function reportsAgainstUser(userId: string, page = 1) {
   const rows = await db.report.findMany({
     where: reportsAgainstWhere(userId),
-    orderBy: { createdAt: 'desc' },
-    take: REPORTS_SHOWN,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    ...pageWindow(page),
     include: {
       ...REPORTER_INCLUDE,
       modActions: {
@@ -220,7 +219,10 @@ async function nextStrikeStep(userId: string, status: string) {
   return { action: 'SUSPEND' as const, strike: n, hours: n === 2 ? first : second };
 }
 
-export async function getUserRecord(userId: string) {
+export async function getUserRecord(
+  userId: string,
+  opts: { reportsPage?: number; historyPage?: number } = {},
+) {
   const u = await db.user.findUnique({
     where: { id: userId },
     include: {
@@ -242,7 +244,7 @@ export async function getUserRecord(userId: string) {
       take: 10,
       select: { id: true, body: true, status: true, createdAt: true },
     }),
-    reportsAgainstUser(userId),
+    reportsAgainstUser(userId, opts.reportsPage),
     nextStrikeStep(userId, u.status),
   ]);
   return {
@@ -267,7 +269,7 @@ export async function getUserRecord(userId: string) {
     recentComments: comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
     reports,
     nextStrike,
-    history: await userHistory(userId),
+    history: await userHistory(userId, opts.historyPage),
   };
 }
 
@@ -359,17 +361,21 @@ export async function userAction(
   return result;
 }
 
-export async function listAppeals(status: 'OPEN' | 'ACCEPTED' | 'REJECTED' = 'OPEN') {
-  const rows = await db.appeal.findMany({
-    where: { status },
-    orderBy: { createdAt: status === 'OPEN' ? 'asc' : 'desc' },
-    take: 200,
-    include: {
-      user: { select: { id: true, username: true, status: true } },
-      action: { select: { action: true, reason: true, createdAt: true, internalNote: true } },
-    },
-  });
-  return rows.map((a) => ({
+/** Appeals (waiting ones oldest first), 20 a page (D210). */
+export async function listAppeals(status: 'OPEN' | 'ACCEPTED' | 'REJECTED' = 'OPEN', page = 1) {
+  const [rows, total] = await Promise.all([
+    db.appeal.findMany({
+      where: { status },
+      orderBy: [{ createdAt: status === 'OPEN' ? 'asc' : 'desc' }, { id: 'asc' }],
+      ...pageWindow(page),
+      include: {
+        user: { select: { id: true, username: true, status: true } },
+        action: { select: { action: true, reason: true, createdAt: true, internalNote: true } },
+      },
+    }),
+    db.appeal.count({ where: { status } }),
+  ]);
+  const list = rows.map((a) => ({
     id: a.id,
     status: a.status,
     message: a.message,
@@ -383,6 +389,7 @@ export async function listAppeals(status: 'OPEN' | 'ACCEPTED' | 'REJECTED' = 'OP
       createdAt: a.action.createdAt.toISOString(),
     },
   }));
+  return toPage(list, total, page);
 }
 
 /** The Users page's query string (`q`, `filter`, `page`); anything unknown falls back. */

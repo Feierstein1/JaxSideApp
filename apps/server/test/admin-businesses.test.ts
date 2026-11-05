@@ -79,7 +79,7 @@ beforeEach(async () => {
 
 describe('B1.7 Businesses section', () => {
   it('lists owner accounts with their places, and searches by email or place', async () => {
-    const all = await listBusinesses('');
+    const all = (await listBusinesses('')).rows;
     expect(all).toHaveLength(1); // staff logins are on the owner's page, not here
     expect(all[0]).toMatchObject({
       email: 'owner@boldbean.com',
@@ -87,9 +87,9 @@ describe('B1.7 Businesses section', () => {
       employees: 1,
       places: [{ name: 'Bold Bean', role: 'OWNER' }],
     });
-    expect(await listBusinesses('bold')).toHaveLength(1);
-    expect(await listBusinesses('boldbean.com')).toHaveLength(1);
-    expect(await listBusinesses('night owl')).toHaveLength(0);
+    expect((await listBusinesses('bold')).rows).toHaveLength(1);
+    expect((await listBusinesses('boldbean.com')).rows).toHaveLength(1);
+    expect((await listBusinesses('night owl')).rows).toHaveLength(0);
   });
 
   it('shows the claim behind each place, the team and what the business wrote', async () => {

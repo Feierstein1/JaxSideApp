@@ -19,6 +19,7 @@ import { createUserKey, unwrapUserKey } from './crypto/field-encryption';
 import { db } from './db';
 import { ApiError } from './http';
 import type { GeoPoint } from './location/eligibility';
+import { pageWindow, toPage } from './admin/paging';
 
 /**
  * D123 / D124: weekly polls, "count, don't record" like the area statistics (D116).
@@ -410,18 +411,31 @@ export async function featurePoll(id: string, on: boolean, now = new Date()) {
   ]);
 }
 
-export async function adminListPolls(now = new Date()) {
+/** Admin: polls (one topic, or one poll by ID), newest first, 20 a page (D210). */
+export async function adminListPolls(
+  opts: { topic?: string; id?: string; page?: number } = {},
+  now = new Date(),
+) {
   await finalizeDuePolls(now);
-  const polls = await db.poll.findMany({
-    orderBy: { opensAt: 'desc' },
-    take: 100,
-    include: {
-      ...pollInclude,
-      createdBy: { select: { username: true } },
-      _count: { select: { voters: true } },
-    },
-  });
-  return polls.map((p) => ({
+  const page = opts.page ?? 1;
+  const where: Prisma.PollWhereInput = {
+    ...(opts.topic ? { topic: opts.topic } : {}),
+    ...(opts.id ? { id: opts.id } : {}),
+  };
+  const [polls, total] = await Promise.all([
+    db.poll.findMany({
+      where,
+      orderBy: [{ opensAt: 'desc' }, { id: 'desc' }],
+      ...pageWindow(page),
+      include: {
+        ...pollInclude,
+        createdBy: { select: { username: true } },
+        _count: { select: { voters: true } },
+      },
+    }),
+    db.poll.count({ where }),
+  ]);
+  const list = polls.map((p) => ({
     id: p.id,
     kind: fromDb(p.kind),
     topic: asTopic(p.topic),
@@ -438,6 +452,7 @@ export async function adminListPolls(now = new Date()) {
     votesSoFar: p.finalizedAt ? p.voterCount : p._count.voters,
     results: p.finalizedAt ? buildResults(p.choices, p.tallies, p.voterTallies) : null,
   }));
+  return toPage(list, total, page);
 }
 
 export async function createPoll(adminId: string, input: AdminPollRequest) {
@@ -496,13 +511,19 @@ export async function suggestPoll(userId: string, input: SuggestPollRequest) {
 }
 
 /** Admin: suggestions waiting (oldest first), then the most recent decided ones. */
-export async function adminListPollSuggestions() {
-  const rows = await db.pollSuggestion.findMany({
-    orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
-    take: 100,
-    include: { user: { select: { id: true, username: true } } },
-  });
-  return rows.map((s) => ({
+/** Admin: suggested questions still waiting, oldest first, 20 a page (D210). */
+export async function adminListPollSuggestions(page = 1) {
+  const where = { status: 'WAITING' } as const;
+  const [rows, total] = await Promise.all([
+    db.pollSuggestion.findMany({
+      where,
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      ...pageWindow(page),
+      include: { user: { select: { id: true, username: true } } },
+    }),
+    db.pollSuggestion.count({ where }),
+  ]);
+  const list = rows.map((s) => ({
     id: s.id,
     question: s.question,
     details: s.details,
@@ -512,6 +533,7 @@ export async function adminListPollSuggestions() {
     by: s.user,
     createdAt: s.createdAt.toISOString(),
   }));
+  return toPage(list, total, page);
 }
 
 /** Admin: mark a suggestion used (the admin writes the poll) or decline it with a reason. */

@@ -1,13 +1,18 @@
 import { recentSecurityEvents } from '@/server/auth/security-events';
 import { requireAdminPage } from '../../require-admin-page';
-import { Table, td, when } from '../admin-table';
+import { Pager, Table, td, when } from '../admin-table';
+import { pageNumber } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
 /** D180: sign-in bursts that were blocked (5 wrong passwords for one account, or 8 from one place, in a minute). */
-export default async function SecurityPage() {
+export default async function SecurityPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdminPage();
-  const { last24h, events } = await recentSecurityEvents();
+  const { last24h, events } = await recentSecurityEvents(pageNumber((await searchParams).page));
   return (
     <>
       <h1>Security</h1>
@@ -18,7 +23,7 @@ export default async function SecurityPage() {
         only tells entries apart; it is never an address.
       </p>
       <Table head={['When', 'Kind', 'Account', 'Place code']}>
-        {events.map((e) => (
+        {events.rows.map((e) => (
           <tr key={e.id}>
             <td style={td}>{when(e.createdAt)}</td>
             <td style={td}>
@@ -35,6 +40,7 @@ export default async function SecurityPage() {
           </tr>
         ))}
       </Table>
+      <Pager page={events} base="/admin/security" params={{}} />
     </>
   );
 }

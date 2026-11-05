@@ -1,7 +1,8 @@
 import { listBusinesses } from '@/server/admin/businesses';
 import { ui } from '../../admin-ui';
 import { requireAdminPage } from '../../require-admin-page';
-import { Pill, Table, td, when, words } from '../admin-table';
+import { Pager, Pill, Table, td, when, words } from '../admin-table';
+import { pageNumber } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +13,13 @@ export const dynamic = 'force-dynamic';
 export default async function BusinessesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   await requireAdminPage();
-  const q = ((await searchParams).q ?? '').slice(0, 80);
-  const rows = await listBusinesses(q);
+  const sp = await searchParams;
+  const q = (sp.q ?? '').slice(0, 80);
+  const list = await listBusinesses(q, pageNumber(sp.page));
+  const rows = list.rows;
   return (
     <>
       <h1>Businesses</h1>
@@ -61,6 +64,7 @@ export default async function BusinessesPage({
             ))}
           </Table>
         ) : null}
+        <Pager page={list} base="/admin/businesses" params={{ q }} />
       </div>
     </>
   );

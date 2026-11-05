@@ -4,7 +4,8 @@ import { getCase } from '@/server/admin/queue';
 import { ui } from '../../../../admin-ui';
 import { CaseDecision } from '../../../../forms';
 import { requireAdminPage } from '../../../../require-admin-page';
-import { Pill, Table, td, when, words } from '../../../admin-table';
+import { Pager, Pill, Table, td, when, words } from '../../../admin-table';
+import { pageNumber } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,11 +18,19 @@ const quote = {
 /** P5.14: one reported item: the content, its context, the reports, the author's record. */
 export default async function CasePage(ctx: {
   params: Promise<{ type: string; id: string }>;
-  searchParams: Promise<{ all?: string }>;
+  searchParams: Promise<{ page?: string; apage?: string; hpage?: string }>;
 }) {
   await requireAdminPage();
-  const all = (await ctx.searchParams).all === '1';
-  const c = await getCase(await caseParam(ctx), { allReports: all });
+  const sp = await ctx.searchParams;
+  const ref = await caseParam(ctx);
+  const c = await getCase(ref, {
+    reportsPage: pageNumber(sp.page),
+    accountReportsPage: pageNumber(sp.apage),
+    historyPage: pageNumber(sp.hpage),
+  });
+  // D210: each list on the page has its own page number.
+  const base = `/admin/cases/${ref.type}/${ref.id}`;
+  const params = { page: sp.page, apage: sp.apage, hpage: sp.hpage };
   const author = c.author && 'username' in c.author ? c.author : null;
   const ok = c.contentStatus === 'VISIBLE' || c.contentStatus === 'ACCOUNT';
   return (
@@ -102,15 +111,9 @@ export default async function CasePage(ctx: {
       />
 
       <h2 style={{ marginBottom: 0 }}>Reports ({c.reportTotal})</h2>
-      {/* D74: a summary instead of a flood; the list shows the newest 20 unless asked. */}
+      {/* D74: a summary instead of a flood; the list below is newest first, 20 a page. */}
       <p style={{ ...ui.muted, margin: 0 }}>
         {c.reportsByReason.map((g) => `${words(g.reason)} ${g.count}`).join(' · ')}
-        {c.reportTotal > c.reports.length ? (
-          <>
-            {' · '}showing the newest {c.reports.length}.{' '}
-            <a href="?all=1">Show all {c.reportTotal}</a>
-          </>
-        ) : null}
       </p>
       <Table head={['Reason', 'Details', 'From', 'When', 'Status']}>
         {c.reports.map((r) => (
@@ -126,8 +129,9 @@ export default async function CasePage(ctx: {
           </tr>
         ))}
       </Table>
+      <Pager page={c.reportsPage} base={base} params={params} />
 
-      {c.accountReports?.length ? (
+      {c.accountReports && c.accountReportsPage?.total ? (
         <>
           <h2 style={{ marginBottom: 0 }}>Reports on this account’s posts and comments</h2>
           <Table head={['Reason', 'Details', 'From', 'On', 'When', 'Status']}>
@@ -144,6 +148,9 @@ export default async function CasePage(ctx: {
               </tr>
             ))}
           </Table>
+          {c.accountReportsPage ? (
+            <Pager page={c.accountReportsPage} base={base} params={params} param="apage" />
+          ) : null}
         </>
       ) : null}
 
@@ -154,21 +161,24 @@ export default async function CasePage(ctx: {
             {c.authorHistory.reportsAgainst} reports against · {c.authorHistory.contentRemoved}{' '}
             items removed · {c.authorHistory.locationFlags} location flags
           </p>
-          {c.authorHistory.actions.length ? (
-            <Table head={['Action', 'Reason', 'Internal note', 'By', 'When']}>
-              {c.authorHistory.actions.map((a) => (
-                <tr key={a.id} style={a.voidedAt ? { opacity: 0.5 } : undefined}>
-                  <td style={td}>
-                    {words(a.action)}
-                    {a.voidedAt ? ' (cancelled)' : ''}
-                  </td>
-                  <td style={td}>{a.reason}</td>
-                  <td style={td}>{a.internalNote ?? ''}</td>
-                  <td style={td}>@{a.by}</td>
-                  <td style={td}>{when(a.createdAt)}</td>
-                </tr>
-              ))}
-            </Table>
+          {c.authorHistory.actionsPage.total ? (
+            <>
+              <Table head={['Action', 'Reason', 'Internal note', 'By', 'When']}>
+                {c.authorHistory.actions.map((a) => (
+                  <tr key={a.id} style={a.voidedAt ? { opacity: 0.5 } : undefined}>
+                    <td style={td}>
+                      {words(a.action)}
+                      {a.voidedAt ? ' (cancelled)' : ''}
+                    </td>
+                    <td style={td}>{a.reason}</td>
+                    <td style={td}>{a.internalNote ?? ''}</td>
+                    <td style={td}>@{a.by}</td>
+                    <td style={td}>{when(a.createdAt)}</td>
+                  </tr>
+                ))}
+              </Table>
+              <Pager page={c.authorHistory.actionsPage} base={base} params={params} param="hpage" />
+            </>
           ) : null}
         </>
       ) : null}

@@ -9,6 +9,7 @@ import type { GeoPoint } from '../location/eligibility';
 import { metersBetween } from '../location/neighborhood';
 import { objectStore } from '../media/store';
 import { approveSubmissionTx } from './submissions';
+import { pageWindow, toPage } from '../admin/paging';
 
 /**
  * D94: community place voting. People near a spot confirm a suggested place ("It's here" /
@@ -300,24 +301,30 @@ export async function changeVotes(t: ChangeTarget) {
 }
 
 /** Admin: removal requests (open and recent), with vote counts. */
-export async function listRemovals(status: 'OPEN' | 'REMOVED' | 'KEPT' | 'EXPIRED') {
-  const rows = await db.placeRemoval.findMany({
-    where: { status },
-    orderBy: { createdAt: status === 'OPEN' ? 'asc' : 'desc' },
-    take: 200,
-    include: {
-      place: { select: { id: true, name: true, category: true, latitude: true, longitude: true } },
-      requester: { select: { id: true, username: true } },
-      resolvedBy: { select: { username: true } },
-      _count: { select: { votes: true } },
-    },
-  });
-  return Promise.all(
+export async function listRemovals(status: 'OPEN' | 'REMOVED' | 'KEPT' | 'EXPIRED', page = 1) {
+  const [rows, total] = await Promise.all([
+    db.placeRemoval.findMany({
+      where: { status },
+      orderBy: [{ createdAt: status === 'OPEN' ? 'asc' : 'desc' }, { id: 'asc' }],
+      ...pageWindow(page),
+      include: {
+        place: {
+          select: { id: true, name: true, category: true, latitude: true, longitude: true },
+        },
+        requester: { select: { id: true, username: true } },
+        resolvedBy: { select: { username: true } },
+        _count: { select: { votes: true } },
+      },
+    }),
+    db.placeRemoval.count({ where: { status } }),
+  ]);
+  const list = await Promise.all(
     rows.map(async (r) => ({
       ...r,
       votes: await changeVotes({ kind: 'remove', id: r.id }),
     })),
   );
+  return toPage(list, total, page);
 }
 
 /** Admin: put a removed place back (or close a request as "keep"). */

@@ -13,6 +13,10 @@ export const REPORT_REASONS = [
   'IMPERSONATION',
   'SCAM',
   'OTHER',
+  // D209: for ads only (D207's photo rules: show what you really sell).
+  'AD_MISLEADING',
+  'AD_AI_FOOD',
+  'AD_AI_IMAGE',
 ] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
@@ -27,7 +31,27 @@ export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
   IMPERSONATION: 'Impersonation',
   SCAM: 'Scam or fraud',
   OTHER: 'Something else',
+  AD_MISLEADING: 'Misleading or false offer',
+  AD_AI_FOOD: 'AI-made food or drink photo',
+  AD_AI_IMAGE: 'Over-the-top AI flyer or image',
 };
+
+/** D209: the reasons that apply to ads, in the order the app lists them. */
+export const AD_REPORT_REASONS = [
+  'AD_MISLEADING',
+  'AD_AI_FOOD',
+  'AD_AI_IMAGE',
+  'SCAM',
+  'SEXUAL_CONTENT',
+  'HATE',
+  'OTHER',
+] as const satisfies readonly ReportReason[];
+
+/** The reasons for everything else (posts, comments, photos, people, messages, topics). */
+export const CONTENT_REPORT_REASONS = REPORT_REASONS.filter((r) => !r.startsWith('AD_')) as Exclude<
+  ReportReason,
+  `AD_${string}`
+>[];
 
 export const REPORT_DETAILS_MAX = 1000;
 
@@ -41,6 +65,8 @@ export const reportTargetSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('message'), id: z.uuid() }),
   /** D133: a topic (its title or description). */
   z.strictObject({ type: z.literal('topic'), id: z.uuid() }),
+  /** D209: an ad in the feeds. */
+  z.strictObject({ type: z.literal('ad'), id: z.uuid() }),
   z.strictObject({
     type: z.literal('user'),
     // Any existing name (old names can predate today's rules), so no reserved-word check.
@@ -50,17 +76,26 @@ export const reportTargetSchema = z.discriminatedUnion('type', [
 export type ReportTarget = z.infer<typeof reportTargetSchema>;
 
 /** P5.1: report a post, comment or profile. Photos come with P6. */
-export const reportCreateSchema = z.strictObject({
-  reading: locationReadingSchema,
-  target: reportTargetSchema,
-  reason: z.enum(REPORT_REASONS),
-  details: z.string().trim().max(REPORT_DETAILS_MAX).optional(),
-});
+export const reportCreateSchema = z
+  .strictObject({
+    reading: locationReadingSchema,
+    target: reportTargetSchema,
+    reason: z.enum(REPORT_REASONS),
+    details: z.string().trim().max(REPORT_DETAILS_MAX).optional(),
+  })
+  // D209: ads have their own reasons; the ad-only ones never apply to anything else.
+  .refine(
+    (r) =>
+      r.target.type === 'ad'
+        ? (AD_REPORT_REASONS as readonly string[]).includes(r.reason)
+        : !r.reason.startsWith('AD_'),
+    { path: ['reason'], message: 'That reason doesn’t apply here' },
+  );
 
 /** What you see in "My reports". Never the moderator's identity or notes. */
 export interface MyReport {
   id: string;
-  targetType: 'general' | 'business' | 'comment' | 'user' | 'photo' | 'topic';
+  targetType: 'general' | 'business' | 'comment' | 'user' | 'photo' | 'topic' | 'ad';
   /** A short preview of what was reported (or the username). */
   preview: string;
   reason: ReportReason;

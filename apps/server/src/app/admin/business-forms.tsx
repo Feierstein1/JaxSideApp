@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { COLORS } from '@jax/shared';
+import { AD_DENIAL_GROUPS, COLORS, adDenialMessage } from '@jax/shared';
 import { adminFetch, ui } from './admin-ui';
 
 /** B1.7: suspend, lift, revoke or reset a business login (all audited). */
@@ -502,12 +502,34 @@ export function BusinessStrikeForm({ id, step }: { id: string; step: string }) {
   );
 }
 
-/** B3.3 / D206: approve an ad, or turn it down with a reason the business sees. */
+/**
+ * B3.3 / D206: approve an ad, or turn it down. D211: turning down picks a broad reason, then
+ * a detailed one from the ad rules, plus an optional note; the business reads it as shown.
+ */
 export function AdDecisionForm({ adId }: { adId: string }) {
-  const [reason, setReason] = useState('');
   const [rejecting, setRejecting] = useState(false);
+  const [group, setGroup] = useState<string>();
+  const [code, setCode] = useState<string>();
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+
+  const chosen = AD_DENIAL_GROUPS.find((g) => g.code === group);
+  const other = group === 'OTHER';
+  const ready = !!code && (!other || note.trim().length >= 3);
+
+  function pickGroup(next: string) {
+    setGroup(next);
+    // "Something else" has one reason; otherwise the admin picks the detailed one.
+    setCode(next === 'OTHER' ? 'OTHER' : undefined);
+  }
+
+  function cancel() {
+    setRejecting(false);
+    setGroup(undefined);
+    setCode(undefined);
+    setNote('');
+  }
 
   async function decide(decision: 'approve' | 'reject') {
     setBusy(true);
@@ -515,7 +537,10 @@ export function AdDecisionForm({ adId }: { adId: string }) {
     try {
       await adminFetch(`/api/v1/admin/ads/${adId}/decision`, {
         method: 'POST',
-        body: decision === 'approve' ? { decision } : { decision, reason: reason.trim() },
+        body:
+          decision === 'approve'
+            ? { decision }
+            : { decision, reasonCode: code, ...(note.trim() ? { note: note.trim() } : {}) },
       });
       window.location.reload();
     } catch (err) {
@@ -524,30 +549,102 @@ export function AdDecisionForm({ adId }: { adId: string }) {
     }
   }
 
+  const choice = (on: boolean) => ({
+    display: 'block',
+    width: '100%',
+    textAlign: 'left' as const,
+    padding: '10px 12px',
+    borderRadius: 10,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    fontSize: 14,
+    background: on ? COLORS.primarySoft : COLORS.background,
+    color: COLORS.text,
+    border: `1px solid ${on ? COLORS.primary : COLORS.cardBorder}`,
+  });
+
   return (
     <div style={{ marginTop: 12 }}>
       {rejecting ? (
-        <label style={ui.label}>
-          What needs to change (the business sees this)
-          <textarea
-            style={{ ...ui.input, minHeight: 60, fontFamily: 'inherit' }}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            maxLength={500}
-          />
-        </label>
+        <div style={{ display: 'grid', gap: 12, maxWidth: 720 }}>
+          <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+            <legend style={{ fontWeight: 650, marginBottom: 8 }}>Why is it turned down?</legend>
+            <div
+              style={{
+                display: 'grid',
+                gap: 8,
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              }}
+            >
+              {AD_DENIAL_GROUPS.map((g) => (
+                <button
+                  key={g.code}
+                  type="button"
+                  aria-pressed={g.code === group}
+                  style={choice(g.code === group)}
+                  onClick={() => pickGroup(g.code)}
+                >
+                  <strong>{g.label}</strong>
+                  <div style={{ ...ui.muted, fontSize: 12, marginTop: 2 }}>{g.hint}</div>
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          {chosen && !other ? (
+            <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+              <legend style={{ fontWeight: 650, marginBottom: 8 }}>
+                {chosen.label}: which one?
+              </legend>
+              <div style={{ display: 'grid', gap: 6 }}>
+                {chosen.reasons.map((r) => (
+                  <label
+                    key={r.code}
+                    style={{ ...choice(r.code === code), display: 'flex', gap: 10 }}
+                  >
+                    <input
+                      type="radio"
+                      name={`deny-${adId}`}
+                      checked={r.code === code}
+                      onChange={() => setCode(r.code)}
+                    />
+                    <span>
+                      <strong>{r.label}</strong>
+                      <div style={{ ...ui.muted, fontSize: 12, marginTop: 2 }}>{r.text}</div>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
+
+          {group ? (
+            <label style={ui.label}>
+              {other ? 'What needs to change (required)' : 'Note for the business (optional)'}
+              <textarea
+                style={{ ...ui.input, minHeight: 60, fontFamily: 'inherit' }}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={300}
+                placeholder={other ? '' : 'e.g. the burger photo'}
+              />
+            </label>
+          ) : null}
+
+          {ready ? (
+            <p style={{ ...ui.muted, margin: 0 }}>
+              The business will read: “{adDenialMessage(code!, note)}”
+            </p>
+          ) : null}
+        </div>
       ) : null}
-      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
         {rejecting ? (
           <>
-            <button
-              style={ui.button}
-              disabled={busy || reason.trim().length < 3}
-              onClick={() => decide('reject')}
-            >
+            <button style={ui.button} disabled={busy || !ready} onClick={() => decide('reject')}>
               Send back
             </button>
-            <button style={ui.buttonSecondary} disabled={busy} onClick={() => setRejecting(false)}>
+            <button style={ui.buttonSecondary} disabled={busy} onClick={cancel}>
               Cancel
             </button>
           </>

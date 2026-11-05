@@ -100,7 +100,7 @@ describe('removing any place (D146)', () => {
 
     const removal = await db.placeRemoval.findFirstOrThrow({ where: { placeId: cafe } });
     expect(removal).toMatchObject({ status: 'REMOVED', resolvedById: adminId });
-    expect((await adminSearchPlaces('bold bean'))[0]).toMatchObject({ status: 'REMOVED' });
+    expect((await adminSearchPlaces('bold bean')).rows[0]).toMatchObject({ status: 'REMOVED' });
 
     await call(removalDecidePOST as H, 'POST', {
       headers: admin,

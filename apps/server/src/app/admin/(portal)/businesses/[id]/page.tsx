@@ -11,7 +11,8 @@ import {
 } from '../../../business-forms';
 import { NotifyForReport, VoidStrike } from '../../../forms';
 import { requireAdminPage } from '../../../require-admin-page';
-import { Pill, Table, td, when, words } from '../../admin-table';
+import { Pager, Pill, Table, td, when, words } from '../../admin-table';
+import { pageNumber } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,13 +34,23 @@ function stepLabel(next: { action: string; hours?: number } | null) {
 }
 
 /** B1.7: one business login: places, team, sign-ins, claims, activity, plan; and actions. */
-export default async function BusinessPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function BusinessPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ spage?: string; rpage?: string }>;
+}) {
   await requireAdminPage();
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+  const sp = await searchParams;
   let b;
   try {
-    b = await getBusiness(id);
+    b = await getBusiness(id, {
+      strikesPage: pageNumber(sp.spage),
+      reportsPage: pageNumber(sp.rpage),
+    });
   } catch (err) {
     if (err instanceof ApiError) notFound();
     throw err;
@@ -48,6 +59,9 @@ export default async function BusinessPage({ params }: { params: Promise<{ id: s
   const past = b.places.filter((p) => p.revokedAt);
   const step = stepLabel(b.nextStrike);
   const strikesUrl = `/api/v1/admin/businesses/${b.id}/strikes`;
+  // D210: strikes (spage) and reports (rpage) are paged on their own.
+  const base = `/admin/businesses/${b.id}`;
+  const pageParams = { spage: sp.spage, rpage: sp.rpage };
   return (
     <>
       <p>
@@ -99,7 +113,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ id: s
         too); each one shows in their bell on the business website.
       </p>
       {step ? <BusinessStrikeForm id={b.id} step={step} /> : null}
-      {b.strikes.length === 0 ? (
+      {b.strikesPage.total === 0 ? (
         <p style={ui.muted}>Nothing on record.</p>
       ) : (
         <Table head={['Action', 'Reason (shown to them)', 'Internal note', 'By', 'When', '']}>
@@ -123,9 +137,10 @@ export default async function BusinessPage({ params }: { params: Promise<{ id: s
           ))}
         </Table>
       )}
+      <Pager page={b.strikesPage} base={base} params={pageParams} param="spage" />
 
       <h2 style={{ marginBottom: 0 }}>Reports about what this login wrote</h2>
-      {b.reports.length === 0 ? (
+      {b.reportsPage.total === 0 ? (
         <p style={ui.muted}>None.</p>
       ) : (
         <Table head={['Reason', 'Details', 'About', 'Reported by', 'Status', 'When', '']}>
@@ -160,6 +175,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ id: s
           ))}
         </Table>
       )}
+      <Pager page={b.reportsPage} base={base} params={pageParams} param="rpage" />
 
       <h2>Places</h2>
       {live.length === 0 ? <p style={ui.muted}>No places now.</p> : null}

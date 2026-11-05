@@ -16,7 +16,8 @@ import {
 } from '@/server/stats/report';
 import { ui } from '../../admin-ui';
 import { requireAdminPage } from '../../require-admin-page';
-import { td, th, words } from '../admin-table';
+import { Pager, td, th, words } from '../admin-table';
+import { pageNumber, slicePage, type Page } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,14 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'travel', label: 'Travel between areas' },
 ];
 
-type Q = { tab?: string; period?: string; sort?: string; dir?: string; zip?: string };
+type Q = {
+  tab?: string;
+  period?: string;
+  sort?: string;
+  dir?: string;
+  zip?: string;
+  page?: string;
+};
 
 const avg = (n: number) => (n < MIN_GROUP ? `<${MIN_GROUP}` : n.toFixed(1));
 const pct = (part: number, whole: number) =>
@@ -82,6 +90,20 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
       <th style={th}>{label}</th>
     );
 
+  const pageNo = pageNumber(q.page);
+  const pager: PagerT = (rows) => {
+    const page = slicePage(rows, pageNo);
+    return {
+      page,
+      nav: (
+        <Pager
+          page={page}
+          base="/admin/stats"
+          params={{ tab, period, sort: q.sort, dir: q.sort ? dir : undefined, zip: q.zip }}
+        />
+      ),
+    };
+  };
   return (
     <>
       <h1>Area statistics</h1>
@@ -127,7 +149,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
       </form>
 
       {tab === 'zips' && q.zip ? (
-        <ZipDetail zip={q.zip} range={range} back={link({ zip: undefined })} />
+        <ZipDetail zip={q.zip} range={range} back={link({ zip: undefined })} pager={pager} />
       ) : tab === 'zips' ? (
         <ZipTable
           rows={sortRows(
@@ -135,6 +157,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
             (q.sort as keyof ZipRow) ?? 'visitorDays',
             q.sort ? dir : 'desc',
           )}
+          pager={pager}
           showUnique={range.kind !== 'days'}
           Head={Head}
           zipLink={(zip) => link({ zip })}
@@ -146,6 +169,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
             (q.sort as keyof PlaceRow) ?? 'posts',
             q.sort ? dir : 'desc',
           )}
+          pager={pager}
           Head={Head}
         />
       ) : (
@@ -155,6 +179,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
             (q.sort as keyof FlowRow) ?? 'peopleDays',
             q.sort ? dir : 'desc',
           )}
+          pager={pager}
           Head={Head}
         />
       )}
@@ -163,23 +188,29 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
 }
 
 type HeadT = (p: { label: string; col?: string }) => React.ReactElement;
+/** D210: one page (20 rows) of an already-sorted table, with its Previous / Next. */
+type PagerT = <T>(rows: T[]) => { page: Page<T>; nav: React.ReactElement };
 
 function Empty() {
   return <p style={ui.muted}>No counts for this period yet. They’re added each night.</p>;
 }
 
 function ZipTable({
-  rows,
+  rows: all,
+  pager,
   showUnique,
   Head,
   zipLink,
 }: {
   rows: ZipRow[];
+  pager: PagerT;
   showUnique: boolean;
   Head: HeadT;
   zipLink: (zip: string) => string;
 }) {
-  if (!rows.length) return <Empty />;
+  if (!all.length) return <Empty />;
+  const { page, nav } = pager(all);
+  const rows = page.rows;
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={tableStyle}>
@@ -231,6 +262,7 @@ function ZipTable({
           ))}
         </tbody>
       </table>
+      {nav}
       <p style={ui.muted}>Click a ZIP for its day-by-day counts.</p>
     </div>
   );
@@ -240,13 +272,16 @@ async function ZipDetail({
   zip,
   range,
   back,
+  pager,
 }: {
   zip: string;
   range: ReturnType<typeof parsePeriod>;
   back: string;
+  pager: PagerT;
 }) {
   if (!/^\d{5}$/.test(zip)) return <p>Unknown ZIP.</p>;
-  const days = await zipDays(zip, range);
+  const { page, nav } = pager(await zipDays(zip, range));
+  const days = page.rows;
   return (
     <>
       <p>
@@ -283,12 +318,15 @@ async function ZipDetail({
           </tbody>
         </table>
       )}
+      {nav}
     </>
   );
 }
 
-function PlaceTable({ rows, Head }: { rows: PlaceRow[]; Head: HeadT }) {
-  if (!rows.length) return <Empty />;
+function PlaceTable({ rows: all, pager, Head }: { rows: PlaceRow[]; pager: PagerT; Head: HeadT }) {
+  if (!all.length) return <Empty />;
+  const { page, nav } = pager(all);
+  const rows = page.rows;
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={tableStyle}>
@@ -319,6 +357,7 @@ function PlaceTable({ rows, Head }: { rows: PlaceRow[]; Head: HeadT }) {
           ))}
         </tbody>
       </table>
+      {nav}
       <p style={ui.muted}>
         Posts and comments in a place’s discussion need people within 530 yd of it, so they show
         real visits. Places of worship are never counted.
@@ -327,15 +366,17 @@ function PlaceTable({ rows, Head }: { rows: PlaceRow[]; Head: HeadT }) {
   );
 }
 
-function TravelTable({ rows, Head }: { rows: FlowRow[]; Head: HeadT }) {
-  const visible = rows.filter((r) => r.peopleDays >= MIN_GROUP);
-  if (!visible.length) {
+function TravelTable({ rows, pager, Head }: { rows: FlowRow[]; pager: PagerT; Head: HeadT }) {
+  const shownRows = rows.filter((r) => r.peopleDays >= MIN_GROUP);
+  if (!shownRows.length) {
     return rows.length ? (
       <p style={ui.muted}>Every pair in this period has fewer than {MIN_GROUP} people.</p>
     ) : (
       <Empty />
     );
   }
+  const { page, nav } = pager(shownRows);
+  const visible = page.rows;
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={tableStyle}>
@@ -360,6 +401,7 @@ function TravelTable({ rows, Head }: { rows: FlowRow[]; Head: HeadT }) {
           ))}
         </tbody>
       </table>
+      {nav}
       <p style={ui.muted}>People who were in both ZIP codes on the same day.</p>
     </div>
   );

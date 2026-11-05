@@ -116,7 +116,7 @@ describe('deleting', () => {
       body: { reading: reading(), body: 'Too late', topicId: t.id },
     });
     expect(again.status).toBe(404);
-    expect((await adminListTopics()).find((x) => x.id === t.id)).toMatchObject({
+    expect((await adminListTopics({})).rows.find((x) => x.id === t.id)).toMatchObject({
       status: 'DELETED',
       posts: 1,
     });
@@ -144,7 +144,7 @@ describe('reports', () => {
       expect(status).toBe(i < 2 ? 'ACTIVE' : 'HELD');
     }
     expect(await list(other.token)).toEqual([]);
-    expect(await listCases()).toEqual([
+    expect((await listCases()).rows).toEqual([
       expect.objectContaining({ type: 'topic', id: t.id, contentStatus: 'HELD_FOR_REVIEW' }),
     ]);
   });

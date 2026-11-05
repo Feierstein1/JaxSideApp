@@ -125,7 +125,7 @@ describe('spam and scam topics are held for review (D142)', () => {
     expect(t.status).toBe('HELD');
     const other = await person('tl_other');
     expect(await listed(other.token)).toEqual([]);
-    expect(await listCases()).toEqual([
+    expect((await listCases()).rows).toEqual([
       expect.objectContaining({ type: 'topic', id: t.id, contentStatus: 'HELD_FOR_REVIEW' }),
     ]);
     // A held topic still counts toward the monthly limit.

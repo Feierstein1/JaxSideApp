@@ -1,7 +1,8 @@
+import { pageNumber } from '@/server/admin/paging';
 import { listCases } from '@/server/admin/queue';
 import { ui } from '../../admin-ui';
 import { requireAdminPage } from '../../require-admin-page';
-import { Pill, Table, td, when, words } from '../admin-table';
+import { Pager, Pill, Table, td, when, words } from '../admin-table';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,16 +14,22 @@ const KIND = {
   user: 'Profile',
   message: 'Private message',
   topic: 'Topic',
+  ad: 'Ad', // D209
 };
 
 /** P5.14: open reports, one row per reported item, most urgent first. */
-export default async function ReportsQueue() {
+export default async function ReportsQueue({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdminPage();
-  const cases = await listCases();
+  const list = await listCases({ page: pageNumber((await searchParams).page) });
+  const cases = list.rows;
   return (
     <>
       <h1>Reports</h1>
-      {cases.length === 0 ? (
+      {list.total === 0 ? (
         <p style={ui.muted}>Nothing waiting.</p>
       ) : (
         <Table head={['Item', 'Content', 'Author', 'Reasons', 'Reports', 'Since']}>
@@ -71,6 +78,7 @@ export default async function ReportsQueue() {
           ))}
         </Table>
       )}
+      <Pager page={list} base="/admin/reports" params={{}} />
     </>
   );
 }

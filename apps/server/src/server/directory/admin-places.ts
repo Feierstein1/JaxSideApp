@@ -1,38 +1,44 @@
 import type { z } from 'zod';
 import type { adminPlaceCreateSchema } from '@jax/shared';
-import type { Prisma } from '@/generated/prisma/client';
+import { Prisma } from '@/generated/prisma/client';
 import { audit } from '../admin/audit';
 import { db } from '../db';
 import { ApiError } from '../http';
 import { isInServiceArea } from '../location/service-area';
 import { normalizeName } from './osm';
 import { approveSubmissionTx } from './submissions';
+import { pageWindow, toPage } from '../admin/paging';
 
 /**
  * D146: the admin portal's All places page. Find any place by name (active or removed),
  * take one down without waiting for a request, or add one without waiting for votes.
  */
-export async function adminSearchPlaces(q: string) {
+export async function adminSearchPlaces(q: string, page = 1) {
   const term = normalizeName(q);
-  if (term.length < 2) return [];
-  const rows = await db.$queryRaw<
-    {
-      id: string;
-      name: string;
-      category: string;
-      address: string | null;
-      status: string;
-      postCount: number;
-      favorites: number;
-    }[]
-  >`
+  if (term.length < 2) return toPage([], 0, page);
+  const match = Prisma.sql`p."nameNormalized" % ${term}::text OR p."nameNormalized" LIKE ${'%' + term + '%'}::text`;
+  const { skip, take } = pageWindow(page);
+  const [rows, count] = await Promise.all([
+    db.$queryRaw<
+      {
+        id: string;
+        name: string;
+        category: string;
+        address: string | null;
+        status: string;
+        postCount: number;
+        favorites: number;
+      }[]
+    >`
     SELECT p.id, p.name, p.category, p.address, p.status::text, p."postCount",
            (SELECT count(*)::int FROM "FavoritePlace" f WHERE f."placeId" = p.id) AS favorites
     FROM "BusinessPlace" p
-    WHERE p."nameNormalized" % ${term}::text OR p."nameNormalized" LIKE ${'%' + term + '%'}::text
-    ORDER BY similarity(p."nameNormalized", ${term}::text) DESC, p.name
-    LIMIT 30`;
-  return rows;
+    WHERE ${match}
+    ORDER BY similarity(p."nameNormalized", ${term}::text) DESC, p.name, p.id
+    LIMIT ${take} OFFSET ${skip}`,
+    db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM "BusinessPlace" p WHERE ${match}`,
+  ]);
+  return toPage(rows, count[0]?.n ?? 0, page);
 }
 
 /**

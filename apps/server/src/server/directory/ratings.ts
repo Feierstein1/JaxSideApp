@@ -1,9 +1,10 @@
 import type { PlaceSummary } from '@jax/shared';
-import type { User } from '@/generated/prisma/client';
+import { Prisma, type User } from '@/generated/prisma/client';
 import { pastAccountWait } from '../account-age';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { ApiError } from '../http';
+import { pageWindow, toPage } from '../admin/paging';
 
 /**
  * D144: liking or disliking a place, only while you're there (the route checks location).
@@ -81,30 +82,36 @@ async function ratingView(likes: number, dislikes: number) {
 }
 
 /** D144 (admin): places with the most rating activity lately, and every locked one. */
-export async function adminRatingActivity(now = new Date(), days = 7) {
+export async function adminRatingActivity(page = 1, now = new Date(), days = 7) {
   const since = new Date(now.getTime() - days * 86_400_000);
-  const rows = await db.$queryRaw<
-    {
-      id: string;
-      name: string;
-      likeCount: number;
-      dislikeCount: number;
-      ratingsLockedAt: Date | null;
-      recent: number;
-      last_day: number;
-    }[]
-  >`
+  const { skip, take } = pageWindow(page);
+  const listed = Prisma.sql`p."ratingsLockedAt" IS NOT NULL
+       OR EXISTS (SELECT 1 FROM "PlaceRating" x WHERE x."placeId" = p.id AND x."updatedAt" > ${since})`;
+  const [rows, count] = await Promise.all([
+    db.$queryRaw<
+      {
+        id: string;
+        name: string;
+        likeCount: number;
+        dislikeCount: number;
+        ratingsLockedAt: Date | null;
+        recent: number;
+        last_day: number;
+      }[]
+    >`
     SELECT p.id, p.name, p."likeCount", p."dislikeCount", p."ratingsLockedAt",
            count(r."userId")::int AS recent,
            count(r."userId") FILTER (WHERE r."updatedAt" > ${new Date(now.getTime() - 86_400_000)})::int AS last_day
     FROM "BusinessPlace" p
     LEFT JOIN "PlaceRating" r ON r."placeId" = p.id AND r."updatedAt" > ${since}
-    WHERE p."ratingsLockedAt" IS NOT NULL
-       OR EXISTS (SELECT 1 FROM "PlaceRating" x WHERE x."placeId" = p.id AND x."updatedAt" > ${since})
+    WHERE ${listed}
     GROUP BY p.id
-    ORDER BY (p."ratingsLockedAt" IS NOT NULL) DESC, last_day DESC, recent DESC, p.name
-    LIMIT 100`;
-  return rows.map((r) => ({
+    ORDER BY (p."ratingsLockedAt" IS NOT NULL) DESC, last_day DESC, recent DESC, p.name, p.id
+    LIMIT ${take} OFFSET ${skip}`,
+    db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM "BusinessPlace" p WHERE ${listed}`,
+  ]);
+  const total = count[0]?.n ?? 0;
+  const list = rows.map((r) => ({
     id: r.id,
     name: r.name,
     likes: r.likeCount,
@@ -113,6 +120,7 @@ export async function adminRatingActivity(now = new Date(), days = 7) {
     votesLastWeek: r.recent,
     votesLastDay: r.last_day,
   }));
+  return toPage(list, total, page);
 }
 
 /** D144 (admin): pause or resume voting on a place, or delete all its votes. */

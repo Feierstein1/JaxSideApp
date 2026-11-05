@@ -20,6 +20,7 @@ import { decodeCursor, encodeCursor } from './discussions/cursor';
 import { ApiError } from './http';
 import type { GeoPoint } from './location/eligibility';
 import { holdFor, holdReport, screenText } from './moderation/screening';
+import { pageWindow, toPage } from './admin/paging';
 
 /**
  * Topics (D125, D133). A topic is an area for posts: posts in it are general posts with
@@ -426,19 +427,35 @@ export async function mySuggestions(userId: string): Promise<MyTopicSuggestion[]
 
 // ─────────────────────────────── Admin ───────────────────────────────
 
-/** Admin list: suggestions waiting, then every topic (with its posts count). */
-export async function adminListTopics() {
-  const rows = await db.cityTopic.findMany({
-    orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-    take: 200,
-    include: {
-      suggestedBy: { select: { id: true, username: true } },
-      createdBy: { select: { username: true } },
-      _count: { select: { posts: { where: { status: 'VISIBLE' } } } },
-    },
-  });
+/**
+ * Admin list: topics in the given statuses (or one topic by ID), newest first, with their
+ * posts count; 20 a page (D210).
+ */
+export async function adminListTopics(opts: {
+  statuses?: CityTopic['status'][];
+  id?: string;
+  page?: number;
+}) {
+  const page = opts.page ?? 1;
+  const where: Prisma.CityTopicWhereInput = {
+    ...(opts.statuses ? { status: { in: opts.statuses } } : {}),
+    ...(opts.id ? { id: opts.id } : {}),
+  };
+  const [rows, total] = await Promise.all([
+    db.cityTopic.findMany({
+      where,
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      ...pageWindow(page),
+      include: {
+        suggestedBy: { select: { id: true, username: true } },
+        createdBy: { select: { username: true } },
+        _count: { select: { posts: { where: { status: 'VISIBLE' } } } },
+      },
+    }),
+    db.cityTopic.count({ where }),
+  ]);
   const now = new Date();
-  return rows.map((t) => ({
+  const list = rows.map((t) => ({
     id: t.id,
     title: t.title,
     category: asCategory(t.category),
@@ -457,6 +474,7 @@ export async function adminListTopics() {
     createdAt: t.createdAt.toISOString(),
     posts: t._count.posts,
   }));
+  return toPage(list, total, page);
 }
 
 const dates = (input: AdminTopicRequest) => ({

@@ -1,22 +1,27 @@
 import { COLORS } from '@jax/shared';
+import { pageNumber } from '@/server/admin/paging';
 import { listAppeals } from '@/server/admin/users';
 import { ui } from '../../admin-ui';
 import { AppealDecision } from '../../forms';
 import { requireAdminPage } from '../../require-admin-page';
-import { Pill, when, words } from '../admin-table';
+import { Pager, Pill, when, words } from '../admin-table';
 
 export const dynamic = 'force-dynamic';
 
 /** P5.7 / P5.14: appeals waiting for a decision. */
-export default async function AppealsPage() {
+export default async function AppealsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdminPage();
-  const appeals = await listAppeals('OPEN');
+  const appeals = await listAppeals('OPEN', pageNumber((await searchParams).page));
   return (
     <>
       <h1>Appeals</h1>
-      {appeals.length === 0 ? <p style={ui.muted}>No appeals waiting.</p> : null}
+      {appeals.total === 0 ? <p style={ui.muted}>No appeals waiting.</p> : null}
       <div style={{ display: 'grid', gap: 16 }}>
-        {appeals.map((a) => (
+        {appeals.rows.map((a) => (
           <div key={a.id} style={ui.card}>
             <p style={{ marginTop: 0 }}>
               <a href={`/admin/users/${a.user.id}`}>@{a.user.username}</a>{' '}
@@ -44,6 +49,7 @@ export default async function AppealsPage() {
           </div>
         ))}
       </div>
+      <Pager page={appeals} base="/admin/appeals" params={{}} />
     </>
   );
 }

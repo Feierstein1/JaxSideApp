@@ -45,7 +45,7 @@ beforeEach(async () => {
 describe('Contact us (D90)', () => {
   it('a signed-in person sends a support ticket; moderators see it, not their email', async () => {
     expect((await send(ann, { ...ticket, allowReply: true })).status).toBe(201);
-    const [m] = await listContactMessages({ status: 'OPEN' });
+    const [m] = (await listContactMessages({ status: 'OPEN' })).rows;
     expect(m).toMatchObject({
       category: 'SUPPORT',
       subject: 'Photos won’t upload',
@@ -78,7 +78,7 @@ describe('Contact us (D90)', () => {
       await call(guestsPOST as H, 'POST', { body: {}, headers: { [INSTALLATION_HEADER]: inst } })
     ).body.token as string;
     expect((await send(guest, { ...ticket, allowReply: true })).status).toBe(201);
-    const [m] = await listContactMessages({ status: 'OPEN' });
+    const [m] = (await listContactMessages({ status: 'OPEN' })).rows;
     expect(m).toMatchObject({ from: 'guest', canReply: false });
   });
 
@@ -94,21 +94,21 @@ describe('Contact us (D90)', () => {
   it('moderators resolve and reopen; filters by status and category', async () => {
     await send(ann);
     await send(ann, { ...ticket, category: 'GENERAL', subject: 'Hello there' });
-    const support = (await listContactMessages({ status: 'OPEN', category: 'SUPPORT' }))[0]!;
+    const support = (await listContactMessages({ status: 'OPEN', category: 'SUPPORT' })).rows[0]!;
     const r = await call(resolvePOST as H, 'POST', {
       headers: admin,
       params: { id: support.id },
       body: { resolved: true },
     });
     expect(r.status).toBe(200);
-    expect(await listContactMessages({ status: 'OPEN' })).toHaveLength(1);
-    const done = await listContactMessages({ status: 'RESOLVED' });
+    expect((await listContactMessages({ status: 'OPEN' })).rows).toHaveLength(1);
+    const done = (await listContactMessages({ status: 'RESOLVED' })).rows;
     expect(done[0]).toMatchObject({ subject: 'Photos won’t upload', resolvedBy: 'mod_c' });
     await call(resolvePOST as H, 'POST', {
       headers: admin,
       params: { id: support.id },
       body: { resolved: false },
     });
-    expect(await listContactMessages({ status: 'OPEN' })).toHaveLength(2);
+    expect((await listContactMessages({ status: 'OPEN' })).rows).toHaveLength(2);
   });
 });

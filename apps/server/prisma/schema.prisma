@@ -95,6 +95,9 @@ enum ReportReason {
   IMPERSONATION
   SCAM
   OTHER
+  AD_MISLEADING // D209: ads only
+  AD_AI_FOOD // D209 / D207: AI-made food or drink photo
+  AD_AI_IMAGE // D209 / D207: over-the-top AI flyer or image
 }
 
 enum ReportStatus {
@@ -927,6 +930,8 @@ model Report {
   messageId          String?          @db.Uuid
   /// D133: a reported topic (its title or description).
   cityTopicId        String?          @db.Uuid
+  /// D209: a reported ad. Restrict: an ad with reports can be ended, not deleted (evidence).
+  adId               String?          @db.Uuid
   /// D98: snapshot of the reported message and the 10 around it, kept 1 year as evidence.
   messageEvidence    Json?
   reason             ReportReason
@@ -944,6 +949,7 @@ model Report {
   photo              Photo?           @relation(fields: [photoId], references: [id], onDelete: Cascade)
   message            Message?         @relation(fields: [messageId], references: [id], onDelete: SetNull)
   cityTopic          CityTopic?       @relation(fields: [cityTopicId], references: [id], onDelete: Cascade)
+  ad                 Ad?              @relation(fields: [adId], references: [id], onDelete: Restrict)
   reportedUser       User?            @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
   resolvedBy         User?            @relation("ReportResolver", fields: [resolvedById], references: [id])
 
@@ -959,6 +965,7 @@ model Report {
   // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
   @@index([messageId])
   @@index([cityTopicId])
+  @@index([adId])
   @@index([reporterUserId, createdAt])
   @@index([reporterGuestId])
   @@index([resolvedById])
@@ -2034,6 +2041,8 @@ model Ad {
   dailyStats    AdDailyStats[]
   /// D206.
   interests     AdInterest[]
+  /// D209.
+  reports       Report[]
   viewMarks     AdViewMark[]
 
   @@index([accountId, status])

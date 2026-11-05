@@ -2,7 +2,8 @@ import { listOwnerClaims } from '@/server/directory/owners';
 import { ui } from '../../admin-ui';
 import { OwnerActions } from '../../forms';
 import { requireAdminPage } from '../../require-admin-page';
-import { Pill, when } from '../admin-table';
+import { Pager, Pill, when } from '../admin-table';
+import { pageNumber } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,12 +29,13 @@ const HOW = {
 export default async function OwnersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
   await requireAdminPage();
   const q = await searchParams;
   const status = TABS.find((t) => t === q.status) ?? 'PENDING';
-  const rows = await listOwnerClaims(status);
+  const list = await listOwnerClaims(status, pageNumber(q.page));
+  const rows = list.rows;
   return (
     <>
       <h1>Business owners</h1>
@@ -48,7 +50,7 @@ export default async function OwnersPage({
           </a>
         ))}
       </nav>
-      {rows.length === 0 ? <p style={ui.muted}>Nothing here.</p> : null}
+      {list.total === 0 ? <p style={ui.muted}>Nothing here.</p> : null}
       <div style={{ display: 'grid', gap: 16 }}>
         {rows.map((c) => (
           <div key={c.id} style={ui.card}>
@@ -92,6 +94,7 @@ export default async function OwnersPage({
           </div>
         ))}
       </div>
+      <Pager page={list} base="/admin/owners" params={{ status }} />
     </>
   );
 }

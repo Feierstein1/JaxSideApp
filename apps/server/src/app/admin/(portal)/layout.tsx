@@ -25,7 +25,7 @@ const NAV: NavGroup[] = [
       { href: '/admin/ratings', label: 'Ratings' },
       { href: '/admin/owners', label: 'Owners' },
       { href: '/admin/businesses', label: 'Businesses' },
-      { href: '/admin/ads', label: 'Ads to review' },
+      { href: '/admin/ads', label: 'Ads' },
     ],
   },
   {

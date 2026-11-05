@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AD_DENIAL_CODES } from '../ad-denials';
 import { AD_LIVE_MAX } from '../ads';
 import { loginRequestSchema } from './auth';
 
@@ -23,6 +24,7 @@ export const CASE_TYPES = [
   'user',
   'message',
   'topic', // D133
+  'ad', // D209
 ] as const;
 export const CASE_DECISIONS = ['remove', 'approve', 'dismiss', 'escalate'] as const;
 
@@ -135,14 +137,22 @@ export const screeningRuleUpdateSchema = z
 /** Try a sentence against the rules. */
 export const screeningTestSchema = z.strictObject({ text: z.string().min(1).max(2000) });
 
-/** B3.3 / D206: approve an ad, or turn it down with a reason the business sees. */
+/**
+ * B3.3 / D206: approve an ad, or turn it down. D211: turning down picks a reason from the
+ * list (`AD_DENIAL_GROUPS`) and may add a note; "Something else" needs the note.
+ */
 export const adminAdDecisionSchema = z
   .strictObject({
     decision: z.enum(['approve', 'reject']),
-    reason: z.string().trim().min(3).max(500).optional(),
+    reasonCode: z.enum(AD_DENIAL_CODES).optional(),
+    note: z.string().trim().max(300).optional(),
   })
-  .refine((d) => d.decision === 'approve' || d.reason, {
-    path: ['reason'],
+  .refine((d) => d.decision === 'approve' || d.reasonCode, {
+    path: ['reasonCode'],
+    message: 'Pick a reason',
+  })
+  .refine((d) => d.reasonCode !== 'OTHER' || (d.note?.length ?? 0) >= 3, {
+    path: ['note'],
     message: 'Say what needs to change',
   });
 export type AdminAdDecision = z.infer<typeof adminAdDecisionSchema>;

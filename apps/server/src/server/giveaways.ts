@@ -14,6 +14,7 @@ import { decryptUserEmail } from './crypto/field-encryption';
 import { db } from './db';
 import { ApiError } from './http';
 import { enforce } from './rate-limit';
+import { ADMIN_PAGE_SIZE, pageWindow, toPage } from './admin/paging';
 
 /**
  * D188: giveaways. The admin sets optional criteria over an entry period; after it ends,
@@ -31,7 +32,8 @@ const DAY_MS = 86_400_000;
 const TZ = 'America/New_York';
 /** Winner slots these statuses take up; the others (declined, expired…) free the slot. */
 const HOLDING: GiveawayWinnerStatus[] = ['NOTIFIED', 'ACCEPTED', 'PRIZE_SENT'];
-export const POOL_PAGE_SIZE = 50;
+/** D210: the eligible list is paged like every admin list. */
+export const POOL_PAGE_SIZE = ADMIN_PAGE_SIZE;
 
 // ───────────────────────────── Eligibility ─────────────────────────────
 
@@ -209,17 +211,35 @@ const winnerSelect = {
   pickedByUser: { select: { username: true } },
 } satisfies Prisma.GiveawayWinnerSelect;
 
-export async function listGiveaways(now = new Date()) {
+/** Giveaways, newest first, 20 a page (D210). */
+export async function listGiveaways(page = 1, now = new Date()) {
   await expireOverdue(db, {}, now);
-  const rows = await db.giveaway.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 200,
-    include: { winners: { select: winnerSelect, orderBy: { createdAt: 'asc' } } },
-  });
-  return rows.map((g) => ({
+  const [rows, total] = await Promise.all([
+    db.giveaway.findMany({
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...pageWindow(page),
+      include: { winners: { select: winnerSelect, orderBy: { createdAt: 'asc' } } },
+    }),
+    db.giveaway.count(),
+  ]);
+  const list = rows.map((g) => ({
     ...g,
     phase: giveawayPhase(g, g.winners.filter((w) => w.status === 'PRIZE_SENT').length, now),
   }));
+  return toPage(list, total, page);
+}
+
+/** The tiles on the Giveaways page, counted in the database (not from one page). */
+export async function giveawayCounts(now = new Date()) {
+  const [giveaways, open, toSend, sent] = await Promise.all([
+    db.giveaway.count(),
+    db.giveaway.count({
+      where: { status: 'ACTIVE', startsAt: { lte: now }, endsAt: { gt: now } },
+    }),
+    db.giveawayWinner.count({ where: { status: 'ACCEPTED' } }),
+    db.giveawayWinner.count({ where: { status: 'PRIZE_SENT' } }),
+  ]);
+  return { giveaways, open, toSend, sent };
 }
 
 export async function getGiveaway(id: string, poolPage = 1, now = new Date()) {

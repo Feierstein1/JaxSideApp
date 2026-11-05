@@ -13,6 +13,7 @@ import {
 import { STRIKE_ACTIONS } from '../moderation/enforcement';
 import { audit } from './audit';
 import { REPORTER_INCLUDE, refOf, reporterLabel } from './queue';
+import { pageInfo, pageWindow, toPage } from './paging';
 
 /**
  * B1.7 / D172: the admin portal's Businesses section (the owner of JaxSide only; no admin
@@ -39,17 +40,18 @@ export const reportsAgainstBusinessWhere = (accountId: string): Prisma.ReportWhe
     { businessPost: { businessAuthorId: accountId } },
     { comment: { authorBusinessId: accountId } },
     { photo: { uploaderBusinessId: accountId } }, // D195: its pictures and videos
+    { ad: { accountId } }, // D209: its ads
   ],
 });
 
-const REPORTS_SHOWN = 50;
-
-/** D191: the newest reports about a login, with any strike already given for each. */
-async function reportsAgainstBusiness(accountId: string) {
+/** D191: reports about a login, newest first, 20 a page, with any strike given for each. */
+async function reportsAgainstBusiness(accountId: string, page: number) {
+  const where = reportsAgainstBusinessWhere(accountId);
+  const total = await db.report.count({ where });
   const rows = await db.report.findMany({
-    where: reportsAgainstBusinessWhere(accountId),
-    orderBy: { createdAt: 'desc' },
-    take: REPORTS_SHOWN,
+    where,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    ...pageWindow(page),
     include: {
       ...REPORTER_INCLUDE,
       modActions: {
@@ -59,7 +61,7 @@ async function reportsAgainstBusiness(accountId: string) {
       },
     },
   });
-  return rows.map((r) => {
+  const list = rows.map((r) => {
     const ref = refOf(r);
     const strike = r.modActions[0];
     return {
@@ -74,17 +76,22 @@ async function reportsAgainstBusiness(accountId: string) {
       strike: strike ? { action: strike.action, createdAt: strike.createdAt.toISOString() } : null,
     };
   });
+  return { reports: list, reportsPage: pageInfo(toPage(list, total, page)) };
 }
 
 /** D191: every strike and note on a login, newest first (internal notes are admin-only). */
-async function businessStrikes(accountId: string) {
-  const rows = await db.moderationAction.findMany({
-    where: { targetBusinessId: accountId },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-    include: { admin: { select: { username: true } } },
-  });
-  return rows.map((m) => ({
+async function businessStrikes(accountId: string, page: number) {
+  const where = { targetBusinessId: accountId };
+  const [rows, total] = await Promise.all([
+    db.moderationAction.findMany({
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...pageWindow(page),
+      include: { admin: { select: { username: true } } },
+    }),
+    db.moderationAction.count({ where }),
+  ]);
+  const list = rows.map((m) => ({
     id: m.id,
     action: m.action,
     reason: m.reason,
@@ -97,43 +104,48 @@ async function businessStrikes(accountId: string) {
     voidedAt: m.voidedAt?.toISOString() ?? null,
     voidReason: m.voidReason,
   }));
+  return { strikes: list, strikesPage: pageInfo(toPage(list, total, page)) };
 }
 
-/** Owner accounts (employees are listed on their owner's page), newest first. */
-export async function listBusinesses(q: string) {
+/** Owner accounts (employees are listed on their owner's page), newest first, 20 a page. */
+export async function listBusinesses(q: string, page = 1) {
   const term = q.trim().toLowerCase();
-  const rows = await db.businessAccount.findMany({
-    where: {
-      createdById: null,
-      ...(term
-        ? {
-            OR: [
-              { email: { contains: term } },
-              {
-                placeAccess: {
-                  some: { place: { nameNormalized: { contains: term } } },
-                },
+  const where = {
+    createdById: null,
+    ...(term
+      ? {
+          OR: [
+            { email: { contains: term } },
+            {
+              placeAccess: {
+                some: { place: { nameNormalized: { contains: term } } },
               },
-            ],
-          }
-        : {}),
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 100,
-    include: {
-      placeAccess: {
-        where: { revokedAt: null },
-        include: { place: { select: { id: true, name: true } } },
+            },
+          ],
+        }
+      : {}),
+  } satisfies Prisma.BusinessAccountWhereInput;
+  const [rows, total] = await Promise.all([
+    db.businessAccount.findMany({
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...pageWindow(page),
+      include: {
+        placeAccess: {
+          where: { revokedAt: null },
+          include: { place: { select: { id: true, name: true } } },
+        },
+        _count: { select: { employees: true } },
+        sessions: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
+        subscriptions: {
+          where: { status: 'ACTIVE' },
+          include: { plan: { select: { name: true } } },
+        },
       },
-      _count: { select: { employees: true } },
-      sessions: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
-      subscriptions: {
-        where: { status: 'ACTIVE' },
-        include: { plan: { select: { name: true } } },
-      },
-    },
-  });
-  return rows.map((a) => ({
+    }),
+    db.businessAccount.count({ where }),
+  ]);
+  const list = rows.map((a) => ({
     id: a.id,
     email: a.email ?? '',
     status: status(a),
@@ -145,10 +157,15 @@ export async function listBusinesses(q: string) {
       ? { name: a.subscriptions[0].plan.name, comped: a.subscriptions[0].comped }
       : null,
   }));
+  return toPage(list, total, page);
 }
 
 /** Everything about one business account (an owner, or an employee with a link to its owner). */
-export async function getBusiness(id: string, now = new Date()) {
+export async function getBusiness(
+  id: string,
+  opts: { strikesPage?: number; reportsPage?: number } = {},
+  now = new Date(),
+) {
   const a = await db.businessAccount.findUnique({
     where: { id },
     include: {
@@ -253,9 +270,9 @@ export async function getBusiness(id: string, now = new Date()) {
     // D189: through the admin route (it serves removed pictures too, for moderation).
     avatarUrl: a.avatarMediaId ? `/api/v1/admin/business-pictures/${a.avatarMediaId}` : null,
     // D191: strikes on this login, what the next one does, and the reports about it.
-    strikes: await businessStrikes(a.id),
+    ...(await businessStrikes(a.id, opts.strikesPage ?? 1)),
     nextStrike: await nextBusinessStrikeStep(a.id, a.revokedAt !== null),
-    reports: await reportsAgainstBusiness(a.id),
+    ...(await reportsAgainstBusiness(a.id, opts.reportsPage ?? 1)),
     twoFactorOn: a.totpEnabledAt !== null,
     mustChangePassword: a.mustChangePassword,
     lockedUntil: a.lockedUntil && a.lockedUntil > now ? a.lockedUntil.toISOString() : null,

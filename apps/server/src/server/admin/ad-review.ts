@@ -1,4 +1,5 @@
 import {
+  adDenialMessage,
   describeSchedule,
   planLimitProblem,
   takesPlanSlot,
@@ -9,6 +10,7 @@ import { resetAdCache } from '../ads/serve';
 import { db } from '../db';
 import { ApiError } from '../http';
 import { audit } from './audit';
+import { pageWindow, toPage } from './paging';
 import { entitlementsFor } from './plans';
 
 /**
@@ -25,14 +27,19 @@ const forReview = {
   media: { select: { id: true, mimeType: true } },
 } satisfies Prisma.AdInclude;
 
-export async function listPendingAds() {
-  const ads = await db.ad.findMany({
-    where: { status: 'PENDING_REVIEW' },
-    orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }],
-    take: 100,
-    include: forReview,
-  });
-  return ads.map((a) => ({
+/** Ads waiting for approval, oldest first, 20 a page (D210). */
+export async function listPendingAds(page = 1) {
+  const where = { status: 'PENDING_REVIEW' } as const;
+  const [ads, total] = await Promise.all([
+    db.ad.findMany({
+      where,
+      orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }],
+      ...pageWindow(page),
+      include: forReview,
+    }),
+    db.ad.count({ where }),
+  ]);
+  const rows = ads.map((a) => ({
     id: a.id,
     template: a.template,
     headline: a.headline,
@@ -56,6 +63,7 @@ export async function listPendingAds() {
           .join(' · ') || 'No targeting',
     submittedAt: a.submittedAt?.toISOString() ?? null,
   }));
+  return toPage(rows, total, page);
 }
 
 export async function decideAd(
@@ -101,7 +109,8 @@ export async function decideAd(
     radiusMeters: ad.radiusMeters,
     cityWide: ad.cityWide,
   };
-  const reason = approve ? null : input.reason!;
+  // D211: the business reads the chosen reason in plain words (plus any note).
+  const reason = approve ? null : adDenialMessage(input.reasonCode!, input.note);
   await db.$transaction(async (tx) => {
     // Only if it's still waiting (the owner may take it back at the same moment).
     const moved = await tx.ad.updateMany({
@@ -137,7 +146,10 @@ export async function decideAd(
       adminId,
       approve ? 'AD_APPROVE' : 'AD_REJECT',
       { type: 'ad', id: adId },
-      { business: ad.accountId, ...(reason ? { reason } : {}) },
+      {
+        business: ad.accountId,
+        ...(reason ? { reason, reasonCode: input.reasonCode } : {}),
+      },
       tx,
     );
   });

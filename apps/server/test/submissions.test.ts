@@ -269,7 +269,9 @@ describe('the admin queue (P5.12, P5.13)', () => {
       ids.push(row!.id);
     }
     const list = await call(adminListGET as H, 'GET', { headers: admin });
-    expect(list.body.submissions).toHaveLength(50);
+    // D210: 20 a page, with the total.
+    expect(list.body.submissions).toHaveLength(20);
+    expect(list.body).toMatchObject({ total: 50, page: 1, pages: 3 });
     const started = Date.now();
     const r = await call(adminBulkPOST as H, 'POST', {
       headers: admin,

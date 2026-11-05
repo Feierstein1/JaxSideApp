@@ -28,6 +28,8 @@ interface ResolvedTarget {
     messageId?: string;
     /** D133: a reported topic. */
     cityTopicId?: string;
+    /** D209: a reported ad. */
+    adId?: string;
     messageEvidence?: Prisma.InputJsonValue;
   };
   authorUserId: string | null;
@@ -79,6 +81,22 @@ async function resolveTarget(target: ReportTarget, viewerUserId: string | null) 
       key: `message:${target.id}`,
       data: { messageId: target.id, messageEvidence: evidence },
       authorUserId,
+      authorGuestId: null,
+      business: false,
+    } satisfies ResolvedTarget;
+  }
+  if (target.type === 'ad') {
+    // D209: an ad that is (or was) shown. No person wrote it, so the author checks
+    // ("your own", auto-suspend) don't apply; never hidden automatically: an admin decides.
+    const ad = await db.ad.findFirst({
+      where: { id: target.id, status: { in: ['APPROVED', 'PAUSED', 'ENDED'] } },
+      select: { id: true },
+    });
+    if (!ad) throw NOT_FOUND();
+    return {
+      key: `ad:${target.id}`,
+      data: { adId: target.id },
+      authorUserId: null,
       authorGuestId: null,
       business: false,
     } satisfies ResolvedTarget;
@@ -227,6 +245,7 @@ function targetWhere(t: ResolvedTarget) {
   if (t.data.photoId) return { photoId: t.data.photoId };
   if (t.data.messageId) return { messageId: t.data.messageId };
   if (t.data.cityTopicId) return { cityTopicId: t.data.cityTopicId };
+  if (t.data.adId) return { adId: t.data.adId };
   // A report has exactly one target column (DB check `Report_one_target`).
   return { reportedUserId: t.data.reportedUserId };
 }
@@ -257,6 +276,7 @@ export async function listMyReports(userId: string): Promise<MyReport[]> {
       photo: { select: { status: true } },
       reportedUser: { select: { username: true, status: true } },
       cityTopic: { select: { title: true, status: true } },
+      ad: { select: { headline: true, status: true } },
     },
   });
   return rows.map((r) => {
@@ -271,7 +291,9 @@ export async function listMyReports(userId: string): Promise<MyReport[]> {
             ? 'photo'
             : r.cityTopic
               ? 'topic'
-              : 'user';
+              : r.ad
+                ? 'ad'
+                : 'user';
     return {
       id: r.id,
       targetType,
@@ -283,11 +305,13 @@ export async function listMyReports(userId: string): Promise<MyReport[]> {
           ? r.cityTopic.status === 'REMOVED'
             ? '[no longer visible]'
             : r.cityTopic.title
-          : content
-            ? preview(content.body, content.status)
-            : r.reportedUser && r.reportedUser.status !== 'DELETED'
-              ? r.reportedUser.username
-              : '[no longer visible]',
+          : r.ad
+            ? `Ad: ${r.ad.headline}`
+            : content
+              ? preview(content.body, content.status)
+              : r.reportedUser && r.reportedUser.status !== 'DELETED'
+                ? r.reportedUser.username
+                : '[no longer visible]',
       reason: r.reason,
       status: r.status,
       createdAt: r.createdAt.toISOString(),

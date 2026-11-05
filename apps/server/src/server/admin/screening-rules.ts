@@ -1,8 +1,10 @@
 import type { z } from 'zod';
 import type { screeningRuleSchema, screeningRuleUpdateSchema } from '@jax/shared';
+import type { Prisma, ScreeningAction, ScreeningCategory } from '@/generated/prisma/client';
 import { db } from '../db';
 import { ApiError } from '../http';
 import { allMatches, invalidateScreeningCache, normalizeTerm } from '../moderation/screening';
+import { pageWindow, toPage } from './paging';
 
 /**
  * P15.9: the admin Screening page. Rules are words or phrases checked in posts, comments,
@@ -11,11 +13,26 @@ import { allMatches, invalidateScreeningCache, normalizeTerm } from '../moderati
  * cleared here; other server processes refresh within 30 s).
  */
 
-export async function listRules() {
-  const rows = await db.screeningRule.findMany({
-    orderBy: [{ enabled: 'desc' }, { category: 'asc' }, { term: 'asc' }],
-  });
-  return rows.map((r) => ({
+/** Screening terms (filtered by category, action or "turned off"), 20 a page (D210). */
+export async function listRules(
+  opts: { category?: string; action?: string; off?: boolean; page?: number } = {},
+) {
+  const page = opts.page ?? 1;
+  const where: Prisma.ScreeningRuleWhereInput = {
+    ...(opts.category ? { category: opts.category as ScreeningCategory } : {}),
+    ...(opts.action ? { action: opts.action as ScreeningAction } : {}),
+    ...(opts.off ? { enabled: false } : {}),
+  };
+  const [rows, total, all] = await Promise.all([
+    db.screeningRule.findMany({
+      where,
+      orderBy: [{ enabled: 'desc' }, { category: 'asc' }, { term: 'asc' }, { id: 'asc' }],
+      ...pageWindow(page),
+    }),
+    db.screeningRule.count({ where }),
+    db.screeningRule.count(),
+  ]);
+  const list = rows.map((r) => ({
     id: r.id,
     term: r.term,
     match: r.match,
@@ -25,6 +42,7 @@ export async function listRules() {
     enabled: r.enabled,
     updatedAt: r.updatedAt.toISOString(),
   }));
+  return { ...toPage(list, total, page), all };
 }
 
 export async function createRule(input: z.output<typeof screeningRuleSchema>) {

@@ -69,7 +69,7 @@ beforeEach(async () => {
 describe('business reports (D194)', () => {
   it('reach the admin queue labelled as the business', async () => {
     await businessReport(postId);
-    const cases = await listCases();
+    const cases = (await listCases()).rows;
     expect(cases).toHaveLength(1);
     expect(cases[0]).toMatchObject({ id: postId, fromBusiness: true, automatic: false });
     const c = await getCase({ type: 'business', id: postId });

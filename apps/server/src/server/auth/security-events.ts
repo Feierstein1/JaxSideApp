@@ -4,6 +4,7 @@ import { logger } from '../logger';
 import { sendSafely } from '../mail/mailer';
 import { loginAlertEmail } from '../mail/templates';
 import { hit } from '../rate-limit';
+import { pageWindow, toPage } from '../admin/paging';
 
 /**
  * D180: a sign-in burst that filled the one-minute allowance (D175). It is written down for the
@@ -39,26 +40,37 @@ async function alertAccountOwner(userId: string, now: Date) {
   await sendSafely(loginAlertEmail(decryptUserEmail(user)), 'login-alert');
 }
 
-/** The dashboard: bursts in the last day and the newest ones (admin pages only). */
-export async function recentSecurityEvents(now = new Date(), limit = 100) {
-  const since = new Date(now.getTime() - 86_400_000);
-  const [last24h, rows] = await Promise.all([
-    db.securityEvent.count({ where: { createdAt: { gte: since } } }),
+/** D180: how many sign-in bursts were blocked in the last day (the dashboard tile). */
+export function securityEventsLastDay(now = new Date()) {
+  return db.securityEvent.count({
+    where: { createdAt: { gte: new Date(now.getTime() - 86_400_000) } },
+  });
+}
+
+/** The Security page: bursts in the last day and the newest ones, 20 a page (D210). */
+export async function recentSecurityEvents(page = 1, now = new Date()) {
+  const [last24h, rows, total] = await Promise.all([
+    securityEventsLastDay(now),
     db.securityEvent.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: limit,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...pageWindow(page),
       include: { user: { select: { username: true } } },
     }),
+    db.securityEvent.count(),
   ]);
   return {
     last24h,
-    events: rows.map((e) => ({
-      id: e.id,
-      kind: e.kind,
-      userId: e.userId,
-      username: e.user?.username ?? null,
-      ipCode: e.ipCode,
-      createdAt: e.createdAt.toISOString(),
-    })),
+    events: toPage(
+      rows.map((e) => ({
+        id: e.id,
+        kind: e.kind,
+        userId: e.userId,
+        username: e.user?.username ?? null,
+        ipCode: e.ipCode,
+        createdAt: e.createdAt.toISOString(),
+      })),
+      total,
+      page,
+    ),
   };
 }

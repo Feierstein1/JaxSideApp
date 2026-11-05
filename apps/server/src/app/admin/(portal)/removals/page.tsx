@@ -2,7 +2,8 @@ import { listRemovals } from '@/server/directory/place-changes';
 import { ui } from '../../admin-ui';
 import { RemovalActions } from '../../forms';
 import { requireAdminPage } from '../../require-admin-page';
-import { when } from '../admin-table';
+import { Pager, when } from '../admin-table';
+import { pageNumber } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,12 +17,13 @@ const LABEL = { OPEN: 'Voting', REMOVED: 'Removed', KEPT: 'Kept', EXPIRED: 'Expi
 export default async function RemovalsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
   await requireAdminPage();
   const q = await searchParams;
   const status = TABS.find((t) => t === q.status) ?? 'OPEN';
-  const rows = await listRemovals(status);
+  const list = await listRemovals(status, pageNumber(q.page));
+  const rows = list.rows;
   return (
     <>
       <h1>Place removals</h1>
@@ -40,7 +42,7 @@ export default async function RemovalsPage({
           </a>
         ))}
       </nav>
-      {rows.length === 0 ? <p style={ui.muted}>Nothing here.</p> : null}
+      {list.total === 0 ? <p style={ui.muted}>Nothing here.</p> : null}
       <div style={{ display: 'grid', gap: 16 }}>
         {rows.map((r) => {
           const closed = r.votes.filter((v) => v.support).length;
@@ -73,6 +75,7 @@ export default async function RemovalsPage({
           );
         })}
       </div>
+      <Pager page={list} base="/admin/removals" params={{ status }} />
     </>
   );
 }

@@ -9,7 +9,8 @@ import { adminListPollSuggestions, adminListPolls } from '@/server/polls';
 import { ui } from '../../admin-ui';
 import { PollActions, PollForm, PollSuggestionActions } from '../../poll-forms';
 import { requireAdminPage } from '../../require-admin-page';
-import { Table, td, when } from '../admin-table';
+import { Pager, Table, td, when } from '../admin-table';
+import { pageNumber } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,15 +54,29 @@ function CountsRow({
 export default async function PollsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string; new?: string; topic?: string; q?: string; t?: string }>;
+  searchParams: Promise<{
+    edit?: string;
+    new?: string;
+    topic?: string;
+    q?: string;
+    t?: string;
+    page?: string;
+    spage?: string;
+  }>;
 }) {
   await requireAdminPage();
   const q = await searchParams;
   const topic = q.topic && q.topic in POLL_TOPICS ? (q.topic as PollTopic) : null;
-  const [all, suggestions] = await Promise.all([adminListPolls(), adminListPollSuggestions()]);
-  const waiting = suggestions.filter((x) => x.status === 'WAITING');
-  const polls = topic ? all.filter((p) => p.topic === topic) : all;
-  const editing = q.edit ? all.find((p) => p.id === q.edit && p.status === 'upcoming') : null;
+  const editId = q.edit && /^[0-9a-f-]{36}$/i.test(q.edit) ? q.edit : undefined;
+  const [list, suggestions, edited] = await Promise.all([
+    adminListPolls({ topic: topic ?? undefined, page: pageNumber(q.page) }),
+    adminListPollSuggestions(pageNumber(q.spage)),
+    editId ? adminListPolls({ id: editId }) : null,
+  ]);
+  const waiting = suggestions.rows;
+  const polls = list.rows;
+  const editing = edited?.rows.find((p) => p.status === 'upcoming') ?? null;
+  const params = { topic: topic ?? undefined, page: q.page, spage: q.spage };
 
   return (
     <>
@@ -113,8 +128,8 @@ export default async function PollsPage({
       )}
 
       {/* D133: questions people suggested in the app. */}
-      <h2>Suggested questions ({waiting.length})</h2>
-      {waiting.length === 0 ? <p style={ui.muted}>None waiting.</p> : null}
+      <h2>Suggested questions ({suggestions.total})</h2>
+      {suggestions.total === 0 ? <p style={ui.muted}>None waiting.</p> : null}
       <div style={{ display: 'grid', gap: 12 }}>
         {waiting.map((x) => (
           <div key={x.id} style={ui.card}>
@@ -129,6 +144,7 @@ export default async function PollsPage({
           </div>
         ))}
       </div>
+      <Pager page={suggestions} base="/admin/polls" params={params} param="spage" />
 
       <nav style={{ display: 'flex', gap: 14, flexWrap: 'wrap', margin: '20px 0 0' }}>
         <a href="/admin/polls" style={{ fontWeight: topic ? 400 : 800 }}>
@@ -145,7 +161,7 @@ export default async function PollsPage({
         ))}
       </nav>
       <div style={{ display: 'grid', gap: 16, marginTop: 16 }}>
-        {polls.length === 0 ? <p style={ui.muted}>No polls yet.</p> : null}
+        {list.total === 0 ? <p style={ui.muted}>No polls yet.</p> : null}
         {polls.map((p) => (
           <div key={p.id} style={ui.card}>
             <p style={{ marginTop: 0, ...ui.muted, fontSize: 14 }}>
@@ -224,6 +240,7 @@ export default async function PollsPage({
           </div>
         ))}
       </div>
+      <Pager page={list} base="/admin/polls" params={params} />
     </>
   );
 }

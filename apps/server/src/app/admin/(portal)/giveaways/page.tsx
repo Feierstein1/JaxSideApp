@@ -1,17 +1,24 @@
-import { listGiveaways } from '@/server/giveaways';
+import { pageNumber } from '@/server/admin/paging';
+import { giveawayCounts, listGiveaways } from '@/server/giveaways';
 import { ui } from '../../admin-ui';
 import { requireAdminPage } from '../../require-admin-page';
-import { Pill, StatGrid, StatTile, Table, td, when } from '../admin-table';
+import { Pager, Pill, StatGrid, StatTile, Table, td, when } from '../admin-table';
 import { PHASE_TONE, WINNER_STATUS } from './labels';
 
 export const dynamic = 'force-dynamic';
 
 /** D188: every giveaway and its winners. */
-export default async function GiveawaysPage() {
+export default async function GiveawaysPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdminPage();
-  const giveaways = await listGiveaways();
-  const winners = giveaways.flatMap((g) => g.winners);
-  const toSend = winners.filter((w) => w.status === 'ACCEPTED').length;
+  const [list, counts] = await Promise.all([
+    listGiveaways(pageNumber((await searchParams).page)),
+    giveawayCounts(),
+  ]);
+  const giveaways = list.rows;
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -21,15 +28,12 @@ export default async function GiveawaysPage() {
         </a>
       </div>
       <StatGrid min={170}>
-        <StatTile label="Giveaways" value={giveaways.length} />
-        <StatTile label="Open now" value={giveaways.filter((g) => g.phase === 'Open').length} />
-        <StatTile label="Prizes to send" value={toSend} alert={toSend > 0} />
-        <StatTile
-          label="Prizes sent"
-          value={winners.filter((w) => w.status === 'PRIZE_SENT').length}
-        />
+        <StatTile label="Giveaways" value={counts.giveaways} />
+        <StatTile label="Open now" value={counts.open} />
+        <StatTile label="Prizes to send" value={counts.toSend} alert={counts.toSend > 0} />
+        <StatTile label="Prizes sent" value={counts.sent} />
       </StatGrid>
-      {giveaways.length === 0 ? (
+      {list.total === 0 ? (
         <p style={ui.muted}>No giveaways yet.</p>
       ) : (
         <Table head={['Giveaway', 'Status', 'Entry period', 'Pick', 'Winners']}>
@@ -64,6 +68,7 @@ export default async function GiveawaysPage() {
           ))}
         </Table>
       )}
+      <Pager page={list} base="/admin/giveaways" params={{}} />
     </>
   );
 }
