@@ -12,9 +12,6 @@ import { RADIUS, SPACE, TYPE } from '@/tokens';
 
 type Rating = Pick<PlaceSummary, 'rating' | 'myRating' | 'ratingsLocked'>;
 
-/** D201: show a sample ratio on places that don't have enough ratings yet (owner preview). */
-const PREVIEW_RATIO = true;
-
 /** D144: "88%" with a thumbs up, for the Places list (only once a place has enough votes). */
 export function LikedBadge({ rating }: { rating: NonNullable<PlaceSummary['rating']> }) {
   return (
@@ -80,13 +77,9 @@ export function PlaceRatingCard({
     }
   }
 
-  // D201 (preview): until a place has enough ratings, show a sample ratio so the owner can see
-  // where it sits. Remove PREVIEW_RATIO to go back to "Not enough ratings yet".
   const summary = place.rating
     ? `${place.rating.likedPercent}% liked · ${place.rating.votes} ratings`
-    : PREVIEW_RATIO
-      ? '88% liked · 24 ratings (preview)'
-      : 'Not enough ratings yet';
+    : 'Not enough ratings yet';
   const hint = place.ratingsLocked
     ? 'Rating is paused for this place.'
     : here
