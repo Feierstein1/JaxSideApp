@@ -14,11 +14,28 @@ export type PlanCode = (typeof PLAN_CODES)[number];
 /** The free month every new business gets once (one per business and per place). */
 export const FREE_TIER_DAYS = 30;
 
+/** D204: where an ad may show: the place's own ZIP, chosen ZIPs, or the whole city. */
+export const AD_REACH = ['OWN_ZIP', 'ZIPS', 'CITY'] as const;
+/** D204: which ZIPs Insights covers: the place's own, its own and nearby ones, or all. */
+export const INSIGHTS_REACH = ['OWN_ZIP', 'NEARBY', 'ALL'] as const;
+
 export const PLAN_ENTITLEMENTS = {
-  /** Ads live at once (D167: 0 to 3). */
-  'ads.live': z.number().int().min(0).max(3),
+  /** Ads live at once (D167; D204: up to 5). */
+  'ads.live': z.number().int().min(0).max(5),
+  /** D204: ads saved in the library (drafts and past ones count). */
+  'ads.library': z.number().int().min(0).max(20),
+  /** D204: where its ads may show (OWN_ZIP: set by the website, not the owner). */
+  'ads.reach': z.enum(AD_REACH),
+  /** D204: ZIP codes an ad may pick (for ZIPS). */
+  'ads.maxZips': z.number().int().min(1).max(30),
+  /** D204: the longest an ad may run, in days; null = no limit. */
+  'ads.maxDays': z.number().int().min(1).max(365).nullable(),
   /** Area counts for the place (Q29 / D179). */
   insights: z.boolean(),
+  /** D204: which ZIPs Insights covers. */
+  'insights.reach': z.enum(INSIGHTS_REACH),
+  /** D204: ZIPs beside the place's own (for NEARBY). */
+  'insights.nearbyZips': z.number().int().min(0).max(30),
 } as const;
 
 export type PlanEntitlementKey = keyof typeof PLAN_ENTITLEMENTS;
@@ -29,7 +46,13 @@ export type PlanEntitlements = {
 /** What a business without a current plan gets. */
 export const NO_PLAN_ENTITLEMENTS: Required<PlanEntitlements> = {
   'ads.live': 0,
+  'ads.library': 0,
+  'ads.reach': 'OWN_ZIP',
+  'ads.maxZips': 1,
+  'ads.maxDays': 7,
   insights: false,
+  'insights.reach': 'OWN_ZIP',
+  'insights.nearbyZips': 0,
 };
 
 export const isPlanEntitlementKey = (key: string): key is PlanEntitlementKey =>

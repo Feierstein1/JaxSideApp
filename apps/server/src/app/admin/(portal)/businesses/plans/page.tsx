@@ -23,7 +23,7 @@ export default async function PlansPage() {
       </p>
       <h1>Plans</h1>
       <p style={ui.muted}>
-        A plan sets how many ads a business can run at once (up to 3) and whether it includes area
+        A plan sets how many ads a business can run at once (up to 5) and whether it includes area
         counts. Give a business a plan from its page. Changing a plan here changes it for everyone
         on it.
       </p>

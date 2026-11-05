@@ -274,12 +274,12 @@ export function PlanForm({ plan }: { plan?: PlanFields }) {
         />
       </label>
       <label style={ui.label}>
-        Ads live at once (0–3)
+        Ads live at once (0–5)
         <input
           style={ui.input}
           type="number"
           min={0}
-          max={3}
+          max={5}
           value={liveAdLimit}
           onChange={(e) => setLimit(Number(e.target.value))}
         />

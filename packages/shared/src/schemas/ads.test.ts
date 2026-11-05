@@ -66,13 +66,14 @@ describe('ready to send for approval', () => {
     ).toEqual(['A banner has no room for more text.']);
   });
 
-  it('plan limits: at most 3, a plan may allow fewer, 0 = no ads', () => {
+  it('plan limits: at most 5 (D204), a plan may allow fewer, 0 = no ads', () => {
     expect(planLimitProblem(0, 1)).toBeNull();
     expect(planLimitProblem(1, 1)).toBe(
       'Your plan runs 1 ad at a time. Pause or end the live one first.',
     );
     expect(planLimitProblem(2, 3)).toBeNull();
-    expect(planLimitProblem(3, 5)).toBe('Your plan runs 3 ads at a time. Pause or end one first.');
+    expect(planLimitProblem(3, 5)).toBeNull();
+    expect(planLimitProblem(5, 9)).toBe('Your plan runs 5 ads at a time. Pause or end one first.');
     expect(planLimitProblem(0, 0)).toBe('Your plan doesn’t include ads.');
   });
 });

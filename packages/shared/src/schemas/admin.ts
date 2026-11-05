@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AD_LIVE_MAX } from '../ads';
 import { loginRequestSchema } from './auth';
 
 /** P5.11: admin sign-in step 1 is the normal credential check. */
@@ -154,7 +155,7 @@ export const adminMoveBusinessOwnerSchema = z.strictObject({
 /** B3.1 / D168: a subscription plan (admin-edited data; any number of tiers, Q28 prices open). */
 export const adminPlanSchema = z.strictObject({
   name: z.string().trim().min(2).max(60),
-  liveAdLimit: z.number().int().min(0).max(3),
+  liveAdLimit: z.number().int().min(0).max(AD_LIVE_MAX), // D204: up to 5
   /** Monthly price in cents; null while prices aren't decided. */
   priceCents: z.number().int().min(0).max(10_000_000).nullable(),
   includesInsights: z.boolean(),

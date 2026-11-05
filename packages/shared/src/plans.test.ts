@@ -27,6 +27,6 @@ describe('planEntitlements', () => {
   it('the input schema refuses what reading would ignore', () => {
     expect(planEntitlementInputSchema.safeParse({ key: 'ads.live', value: 2 }).success).toBe(true);
     expect(planEntitlementInputSchema.safeParse({ key: 'nope', value: 2 }).success).toBe(false);
-    expect(planEntitlementInputSchema.safeParse({ key: 'ads.live', value: 4 }).success).toBe(false);
+    expect(planEntitlementInputSchema.safeParse({ key: 'ads.live', value: 6 }).success).toBe(false);
   });
 });

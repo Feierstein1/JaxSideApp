@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { FREE_TIER_DAYS, NO_PLAN_ENTITLEMENTS } from '@jax/shared';
+import { FREE_TIER_DAYS, NO_PLAN_ENTITLEMENTS, planEntitlements } from '@jax/shared';
 import { createPlan, endSubscription, entitlementsFor, updatePlan } from '@/server/admin/plans';
 import { db } from '@/server/db';
 import { importOsmPlaces } from '@/server/directory/osm';
@@ -67,10 +67,24 @@ describe('the starter tiers (D202)', () => {
     expect(plans.every((p) => p.prices.length === 1 && p.prices[0]!.amountCents === null)).toBe(
       true,
     );
-    expect(plans[2]!.entitlements.map((e) => [e.key, e.value]).sort()).toEqual([
-      ['ads.live', 3],
-      ['insights', true],
-    ]);
+    // D204: the owner's values, read back as one object (a "no limit" null survives).
+    expect(planEntitlements(plans[2]!.entitlements)).toEqual({
+      'ads.live': 5,
+      'ads.library': 20,
+      'ads.reach': 'CITY',
+      'ads.maxZips': 30,
+      'ads.maxDays': null,
+      insights: true,
+      'insights.reach': 'ALL',
+      'insights.nearbyZips': 0,
+    });
+    expect(planEntitlements(plans[1]!.entitlements)).toMatchObject({
+      'ads.live': 3,
+      'ads.reach': 'ZIPS',
+      'ads.maxZips': 3,
+      'insights.reach': 'NEARBY',
+      'insights.nearbyZips': 4,
+    });
   });
 
   it('runs again without duplicating or overwriting the admin’s changes', async () => {
@@ -109,7 +123,16 @@ describe('what a business can use (D202)', () => {
     await freeMonth(owner.id, cafe);
     const now = await entitlementsFor(owner.id);
     expect(now.plan).toMatchObject({ code: 'FREE', rank: 1 });
-    expect(now.entitlements).toEqual({ 'ads.live': 1, insights: false });
+    expect(now.entitlements).toEqual({
+      'ads.live': 1,
+      'ads.library': 3,
+      'ads.reach': 'OWN_ZIP',
+      'ads.maxZips': 1,
+      'ads.maxDays': 7,
+      insights: true,
+      'insights.reach': 'OWN_ZIP',
+      'insights.nearbyZips': 0,
+    });
     const later = new Date(Date.now() + (FREE_TIER_DAYS + 1) * DAY);
     expect((await entitlementsFor(owner.id, later)).plan).toBeNull();
   });
@@ -130,9 +153,10 @@ describe('what a business can use (D202)', () => {
       active: true,
     });
     const rows = await db.planEntitlement.findMany({ where: { planId: standard.id } });
-    expect(Object.fromEntries(rows.map((r) => [r.key, r.value]))).toEqual({
+    expect(Object.fromEntries(rows.map((r) => [r.key, r.value]))).toMatchObject({
       'ads.live': 2,
       insights: true,
+      'ads.reach': 'ZIPS', // the page leaves the other entitlements alone
     });
     const prices = await db.planPrice.findMany({
       where: { planId: standard.id },
@@ -212,5 +236,25 @@ describe('database rules (D202)', () => {
         },
       }),
     ).rejects.toThrow();
+  });
+
+  // 🔒 D204: a city-wide ad has no ZIPs or radius.
+  it('refuses a city-wide ad that also targets ZIPs', async () => {
+    await db.businessPlaceAccess.create({
+      data: { accountId: owner.id, placeId: cafe, role: 'OWNER' },
+    });
+    const ad = (zips: string[]) =>
+      db.ad.create({
+        data: {
+          accountId: owner.id,
+          placeId: cafe,
+          template: 'BANNER',
+          headline: 'Half-price lattes',
+          cityWide: true,
+          zips,
+        },
+      });
+    await expect(ad(['32204'])).rejects.toThrow();
+    await expect(ad([])).resolves.toMatchObject({ cityWide: true });
   });
 });

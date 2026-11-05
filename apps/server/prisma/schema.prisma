@@ -1832,7 +1832,7 @@ model Plan {
   durationDays     Int?              @db.SmallInt
   /// D202: the Stripe Product, once Stripe is set up (B4.1).
   stripeProductId  String?           @unique @db.VarChar(255)
-  /// Ads live at once (CHECK 0..3, D167). Deprecated by D202: read the `ads.live` entitlement.
+  /// Ads live at once (CHECK 0..5, D167 / D204). Deprecated by D202: read the `ads.live` entitlement.
   liveAdLimit      Int               @db.SmallInt
   /// Monthly price in cents; null until prices are decided (Q28). Deprecated by D202: PlanPrice.
   priceCents       Int?
@@ -2004,6 +2004,8 @@ model Ad {
   /// Targeting (B3.4): a radius around the place and/or chosen ZIP codes.
   radiusMeters  Int?
   zips          String[]         @db.VarChar(5)
+  /// D204: shown to everyone in the area (Premium's CITY reach); no ZIPs or radius then.
+  cityWide      Boolean          @default(false)
   createdById   String?          @db.Uuid
   submittedAt   DateTime?        @db.Timestamptz(3)
   approvedAt    DateTime?        @db.Timestamptz(3)

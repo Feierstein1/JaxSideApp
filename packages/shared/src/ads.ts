@@ -10,8 +10,8 @@ export const AD_TIME_ZONE = 'America/New_York';
 
 /** D167: saved ads per business (drafts and past ads count). */
 export const AD_LIBRARY_MAX = 20;
-/** D167: ads live at once, at most; a plan may allow fewer. */
-export const AD_LIVE_MAX = 3;
+/** D167: ads live at once, at most; a plan may allow fewer (D204: 5, Premium's). */
+export const AD_LIVE_MAX = 5;
 
 export type AdTemplateKind = 'BANNER' | 'POST' | 'FEATURE';
 export type AdStatusKind = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'PAUSED' | 'ENDED';

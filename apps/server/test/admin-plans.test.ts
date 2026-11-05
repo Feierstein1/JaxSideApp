@@ -36,7 +36,7 @@ beforeEach(async () => {
 });
 
 describe('B3.1 plans', () => {
-  it('creates and edits plans as data, any number of tiers, at most 3 ads at once', async () => {
+  it('creates and edits plans as data, any number of tiers, at most 5 ads at once (D204)', async () => {
     expect((await createPlan(PLAN)).status).toBe(201);
     const pro = await createPlan({
       ...PLAN,
@@ -46,7 +46,7 @@ describe('B3.1 plans', () => {
       includesInsights: true,
     });
     expect(pro.status).toBe(201);
-    expect((await createPlan({ ...PLAN, name: 'Huge', liveAdLimit: 4 })).status).toBe(400);
+    expect((await createPlan({ ...PLAN, name: 'Huge', liveAdLimit: 6 })).status).toBe(400);
     expect((await createPlan(PLAN)).status).toBe(409); // same name
     const r = await call(updatePOST as H, 'POST', {
       headers: admin,
