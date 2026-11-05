@@ -111,4 +111,57 @@ describe('Contact us (D90)', () => {
     });
     expect((await listContactMessages({ status: 'OPEN' })).rows).toHaveLength(2);
   });
+
+  // D207 / D213: tickets the owner website writes for business logins.
+  describe('from business logins (D213)', () => {
+    async function businessTicket(
+      username: string | null,
+      email: string | null,
+      replyEmail?: string,
+    ) {
+      const a = await db.businessAccount.create({
+        data: { email, username, passwordHash: 'x' },
+      });
+      return db.contactMessage.create({
+        data: {
+          businessAccountId: a.id,
+          category: 'SUPPORT',
+          subject: 'Ad help',
+          body: 'How do I…',
+          replyEmail,
+        },
+      });
+    }
+    const email = (id: string) =>
+      call(replyEmailGET as H, 'GET', { headers: admin, params: { id } });
+
+    it('the inbox names the business; the reply goes to the form’s address or the login’s email', async () => {
+      const owner = await businessTicket(null, 'owner@boldbean.com');
+      const staff = await businessTicket('sam.bb', null, 'sam@example.test');
+      const rows = (await listContactMessages({ status: 'OPEN' })).rows;
+      expect(rows.find((r) => r.id === owner.id)).toMatchObject({
+        canReply: true,
+        from: { business: true, login: 'owner@boldbean.com' },
+      });
+      expect(rows.find((r) => r.id === staff.id)?.from).toMatchObject({ login: 'sam.bb' });
+      expect((await email(owner.id)).body).toEqual({ email: 'owner@boldbean.com' });
+      expect((await email(staff.id)).body).toEqual({ email: 'sam@example.test' });
+    });
+
+    // 🔒 A ticket has at most one sender.
+    it('the database refuses a ticket from both a person and a business', async () => {
+      const a = await db.businessAccount.create({ data: { email: 'x@y.test', passwordHash: 'x' } });
+      await expect(
+        db.contactMessage.create({
+          data: {
+            userId: annId,
+            businessAccountId: a.id,
+            category: 'SUPPORT',
+            subject: 's',
+            body: 'b',
+          },
+        }),
+      ).rejects.toThrow();
+    });
+  });
 });

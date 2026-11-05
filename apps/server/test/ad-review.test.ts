@@ -21,8 +21,12 @@ let admin: Record<string, string>;
 let cafe: string;
 let owner: { id: string };
 
-const decide = (id: string, body: object, headers = admin) =>
-  call(decisionPOST as H, 'POST', { headers, params: { id }, body });
+/** D213: sends the ad's current version as "seen", unless the test gives its own. */
+const decide = async (id: string, body: object, headers = admin) => {
+  const ad = await db.ad.findUnique({ where: { id }, select: { updatedAt: true } });
+  const seen = { seenUpdatedAt: (ad?.updatedAt ?? new Date()).toISOString() };
+  return call(decisionPOST as H, 'POST', { headers, params: { id }, body: { ...seen, ...body } });
+};
 const pending = (headline = 'Half-price lattes') =>
   db.ad.create({
     data: {
@@ -144,5 +148,43 @@ describe('ad review (B3.3)', () => {
     });
     expect([401, 403]).toContain(r.status);
     expect((await db.ad.findUniqueOrThrow({ where: { id: ad.id } })).status).toBe('PENDING_REVIEW');
+  });
+
+  // 🔒 D213: approvals at the same moment can't go over the tier's live ads (staging bug).
+  it('approving several at once still keeps to the plan’s live ads', async () => {
+    const ads = await Promise.all(['One', 'Two', 'Three'].map((h) => pending(h)));
+    const results = await Promise.all(ads.map((a) => decide(a.id, { decision: 'approve' })));
+    expect(results.filter((r) => r.status === 200)).toHaveLength(1); // Free: 1 live ad
+    expect(results.filter((r) => r.body?.error?.code === 'PLAN_FULL')).toHaveLength(2);
+    expect(await db.ad.count({ where: { status: 'APPROVED' } })).toBe(1);
+  });
+
+  // 🔒 D212 / D213: never approve words the reviewer didn't see.
+  it('refuses a decision when the ad changed after the reviewer opened it', async () => {
+    const ad = await pending();
+    const seen = ad.updatedAt.toISOString();
+    await new Promise((r) => setTimeout(r, 5));
+    await db.ad.update({ where: { id: ad.id }, data: { headline: 'Now 2-for-1' } });
+    const r = await decide(ad.id, { decision: 'approve', seenUpdatedAt: seen });
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe('AD_CHANGED');
+    expect((await db.ad.findUniqueOrThrow({ where: { id: ad.id } })).status).toBe('PENDING_REVIEW');
+    expect((await decide(ad.id, { decision: 'approve' })).status).toBe(200); // after a reload
+  });
+
+  it('a photo-rules denial can also give the business a strike', async () => {
+    const ad = await pending();
+    const r = await decide(ad.id, { decision: 'reject', reasonCode: 'AI_FOOD', strike: true });
+    expect(r.status).toBe(200);
+    const strike = await db.moderationAction.findFirstOrThrow({
+      where: { targetBusinessId: owner.id },
+    });
+    expect(strike.action).toBe('WARN');
+    expect(strike.reason).toContain('real photos');
+    // Only with the photo rules.
+    const other = await pending('Other');
+    expect(
+      (await decide(other.id, { decision: 'reject', reasonCode: 'EXPLICIT', strike: true })).status,
+    ).toBe(400);
   });
 });

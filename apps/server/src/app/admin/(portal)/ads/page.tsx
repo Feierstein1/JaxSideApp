@@ -1,4 +1,5 @@
 import { listPendingAds } from '@/server/admin/ad-review';
+import { AD_RULES } from '@jax/shared';
 import { adOverview, adTab, interestShare, listAdsWithStats } from '@/server/admin/ad-stats';
 import { pageNumber } from '@/server/admin/paging';
 import { ui } from '../../admin-ui';
@@ -120,7 +121,13 @@ async function Review({
                 </p>
               </div>
             </div>
-            <AdDecisionForm adId={a.id} />
+            <details style={{ marginTop: 12 }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 650 }}>
+                The ad rules (what to check)
+              </summary>
+              <AdRulesList />
+            </details>
+            <AdDecisionForm adId={a.id} updatedAt={a.updatedAt} />
           </div>
         ))}
       </div>
@@ -188,5 +195,26 @@ async function Results({
       </Table>
       <Pager page={ads} base="/admin/ads" params={params} />
     </>
+  );
+}
+
+/** D207 / D208 / D213: the rules the business agreed to, beside the ad being reviewed. */
+function AdRulesList() {
+  const list = (title: string, items: readonly string[]) => (
+    <>
+      <p style={{ fontWeight: 650, margin: '10px 0 4px' }}>{title}</p>
+      <ul style={{ margin: 0, paddingLeft: 20 }}>
+        {items.map((t) => (
+          <li key={t}>{t}</li>
+        ))}
+      </ul>
+    </>
+  );
+  return (
+    <div style={{ fontSize: 14 }}>
+      {list('Do', AD_RULES.dos)}
+      {list('Photos must be real', AD_RULES.photos)}
+      {list('Never allowed', AD_RULES.neverAllowed)}
+    </div>
   );
 }

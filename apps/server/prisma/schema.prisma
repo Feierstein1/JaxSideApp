@@ -1071,27 +1071,33 @@ enum ContactStatus {
 }
 
 model ContactMessage {
-  id             String          @id @default(uuid(7)) @db.Uuid
-  userId         String?         @db.Uuid
-  guestSessionId String?         @db.Uuid
-  category       ContactCategory
-  subject        String          @db.VarChar(100)
-  body           String          @db.VarChar(2000)
+  id                String           @id @default(uuid(7)) @db.Uuid
+  userId            String?          @db.Uuid
+  guestSessionId    String?          @db.Uuid
+  /// D207 / D213: a ticket from a business login on the owner website.
+  businessAccountId String?          @db.Uuid
+  /// D213: where to answer a business ticket when the login has no email (staff); admins only.
+  replyEmail        String?          @db.VarChar(254)
+  category          ContactCategory
+  subject           String           @db.VarChar(100)
+  body              String           @db.VarChar(2000)
   /// The person agreed that a moderator may see their account email to reply.
-  allowReply     Boolean         @default(false)
-  status         ContactStatus   @default(OPEN)
-  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
-  resolvedAt     DateTime?       @db.Timestamptz(3)
-  resolvedById   String?         @db.Uuid
-  user           User?           @relation("ContactFrom", fields: [userId], references: [id], onDelete: Cascade)
-  guestSession   GuestSession?   @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
-  resolvedBy     User?           @relation("ContactResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  allowReply        Boolean          @default(false)
+  status            ContactStatus    @default(OPEN)
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  resolvedAt        DateTime?        @db.Timestamptz(3)
+  resolvedById      String?          @db.Uuid
+  user              User?            @relation("ContactFrom", fields: [userId], references: [id], onDelete: Cascade)
+  guestSession      GuestSession?    @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
+  businessAccount   BusinessAccount? @relation(fields: [businessAccountId], references: [id], onDelete: SetNull)
+  resolvedBy        User?            @relation("ContactResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
   @@index([userId, createdAt])
   // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
   @@index([guestSessionId])
   @@index([resolvedById])
+  @@index([businessAccountId, createdAt])
 }
 
 /// D98: private messaging between two friends. One conversation per pair (ordered ids).
@@ -1753,6 +1759,8 @@ model BusinessAccount {
   modActions           ModerationAction[]
   /// D195: pictures and videos this login uploaded for its places' posts.
   photos               Photo[]
+  /// D213: support tickets from this login.
+  contactTickets       ContactMessage[]
   /// D202: the Stripe Customer (owner accounts only), once Stripe is set up (B4.1).
   stripeCustomerId     String?                       @unique @db.VarChar(255)
   /// D194: reports this login filed in its places' discussions.

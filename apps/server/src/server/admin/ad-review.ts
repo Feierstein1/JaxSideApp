@@ -9,6 +9,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import { resetAdCache } from '../ads/serve';
 import { db } from '../db';
 import { ApiError } from '../http';
+import { issueBusinessStrike } from '../moderation/business-enforcement';
 import { audit } from './audit';
 import { pageWindow, toPage } from './paging';
 import { entitlementsFor } from './plans';
@@ -62,6 +63,8 @@ export async function listPendingAds(page = 1) {
           .filter(Boolean)
           .join(' · ') || 'No targeting',
     submittedAt: a.submittedAt?.toISOString() ?? null,
+    /** D213: sent back with the decision, so a newer change isn't approved unseen. */
+    updatedAt: a.updatedAt.toISOString(),
   }));
   return toPage(rows, total, page);
 }
@@ -82,18 +85,10 @@ export async function decideAd(
     );
   }
   const approve = input.decision === 'approve';
-  if (approve) {
-    // The plan may have changed since it was sent: approving must still fit (D167, D204).
-    const { entitlements } = await entitlementsFor(ad.accountId, now);
-    const inUse = (
-      await db.ad.findMany({
-        where: { accountId: ad.accountId, status: 'APPROVED' },
-        select: { status: true, startsAt: true, endsAt: true },
-      })
-    ).filter((a) => takesPlanSlot(a, now)).length;
-    const problem = planLimitProblem(inUse, entitlements['ads.live']);
-    if (problem) throw new ApiError(409, 'PLAN_FULL', `Can’t approve: ${problem}`);
-  }
+  // The tier's live ads, read before the lock (a plan change isn't what races here).
+  const liveLimit = approve
+    ? (await entitlementsFor(ad.accountId, now)).entitlements['ads.live']
+    : 0;
   const snapshot = {
     template: ad.template,
     headline: ad.headline,
@@ -112,12 +107,40 @@ export async function decideAd(
   // D211: the business reads the chosen reason in plain words (plus any note).
   const reason = approve ? null : adDenialMessage(input.reasonCode!, input.note);
   await db.$transaction(async (tx) => {
-    // Only if it's still waiting (the owner may take it back at the same moment).
-    const moved = await tx.ad.updateMany({
-      where: { id: adId, status: 'PENDING_REVIEW' },
+    // D213: one change to a business's ad slots at a time. The website takes the same lock
+    // when an Owner resumes or re-dates an ad, so two approvals (or an approval and a resume)
+    // can't both count the slots before either is saved.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'ad-slots:' + ad.accountId}))`;
+    const current = await tx.ad.findUnique({
+      where: { id: adId },
+      select: { status: true, updatedAt: true },
+    });
+    if (current?.status !== 'PENDING_REVIEW') {
+      throw new ApiError(409, 'STATE', 'This ad isn’t waiting for review.');
+    }
+    // D212 / D213: the Owner may edit a waiting ad; never decide on words the reviewer didn't see.
+    if (current.updatedAt.toISOString() !== new Date(input.seenUpdatedAt).toISOString()) {
+      throw new ApiError(
+        409,
+        'AD_CHANGED',
+        'This ad changed since you opened it. Reload to see it.',
+      );
+    }
+    if (approve) {
+      // The plan may have changed since it was sent: approving must still fit (D167, D204).
+      const inUse = (
+        await tx.ad.findMany({
+          where: { accountId: ad.accountId, status: 'APPROVED' },
+          select: { status: true, startsAt: true, endsAt: true },
+        })
+      ).filter((a) => takesPlanSlot(a, now)).length;
+      const problem = planLimitProblem(inUse, liveLimit);
+      if (problem) throw new ApiError(409, 'PLAN_FULL', `Can’t approve: ${problem}`);
+    }
+    await tx.ad.update({
+      where: { id: adId },
       data: approve ? { status: 'APPROVED', approvedAt: now } : { status: 'DRAFT' },
     });
-    if (moved.count === 0) throw new ApiError(409, 'STATE', 'This ad isn’t waiting for review.');
     await tx.adReview.create({
       data: {
         adId,
@@ -154,4 +177,9 @@ export async function decideAd(
     );
   });
   resetAdCache();
+  // D213: for businesses that keep sending AI food: a strike on the business (D191), with
+  // the same words the business reads on its ad. Its own transaction and bell notice.
+  if (input.strike && reason) {
+    await issueBusinessStrike({ adminId, accountId: ad.accountId, reason, now });
+  }
 }

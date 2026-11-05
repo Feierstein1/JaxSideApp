@@ -506,8 +506,10 @@ export function BusinessStrikeForm({ id, step }: { id: string; step: string }) {
  * B3.3 / D206: approve an ad, or turn it down. D211: turning down picks a broad reason, then
  * a detailed one from the ad rules, plus an optional note; the business reads it as shown.
  */
-export function AdDecisionForm({ adId }: { adId: string }) {
+export function AdDecisionForm({ adId, updatedAt }: { adId: string; updatedAt: string }) {
   const [rejecting, setRejecting] = useState(false);
+  /** D213: a photo-rules denial can also give the business a strike (D191). */
+  const [strike, setStrike] = useState(false);
   const [group, setGroup] = useState<string>();
   const [code, setCode] = useState<string>();
   const [note, setNote] = useState('');
@@ -522,6 +524,7 @@ export function AdDecisionForm({ adId }: { adId: string }) {
     setGroup(next);
     // "Something else" has one reason; otherwise the admin picks the detailed one.
     setCode(next === 'OTHER' ? 'OTHER' : undefined);
+    if (next !== 'PHOTOS') setStrike(false);
   }
 
   function cancel() {
@@ -529,6 +532,7 @@ export function AdDecisionForm({ adId }: { adId: string }) {
     setGroup(undefined);
     setCode(undefined);
     setNote('');
+    setStrike(false);
   }
 
   async function decide(decision: 'approve' | 'reject') {
@@ -537,10 +541,17 @@ export function AdDecisionForm({ adId }: { adId: string }) {
     try {
       await adminFetch(`/api/v1/admin/ads/${adId}/decision`, {
         method: 'POST',
+        // D213: the version the reviewer saw; the server refuses if the ad changed since.
         body:
           decision === 'approve'
-            ? { decision }
-            : { decision, reasonCode: code, ...(note.trim() ? { note: note.trim() } : {}) },
+            ? { decision, seenUpdatedAt: updatedAt }
+            : {
+                decision,
+                seenUpdatedAt: updatedAt,
+                reasonCode: code,
+                ...(note.trim() ? { note: note.trim() } : {}),
+                ...(strike ? { strike: true } : {}),
+              },
       });
       window.location.reload();
     } catch (err) {
@@ -635,6 +646,17 @@ export function AdDecisionForm({ adId }: { adId: string }) {
             <p style={{ ...ui.muted, margin: 0 }}>
               The business will read: “{adDenialMessage(code!, note)}”
             </p>
+          ) : null}
+
+          {group === 'PHOTOS' ? (
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                checked={strike}
+                onChange={(e) => setStrike(e.target.checked)}
+              />
+              Also give the business a strike (for businesses that keep sending AI photos)
+            </label>
           ) : null}
         </div>
       ) : null}

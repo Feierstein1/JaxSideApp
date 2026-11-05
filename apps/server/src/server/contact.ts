@@ -62,6 +62,20 @@ export async function listContactMessages(opts: {
       include: {
         user: { select: { id: true, username: true, status: true } },
         resolvedBy: { select: { username: true } },
+        // D213: a ticket from a business login (owner website): the login and its place.
+        businessAccount: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            placeAccess: {
+              where: { revokedAt: null },
+              orderBy: { createdAt: 'asc' },
+              take: 1,
+              select: { place: { select: { name: true } } },
+            },
+          },
+        },
       },
     }),
     db.contactMessage.count({ where }),
@@ -77,10 +91,20 @@ export async function listContactMessages(opts: {
     resolvedBy: m.resolvedBy?.username ?? null,
     from: m.user
       ? { id: m.user.id, username: m.user.username, status: m.user.status }
-      : m.guestSessionId
-        ? 'guest'
-        : 'deleted',
-    canReply: m.allowReply && !!m.user,
+      : m.businessAccount
+        ? {
+            business: true as const,
+            accountId: m.businessAccount.id,
+            login: m.businessAccount.username ?? m.businessAccount.email ?? '',
+            place: m.businessAccount.placeAccess[0]?.place.name ?? null,
+          }
+        : m.guestSessionId
+          ? 'guest'
+          : 'deleted',
+    // D213: a business ticket can always be answered (its reply address or the login's email).
+    canReply:
+      (m.allowReply && !!m.user) ||
+      (!!m.businessAccount && !!(m.replyEmail ?? m.businessAccount.email)),
   }));
   return toPage(list, total, page);
 }
@@ -92,9 +116,14 @@ export async function listContactMessages(opts: {
 export async function contactReplyEmail(id: string): Promise<string | null> {
   const m = await db.contactMessage.findUnique({
     where: { id },
-    include: { user: { select: { id: true, dekWrapped: true, emailEnc: true } } },
+    include: {
+      user: { select: { id: true, dekWrapped: true, emailEnc: true } },
+      businessAccount: { select: { email: true } },
+    },
   });
   if (!m) throw new ApiError(404, 'NOT_FOUND', 'Not found');
+  // D213: a business ticket: the address its form asked for, or the login's own email.
+  if (m.businessAccount) return m.replyEmail ?? m.businessAccount.email ?? null;
   if (!m.allowReply || !m.user) return null;
   try {
     return decryptUserEmail(m.user);

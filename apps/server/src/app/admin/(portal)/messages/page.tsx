@@ -55,6 +55,11 @@ export default async function MessagesPage({
               From{' '}
               {typeof m.from === 'string' ? (
                 m.from
+              ) : 'business' in m.from ? (
+                // D213: a ticket from the owner website.
+                <a href={`/admin/businesses/${m.from.accountId}`}>
+                  Business: {m.from.place ?? 'no place now'} ({m.from.login})
+                </a>
               ) : (
                 <a href={`/admin/users/${m.from.id}`}>@{m.from.username}</a>
               )}{' '}
