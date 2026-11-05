@@ -483,6 +483,8 @@ model BusinessPlace {
   ads                  Ad[]
   businessNotices      BusinessNotice[]
   verificationRequests BusinessVerificationRequest[]
+  /// D202: the free month used for this place (at most one).
+  freeTierSubscription Subscription?
 
   @@unique([sourceName, sourceId])
   @@index([location], type: Gist)
@@ -1729,6 +1731,8 @@ model BusinessAccount {
   modActions           ModerationAction[]
   /// D195: pictures and videos this login uploaded for its places' posts.
   photos               Photo[]
+  /// D202: the Stripe Customer (owner accounts only), once Stripe is set up (B4.1).
+  stripeCustomerId     String?                       @unique @db.VarChar(255)
   /// D194: reports this login filed in its places' discussions.
   reportsFiled         Report[]                      @relation("BusinessReporter")
   // D172: what the business wrote in its place's discussion (the real author, for the Owner).
@@ -1815,46 +1819,127 @@ model BusinessInvite {
 }
 
 /// D168: a subscription plan, edited by an admin. Prices are open (Q28).
+/// B3.1 / D202: a tier (Free, Standard, Premium, …). What it gives is its PlanEntitlement rows;
+/// what it costs is its PlanPrice rows. Ready for Stripe (a Stripe Product), not synced yet.
 model Plan {
-  id               String         @id @default(uuid(7)) @db.Uuid
-  name             String         @unique @db.VarChar(60)
-  /// Ads live at once (CHECK 0..3, D167).
-  liveAdLimit      Int            @db.SmallInt
-  /// Monthly price in cents; null until prices are decided (Q28).
+  id               String            @id @default(uuid(7)) @db.Uuid
+  name             String            @unique @db.VarChar(60)
+  /// D202: fixed key the code relies on (FREE, STANDARD, PREMIUM); null for one-off plans.
+  code             String?           @unique @db.VarChar(30)
+  /// D202: order of the tiers (1 = lowest), for upgrades and "this tier or higher".
+  rank             Int               @default(0) @db.SmallInt
+  /// D202: how long a subscription lasts (Free: 30); null = renews until cancelled.
+  durationDays     Int?              @db.SmallInt
+  /// D202: the Stripe Product, once Stripe is set up (B4.1).
+  stripeProductId  String?           @unique @db.VarChar(255)
+  /// Ads live at once (CHECK 0..3, D167). Deprecated by D202: read the `ads.live` entitlement.
+  liveAdLimit      Int               @db.SmallInt
+  /// Monthly price in cents; null until prices are decided (Q28). Deprecated by D202: PlanPrice.
   priceCents       Int?
-  /// Q29: whether the plan includes area counts (insights).
-  includesInsights Boolean        @default(false)
-  active           Boolean        @default(true)
-  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+  /// Q29: whether the plan includes area counts. Deprecated by D202: the `insights` entitlement.
+  includesInsights Boolean           @default(false)
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now()) @db.Timestamptz(3)
   subscriptions    Subscription[]
+  prices           PlanPrice[]
+  entitlements     PlanEntitlement[]
 }
 
+/// D202: monthly only for now; YEAR can be added later.
+enum BillingInterval {
+  MONTH
+}
+
+/// D202: what a tier costs. Prices never change in place (like Stripe Prices): a new price is
+/// a new row, and the old one is set inactive. One active price per plan and interval.
+model PlanPrice {
+  id            String          @id @default(uuid(7)) @db.Uuid
+  planId        String          @db.Uuid
+  /// Cents; null until the price is decided.
+  amountCents   Int?
+  currency      String          @default("usd") @db.VarChar(3)
+  interval      BillingInterval @default(MONTH)
+  active        Boolean         @default(true)
+  /// The Stripe Price, once Stripe is set up (B4.1).
+  stripePriceId String?         @unique @db.VarChar(255)
+  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+  plan          Plan            @relation(fields: [planId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+
+  @@unique([planId, interval], map: "PlanPrice_one_active", where: raw("active"))
+  @@index([planId])
+}
+
+/// D202: one thing a tier gives (`ads.live` → 3, `insights` → true). Keys and value types are
+/// listed in @jax/shared (PLAN_ENTITLEMENTS); planEntitlements() turns the rows into one object.
+model PlanEntitlement {
+  id     String @id @default(uuid(7)) @db.Uuid
+  planId String @db.Uuid
+  key    String @db.VarChar(60)
+  value  Json
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, key])
+}
+
+/// D202: TRIALING and PAST_DUE are for Stripe (B4.1); today's subscriptions are ACTIVE.
 enum SubscriptionStatus {
+  TRIALING
   ACTIVE
+  PAST_DUE
   CANCELLED
   EXPIRED
 }
 
+/// D202: where a subscription came from.
+enum SubscriptionSource {
+  FREE_TIER // the free month every new business gets once
+  COMP // an admin gave it for free (a promo)
+  STRIPE // paid (B4.1)
+}
+
 /// D168: a business's plan. `comped` = a free promo period an admin granted (no payment).
 model Subscription {
-  id               String             @id @default(uuid(7)) @db.Uuid
-  accountId        String             @db.Uuid
-  planId           String             @db.Uuid
-  status           SubscriptionStatus @default(ACTIVE)
-  startsAt         DateTime           @db.Timestamptz(3)
+  id                   String             @id @default(uuid(7)) @db.Uuid
+  accountId            String             @db.Uuid
+  planId               String             @db.Uuid
+  status               SubscriptionStatus @default(ACTIVE)
+  startsAt             DateTime           @db.Timestamptz(3)
   /// Null = open-ended.
-  endsAt           DateTime?          @db.Timestamptz(3)
-  comped           Boolean            @default(false)
+  endsAt               DateTime?          @db.Timestamptz(3)
+  /// Deprecated by D202: `source` = COMP.
+  comped               Boolean            @default(false)
+  /// D202: free month, admin promo or paid.
+  source               SubscriptionSource @default(COMP)
+  /// D202: the price it's billed at (paid subscriptions; null for free and promos).
+  priceId              String?            @db.Uuid
+  /// D202: the place whose free month this is (one free month per place, ever).
+  freeTierPlaceId      String?            @unique @db.Uuid
+  /// D202 / Stripe: the period being paid for now, and whether it stops at its end.
+  currentPeriodStart   DateTime?          @db.Timestamptz(3)
+  currentPeriodEnd     DateTime?          @db.Timestamptz(3)
+  cancelAtPeriodEnd    Boolean            @default(false)
+  /// D202: when the business (or an admin) cancelled, and why (for the cancellations list).
+  cancelledAt          DateTime?          @db.Timestamptz(3)
+  cancelReason         String?            @db.VarChar(300)
+  /// D202: the Stripe Subscription, once Stripe is set up (B4.1).
+  stripeSubscriptionId String?            @unique @db.VarChar(255)
   /// The JaxSide admin (User id) who granted a comp; a plain id kept for the record.
-  grantedByAdminId String?            @db.Uuid
-  note             String?            @db.VarChar(300)
-  createdAt        DateTime           @default(now()) @db.Timestamptz(3)
-  account          BusinessAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  plan             Plan               @relation(fields: [planId], references: [id])
+  grantedByAdminId     String?            @db.Uuid
+  note                 String?            @db.VarChar(300)
+  createdAt            DateTime           @default(now()) @db.Timestamptz(3)
+  account              BusinessAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  plan                 Plan               @relation(fields: [planId], references: [id])
+  price                PlanPrice?         @relation(fields: [priceId], references: [id], onDelete: SetNull)
+  freeTierPlace        BusinessPlace?     @relation(fields: [freeTierPlaceId], references: [id], onDelete: SetNull)
 
-  /// One active subscription per business.
-  @@unique([accountId], map: "Subscription_one_active", where: raw("status = 'ACTIVE'"))
+  /// One current subscription per business (D202: trialing and past due count as current).
+  @@unique([accountId], map: "Subscription_one_active", where: raw("status IN ('TRIALING', 'ACTIVE', 'PAST_DUE')"))
+  /// D202: one free month per business, ever.
+  @@unique([accountId], map: "Subscription_one_free_tier", where: raw("source = 'FREE_TIER'"))
   @@index([planId])
+  @@index([priceId])
+  @@index([status, endsAt])
 }
 
 enum AdTemplate {

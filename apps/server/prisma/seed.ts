@@ -2,6 +2,7 @@
  * Idempotent seed (P1.11, P1.12). Safe to run repeatedly.
  * - AppConfiguration: inserts missing keys; never overwrites values an admin has changed.
  * - Achievements: upserts definitions.
+ * - Tiers (D202): Free, Standard and Premium, created when missing, never overwritten.
  * - Service area: the Duval County boundary (P2.2, D15), from the committed GeoJSON.
  * - Dev places: only outside production.
  */
@@ -17,6 +18,7 @@ import { importZipAreas } from '../src/server/stats/zip-areas';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { findRepoRoot } from '../src/server/repo-root';
+import { ensureTiers } from '../src/server/plan-tiers';
 
 /** P15.9: the starter slur list (see data/screening/README.md for sources and licenses). */
 export function starterSlurTerms(): {
@@ -70,6 +72,8 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
       update: {},
     });
   }
+
+  await ensureTiers(db); // D202: Free, Standard, Premium (only when missing)
 
   for (const a of ACHIEVEMENTS) {
     const data = { name: a.name, description: a.description, icon: a.icon, criteria: a.criteria };

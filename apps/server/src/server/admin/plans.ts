@@ -1,3 +1,5 @@
+import { NO_PLAN_ENTITLEMENTS, planEntitlements } from '@jax/shared';
+import type { Prisma } from '@/generated/prisma/client';
 import { db } from '../db';
 import { ApiError } from '../http';
 import { audit } from './audit';
@@ -34,6 +36,30 @@ export async function listPlans() {
   }));
 }
 
+/**
+ * D202: the admin Plans page still edits the old columns; keep the tier's `ads.live` and
+ * `insights` entitlements and its monthly price row in step. A changed price is a new row
+ * (prices never change in place, like Stripe's).
+ */
+async function syncPlanRows(tx: Prisma.TransactionClient, planId: string, input: PlanInput) {
+  for (const [key, value] of [
+    ['ads.live', input.liveAdLimit],
+    ['insights', input.includesInsights],
+  ] as const) {
+    await tx.planEntitlement.upsert({
+      where: { planId_key: { planId, key } },
+      create: { planId, key, value },
+      update: { value },
+    });
+  }
+  const price = await tx.planPrice.findFirst({
+    where: { planId, interval: 'MONTH', active: true },
+  });
+  if (price && price.amountCents === input.priceCents) return;
+  if (price) await tx.planPrice.update({ where: { id: price.id }, data: { active: false } });
+  await tx.planPrice.create({ data: { planId, amountCents: input.priceCents, interval: 'MONTH' } });
+}
+
 const nameTaken = (err: unknown) => {
   if ((err as { code?: string })?.code === 'P2002') {
     throw new ApiError(409, 'NAME_TAKEN', 'A plan with that name already exists.');
@@ -42,7 +68,13 @@ const nameTaken = (err: unknown) => {
 };
 
 export async function createPlan(adminId: string, input: PlanInput) {
-  const plan = await db.plan.create({ data: input }).catch(nameTaken);
+  const plan = await db
+    .$transaction(async (tx) => {
+      const p = await tx.plan.create({ data: input });
+      await syncPlanRows(tx, p.id, input);
+      return p;
+    })
+    .catch(nameTaken);
   await audit(adminId, 'PLAN_CREATE', { type: 'plan', id: plan.id }, { ...input });
   return plan;
 }
@@ -51,7 +83,13 @@ export async function createPlan(adminId: string, input: PlanInput) {
 export async function updatePlan(adminId: string, id: string, input: PlanInput) {
   const exists = await db.plan.findUnique({ where: { id }, select: { id: true } });
   if (!exists) throw new ApiError(404, 'NOT_FOUND', 'Plan not found');
-  const plan = await db.plan.update({ where: { id }, data: input }).catch(nameTaken);
+  const plan = await db
+    .$transaction(async (tx) => {
+      const p = await tx.plan.update({ where: { id }, data: input });
+      await syncPlanRows(tx, id, input);
+      return p;
+    })
+    .catch(nameTaken);
   await audit(adminId, 'PLAN_UPDATE', { type: 'plan', id }, { ...input });
   return plan;
 }
@@ -84,8 +122,9 @@ export async function compPlan(
     throw new ApiError(400, 'VALIDATION_ERROR', 'The end date has already passed.');
   }
   const sub = await db.$transaction(async (tx) => {
+    // Replaced, not cancelled by the business (D202: no cancelledAt).
     await tx.subscription.updateMany({
-      where: { accountId, status: 'ACTIVE' },
+      where: { accountId, status: { in: ['TRIALING', 'ACTIVE', 'PAST_DUE'] } },
       data: { status: 'CANCELLED', endsAt: now },
     });
     const sub = await tx.subscription.create({
@@ -137,9 +176,10 @@ export async function endSubscription(
   now = new Date(),
 ) {
   await ownerAccount(accountId);
+  // D202: recorded as a cancellation (when and why), for the cancellations list.
   const res = await db.subscription.updateMany({
-    where: { accountId, status: 'ACTIVE' },
-    data: { status: 'CANCELLED', endsAt: now },
+    where: { accountId, status: { in: ['TRIALING', 'ACTIVE', 'PAST_DUE'] } },
+    data: { status: 'CANCELLED', endsAt: now, cancelledAt: now, cancelReason: note ?? null },
   });
   if (res.count === 0) throw new ApiError(409, 'NO_PLAN', 'This business has no current plan.');
   await audit(
@@ -148,4 +188,25 @@ export async function endSubscription(
     { type: 'business-account', id: accountId },
     note ? { note } : undefined,
   );
+}
+
+/**
+ * What a business can use now: its owner account's current subscription's tier, or
+ * NO_PLAN_ENTITLEMENTS. Current = TRIALING / ACTIVE / PAST_DUE and inside its dates.
+ */
+export async function entitlementsFor(ownerAccountId: string, now = new Date()) {
+  const sub = await db.subscription.findFirst({
+    where: {
+      accountId: ownerAccountId,
+      status: { in: ['TRIALING', 'ACTIVE', 'PAST_DUE'] },
+      startsAt: { lte: now },
+      OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+    },
+    include: { plan: { include: { entitlements: true } } },
+  });
+  if (!sub) return { plan: null, entitlements: NO_PLAN_ENTITLEMENTS };
+  return {
+    plan: { id: sub.plan.id, code: sub.plan.code, name: sub.plan.name, rank: sub.plan.rank },
+    entitlements: { ...NO_PLAN_ENTITLEMENTS, ...planEntitlements(sub.plan.entitlements) },
+  };
 }

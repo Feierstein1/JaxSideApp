@@ -47,6 +47,8 @@ export interface MaintenanceReport extends Partial<Omit<RetentionReport, 'notifi
   pollsCounted?: number;
   /** D134: topics deleted by their creator, removed after the keep period. */
   topicsPurged?: number;
+  /** D202: subscriptions past their end date, marked expired. */
+  subscriptionsExpired?: number;
 }
 
 /**
@@ -156,6 +158,13 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
     pollsCounted: await finalizeDuePolls(now),
     // D134: topics their creators deleted more than a week ago (posts go via retention).
     topicsPurged: await purgeDeletedTopics(now),
+    // D202: subscriptions whose end date passed (e.g. the free month) are marked expired.
+    subscriptionsExpired: (
+      await db.subscription.updateMany({
+        where: { status: { in: ['TRIALING', 'ACTIVE', 'PAST_DUE'] }, endsAt: { lte: now } },
+        data: { status: 'EXPIRED' },
+      })
+    ).count,
   };
   logger.info({ report }, 'maintenance complete');
   return report;
