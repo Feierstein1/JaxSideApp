@@ -625,6 +625,8 @@ export async function decideCase(input: {
   reason?: string;
   internalNote?: string;
   strike?: boolean;
+  /** D205: removing only: tell the author, with the reason. */
+  notifyAuthor?: boolean;
   now?: Date;
 }): Promise<{ strike: StrikeOutcome | null }> {
   const now = input.now ?? new Date();
@@ -667,7 +669,7 @@ export async function decideCase(input: {
         : input.decision === 'approve'
           ? 'RESTORE_CONTENT'
           : 'NOTE';
-    await tx.moderationAction.create({
+    const action = await tx.moderationAction.create({
       data: {
         adminId: input.adminId,
         action: contentAction,
@@ -683,6 +685,16 @@ export async function decideCase(input: {
         createdAt: now,
       },
     });
+    if (input.notifyAuthor && input.decision === 'remove' && authorId) {
+      await tx.notification.create({
+        data: {
+          userId: authorId,
+          type: 'CONTENT_REMOVED',
+          moderationActionId: action.id,
+          createdAt: now,
+        },
+      });
+    }
     if (input.decision === 'escalate' && authorId) {
       // R4: preserve evidence. The legal hold stops any crypto-shredding (D37).
       await tx.user.update({
@@ -700,7 +712,7 @@ export async function decideCase(input: {
         ? 'CHILD_SAFETY_ESCALATED'
         : `CASE_${input.decision.toUpperCase()}`,
       { type: input.ref.type, id: input.ref.id },
-      { reports: open.length, strike: !!input.strike },
+      { reports: open.length, strike: !!input.strike, notified: !!input.notifyAuthor },
       tx,
     );
   });

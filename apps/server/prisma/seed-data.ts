@@ -1,6 +1,14 @@
 import type { CONFIG_DEFAULTS } from '@jax/shared';
 
 export const CONFIG_DESCRIPTIONS: Partial<Record<keyof typeof CONFIG_DEFAULTS, string>> = {
+  'ads.firstSlot': 'Ads: the first ad comes after this many posts (D206)',
+  'ads.every': 'Ads: one ad about every this many posts, signed-in people (D206)',
+  'ads.everyGuest': 'Ads: one ad about every this many posts, guests (D206)',
+  'ads.cooldownHours': 'Ads: the phone waits this many hours before showing the same ad again (D206)',
+  'ads.interestBoost': 'Ads: weight for favorited places and Interested businesses (D206)',
+  'ads.boostedSharePercent': 'Ads: most of the ads picked for someone that may be boosted, in percent (D206)',
+  'ads.notInterestedDays': 'Ads: Not interested hides that business for this many days (D206)',
+  'ads.interestedDays': 'Ads: Interested boosts that business for this many days (D206)',
   'radius.general.maxMiles': 'Largest general-feed radius a user may choose (§7)',
   'radius.business.maxMiles': 'Largest business-room radius (§7, D19)',
   'age.birthYearOffset': 'Eligible if birthYear <= currentYear - offset (§4.2)',

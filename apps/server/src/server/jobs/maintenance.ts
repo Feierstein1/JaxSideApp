@@ -1,3 +1,4 @@
+import { purgeAdMarks } from '../ads/counting';
 import { Prisma } from '@/generated/prisma/client';
 import { evaluateAchievements } from '../achievements';
 import { finalizeDuePolls } from '../polls';
@@ -49,6 +50,9 @@ export interface MaintenanceReport extends Partial<Omit<RetentionReport, 'notifi
   topicsPurged?: number;
   /** D202: subscriptions past their end date, marked expired. */
   subscriptionsExpired?: number;
+  /** D206: ad view marks and old ad choices deleted. */
+  adViewMarksDeleted?: number;
+  adChoicesDeleted?: number;
 }
 
 /**
@@ -165,6 +169,11 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
         data: { status: 'EXPIRED' },
       })
     ).count,
+    // D206: ad view marks after two days; Interested / Not interested once past both windows.
+    ...(await purgeAdMarks(
+      now,
+      Math.max(await getConfig('ads.notInterestedDays'), await getConfig('ads.interestedDays')),
+    )),
   };
   logger.info({ report }, 'maintenance complete');
   return report;

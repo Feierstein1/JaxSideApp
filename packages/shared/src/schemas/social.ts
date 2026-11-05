@@ -47,7 +47,9 @@ export interface NotificationView {
     | 'POST_COMMENT'
     | 'COMMENT_REPLY'
     | 'MENTION'
-    | 'GIVEAWAY_WIN';
+    | 'GIVEAWAY_WIN'
+    | 'STRIKE'
+    | 'CONTENT_REMOVED';
   actor: FriendUser | null;
   /** FRIEND_REQUEST still waiting: its request ID, so it can be answered from the bell. */
   pendingRequestId: string | null;
@@ -64,6 +66,16 @@ export interface NotificationView {
   actorIsOwner: boolean;
   /** D188: GIVEAWAY_WIN: the win to open (from JaxSide, so `actor` is null). */
   giveaway?: { winId: string; title: string } | null;
+  /**
+   * D205: STRIKE or CONTENT_REMOVED (from JaxSide, so `actor` is null). `step` is the strike
+   * (warning, suspension with its hours, ban); `what` is what was removed, when known.
+   */
+  moderation?: {
+    step: 'WARN' | 'SUSPEND' | 'BAN' | null;
+    hours: number | null;
+    what: 'post' | 'comment' | 'photo' | null;
+    reason: string;
+  } | null;
   createdAt: string;
   read: boolean;
 }

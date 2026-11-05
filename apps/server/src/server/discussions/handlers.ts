@@ -158,10 +158,10 @@ async function withinCommentRadius(kind: DiscussionKind, id: string, reading: Lo
 }
 
 /** Guests act through requireActor (P4.2); IDs for rate limits and viewer joins. */
-function actorKey(a: Actor) {
+export function actorKey(a: Actor) {
   return a.kind === 'user' ? `user:${a.user.id}` : `guest:${a.guest.id}`;
 }
-function locationActor(a: Actor): LocationActor {
+export function locationActor(a: Actor): LocationActor {
   return a.kind === 'user' ? { kind: 'user', user: a.user } : { kind: 'guest', guest: a.guest };
 }
 function viewerOf(a: Actor) {

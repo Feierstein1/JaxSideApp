@@ -61,7 +61,7 @@ async function record(
   action: ModerationActionType,
   extra: { durationHours?: number; expiresAt?: Date } = {},
 ) {
-  return tx.moderationAction.create({
+  const row = await tx.moderationAction.create({
     data: {
       adminId: input.adminId,
       targetUserId: input.userId,
@@ -74,6 +74,18 @@ async function record(
       createdAt: input.now,
     },
   });
+  // D205: every strike goes in the person's bell with its reason (hidden again if cancelled).
+  if (STRIKE_ACTIONS.includes(action)) {
+    await tx.notification.create({
+      data: {
+        userId: input.userId,
+        type: 'STRIKE',
+        moderationActionId: row.id,
+        createdAt: input.now,
+      },
+    });
+  }
+  return row;
 }
 
 /** Suspends for `hours`. Never shortens a longer suspension already in force. */

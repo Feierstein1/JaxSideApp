@@ -143,6 +143,68 @@ function GiveawayRow({ n }: { n: NotificationView }) {
   );
 }
 
+/** D205: what a strike or removal notice says. */
+function moderationLine(n: NotificationView): string {
+  const m = n.moderation!;
+  if (n.type === 'CONTENT_REMOVED') {
+    return m.what ? `Your ${m.what} was removed` : 'Something you posted was removed';
+  }
+  if (m.step === 'BAN') return 'Your account was banned';
+  if (m.step === 'SUSPEND' && m.hours) {
+    const length =
+      m.hours % 24 === 0
+        ? `${m.hours / 24} day${m.hours === 24 ? '' : 's'}`
+        : `${m.hours} hour${m.hours === 1 ? '' : 's'}`;
+    return `Your account was suspended for ${length}`;
+  }
+  return 'You got a warning';
+}
+
+/**
+ * D205: a strike or removal from JaxSide, with the reason. A strike opens Account standing
+ * (what happens next, and appeals); a removal opens the community rules.
+ */
+function ModerationRow({ n }: { n: NotificationView }) {
+  const line = moderationLine(n);
+  const strike = n.type === 'STRIKE';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${line}. ${n.moderation!.reason}. ${timeAgo(n.createdAt)}. Opens ${strike ? 'your account standing' : 'the community rules'}.`}
+      onPress={() => router.push(strike ? '/account/standing' : '/account/rules')}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACE.md,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        minHeight: 64,
+        opacity: pressed ? 0.8 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: DARK.errorSoft,
+        }}
+      >
+        <Ionicons name={strike ? 'warning' : 'trash'} size={20} color={DARK.error} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontWeight: n.read ? '600' : '800' }}>{line}</Text>
+        <Text style={[TYPE.caption, { color: DARK.textMuted }]} numberOfLines={3}>
+          {n.moderation!.reason} · {timeAgo(n.createdAt)}
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={DARK.textMuted} />
+    </Pressable>
+  );
+}
+
 /**
  * D76: the bell's list. Opening it marks everything read; requests can be answered here.
  * D79: dark page, requests waiting for an answer first, then everything else.
@@ -182,7 +244,9 @@ export default function Notifications() {
 
   const waiting = items?.filter((n) => n.actor && n.pendingRequestId) ?? [];
   const rest =
-    items?.filter((n) => (n.actor || n.actorIsOwner || n.giveaway) && !n.pendingRequestId) ?? [];
+    items?.filter(
+      (n) => (n.actor || n.actorIsOwner || n.giveaway || n.moderation) && !n.pendingRequestId,
+    ) ?? [];
   const isActivity = (n: NotificationView) => n.target !== null;
 
   return (
@@ -209,7 +273,7 @@ export default function Notifications() {
         <EmptyState
           icon="notifications-off-outline"
           title="You’re all caught up"
-          body="Comments on your posts, replies, @mentions, friend requests and giveaway prizes show up here."
+          body="Comments on your posts, replies, @mentions, friend requests, giveaway prizes and notices about your account show up here."
         />
       ) : (
         <>
@@ -244,6 +308,8 @@ export default function Notifications() {
               {rest.map((n) =>
                 n.giveaway ? (
                   <GiveawayRow key={n.id} n={n} />
+                ) : n.moderation ? (
+                  <ModerationRow key={n.id} n={n} />
                 ) : isActivity(n) ? (
                   <ActivityRow key={n.id} n={n} />
                 ) : (

@@ -45,6 +45,7 @@ export function CaseDecision({
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
   const [strike, setStrike] = useState(false);
+  const [notifyAuthor, setNotifyAuthor] = useState(false);
   const { busy, error, done, run } = useSubmit();
 
   const decide = (decision: string) =>
@@ -60,7 +61,14 @@ export function CaseDecision({
         `/api/v1/admin/cases/${type}/${id}`,
         {
           method: 'POST',
-          body: { decision, reason, internalNote: note || undefined, strike: strike || undefined },
+          body: {
+            decision,
+            reason,
+            internalNote: note || undefined,
+            strike: strike || undefined,
+            // D205: only a removal tells the author.
+            notifyAuthor: (decision === 'remove' && notifyAuthor) || undefined,
+          },
         },
       );
       setTimeout(() => (window.location.href = '/admin/reports'), 800);
@@ -71,7 +79,7 @@ export function CaseDecision({
     <div style={ui.card}>
       <h2 style={{ marginTop: 0 }}>Decision</h2>
       <label style={ui.label}>
-        Reason (optional, except to escalate; shown to the author if they get a strike)
+        Reason (optional, except to escalate; shown to the author with a strike or removal notice)
         <textarea
           style={textarea}
           value={reason}
@@ -91,7 +99,17 @@ export function CaseDecision({
       {hasAuthor ? (
         <label style={{ display: 'block', margin: '4px 0 14px' }}>
           <input type="checkbox" checked={strike} onChange={(e) => setStrike(e.target.checked)} />{' '}
-          Also give the author a strike (warning → 1 day → 7 days → ban)
+          Also give the author a strike (warning → 1 day → 7 days → ban; they’re told in the app)
+        </label>
+      ) : null}
+      {hasAuthor && !isProfile && !removed ? (
+        <label style={{ display: 'block', margin: '4px 0 14px' }}>
+          <input
+            type="checkbox"
+            checked={notifyAuthor}
+            onChange={(e) => setNotifyAuthor(e.target.checked)}
+          />{' '}
+          Tell the author it was removed, with the reason (Remove only)
         </label>
       ) : null}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

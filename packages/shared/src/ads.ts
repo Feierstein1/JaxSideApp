@@ -243,6 +243,8 @@ export function describeSchedule(
 export interface AdTargeting {
   radiusMeters: number | null;
   zips: string[];
+  /** D204: shown to everyone in the area (Premium). */
+  cityWide?: boolean;
 }
 
 export interface LatLng {
@@ -266,13 +268,15 @@ export function metersBetween(a: LatLng, b: LatLng): number {
  * D166: whether an ad is meant for this reader, judged only by the location reading the
  * feed request already carries (never the page being viewed, never anything personal).
  * A reader inside the radius around the place, or in one of the chosen ZIP codes, sees it.
- * An ad with neither isn't targeted at anyone (the editor requires one).
+ * An ad with neither isn't targeted at anyone (the editor requires one). D204: a city-wide
+ * ad reaches every reader (the feed request already proves they're in the area).
  */
 export function targetsReader(
   ad: AdTargeting,
   place: LatLng,
   reader: { point: LatLng; zip: string | null },
 ): boolean {
+  if (ad.cityWide) return true;
   if (ad.radiusMeters !== null && metersBetween(place, reader.point) <= ad.radiusMeters)
     return true;
   return reader.zip !== null && ad.zips.includes(reader.zip);
@@ -293,7 +297,7 @@ export function adSlots(postCount: number, everyN: number): number[] {
 }
 
 /** Small, fast, seeded random numbers (mulberry32), so a page shuffles the same way twice. */
-function seeded(seed: number) {
+export function seeded(seed: number) {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;

@@ -501,3 +501,72 @@ export function BusinessStrikeForm({ id, step }: { id: string; step: string }) {
     </div>
   );
 }
+
+/** B3.3 / D206: approve an ad, or turn it down with a reason the business sees. */
+export function AdDecisionForm({ adId }: { adId: string }) {
+  const [reason, setReason] = useState('');
+  const [rejecting, setRejecting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  async function decide(decision: 'approve' | 'reject') {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await adminFetch(`/api/v1/admin/ads/${adId}/decision`, {
+        method: 'POST',
+        body: decision === 'approve' ? { decision } : { decision, reason: reason.trim() },
+      });
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      {rejecting ? (
+        <label style={ui.label}>
+          What needs to change (the business sees this)
+          <textarea
+            style={{ ...ui.input, minHeight: 60, fontFamily: 'inherit' }}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={500}
+          />
+        </label>
+      ) : null}
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        {rejecting ? (
+          <>
+            <button
+              style={ui.button}
+              disabled={busy || reason.trim().length < 3}
+              onClick={() => decide('reject')}
+            >
+              Send back
+            </button>
+            <button style={ui.buttonSecondary} disabled={busy} onClick={() => setRejecting(false)}>
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <button style={ui.button} disabled={busy} onClick={() => decide('approve')}>
+              Approve
+            </button>
+            <button style={ui.buttonSecondary} disabled={busy} onClick={() => setRejecting(true)}>
+              Turn down
+            </button>
+          </>
+        )}
+      </div>
+      {error ? (
+        <p role="alert" style={ui.error}>
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}

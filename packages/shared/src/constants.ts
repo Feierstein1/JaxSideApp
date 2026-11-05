@@ -288,6 +288,28 @@ export const CONFIG_DEFAULTS = {
   /** Admin portal changes per admin (P5.14). Generous; stops runaway scripts. */
   'rateLimit.adminAction.perMinute': 60,
   'rateLimit.feed.perMinute': 60,
+
+  // D206: ads in the feeds (B3.4)
+  /** The first ad comes after this many posts. */
+  'ads.firstSlot': 4,
+  /** Then one ad about every this many posts (±1), for signed-in people… */
+  'ads.every': 8,
+  /** …and for guests (D167: guests see ads a little more often). */
+  'ads.everyGuest': 6,
+  /** The phone doesn't show the same ad again for this many hours. */
+  'ads.cooldownHours': 3,
+  /** Weight for a place the reader favorited or whose ads they marked Interested. */
+  'ads.interestBoost': 2,
+  /** At most this share (percent) of the ads picked for someone are boosted ones. */
+  'ads.boostedSharePercent': 50,
+  /** "Not interested" hides that business's ads from the person for this many days. */
+  'ads.notInterestedDays': 30,
+  /** "Interested" boosts that business for this many days. */
+  'ads.interestedDays': 30,
+  'rateLimit.ads.perMinute': 60,
+  /** Batches of ad views the phone sends (one batch holds up to 50). */
+  'rateLimit.adViews.perMinute': 30,
+  'rateLimit.adInterest.perMinute': 30,
 } as const;
 
 export type ConfigKey = keyof typeof CONFIG_DEFAULTS;

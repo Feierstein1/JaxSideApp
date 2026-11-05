@@ -236,6 +236,8 @@ model User {
   giveawaysCreated Giveaway[]       @relation("GiveawayCreator")
   giveawayWins     GiveawayWinner[] @relation("GiveawayWins")
   giveawayPicks    GiveawayWinner[] @relation("GiveawayPicker")
+  /// D206: Interested / Not interested on ads.
+  adInterests      AdInterest[]
 
   @@index([status])
 }
@@ -998,32 +1000,39 @@ enum NotificationType {
   MENTION
   /// D188: you won a giveaway; open it to accept or decline the prize.
   GIVEAWAY_WIN
+  /// D205: you got a strike (warning, suspension or ban), with the reason.
+  STRIKE
+  /// D205: an admin removed something you posted and chose to tell you, with the reason.
+  CONTENT_REMOVED
 }
 
 model Notification {
-  id               String           @id @default(uuid(7)) @db.Uuid
-  userId           String           @db.Uuid
-  type             NotificationType
-  actorId          String?          @db.Uuid
-  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
-  readAt           DateTime?        @db.Timestamptz(3)
+  id                 String            @id @default(uuid(7)) @db.Uuid
+  userId             String            @db.Uuid
+  type               NotificationType
+  actorId            String?           @db.Uuid
+  createdAt          DateTime          @default(now()) @db.Timestamptz(3)
+  readAt             DateTime?         @db.Timestamptz(3)
   /// D156: the post (and comment) a comment, reply or mention notification points to.
-  generalPostId    String?          @db.Uuid
-  businessPostId   String?          @db.Uuid
-  commentId        String?          @db.Uuid
+  generalPostId      String?           @db.Uuid
+  businessPostId     String?           @db.Uuid
+  commentId          String?           @db.Uuid
   /// D156: unread comments on one post are one row ("5 new comments").
-  count            Int              @default(1)
-  user             User             @relation("NotificationFor", fields: [userId], references: [id], onDelete: Cascade)
-  actor            User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  count              Int               @default(1)
+  user               User              @relation("NotificationFor", fields: [userId], references: [id], onDelete: Cascade)
+  actor              User?             @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
   /// D172: the place's business answered (business website); shown as "The Owner".
-  actorBusinessId  String?          @db.Uuid
-  actorBusiness    BusinessAccount? @relation(fields: [actorBusinessId], references: [id], onDelete: Cascade)
-  generalPost      GeneralPost?     @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
-  businessPost     BusinessPost?    @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
-  comment          Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  actorBusinessId    String?           @db.Uuid
+  actorBusiness      BusinessAccount?  @relation(fields: [actorBusinessId], references: [id], onDelete: Cascade)
+  generalPost        GeneralPost?      @relation(fields: [generalPostId], references: [id], onDelete: Cascade)
+  businessPost       BusinessPost?     @relation(fields: [businessPostId], references: [id], onDelete: Cascade)
+  comment            Comment?          @relation(fields: [commentId], references: [id], onDelete: Cascade)
   /// D188: the giveaway win this notification is about (no actor: it comes from JaxSide).
-  giveawayWinnerId String?          @db.Uuid
-  giveawayWinner   GiveawayWinner?  @relation(fields: [giveawayWinnerId], references: [id], onDelete: Cascade)
+  giveawayWinnerId   String?           @db.Uuid
+  giveawayWinner     GiveawayWinner?   @relation(fields: [giveawayWinnerId], references: [id], onDelete: Cascade)
+  /// D205: STRIKE or CONTENT_REMOVED: the moderation record it's about (no actor: from JaxSide).
+  moderationActionId String?           @db.Uuid
+  moderationAction   ModerationAction? @relation(fields: [moderationActionId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   // P13.1: the unread bell count; createdAt for the purge
@@ -1037,6 +1046,8 @@ model Notification {
   @@index([businessPostId], where: raw("\"businessPostId\" IS NOT NULL"))
   @@index([commentId], where: raw("\"commentId\" IS NOT NULL"))
   @@index([giveawayWinnerId], where: raw("\"giveawayWinnerId\" IS NOT NULL"))
+  // D205: deleting a moderation record (cascade) finds its notice
+  @@index([moderationActionId], where: raw("\"moderationActionId\" IS NOT NULL"))
   // P13.7: purge of read notifications
   @@index([readAt], where: raw("\"readAt\" IS NOT NULL"))
 }
@@ -1222,6 +1233,8 @@ model ModerationAction {
   submission           BusinessSubmission?  @relation(fields: [submissionId], references: [id], onDelete: SetNull)
   report               Report?              @relation(fields: [reportId], references: [id], onDelete: SetNull)
   appeals              Appeal[]
+  /// D205: the bell notice telling the person about it.
+  notifications        Notification[]
 
   @@index([targetUserId, createdAt])
   @@index([targetBusinessId, createdAt])
@@ -1600,6 +1613,8 @@ enum TopicScope {
 /// D125: a citywide discussion topic (all of Duval, no radius).
 model CityTopic {
   id             String                                 @id @default(uuid(7)) @db.Uuid
+  /// D167 / D206: an admin switched this topic to ad-free.
+  adFree         Boolean                                @default(false)
   title          String                                 @db.VarChar(80)
   /// D131: a key from TOPIC_CATEGORIES in @jax/shared (the same list as poll topics).
   category       String                                 @default("other") @db.VarChar(30)
@@ -2017,6 +2032,9 @@ model Ad {
   media         AdMedia?         @relation(fields: [mediaId], references: [id], onDelete: SetNull)
   reviews       AdReview[]
   dailyStats    AdDailyStats[]
+  /// D206.
+  interests     AdInterest[]
+  viewMarks     AdViewMark[]
 
   @@index([accountId, status])
   @@index([status, startsAt, endsAt])
@@ -2056,6 +2074,44 @@ model AdDailyStats {
   ad            Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
 
   @@id([adId, day])
+}
+
+/// D206: Interested / Not interested, one per person per ad. Interested boosts that business's
+/// ads for the person (ads.interestedDays); Not interested hides them (ads.notInterestedDays).
+/// Deleted once older than both, so it's never a long-term profile.
+model AdInterest {
+  userId    String         @db.Uuid
+  adId      String         @db.Uuid
+  /// The ad's business (owner account), so "this business" is one lookup.
+  accountId String         @db.Uuid
+  choice    AdInterestKind
+  /// The day (Jacksonville) it was counted in AdDailyStats, to move the count on a change.
+  countedOn DateTime       @db.Date
+  updatedAt DateTime       @default(now()) @db.Timestamptz(3)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ad        Ad             @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@id([userId, adId])
+  @@index([userId, accountId, updatedAt])
+  @@index([adId])
+  @@index([updatedAt])
+}
+
+enum AdInterestKind {
+  INTERESTED
+  NOT_INTERESTED
+}
+
+/// D206: a view is counted once per person per ad per day. `viewer` is a keyed hash of the
+/// person or guest (never the ID itself); rows are deleted after two days.
+model AdViewMark {
+  adId   String   @db.Uuid
+  viewer String   @db.Char(43)
+  day    DateTime @db.Date
+  ad     Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@id([adId, viewer, day])
+  @@index([day])
 }
 
 enum BusinessNoticeKind {

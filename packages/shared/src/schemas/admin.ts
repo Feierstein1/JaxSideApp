@@ -42,10 +42,16 @@ export const DEFAULT_ENFORCEMENT_REASON = 'Broke the Community Guidelines';
 export const caseDecisionSchema = z
   .strictObject({
     decision: z.enum(CASE_DECISIONS),
-    /** Recorded; shown to the person if they get a strike. Blank: a standard one (D196). */
+    /** Recorded; shown to the person with a strike or removal notice. Blank: a standard one (D196). */
     reason: optionalReason,
     internalNote,
     strike: z.boolean().optional(),
+    /** D205: removing only: put "your post was removed" (with the reason) in the author's bell. */
+    notifyAuthor: z.boolean().optional(),
+  })
+  .refine((d) => !d.notifyAuthor || d.decision === 'remove', {
+    path: ['notifyAuthor'],
+    message: 'Only a removal can notify the author',
   })
   // A child-safety escalation goes on the legal hold, so it always says why.
   .refine((d) => d.decision !== 'escalate' || (d.reason?.length ?? 0) >= 3, {
@@ -128,6 +134,18 @@ export const screeningRuleUpdateSchema = z
 
 /** Try a sentence against the rules. */
 export const screeningTestSchema = z.strictObject({ text: z.string().min(1).max(2000) });
+
+/** B3.3 / D206: approve an ad, or turn it down with a reason the business sees. */
+export const adminAdDecisionSchema = z
+  .strictObject({
+    decision: z.enum(['approve', 'reject']),
+    reason: z.string().trim().min(3).max(500).optional(),
+  })
+  .refine((d) => d.decision === 'approve' || d.reason, {
+    path: ['reason'],
+    message: 'Say what needs to change',
+  });
+export type AdminAdDecision = z.infer<typeof adminAdDecisionSchema>;
 
 /** B1.7 / D172: the admin portal's Businesses section. */
 export const adminBusinessActionSchema = z.strictObject({

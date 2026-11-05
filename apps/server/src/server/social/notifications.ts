@@ -34,13 +34,15 @@ export async function notify(
 /**
  * Notifications whose sender still has an active account, or (D172) that came from a
  * business on the business website (shown as "The Owner"; a revoked login stops them),
- * or (D188) a giveaway win, which comes from JaxSide itself.
+ * or (D188) a giveaway win, which comes from JaxSide itself, or (D205) a strike or removal
+ * notice from JaxSide (gone again if the strike is cancelled).
  */
 const FROM_LIVE_ACTOR = {
   OR: [
     { actor: { status: 'ACTIVE' as const } },
     { actorBusinessId: { not: null }, actorBusiness: { revokedAt: null } },
     { giveawayWinnerId: { not: null } },
+    { moderationActionId: { not: null }, moderationAction: { voidedAt: null } },
   ],
 };
 
@@ -237,6 +239,18 @@ export async function listNotifications(userId: string): Promise<NotificationVie
         select: { id: true, username: true, profile: true },
       },
       giveawayWinner: { select: { id: true, giveaway: { select: { title: true } } } },
+      // Only what the person may see: never the internal note or who decided.
+      moderationAction: {
+        select: {
+          action: true,
+          durationHours: true,
+          reason: true,
+          generalPostId: true,
+          businessPostId: true,
+          commentId: true,
+          photoId: true,
+        },
+      },
     },
   });
   // Requests still waiting can be answered right from the bell.
@@ -276,6 +290,7 @@ export async function listNotifications(userId: string): Promise<NotificationVie
     giveaway: r.giveawayWinner
       ? { winId: r.giveawayWinner.id, title: r.giveawayWinner.giveaway.title }
       : null,
+    moderation: r.moderationAction ? moderationNotice(r.moderationAction) : null,
     createdAt: r.createdAt.toISOString(),
     read: r.readAt !== null,
   }));
@@ -286,6 +301,32 @@ export async function markAllRead(userId: string) {
     where: { userId, readAt: null },
     data: { readAt: new Date() },
   });
+}
+
+/** D205: a strike or removal notice: the step, what was removed, and the reason. */
+function moderationNotice(a: {
+  action: string;
+  durationHours: number | null;
+  reason: string;
+  generalPostId: string | null;
+  businessPostId: string | null;
+  commentId: string | null;
+  photoId: string | null;
+}): NonNullable<NotificationView['moderation']> {
+  const step =
+    a.action === 'WARN' || a.action === 'SUSPEND' || a.action === 'BAN' ? a.action : null;
+  return {
+    step,
+    hours: step === 'SUSPEND' ? a.durationHours : null,
+    what: a.commentId
+      ? 'comment'
+      : a.photoId
+        ? 'photo'
+        : a.generalPostId || a.businessPostId
+          ? 'post'
+          : null,
+    reason: a.reason,
+  };
 }
 
 /** The post (and comment) a notification opens. */

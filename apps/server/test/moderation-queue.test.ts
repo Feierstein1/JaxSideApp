@@ -8,6 +8,8 @@ import { GET as usersGET } from '@/app/api/v1/admin/users/route';
 import { GET as userGET } from '@/app/api/v1/admin/users/[id]/route';
 import { POST as userActionPOST } from '@/app/api/v1/admin/users/[id]/actions/route';
 import { GET as myReportsGET } from '@/app/api/v1/me/reports/route';
+import { GET as bellGET } from '@/app/api/v1/notifications/route';
+import { GET as unreadGET } from '@/app/api/v1/notifications/unread/route';
 import { POST as meAppealsPOST } from '@/app/api/v1/me/appeals/route';
 import { GET as standingGET } from '@/app/api/v1/me/standing/route';
 import { POST as postsPOST } from '@/app/api/v1/posts/route';
@@ -21,6 +23,7 @@ import { importOsmPlaces } from '@/server/directory/osm';
 import { readBoundaryFile } from '@/server/location/boundary-file';
 import { importServiceArea } from '@/server/location/service-area';
 import { invalidateScreeningCache } from '@/server/moderation/screening';
+import { listNotifications } from '@/server/social/notifications';
 import { adminHeaders } from './admin-helpers';
 import { relaxBurstLimits, resetDb } from './db-helpers';
 import { callRoute as call, type AnyHandler as H } from './route-call';
@@ -319,5 +322,84 @@ describe('user tools (P5.6, P5.14)', () => {
     });
     expect(r.status).toBe(200);
     expect((await call(standingGET as H, 'GET', { token: alice })).body.strikes).toHaveLength(0);
+  });
+});
+
+describe('D205: telling the person', () => {
+  const bell = async (t: string) =>
+    (await call(bellGET as H, 'GET', { token: t })).body.notifications as {
+      type: string;
+      actor: unknown;
+      target: unknown;
+      moderation: Record<string, unknown> | null;
+    }[];
+
+  it('a removal tells the author only when asked, with the reason and never the note', async () => {
+    const quiet = await newPost('removed without a word');
+    await report(bob, { type: 'general', id: quiet });
+    await decide('general', quiet, { decision: 'remove', reason: 'Spam' });
+    expect(await bell(alice)).toEqual([]);
+
+    const told = await newPost('removed and told');
+    await report(bob, { type: 'general', id: told });
+    const r = await decide('general', told, {
+      decision: 'remove',
+      reason: 'Personal attack',
+      internalNote: 'secret admin note',
+      notifyAuthor: true,
+    });
+    expect(r.status).toBe(200);
+    const items = await bell(alice);
+    expect(items).toEqual([
+      expect.objectContaining({
+        type: 'CONTENT_REMOVED',
+        actor: null,
+        target: null,
+        moderation: { step: null, hours: null, what: 'post', reason: 'Personal attack' },
+      }),
+    ]);
+    expect(JSON.stringify(items)).not.toContain('secret admin note');
+    expect((await call(unreadGET as H, 'GET', { token: alice })).body).toMatchObject({ unread: 1 });
+  });
+
+  it('only a removal can notify', async () => {
+    const id = await newPost('a fine post');
+    await report(bob, { type: 'general', id });
+    expect((await decide('general', id, { decision: 'dismiss', notifyAuthor: true })).status).toBe(
+      400,
+    );
+    expect(await db.notification.count()).toBe(0);
+  });
+
+  it('every strike is in the bell; cancelling it takes the notice away', async () => {
+    const id = await newPost('rude post again');
+    await report(bob, { type: 'general', id });
+    await decide('general', id, { decision: 'remove', strike: true, notifyAuthor: true });
+    const act = (body: Record<string, unknown>) =>
+      call(userActionPOST as H, 'POST', { headers: admin, params: { id: aliceId }, body });
+    expect((await act({ action: 'suspend', hours: 48, reason: 'Threats' })).status).toBe(200);
+    // Suspended, so read the list directly (they see it when the suspension ends).
+    const items = await listNotifications(aliceId);
+    // The removal and its warning share one moment, so their order isn't fixed.
+    expect(items).toHaveLength(3);
+    expect(items.map((n) => [n.type, n.moderation])).toEqual(
+      expect.arrayContaining([
+        ['STRIKE', { step: 'SUSPEND', hours: 48, what: null, reason: 'Threats' }],
+        [
+          'STRIKE',
+          { step: 'WARN', hours: null, what: null, reason: 'Broke the Community Guidelines' },
+        ],
+        [
+          'CONTENT_REMOVED',
+          { step: null, hours: null, what: 'post', reason: 'Broke the Community Guidelines' },
+        ],
+      ]),
+    );
+    const warn = await db.moderationAction.findFirstOrThrow({ where: { action: 'WARN' } });
+    expect((await act({ action: 'void', strikeId: warn.id, reason: 'Mistake' })).status).toBe(200);
+    expect((await listNotifications(aliceId)).map((n) => n.moderation?.step)).toEqual([
+      'SUSPEND',
+      null,
+    ]);
   });
 });

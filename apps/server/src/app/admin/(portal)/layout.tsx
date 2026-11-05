@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Sidebar, ui, type NavGroup } from '../admin-ui';
+import { Sidebar } from '../admin-nav';
+import { ui, type NavGroup } from '../admin-ui';
 import { requireAdminPage } from '../require-admin-page';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,7 @@ const NAV: NavGroup[] = [
       { href: '/admin/ratings', label: 'Ratings' },
       { href: '/admin/owners', label: 'Owners' },
       { href: '/admin/businesses', label: 'Businesses' },
+      { href: '/admin/ads', label: 'Ads to review' },
     ],
   },
   {

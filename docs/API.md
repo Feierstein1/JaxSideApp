@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-177 endpoints.
+182 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -12,6 +12,20 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
   like `{ "error": { "code", "message", "details"? } }`; rate limits answer 429 with `Retry-After`.
 - The app also sends `X-Installation-Token` (from `POST /installations`) for ban carry-over.
 
+
+## ad-images
+
+| Method | Path | Who | Location | What it does |
+| --- | --- | --- | --- | --- |
+| GET | `/api/v1/ad-images/:id` | signed link (from a post or profile) |  | D206: serves an ad's image or GIF through a short-lived signed link (ad cards carry the links). Expired or forged links get 403; removed, unknown, or not on an approved ad: 404. |
+
+## ads
+
+| Method | Path | Who | Location | What it does |
+| --- | --- | --- | --- | --- |
+| POST | `/api/v1/ads` | public |  | D206 / B3.4: the ads to show on the screen the phone is on (guests too). |
+| POST | `/api/v1/ads/:id/interest` | public |  | D206: Interested / Not interested on an ad (accounts only). |
+| POST | `/api/v1/ads/views` | public |  | D206: a batch of ad views (counted once per person per ad per day). |
 
 ## badges
 
@@ -111,13 +125,13 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
-| POST | `/api/v1/videos` | user (confirmed email) |  | D102: upload one video (the MP4/MOV bytes as the body, up to 30 s and 25 MB). Confirmed users only; up to 5 videos a day (D198; over it: 429 `UPLOAD_LIMIT`); checked and cleaned before storing. Attach it to a post by ID. |
+| POST | `/api/v1/videos` | user (confirmed email) |  | D102: upload one video (the MP4/MOV bytes as the body, up to 30 s and 25 MB). Confirmed users only; shares the daily upload limit; checked and cleaned before storing. Attach it to a post by ID. |
 
 ## voice
 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
-| POST | `/api/v1/voice` | user (confirmed email) |  | D75: upload one voice clip (the .m4a bytes as the body). Confirmed users only; up to 15 voice clips a day (D198; over it: 429 `UPLOAD_LIMIT`); checked before storing. Attach it to a post by ID. |
+| POST | `/api/v1/voice` | user (confirmed email) |  | D75: upload one voice clip (the .m4a bytes as the body). Confirmed users only; shares the daily upload limit with photos; checked before storing. Attach it to a post by ID. |
 
 ## health
 
@@ -269,7 +283,7 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
-| POST | `/api/v1/photos` | user (confirmed email) |  | P6.1/P6.2: upload one photo (the raw image bytes as the body). Registered users with a confirmed email only; up to 30 photos a day (D198; over it: 429 `UPLOAD_LIMIT`); the server checks and re-encodes it before anything is stored (D65). Returns an ID to attach to a post or set as your avatar. |
+| POST | `/api/v1/photos` | user (confirmed email) |  | P6.1/P6.2: upload one photo (the raw image bytes as the body). Registered users with a confirmed email only; rate-limited; the server checks and re-encodes it before anything is stored (D65). Returns an ID to attach to a post or set as your avatar. |
 | GET | `/api/v1/photos/:id` | signed link (from a post or profile) |  | P6.4: serves a photo through a short-lived signed link (posts and profiles carry the links; the storage bucket itself is private). Expired or forged links get 403; removed, unattached-and-stale, or unknown photos 404. |
 
 ## reports
@@ -289,6 +303,7 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
+| POST | `/api/v1/admin/ads/:id/decision` | admin (cookie + CSRF) |  | B3.3 / D206: approve an ad or turn it down (with a reason). Audited. |
 | GET | `/api/v1/admin/appeals` | admin (cookie + CSRF) |  | P5.7 / P5.14: appeals waiting (or decided). |
 | POST | `/api/v1/admin/appeals/:id` | admin (cookie + CSRF) |  | P5.7: accept (cancels the strike) or reject an appeal, with a note the person sees. |
 | GET | `/api/v1/admin/audit` | admin (cookie + CSRF) |  | P5.16: the admin audit log, newest first. |

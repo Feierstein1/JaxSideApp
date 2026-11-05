@@ -24,6 +24,9 @@ import * as bizVote from '@/app/api/v1/business-posts/[id]/vote/route';
 import * as comment from '@/app/api/v1/comments/[id]/route';
 import * as commentVote from '@/app/api/v1/comments/[id]/vote/route';
 import * as feed from '@/app/api/v1/feed/route';
+import * as ads from '@/app/api/v1/ads/route';
+import * as adViews from '@/app/api/v1/ads/views/route';
+import * as adInterest from '@/app/api/v1/ads/[id]/interest/route';
 import * as guests from '@/app/api/v1/guests/route';
 import * as installations from '@/app/api/v1/installations/route';
 import * as locationStatus from '@/app/api/v1/location/status/route';
@@ -813,6 +816,35 @@ const ROWS: Row[] = [
     id: 'place',
     location: true,
     body: (at) => ({ reading: r(at) }),
+  },
+  {
+    // D206: the ads for a screen; the same location rule as reading it.
+    route: 'ads',
+    method: 'POST',
+    handler: h(ads, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at), context: { kind: 'feed' }, count: 2 }),
+  },
+  {
+    route: 'ads/views',
+    method: 'POST',
+    handler: h(adViews, 'POST'),
+    auth: true,
+    id: null,
+    location: false,
+    body: () => ({ adIds: ['00000000-0000-7000-8000-000000000000'] }),
+  },
+  {
+    // Any UUID: the guards run before the lookup.
+    route: 'ads/[id]/interest',
+    method: 'POST',
+    handler: h(adInterest, 'POST'),
+    auth: true,
+    id: 'post',
+    location: false,
+    body: () => ({ choice: 'INTERESTED' }),
   },
   {
     route: 'feed',

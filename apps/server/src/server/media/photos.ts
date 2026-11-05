@@ -146,8 +146,10 @@ export const attachVideo = (
 
 // ───────────────────────────── Signed links ─────────────────────────────
 
-/** `kind` keeps a photo link from opening a business picture with the same ID, and back. */
-function sig(id: string, exp: number, kind: 'photo' | 'business-picture' = 'photo') {
+/** `kind` keeps a link for one kind of image from opening another kind with the same ID. */
+type LinkKind = 'photo' | 'business-picture' | 'ad-image';
+
+function sig(id: string, exp: number, kind: LinkKind = 'photo') {
   return createHmac('sha256', getEnv().SESSION_SECRET)
     .update(`${kind}:${id}:${exp}`)
     .digest('base64url');
@@ -171,13 +173,29 @@ export function checkSignature(
   exp: string | null,
   given: string | null,
   now = new Date(),
-  kind: 'photo' | 'business-picture' = 'photo',
+  kind: LinkKind = 'photo',
 ) {
   const e = Number(exp);
   if (!Number.isInteger(e) || e < now.getTime() / 1000 || !given) return false;
   const a = Buffer.from(given);
   const b = Buffer.from(sig(id, e, kind));
   return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/** D206: an ad's image or GIF, the same way (works for an hour). */
+export function signedAdImageUrl(id: string, now = new Date()) {
+  const exp = Math.ceil(now.getTime() / 1000 / 600) * 600 + LINK_TTL_SECONDS;
+  return `/api/v1/ad-images/${id}?exp=${exp}&sig=${sig(id, exp, 'ad-image')}`;
+}
+
+/** D206: bytes for an ad image that belongs to an approved ad, or null. */
+export async function readAdImage(id: string) {
+  const m = await db.adMedia.findFirst({
+    where: { id, status: 'ACTIVE', ads: { some: { status: 'APPROVED' } } },
+  });
+  if (!m?.storageKey) return null;
+  const body = await objectStore().get(m.storageKey);
+  return body ? { body, mimeType: m.mimeType ?? 'image/jpeg' } : null;
 }
 
 /** D189: bytes for a business login's live profile picture, or null. */
