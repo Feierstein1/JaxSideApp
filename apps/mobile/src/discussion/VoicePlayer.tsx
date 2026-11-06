@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
@@ -10,10 +10,8 @@ import {
 import { DARK, type VoiceView } from '@jax/shared';
 import { clock } from '@/format';
 import { Text } from '@/text';
+import { claimMedia } from './media-focus';
 import { photoUri } from './photos';
-
-/** Only one clip plays at a time across the app. */
-let current: AudioPlayer | null = null;
 
 /**
  * D84: pausing another clip must never crash. Its player may already be released (its post
@@ -32,7 +30,14 @@ function pauseQuietly(p: AudioPlayer) {
  * D75: play/pause a voice post with a progress bar and time. The clip loads on the first
  * tap (not when the feed scrolls by), through the post's signed link.
  */
-export function VoicePlayer({ voice }: { voice: Pick<VoiceView, 'url' | 'durationMs'> }) {
+export function VoicePlayer({
+  voice,
+  mediaKey = 'voice',
+}: {
+  voice: Pick<VoiceView, 'url' | 'durationMs'>;
+  /** D203: the post it belongs to, so scrolling past or opening the post stops it. */
+  mediaKey?: string;
+}) {
   const player = useAudioPlayer(null);
   const status = useAudioPlayerStatus(player);
   const total = status.duration > 0 ? status.duration : voice.durationMs / 1000;
@@ -49,21 +54,22 @@ export function VoicePlayer({ voice }: { voice: Pick<VoiceView, 'url' | 'duratio
     void player.seekTo(0).catch(() => undefined);
   }, [status.didJustFinish, player]);
 
-  // D84: forget this player when it goes away, so nothing tries to pause a released one.
-  useEffect(
-    () => () => {
-      if (current === player) current = null;
-    },
-    [player],
-  );
+  // D84 / D203: only one clip or video plays at a time. Stopping rewinds this one; the claim is
+  // dropped when the player goes away, so nothing tries to pause a released one.
+  const release = useRef<(() => void) | null>(null);
+  const stop = useCallback(() => {
+    pauseQuietly(player);
+    void player.seekTo(0).catch(() => undefined);
+  }, [player]);
+  useEffect(() => () => release.current?.(), []);
 
   async function toggle() {
     if (status.playing) {
       player.pause();
       return;
     }
-    if (current && current !== player) pauseQuietly(current);
-    current = player;
+    release.current?.();
+    release.current = claimMedia(mediaKey, stop);
     if (!status.isLoaded) {
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
       player.replace({ uri: photoUri(voice.url) });

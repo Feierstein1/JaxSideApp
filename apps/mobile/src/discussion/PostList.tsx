@@ -15,6 +15,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Text } from '@/text';
 import { Button, EmptyState, ErrorState, type IconName } from '@/ui';
 import { takeFeedsDirty, type PostPage } from './api';
+import { stopMediaNotIn } from './media-focus';
 import { PostCard, PostSkeleton } from './PostCard';
 
 type Row = { kind: 'post'; post: PostView } | { kind: 'ad'; ad: Ad; after: number };
@@ -149,9 +150,22 @@ export function PostList({
   }, [posts, ads]);
 
   // FlatList needs the same callback for its whole life.
-  const onViewable = useRef(({ viewableItems }: { viewableItems: { item: Row }[] }) => {
-    for (const v of viewableItems) if (v.item.kind === 'ad') adSeen(v.item.ad.id);
-  }).current;
+  const viewabilityPairs = useRef([
+    {
+      viewabilityConfig: AD_VIEWABILITY,
+      onViewableItemsChanged: ({ viewableItems }: { viewableItems: { item: Row }[] }) => {
+        for (const v of viewableItems) if (v.item.kind === 'ad') adSeen(v.item.ad.id);
+      },
+    },
+    {
+      // D203: a clip or video stops and resets as soon as its post has scrolled out of view.
+      viewabilityConfig: { itemVisiblePercentThreshold: 1 },
+      onViewableItemsChanged: ({ viewableItems }: { viewableItems: { item: Row }[] }) =>
+        stopMediaNotIn(
+          new Set(viewableItems.flatMap((v) => (v.item.kind === 'post' ? [v.item.post.id] : []))),
+        ),
+    },
+  ]).current;
 
   useEffect(() => {
     void fetchPage('loading');
@@ -171,6 +185,7 @@ export function PostList({
         style={{ backgroundColor: DARK.page }}
         contentContainerStyle={{ paddingTop: 4, paddingBottom: 110, flexGrow: 1 }}
         data={rows}
+        viewabilityConfigCallbackPairs={viewabilityPairs}
         onScroll={onScrollY ? (e) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}
         scrollEventThrottle={32}
         keyExtractor={(r) => (r.kind === 'post' ? r.post.id : `ad:${r.after}:${r.ad.id}`)}
@@ -181,8 +196,6 @@ export function PostList({
             <PostCard post={item.post} onOpen={() => onOpen(item.post)} onError={setError} />
           )
         }
-        onViewableItemsChanged={adContextKey ? onViewable : undefined}
-        viewabilityConfig={AD_VIEWABILITY}
         ListHeaderComponent={
           <>
             {header}

@@ -12,6 +12,7 @@ import { RADIUS, SPACE } from '@/tokens';
 import { DECO, DecoBox } from '@/deco';
 import { Bone, Pulse } from '@/ui';
 import { PhotoGrid } from './PhotoGrid';
+import { stopMedia } from './media-focus';
 import { VideoPlayer } from './VideoPlayer';
 import { VoicePlayer } from './VoicePlayer';
 import { VoteControl } from './VoteControl';
@@ -146,7 +147,10 @@ export function PostCard({
     <Pressable
       accessibilityRole={onOpen ? 'button' : undefined}
       accessibilityLabel={`Post by ${name}${post.isMine ? ' (you)' : ''}, ${meta}. ${post.voice ? 'Voice post. ' : ''}${post.body}`}
-      onPress={onOpen}
+      onPress={() => {
+        stopMedia(); // D203: the post opens on its own page; nothing keeps playing
+        onOpen?.();
+      }}
       disabled={!onOpen}
       style={{ marginHorizontal: SPACE.md, marginVertical: 6 }}
     >
@@ -384,13 +388,13 @@ export function PostCard({
             {/* D75: voice posts play right in the card. */}
             {post.voice ? (
               <View style={{ marginTop: SPACE.md }}>
-                <VoicePlayer voice={post.voice} />
+                <VoicePlayer voice={post.voice} mediaKey={post.id} />
               </View>
             ) : null}
             {/* D102: plays when tapped (nothing loads while scrolling). */}
             {post.video ? (
               <View style={{ marginTop: SPACE.md }}>
-                <VideoPlayer video={post.video} />
+                <VideoPlayer video={post.video} mediaKey={post.id} />
               </View>
             ) : null}
             <PhotoGrid
@@ -417,7 +421,10 @@ export function PostCard({
               <Pressable
                 accessibilityRole={onOpen ? 'button' : undefined}
                 accessibilityLabel={`${post.commentCount} comments`}
-                onPress={onOpen}
+                onPress={() => {
+                  stopMedia();
+                  onOpen?.();
+                }}
                 disabled={!onOpen}
                 style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
               >

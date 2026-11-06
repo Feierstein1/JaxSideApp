@@ -6,6 +6,7 @@ import { DARK, type VideoView as VideoInfo } from '@jax/shared';
 import { clock } from '@/format';
 import { Text } from '@/text';
 import { RADIUS } from '@/tokens';
+import { claimMedia } from './media-focus';
 import { photoUri } from './photos';
 
 /**
@@ -15,12 +16,20 @@ import { photoUri } from './photos';
 export function VideoPlayer({
   video,
   localUri,
+  mediaKey = 'video',
 }: {
+  /** D203: the post it belongs to, so scrolling past or opening the post resets it. */
+  mediaKey?: string;
   video: Pick<VideoInfo, 'url' | 'durationMs' | 'width' | 'height'>;
   /** Composer preview: the file on the phone instead of the server link. */
   localUri?: string;
 }) {
   const [started, setStarted] = useState(false);
+  // D203: while playing it holds the "now playing" claim; losing it puts the play tile back.
+  useEffect(() => {
+    if (!started) return;
+    return claimMedia(mediaKey, () => setStarted(false));
+  }, [started, mediaKey]);
   const ratio = video.width && video.height ? video.width / video.height : 16 / 9;
   // Very tall phone videos get a box a bit taller than wide (they're letterboxed inside).
   const box = {
