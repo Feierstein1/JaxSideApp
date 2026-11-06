@@ -9,6 +9,7 @@ import { ensureGuide } from '@/guides/guide';
 import { LocationGate } from '@/location/LocationGate';
 import { haptic } from '@/motion';
 import { FONT } from '@/text';
+import { useIdleReset } from '@/idle-reset';
 import { headerOptions, type IconName } from '@/ui';
 
 /**
@@ -56,6 +57,7 @@ export default function AppLayout() {
   const [permission, request] = Location.useForegroundPermissions();
   const { isGuest } = useGuest();
   const granted = !!permission?.granted;
+  useIdleReset(); // D202
   // D104: once, the first time a guest gets in.
   useEffect(() => {
     if (isGuest && granted) void ensureGuide('guestWelcome');

@@ -84,7 +84,8 @@ export function openAuthor(a: AnyAuthor) {
   if ('username' in a) router.push(`/user/${encodeURIComponent(a.username)}`);
 }
 
-const CLAMP = 8;
+/** D202: a post longer than this many lines is cut short with "Continue reading". */
+const CLAMP = 3;
 /** D79: a post this well received gets a small "Popular" tag. */
 const POPULAR = 10;
 /** D140: posts from the last 24 hours get a NEW tag on the name's line, far right. */
@@ -96,7 +97,7 @@ const NEW_FOR_MS = 24 * 3_600_000;
  * color, username (★ on your own, medals), and "5 min ago · 120 yd" under it. Then the
  * text, voice clip or photos, and a row of pill buttons: votes and comments. The color,
  * name and photo are the author's current ones, so changes show on all posts. In the feed
- * long posts stop after 8 lines with "Read more".
+ * long posts stop after 3 lines with "Continue reading" (and "Hide text" to fold them again).
  */
 export function PostCard({
   post,
@@ -121,7 +122,10 @@ export function PostCard({
   const author = post.author;
   const name = authorName(author);
   const color = profileColor('color' in author ? author.color : 'slate');
-  const [clamped, setClamped] = useState(false);
+  // D202: how many lines the whole text needs (measured by a hidden copy), and if it is opened.
+  const [totalLines, setTotalLines] = useState(0);
+  const [expanded, setExpanded] = useState(false);
+  const clamped = !full && totalLines > CLAMP;
   const faint = contrastRatio(color.hex, DARK.card) < 2;
   const isUser = 'username' in author;
   const isOwner = 'theOwner' in author; // D157
@@ -135,6 +139,8 @@ export function PostCard({
   ]
     .filter(Boolean)
     .join(' · ');
+
+  const bodyStyle = { fontSize: full ? 17 : 16, lineHeight: full ? 26 : 24 };
 
   return (
     <Pressable
@@ -344,22 +350,36 @@ export function PostCard({
 
             {/* The post itself. Plain text only (P3.10): never rendered as markup or auto-linked. */}
             {post.body ? (
-              <Text
-                style={{
-                  fontSize: full ? 17 : 16,
-                  lineHeight: full ? 26 : 24,
-                  marginTop: SPACE.md,
-                }}
-                numberOfLines={full ? undefined : CLAMP}
-                onTextLayout={
-                  full ? undefined : (e) => setClamped(e.nativeEvent.lines.length >= CLAMP)
-                }
-              >
-                {post.body}
-              </Text>
+              <View style={{ marginTop: SPACE.md }}>
+                {/* Hidden copy that is never cut short: tells us how many lines the text needs. */}
+                {!full ? (
+                  <Text
+                    aria-hidden
+                    importantForAccessibility="no-hide-descendants"
+                    pointerEvents="none"
+                    style={[bodyStyle, { position: 'absolute', left: 0, right: 0, opacity: 0 }]}
+                    onTextLayout={(e) => setTotalLines(e.nativeEvent.lines.length)}
+                  >
+                    {post.body}
+                  </Text>
+                ) : null}
+                <Text style={bodyStyle} numberOfLines={full || expanded ? undefined : CLAMP}>
+                  {post.body}
+                </Text>
+              </View>
             ) : null}
-            {clamped && !full ? (
-              <Text style={{ color: DARK.accent, fontWeight: '700', marginTop: 4 }}>Read more</Text>
+            {clamped ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={expanded ? 'Hide text' : 'Continue reading'}
+                onPress={() => setExpanded((v) => !v)}
+                hitSlop={8}
+                style={{ alignSelf: 'flex-start', marginTop: 4 }}
+              >
+                <Text style={{ color: DARK.accent, fontWeight: '700' }}>
+                  {expanded ? 'Hide text' : 'Continue reading'}
+                </Text>
+              </Pressable>
             ) : null}
             {/* D75: voice posts play right in the card. */}
             {post.voice ? (
