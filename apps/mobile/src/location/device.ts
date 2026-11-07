@@ -105,7 +105,7 @@ function watchAppState() {
   });
 }
 
-/** D202: reload the lists that listen for a move (after a long break), whether or not you moved. */
+/** D217: reload the lists that listen for a move (after a long break), whether or not you moved. */
 export function reloadLists() {
   movedListeners.forEach((l) => l());
 }

@@ -5,7 +5,7 @@ import { shouldReset } from '@/idle-rule';
 import { reloadLists } from '@/location/device';
 
 /**
- * D202: open the app after 20+ minutes and a place, post or topic page you left open is
+ * D217: open the app after 20+ minutes and a place, post or topic page you left open is
  * closed (back to the list it came from) and Home and Places reload. You've probably moved,
  * and the old room may be out of reach. Shorter breaks change nothing here; moving more than
  * about 50 m already reloads the lists (D73).

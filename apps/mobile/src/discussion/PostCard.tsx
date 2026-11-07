@@ -85,7 +85,7 @@ export function openAuthor(a: AnyAuthor) {
   if ('username' in a) router.push(`/user/${encodeURIComponent(a.username)}`);
 }
 
-/** D202: a post longer than this many lines is cut short with "Continue reading". */
+/** D217: a post longer than this many lines is cut short with "Continue reading". */
 const CLAMP = 3;
 /** D79: a post this well received gets a small "Popular" tag. */
 const POPULAR = 10;
@@ -123,7 +123,7 @@ export function PostCard({
   const author = post.author;
   const name = authorName(author);
   const color = profileColor('color' in author ? author.color : 'slate');
-  // D202: how many lines the whole text needs (measured by a hidden copy), and if it is opened.
+  // D217: how many lines the whole text needs (measured by a hidden copy), and if it is opened.
   const [totalLines, setTotalLines] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const clamped = !full && totalLines > CLAMP;

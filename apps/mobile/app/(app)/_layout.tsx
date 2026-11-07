@@ -57,7 +57,7 @@ export default function AppLayout() {
   const [permission, request] = Location.useForegroundPermissions();
   const { isGuest } = useGuest();
   const granted = !!permission?.granted;
-  useIdleReset(); // D202
+  useIdleReset(); // D217
   // D104: once, the first time a guest gets in.
   useEffect(() => {
     if (isGuest && granted) void ensureGuide('guestWelcome');

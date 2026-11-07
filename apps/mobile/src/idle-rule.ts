@@ -1,4 +1,4 @@
-/** D202: away from the app this long, it comes back on the list screens with fresh data. */
+/** D217: away from the app this long, it comes back on the list screens with fresh data. */
 export const IDLE_RESET_MS = 20 * 60_000;
 
 /** Screens where a half-finished job (a draft, a chat) must not be thrown away. */
