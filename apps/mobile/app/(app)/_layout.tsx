@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, Pressable, View, type ColorValue } from 'react-native';
-import { router, Tabs } from 'expo-router';
+import { router, Tabs, useSegments } from 'expo-router';
 import * as Location from 'expo-location';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK } from '@jax/shared';
@@ -56,6 +56,9 @@ const noTabButton = { tabBarButton: () => null, tabBarItemStyle: { display: 'non
 export default function AppLayout() {
   const [permission, request] = Location.useForegroundPermissions();
   const { isGuest } = useGuest();
+  // D218: the full-screen chat has no tab bar under it.
+  const segments: string[] = useSegments();
+  const inChat = segments.includes('chat');
   const granted = !!permission?.granted;
   useIdleReset(); // D217
   // D104: once, the first time a guest gets in.
@@ -90,6 +93,7 @@ export default function AppLayout() {
           backgroundColor: DARK.bar,
           borderTopColor: DARK.hairline,
           paddingTop: 6,
+          ...(inChat ? { display: 'none' as const } : {}),
         },
         tabBarActiveTintColor: DARK.accent,
         tabBarInactiveTintColor: DARK.textMuted,

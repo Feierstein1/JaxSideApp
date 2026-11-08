@@ -111,6 +111,23 @@ describe('who gets chat', () => {
     expect(open.room.zip).toBe('32204');
   });
 
+  // TEMPORARY (remove with the setting): the test switch opens every room, empty or off.
+  it('the temporary test switch opens chat everywhere for confirmed accounts', async () => {
+    await db.chatRoom.update({ where: { id: roomId }, data: { enabled: false } });
+    await db.chatPresence.deleteMany({});
+    await db.appConfiguration.create({ data: { key: 'chat.testAlwaysOpen', value: 1 } });
+    invalidateConfigCache();
+    expect((await status(alice)).body.open).toBe(true);
+    expect((await send(alice, 'testing alone')).status).toBe(201);
+    expect(
+      (await call(statusPOST as H, 'POST', { token: cara.token, body: { reading: reading() } }))
+        .status,
+    ).toBe(403);
+    await db.appConfiguration.update({ where: { key: 'chat.testAlwaysOpen' }, data: { value: 0 } });
+    invalidateConfigCache();
+    expect((await status(alice)).body.open).toBe(false);
+  });
+
   it('shows the exact number of people from 5', async () => {
     for (const n of ['c1', 'c2', 'c3']) {
       const p = await person(`${n}_ch`);

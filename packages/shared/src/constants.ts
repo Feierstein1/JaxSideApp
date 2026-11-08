@@ -270,6 +270,9 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.messageNewChat.perDay': 10,
   // D218 live area chat: 1 line per 3 s, 10 a minute, 100 an hour; the newest lines are kept
   // (at least 40, up to 150 while they are under 30 minutes old) and expire after 23 hours.
+  // TEMPORARY (D218 test): 1 opens every chat room for confirmed accounts, switched on or not and
+  // whoever is about. Remove this setting and its check in chat/presence.ts when testing is done.
+  'chat.testAlwaysOpen': 0,
   'rateLimit.chat.burstPer3s': 1,
   'rateLimit.chat.perMinute': 10,
   'rateLimit.chat.perHour': 100,

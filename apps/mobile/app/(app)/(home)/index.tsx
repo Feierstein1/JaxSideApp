@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { fetchFeed } from '@/discussion/api';
 import { AreaStrip } from '@/location/AreaLabel';
+import { ChatBar } from '@/chat/ChatBar';
 import { getFreshReading, noteListLoad, useReloadWhenMoved } from '@/location/device';
 import { PostList } from '@/discussion/PostList';
 import { PostTypeTabs } from '@/discussion/PostTypeTabs';
@@ -126,6 +127,8 @@ export default function HomeFeed() {
       </View>
       {/* D127: the icon's stepped edge. */}
       <StepEdge />
+      {/* D218: JaxSide Chat, only where it is open. */}
+      <ChatBar reloadKey={String(reloads)} />
       <PostList
         load={load}
         reloadKey={`${reloads}:${q}:${type}`}

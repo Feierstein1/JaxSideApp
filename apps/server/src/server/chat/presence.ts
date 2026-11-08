@@ -1,3 +1,4 @@
+import { getConfig } from '../config';
 import { db } from '../db';
 import type { GeoPoint } from '../location/eligibility';
 import { metersBetween, nearestNeighborhood } from '../location/neighborhood';
@@ -70,6 +71,8 @@ export function countPresent(roomId: string, now = new Date()) {
 
 /** Is the room's chat open right now: switched on by an admin and enough people about? */
 export async function chatIsOpen(room: { id: string; enabled: boolean }, now = new Date()) {
+  // TEMPORARY test switch (see constants.ts): open everywhere, whoever is about.
+  if ((await getConfig('chat.testAlwaysOpen')) === 1) return true;
   return room.enabled && (await countPresent(room.id, now)) >= MIN_PEOPLE_TO_OPEN;
 }
 

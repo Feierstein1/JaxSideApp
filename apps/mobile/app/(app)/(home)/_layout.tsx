@@ -15,6 +15,15 @@ export default function HomeLayout() {
       <Stack.Screen name="user/[username]" options={{ title: 'Profile' }} />
       <Stack.Screen name="compose" options={{ title: 'New post', presentation: 'modal' }} />
       <Stack.Screen name="poll/[id]" options={{ title: 'Poll' }} />
+      {/* D218: area chat is full screen with its own top bar, and hides the tab bar. */}
+      <Stack.Screen
+        name="chat"
+        options={{
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'slide_from_bottom',
+        }}
+      />
     </Stack>
   );
 }
