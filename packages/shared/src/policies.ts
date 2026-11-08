@@ -23,7 +23,11 @@ const DRAFT: PolicySection = {
   heading: 'Beta',
   body: 'JaxSide is in beta. These policies may change as the app grows; we’ll update the date above when they do.',
 };
-const UPDATED = '2026-10-22';
+const CONTACT: PolicySection = {
+  heading: 'Contact us',
+  body: 'JaxSide is run by JaxSide LLC, a Florida company. Questions about these policies or your account: use Contact us in the app (Account → Contact us) or email support@jaxside.com. Mail: JaxSide LLC, 7901 4th St N #35372, St Petersburg, FL 33702.',
+};
+const UPDATED = '2026-11-08';
 
 export const POLICIES: Record<PolicyKey, Policy> = {
   terms: {
@@ -56,6 +60,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
         heading: 'No warranty',
         body: 'JaxSide is provided as is. Information posted by users may be wrong or out of date. Use your own judgment.',
       },
+      CONTACT,
     ],
   },
 
@@ -109,6 +114,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
         heading: 'Your choices',
         body: 'You can change your username, bio, email and password, turn off location in your phone’s settings (JaxSide then can’t show local content), and delete your account in Account → Settings. See the Data Retention policy for what happens after deletion.',
       },
+      CONTACT,
     ],
   },
 

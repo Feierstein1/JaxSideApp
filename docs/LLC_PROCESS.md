@@ -77,16 +77,38 @@ friction).
       chosen; next step is signing up and getting the suite number before filing.
       The questions sent are in section 5. **The LLC cannot be filed until this is settled**,
       because the form needs the agent's name and address.
-- [x] File the Articles of Organization on Sunbiz ($125, confirmed on the form; submitted
-      2026-11-03, awaiting approval).
+- [x] File the Articles of Organization on Sunbiz ($125, confirmed on the form). **Filed
+      2026-11-03, document number L26000560458** (state email received 2026-11-06). First
+      annual report due Jan 1 to May 1, 2027; it asks for the EIN. Sunbiz record checked
+      2026-11-06: ACTIVE, principal and mailing both `7901 4TH ST N #35372`, agent correct,
+      owner as AMBR at the suite; FEI/EIN shows NONE until the first annual report adds it.
 - [ ] Single-member operating agreement (free template; not filed with the state; banks may
       ask for it).
-- [ ] Get an EIN (free, irs.gov).
-- [ ] Get a D-U-N-S number (free, Dun & Bradstreet).
+- [x] Get an EIN (free, irs.gov). **Done 2026-11-06**; CP 575 letter downloaded and kept by
+      the owner outside the repo (the number is not recorded here).
+- [ ] Get a D-U-N-S number (free, Dun & Bradstreet). **Requested 2026-11-07** through Apple's
+      lookup tool (no existing match), with the Sunbiz name and suite address. Expect D&B's
+      email in about 5 business days, then up to 2 business days before Apple sees it. Do not
+      also request one directly at dnb.com (duplicates block Apple enrollment). D&B iResearch
+      confirmed 2026-11-08: tracking ID 11194799, case 11253733 ("Add business"), JaxSide LLC,
+      St Petersburg FL; result comes by separate email. Apple Account
+      created 2026-11-07 on the owner's phone with a Yahoo email (web sign-up was blocked);
+      change its email to the jaxside.com address before developer enrollment.
 - [ ] Open a business bank account. **Deferred by the owner (2026-11-03)** until shortly
       before ads bring in money; the app has no revenue for a few months. Until then, keep a
       log of LLC costs paid personally (date, vendor, amount) as owner contributions.
-- [ ] Public website and a business email at jaxside.com.
+- [ ] **Reminder for the owner:** confirm Sunshine's paid annual-report filing ("renewal
+      service") is off in the portal, and add the EIN, document number and formation date there
+      (owner thinks it's already off; asked to be reminded, 2026-11-07).
+- [x] **Business email (2026-11-08):** Zoho Mail Lite, 1 user, mailbox `kenny@jaxside.com`
+      with alias `support@jaxside.com`. GoDaddy DNS now has Zoho's verification TXT, MX
+      (mx/mx2/mx3.zoho.com), SPF `v=spf1 include:zohomail.com ~all` and DKIM
+      `zmail._domainkey`; all verified. Amazon SES (app email) is unaffected.
+- [ ] Public website at jaxside.com. Domain at GoDaddy (DNS there too).
+      Email options weighed 2026-11-07: Zoho Mail Forever Free (up to 5 users, webmail and
+      Zoho's phone app, no IMAP) or Mail Lite (about $1/user/mo with IMAP), versus Google
+      Workspace (about $7) or Microsoft 365 Basic (about $6) **(prices unverified)**. Adding
+      mail MX records must keep SES sending working: one SPF record covering both providers.
 - [ ] Apple Developer Program (organization) and Google Play Console (organization) accounts.
 - [ ] **Google Business Profile for JaxSide LLC** (owner request 2026-11-03). Needed for the
       owner-verification plan (D185, `PROJECT_PLAN.md` B6.1, Q40): Google grants Business
@@ -98,6 +120,11 @@ friction).
       business with the owner's home address **hidden**, only if the owner really meets local
       businesses in person; (b) apply using a client's verified profile the owner manages
       (Google allows "one of the clients they manage"). Decide before creating the profile.
+      **2026-11-06:** owner runs JaxSide entirely online, so (a) doesn't fit; going with (b).
+      Owner will ask local business owners (none lined up yet). The listing must have its own
+      real website; the person is added as Manager using the email that will file the API
+      request (ideally the jaxside.com address). The first advertisers are natural candidates.
+      Until approved, owners are verified by the D185 "Ask JaxSide" fallback.
 
 **Spending (owner's tally, 2026-11-03): about $300.** Known items: agent + Premium scanning
 $148/yr, Sunbiz filing $125. Coming: Apple $99/yr, Google $25 once, business email about

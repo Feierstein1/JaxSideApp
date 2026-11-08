@@ -14,7 +14,7 @@ numbers, and a lawyer's read of these rules is optional but cheap insurance.
 
 ### 1. Sponsor
 
-This giveaway is run by **[JaxSide LLC, address of the registered agent]** ("JaxSide", "we").
+This giveaway is run by **JaxSide LLC, 7901 4th St N #35372, St Petersburg, FL 33702** ("JaxSide", "we").
 It is not sponsored, endorsed or administered by, or associated with, Apple Inc. or Google LLC.
 Apple and Google are not responsible for it, and you are providing information to JaxSide, not
 to them.
@@ -97,7 +97,7 @@ email. See the JaxSide Privacy Policy.
 - Our decisions on eligibility and the winner are final.
 - By entering you agree to these rules.
 - Void where prohibited. Governed by Florida law.
-- **Winners list:** the winner's username is available on request to **[support email]** for
+- **Winners list:** the winner's username is available on request to **support@jaxside.com** for
   **[60]** days after the drawing.
 
 ---

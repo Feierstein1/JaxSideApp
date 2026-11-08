@@ -25,14 +25,14 @@ Everything the two stores ask for, filled in from what the app actually does. An
 
 Both stores require these for any app where people post. **All are built:**
 
-| Requirement                                                                     | Where it is                                                           |
-| ------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Terms the user must agree to, with **zero tolerance** for objectionable content | Sign-up checkbox + Terms ("Zero tolerance for objectionable content") |
-| A way to **filter** objectionable content                                       | Text screening (P5.4), spam checks (P5.5), held-for-review            |
-| A way to **report** content and users                                           | Report on posts, comments, photos, profiles (P5.1, P6.5)              |
-| A way to **block** abusive users                                                | Block on profiles; Settings → Blocked users (P5.2)                    |
-| The developer **acts on reports within 24 h** **(you)**                         | Admin portal queue. You commit to checking it daily                   |
-| Published contact info **(you)**                                                | A support email in the store listing and in the app (to add)          |
+| Requirement                                                                     | Where it is                                                                                                         |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Terms the user must agree to, with **zero tolerance** for objectionable content | Sign-up checkbox + Terms ("Zero tolerance for objectionable content")                                               |
+| A way to **filter** objectionable content                                       | Text screening (P5.4), spam checks (P5.5), held-for-review                                                          |
+| A way to **report** content and users                                           | Report on posts, comments, photos, profiles (P5.1, P6.5)                                                            |
+| A way to **block** abusive users                                                | Block on profiles; Settings → Blocked users (P5.2)                                                                  |
+| The developer **acts on reports within 24 h** **(you)**                         | Admin portal queue. You commit to checking it daily                                                                 |
+| Published contact info **(you)**                                                | **support@jaxside.com** (2026-11-08): store listings, Terms and Privacy Policy; in the app via Account → Contact us |
 
 ## Account deletion (both stores require in-app deletion)
 
@@ -84,7 +84,7 @@ Answers based on the code. Nothing is used for tracking or ads, nothing is sold.
 ## Before submitting (checklist)
 
 - [ ] Hosting live with HTTPS (Q15), production API address in the build
-- [ ] Support email + account-deletion help page
+- [ ] Support email (done: support@jaxside.com, 2026-11-08) + account-deletion help page
 - [ ] NCMEC CyberTipline registration (R4)
 - [ ] Reviewer access plan for the location restriction (see above)
 - [ ] Closed test on Play (12+ testers, 14 days) if your Play account is new and personal
