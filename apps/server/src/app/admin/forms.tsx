@@ -374,6 +374,54 @@ export function PlaceRatingControls({ placeId, locked }: { placeId: string; lock
   );
 }
 
+/** D218: switch an area chat room on or off, or give it a name of your own. */
+export function ChatRoomControls({
+  roomId,
+  enabled,
+  name,
+}: {
+  roomId: string;
+  enabled: boolean;
+  name: string;
+}) {
+  const { busy, error, done, run } = useSubmit();
+  const send = (body: object) =>
+    run(async () => {
+      const reason = prompt('Reason (kept in the audit log)');
+      if (!reason || reason.trim().length < 3) return 'Cancelled: give a short reason.';
+      await adminFetch(`/api/v1/admin/chat/rooms/${roomId}`, {
+        method: 'POST',
+        body: { ...body, reason },
+      });
+      setTimeout(() => window.location.reload(), 500);
+      return 'Done.';
+    });
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+      <button
+        style={enabled ? ui.buttonDanger : ui.buttonSecondary}
+        disabled={busy}
+        onClick={() => send({ action: enabled ? 'disable' : 'enable' })}
+      >
+        {enabled ? 'Switch off' : 'Switch on'}
+      </button>
+      <button
+        style={ui.buttonSecondary}
+        disabled={busy}
+        onClick={() => {
+          const next = window.prompt('Room name (empty uses the neighbourhood name)', name);
+          if (next === null) return;
+          void send({ action: 'rename', displayName: next });
+        }}
+      >
+        Rename
+      </button>
+      {error ? <span style={ui.error}>{error}</span> : null}
+      {done ? <span role="status">{done}</span> : null}
+    </span>
+  );
+}
+
 /** D146: take any place down now (asks for a reason; Removals → Keep undoes it). */
 export function RemovePlaceButton({ placeId, name }: { placeId: string; name: string }) {
   const { busy, error, done, run } = useSubmit();

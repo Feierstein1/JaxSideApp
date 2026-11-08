@@ -4,9 +4,11 @@ export const CONFIG_DESCRIPTIONS: Partial<Record<keyof typeof CONFIG_DEFAULTS, s
   'ads.firstSlot': 'Ads: the first ad comes after this many posts (D206)',
   'ads.every': 'Ads: one ad about every this many posts, signed-in people (D206)',
   'ads.everyGuest': 'Ads: one ad about every this many posts, guests (D206)',
-  'ads.cooldownHours': 'Ads: the phone waits this many hours before showing the same ad again (D206)',
+  'ads.cooldownHours':
+    'Ads: the phone waits this many hours before showing the same ad again (D206)',
   'ads.interestBoost': 'Ads: weight for favorited places and Interested businesses (D206)',
-  'ads.boostedSharePercent': 'Ads: most of the ads picked for someone that may be boosted, in percent (D206)',
+  'ads.boostedSharePercent':
+    'Ads: most of the ads picked for someone that may be boosted, in percent (D206)',
   'ads.notInterestedDays': 'Ads: Not interested hides that business for this many days (D206)',
   'ads.interestedDays': 'Ads: Interested boosts that business for this many days (D206)',
   'radius.general.maxMiles': 'Largest general-feed radius a user may choose (§7)',
@@ -22,6 +24,17 @@ export const CONFIG_DESCRIPTIONS: Partial<Record<keyof typeof CONFIG_DEFAULTS, s
   'rateLimit.login.per15MinPerAccount': 'Failed logins allowed per account per 15 minutes (D29)',
   'rateLimit.message.perDay': 'Private messages per person per day (D176)',
   'rateLimit.message.burstPer10s': 'Private messages per person per 10 seconds (D176)',
+  'rateLimit.chat.burstPer3s': 'Live area chat: lines per person per 3 seconds (D218)',
+  'rateLimit.chat.perMinute': 'Live area chat: lines per person per minute (D218)',
+  'rateLimit.chat.perHour': 'Live area chat: lines per person per hour (D218)',
+  'rateLimit.chatRead.perMinute':
+    'Live area chat: checks for new lines per person per minute (D218)',
+  'chat.keepMinimum': 'Live area chat: lines always kept in a room (D218)',
+  'chat.keepMaximum': 'Live area chat: most lines kept in a busy room (D218)',
+  'chat.keepBusyMinutes':
+    'Live area chat: lines younger than this are kept up to the maximum (D218)',
+  'chat.expireHours':
+    'Live area chat: hours a line stays visible; the purge deletes it an hour later (D218)',
   'rateLimit.messageSame.perDay':
     'Times one person may send the exact same long message a day, to anyone (D176)',
   'rateLimit.friendRequest.perDay': 'Friend requests per person per day (D176)',

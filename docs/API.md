@@ -104,6 +104,17 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | POST | `/api/v1/polls/:id/vote` | user (confirmed email) | yes | D123: one final vote. Confirmed accounts a few days old, from inside Duval. The vote is stored under a per-poll code with the voter's ZIP; the ID and the reading are not. |
 | POST | `/api/v1/polls/suggestions` | user (confirmed email) |  | D133: suggest a poll question; the admin uses it or declines it. Confirmed accounts. |
 
+## chat
+
+D218: live area chat. Text only, temporary, one room per map cell of about a mile. Confirmed accounts only (guests and unconfirmed accounts are refused). The room comes from the verified location; the client cannot pick one. A room is open only when an admin has switched it on and at least 2 people were about in the last 10 minutes.
+
+| Method | Path | Who | Location | What it does |
+| --- | --- | --- | --- | --- |
+| POST | `/api/v1/chat/status` | user (confirmed email) | yes | Where you are and whether chat is open there: `{ open, room: { title, zip }, people }` (`people` is "a few" under 5, the number from 5). Also counts you as present. |
+| POST | `/api/v1/chat/messages/list` | user (confirmed email) | yes | The room's lines, oldest first; `after` (ISO time) returns only newer ones. A line is `{ id, username, admin, createdAt, body }`: no pictures, IDs or places. `CHAT_CLOSED` (403) when off or too quiet. |
+| POST | `/api/v1/chat/messages` | user (confirmed email) | yes | Say something: 1 to 200 plain-text characters, no links, forbidden words refused, the same line twice refused. 1 per 3 s, 10 per minute, 100 per hour. Lines expire after 23 hours; a room keeps its newest 40 (up to 150 while under 30 minutes old). |
+| POST | `/api/v1/admin/chat/rooms/:id` | admin | no | Switch a room on or off, or rename it (`action`: `enable`, `disable`, `rename`; a reason is audited). |
+
 ## topics
 
 | Method | Path | Who | Location | What it does |

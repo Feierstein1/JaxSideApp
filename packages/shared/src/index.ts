@@ -14,6 +14,7 @@ export * from './schemas/submission';
 export * from './schemas/polls';
 export * from './schemas/topics';
 export * from './schemas/business';
+export * from './schemas/chat';
 export * from './schemas/ads';
 export * from './schemas/ad-feed';
 export * from './policies';

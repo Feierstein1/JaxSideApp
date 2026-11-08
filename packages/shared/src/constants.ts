@@ -271,6 +271,16 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.message.burstPer10s': 5,
   'rateLimit.messageSame.perDay': 3,
   'rateLimit.messageNewChat.perDay': 10,
+  // D218 live area chat: 1 line per 3 s, 10 a minute, 100 an hour; the newest lines are kept
+  // (at least 40, up to 150 while they are under 30 minutes old) and expire after 23 hours.
+  'rateLimit.chat.burstPer3s': 1,
+  'rateLimit.chat.perMinute': 10,
+  'rateLimit.chat.perHour': 100,
+  'rateLimit.chatRead.perMinute': 60,
+  'chat.keepMinimum': 40,
+  'chat.keepMaximum': 150,
+  'chat.keepBusyMinutes': 30,
+  'chat.expireHours': 23,
   /** Reading chats and the unread count (a chat checks every 3 s while open). */
   'rateLimit.messageRead.perMinute': 120,
   /** Accounts younger than this can only reply, not start chats. */

@@ -1,4 +1,5 @@
 import { purgeAdMarks } from '../ads/counting';
+import { purgeChat } from '../chat/chat';
 import { purgeOldPresence } from '../chat/presence';
 import { Prisma } from '@/generated/prisma/client';
 import { evaluateAchievements } from '../achievements';
@@ -101,6 +102,7 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
 
   // D218: chat presence sightings are kept 60 minutes.
   await purgeOldPresence(now);
+  await purgeChat(now); // lines an hour after they expired; rooms idle for 7 days
 
   // P4.4: guests expire after N days without activity (server-side clock).
   const guestsExpired = await db.guestSession.updateMany({

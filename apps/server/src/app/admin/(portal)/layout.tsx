@@ -32,6 +32,7 @@ const NAV: NavGroup[] = [
     title: 'Community',
     links: [
       { href: '/admin/messages', label: 'Messages' },
+      { href: '/admin/chat', label: 'Area chat' },
       { href: '/admin/polls', label: 'Polls' },
       { href: '/admin/giveaways', label: 'Giveaways' },
       { href: '/admin/topics', label: 'Topics' },
