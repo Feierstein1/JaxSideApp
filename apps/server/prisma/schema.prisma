@@ -203,6 +203,8 @@ model User {
   auditLogs       AdminAuditLog[]
   deletions       AccountDeletion[]
   locationChecks  LocationCheck[]
+  chatMessages    ChatMessage[]
+  chatPresence    ChatPresence?
   locationFlags   LocationFlag[]       @relation("LocationFlagUser")
   flagsReviewed   LocationFlag[]       @relation("LocationFlagReviewer")
   configUpdates   AppConfiguration[]
@@ -2334,4 +2336,58 @@ model GiveawayWinner {
   @@unique([giveawayId, userId])
   @@index([userId])
   @@index([pickedById])
+}
+
+// ───────────────────── D218: live area chat (temporary text) ─────────────────────
+
+/// One chat room per map cell (about 1 mile square, server/chat/cells.ts), created the first
+/// time a verified person's location falls in the cell. Off until an admin turns it on.
+model ChatRoom {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  /// "row:col" of the cell. Never changes (the cell sizes are fixed).
+  cellKey        String         @unique @db.VarChar(24)
+  /// What the header shows: ZIP, nearest neighbourhood (D72) and which way within the ZIP.
+  zip            String?        @db.Char(5)
+  neighborhood   String?        @db.VarChar(80)
+  direction      String?        @db.VarChar(2)
+  /// An admin's own name for the room; shown instead of the neighbourhood when set.
+  displayName    String?        @db.VarChar(80)
+  enabled        Boolean        @default(false)
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  /// Last message sent here; rooms idle for 7 days with nobody present are deleted.
+  lastActivityAt DateTime       @default(now()) @db.Timestamptz(3)
+  messages       ChatMessage[]
+  presence       ChatPresence[]
+
+  @@index([lastActivityAt])
+}
+
+/// A chat line. Plain text, at most 200 characters; gone after 23 hours (deleted at 24).
+model ChatMessage {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  roomId    String   @db.Uuid
+  authorId  String   @db.Uuid
+  body      String   @db.VarChar(200)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+  @@index([expiresAt])
+  @@index([authorId, createdAt])
+}
+
+/// Who has the app open in which room, newest sighting only (one row per person, no history,
+/// no coordinates). Rows older than 60 minutes are deleted; the 10-minute count and the room
+/// a person is in (for the border margin) come from here.
+model ChatPresence {
+  userId     String   @id @db.Uuid
+  roomId     String   @db.Uuid
+  lastSeenAt DateTime @db.Timestamptz(3)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room       ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, lastSeenAt])
+  @@index([lastSeenAt])
 }

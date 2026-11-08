@@ -56,6 +56,7 @@ import {
 } from './posts';
 import { nearestNeighborhood } from '../location/neighborhood';
 import { logger } from '../logger';
+import { notePresence } from '../chat/presence';
 import { recordAreaVisit } from '../stats/area-visits';
 import { holdFor, holdReport, screenText, type Hold } from '../moderation/screening';
 import { checkEdit, checkNewContent } from '../moderation/spam';
@@ -185,6 +186,12 @@ export async function feed(req: Request) {
     await recordAreaVisit(actor.user.id, at).catch((err: unknown) =>
       logger.warn({ err }, 'area visit not recorded'),
     );
+    // D218: chat presence (verified accounts only); never holds up or fails the feed.
+    if (actor.user.emailVerifiedAt) {
+      await notePresence(actor.user.id, at).catch((err: unknown) =>
+        logger.warn({ err }, 'chat presence not recorded'),
+      );
+    }
   }
   const viewer =
     actor.kind === 'user'

@@ -1,4 +1,5 @@
 import { purgeAdMarks } from '../ads/counting';
+import { purgeOldPresence } from '../chat/presence';
 import { Prisma } from '@/generated/prisma/client';
 import { evaluateAchievements } from '../achievements';
 import { finalizeDuePolls } from '../polls';
@@ -97,6 +98,9 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
 
   // D180: sign-in burst records are kept 90 days.
   await db.securityEvent.deleteMany({ where: { createdAt: { lt: ago(90) } } });
+
+  // D218: chat presence sightings are kept 60 minutes.
+  await purgeOldPresence(now);
 
   // P4.4: guests expire after N days without activity (server-side clock).
   const guestsExpired = await db.guestSession.updateMany({
