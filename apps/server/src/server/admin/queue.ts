@@ -347,9 +347,16 @@ export async function getCase(
       ? db.report.findFirst({
           where: { ...reportWhere(ref), messageEvidence: { not: Prisma.DbNull } },
           orderBy: { createdAt: 'desc' },
-          select: { messageEvidence: true },
+          select: { messageEvidence: true, chatEvidence: true },
         })
-      : null,
+      : ref.type === 'user'
+        ? // D218: the person's area-chat lines, copied when they were reported.
+          db.report.findFirst({
+            where: { ...reportWhere(ref), chatEvidence: { not: Prisma.DbNull } },
+            orderBy: { createdAt: 'desc' },
+            select: { messageEvidence: true, chatEvidence: true },
+          })
+        : null,
   ]);
 
   // Context: the post a comment belongs to, and the comment it replies to.
@@ -486,6 +493,14 @@ export async function getCase(
               }[];
             } | null
           )?.messages ?? null)
+        : null,
+    /** D218: the reported person's last area-chat lines, from the newest chat report. */
+    chatContext:
+      ref.type === 'user'
+        ? ((evidence?.chatEvidence as {
+            room: string;
+            lines: { at: string; body: string }[];
+          } | null) ?? null)
         : null,
     contentStatus: s.status,
     author: s.author,

@@ -67,6 +67,28 @@ export default async function CasePage(ctx: {
         {c.voiceUrl ? (
           <audio controls src={c.voiceUrl} style={{ display: 'block', margin: '8px 0' }} />
         ) : null}
+        {c.chatContext ? (
+          // D218: copied from area chat when reported (the chat itself is deleted after 24 hours).
+          <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
+            <p style={ui.muted}>
+              Area chat in {c.chatContext.room}: their last {c.chatContext.lines.length} lines when
+              reported.
+            </p>
+            {c.chatContext.lines.map((l) => (
+              <div
+                key={l.at + l.body}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.cardBorder}`,
+                }}
+              >
+                <span style={ui.muted}>{when(l.at)}</span>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{l.body}</div>
+              </div>
+            ))}
+          </div>
+        ) : null}
         {c.messageContext ? (
           // D98: the conversation around the reported message (snapshot at report time).
           <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>

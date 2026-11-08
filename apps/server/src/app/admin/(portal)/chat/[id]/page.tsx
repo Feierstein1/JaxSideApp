@@ -2,7 +2,7 @@ import { adminChatRoom } from '@/server/admin/chat';
 import { uuidParam } from '@/server/admin/params';
 import { COLORS } from '@jax/shared';
 import { ui } from '../../../admin-ui';
-import { ChatRoomControls } from '../../../forms';
+import { ChatRoomControls, ChatUnmuteButton } from '../../../forms';
 import { requireAdminPage } from '../../../require-admin-page';
 import { Pill, when } from '../../admin-table';
 
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export default async function ChatRoomPage(ctx: { params: Promise<{ id: string }> }) {
   await requireAdminPage();
   const id = await uuidParam({ params: ctx.params });
-  const { room, lines, present } = await adminChatRoom(id);
+  const { room, lines, present, mutedIds } = await adminChatRoom(id);
   return (
     <>
       <p>
@@ -49,6 +49,11 @@ export default async function ChatRoomPage(ctx: { params: Promise<{ id: string }
                 @{l.author.username}
               </a>{' '}
               {l.author.role === 'ADMIN' ? <Pill tone="ok">staff</Pill> : null}
+              {mutedIds.has(l.author.id) ? (
+                <>
+                  <Pill tone="alert">muted</Pill> <ChatUnmuteButton userId={l.author.id} />
+                </>
+              ) : null}
               {l.author.status !== 'ACTIVE' ? <Pill tone="alert">{l.author.status}</Pill> : null}
               <div style={{ whiteSpace: 'pre-wrap' }}>{l.body}</div>
             </div>

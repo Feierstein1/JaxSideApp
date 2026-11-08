@@ -113,10 +113,7 @@ export const CONFIG_DEFAULTS = {
   'spam.duplicateWindowHours': 24,
   /** Shorter texts ("thanks!") may repeat. Counted after normalization. */
   'spam.duplicateMinLength': 20,
-  /** More links than this in one post/comment → held for review. */
-  'spam.maxLinks': 2,
-  /** Any link from an account younger than this → held for review. */
-  'spam.newAccountLinkHoldHours': 24,
+  // D219: links of any kind are refused in posts, comments, edits and messages (no setting).
 
   // D73: a post reported by this many different people is hidden until a moderator decides.
   'moderation.autoHideReports': 3,

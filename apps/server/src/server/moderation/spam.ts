@@ -12,14 +12,17 @@ import { normalizedForms } from './screening';
  * posts and comments:
  * - Posting the same text again (same author, any post or room, within the window) is
  *   refused. Short replies ("thanks!") are exempt.
- * - Link-heavy text, or any link from a brand-new account, is held for a moderator.
+ * - D219: a link of any kind is refused (posts, comments, edits, messages, area chat).
  */
 
 const HOUR_MS = 3_600_000;
 
-/** URLs and bare domains ("example.com", "bit.ly/x"). Exported for tests. */
+/**
+ * URLs and bare domains ("example.com", "bit.ly/x"). Two-letter endings that are also common
+ * words ("it", "is", "to", "in") are left out so ordinary sentences are not refused.
+ */
 const LINK =
-  /\b(?:https?:\/\/|www\.)\S+|\b[a-z0-9][a-z0-9-]*\.(?:com|net|org|io|co|info|biz|xyz|ly|me|us|app|link|site|online|shop|store|gg|tv|cc)\b(?:\/\S*)?/gi;
+  /\b(?:https?:\/\/|www\.)\S+|\b[a-z0-9][a-z0-9-]*\.(?:com|net|org|io|co|info|biz|xyz|ly|me|us|app|link|site|online|shop|store|gg|tv|cc|dev|ai|page|click|top|win|pro|club|live|life|world|today|news|tech|blog|art|fun|vip|cloud|lol|one|ws|fm|sh|gl|tk|ru|cn|uk|de|ca|eu|gift|bid|loan|work|party|review|trade|date|download|stream|racing|science|website|space|icu|buzz|cam|rest|bar)\b(?:\/\S*)?/gi;
 
 export function countLinks(text: string): number {
   return text.match(LINK)?.length ?? 0;
@@ -83,33 +86,29 @@ export async function assertNotMassMessage(userId: string, text: string, now = n
   }
 }
 
-/** Link limits. Returns a hold, or null if the links are fine. */
-async function linkHold(user: User, text: string, now: Date): Promise<Hold | null> {
-  const links = countLinks(text);
-  if (links === 0) return null;
-  const [maxLinks, newAccountHours] = await Promise.all([
-    getConfig('spam.maxLinks'),
-    getConfig('spam.newAccountLinkHoldHours'),
-  ]);
-  if (links > maxLinks) {
-    return { reason: 'SPAM', details: `Held automatically: ${links} links (limit ${maxLinks}).` };
+/** D219: no links of any kind. */
+export function assertNoLinks(text: string) {
+  if (countLinks(text)) {
+    throw new ApiError(
+      422,
+      'NO_LINKS',
+      'Links aren’t allowed on JaxSide. Please describe it in words instead.',
+    );
   }
-  if (now.getTime() - user.createdAt.getTime() < newAccountHours * HOUR_MS) {
-    return { reason: 'SPAM', details: 'Held automatically: link from a new account.' };
-  }
+}
+
+/** New posts and comments: refuse duplicates and links. (Nothing is held for links any more.) */
+export async function checkNewContent(
+  user: User,
+  text: string,
+  now = new Date(),
+): Promise<Hold | null> {
+  await assertNotDuplicate(user, text, now);
+  assertNoLinks(text);
   return null;
 }
 
-/** New posts and comments: refuse duplicates, maybe hold for links. */
-export async function checkNewContent(user: User, text: string, now = new Date()) {
-  await assertNotDuplicate(user, text, now);
-  return linkHold(user, text, now);
-}
-
-/** Edits can't be held (D56), so too many links refuses the edit instead. */
+/** Edits too: a link can't be added to a visible post afterwards. */
 export async function checkEdit(text: string) {
-  const maxLinks = await getConfig('spam.maxLinks');
-  if (countLinks(text) > maxLinks) {
-    throw new ApiError(422, 'TOO_MANY_LINKS', `Please include at most ${maxLinks} links.`);
-  }
+  assertNoLinks(text);
 }

@@ -18,7 +18,7 @@ import { db } from '../db';
 import { ApiError } from '../http';
 import { signedPhotoUrl } from '../media/photos';
 import { screenText } from '../moderation/screening';
-import { assertNotMassMessage, checkEdit, countLinks } from '../moderation/spam';
+import { assertNotMassMessage, checkEdit } from '../moderation/spam';
 import { enforce } from '../rate-limit';
 import { friendUser, pair } from './friends';
 
@@ -148,10 +148,6 @@ export async function sendMessage(
     await screenText(input.body, 'edit', input);
     await checkEdit(input.body);
     await assertNotMassMessage(user.id, input.body, now);
-    const hours = await getConfig('spam.newAccountLinkHoldHours');
-    if (countLinks(input.body) && now.getTime() - user.createdAt.getTime() < hours * 3_600_000) {
-      throw new ApiError(422, 'LINKS_NOT_YET', 'New accounts can’t send links yet.');
-    }
   }
 
   return db.$transaction(async (tx) => {

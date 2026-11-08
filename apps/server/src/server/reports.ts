@@ -6,6 +6,7 @@ import { db } from './db';
 import { ApiError } from './http';
 import { autoSuspendConfig, maybeAutoSuspend } from './moderation/auto-suspend';
 import { getPublicProfile } from './profiles';
+import { chatReportEvidence } from './chat/chat';
 import { messageReportEvidence } from './social/messages';
 
 /**
@@ -31,6 +32,8 @@ interface ResolvedTarget {
     /** D209: a reported ad. */
     adId?: string;
     messageEvidence?: Prisma.InputJsonValue;
+    /** D218: the person's recent area-chat lines, copied when reported. */
+    chatEvidence?: Prisma.InputJsonValue;
   };
   authorUserId: string | null;
   authorGuestId: string | null;
@@ -71,6 +74,18 @@ async function resolveTarget(target: ReportTarget, viewerUserId: string | null) 
       authorUserId: post.authorId,
       authorGuestId: null,
       business: target.type === 'business',
+    } satisfies ResolvedTarget;
+  }
+  if (target.type === 'chat') {
+    // D218: a person's area-chat lines; only someone in the same room can report them.
+    if (!viewerUserId) throw NOT_FOUND();
+    const { authorId, evidence } = await chatReportEvidence(viewerUserId, target.username);
+    return {
+      key: `chat:${authorId}`,
+      data: { reportedUserId: authorId, chatEvidence: evidence },
+      authorUserId: authorId,
+      authorGuestId: null,
+      business: false,
     } satisfies ResolvedTarget;
   }
   if (target.type === 'message') {
@@ -246,8 +261,12 @@ function targetWhere(t: ResolvedTarget) {
   if (t.data.messageId) return { messageId: t.data.messageId };
   if (t.data.cityTopicId) return { cityTopicId: t.data.cityTopicId };
   if (t.data.adId) return { adId: t.data.adId };
-  // A report has exactly one target column (DB check `Report_one_target`).
-  return { reportedUserId: t.data.reportedUserId };
+  // A report has exactly one target column (DB check `Report_one_target`). A chat report and
+  // a profile report on the same person are different reports.
+  return {
+    reportedUserId: t.data.reportedUserId,
+    chatEvidence: t.data.chatEvidence ? { not: Prisma.DbNull } : { equals: Prisma.DbNull },
+  };
 }
 
 const PREVIEW = 80;

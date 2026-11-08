@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { POST as roomPOST } from '@/app/api/v1/admin/chat/rooms/[id]/route';
+import { POST as unmutePOST } from '@/app/api/v1/admin/chat/users/[id]/unmute/route';
 import { POST as listPOST } from '@/app/api/v1/chat/messages/list/route';
 import { POST as sendPOST } from '@/app/api/v1/chat/messages/route';
 import { POST as statusPOST } from '@/app/api/v1/chat/status/route';
+import { POST as reportPOST } from '@/app/api/v1/reports/route';
+import { getCase } from '@/server/admin/queue';
 import { createSession } from '@/server/auth/sessions';
 import { purgeChat, sendChat, trimRoom } from '@/server/chat/chat';
 import { notePresence } from '@/server/chat/presence';
@@ -90,7 +93,12 @@ describe('who gets chat', () => {
 
   it('is closed while the room is switched off, or fewer than 2 people are about', async () => {
     await db.chatRoom.update({ where: { id: roomId }, data: { enabled: false } });
-    expect((await status(alice)).body).toEqual({ open: false, room: null, people: null });
+    expect((await status(alice)).body).toEqual({
+      open: false,
+      mutedUntil: null,
+      room: null,
+      people: null,
+    });
     expect((await send(alice, 'hi')).body.error.code).toBe('CHAT_CLOSED');
     expect((await list(alice)).body.error.code).toBe('CHAT_CLOSED');
     await db.chatRoom.update({ where: { id: roomId }, data: { enabled: true } });
@@ -157,16 +165,23 @@ describe('sending and reading', () => {
     expect((await send(bob, 'bad\u0007bell')).status).toBe(400);
   });
 
-  it('refuses links and forbidden words, and saying the same thing twice', async () => {
+  it('refuses forbidden words, links of any kind, and saying the same thing twice', async () => {
     await db.screeningRule.create({
       data: { term: 'i will hurt you', action: 'BLOCK', match: 'WORD', category: 'THREAT' },
     });
     invalidateScreeningCache();
-    expect((await send(alice, 'I will hurt you')).body.error.code).toBe('CONTENT_BLOCKED');
-    expect((await send(alice, 'see https://spam.example now')).body.error.code).toBe('NO_LINKS');
-    expect((await send(alice, 'see spam.com/win')).status).toBe(422);
-    expect((await send(alice, 'Anyone around?')).status).toBe(201);
-    expect((await send(alice, 'anyone   around')).body.error.code).toBe('DUPLICATE_MESSAGE');
+    const w = await send(alice, 'I will hurt you');
+    expect(w.status).toBe(422);
+    expect(w.body.error.code).toBe('CONTENT_BLOCKED');
+    const bobLink = await send(bob, 'see https://spam.example now');
+    expect(bobLink.body.error.code).toBe('NO_LINKS');
+    const carl = await person('carl_ch');
+    await notePresence(carl.id, HERE);
+    expect((await send(carl, 'see spam.com/win')).body.error.code).toBe('NO_LINKS');
+    const dana = await person('dana_ch');
+    await notePresence(dana.id, HERE);
+    expect((await send(dana, 'Anyone around?')).status).toBe(201);
+    expect((await send(dana, 'anyone   around')).body.error.code).toBe('DUPLICATE_MESSAGE');
     expect(await db.chatMessage.count()).toBe(1);
   });
 
@@ -174,6 +189,160 @@ describe('sending and reading', () => {
     await send(alice, 'hello');
     await db.user.update({ where: { id: alice.id }, data: { status: 'SUSPENDED' } });
     expect((await list(bob)).body.lines).toEqual([]);
+  });
+});
+
+describe('warnings and mutes (D218)', () => {
+  const link = (n: number) => `visit site${n}.com now`;
+
+  it('two warnings, then 10 minutes, then an hour, then the rest of the day', async () => {
+    const first = await send(alice, link(1));
+    expect(first.status).toBe(422);
+    expect(first.body.error.message).toContain('Warning 1 of 2');
+    expect((await send(alice, link(2))).body.error.message).toContain('Warning 2 of 2');
+
+    const third = await send(alice, link(3));
+    expect(third.status).toBe(403);
+    expect(third.body.error.code).toBe('CHAT_MUTED');
+    const m1 = await db.chatMute.findUniqueOrThrow({ where: { userId: alice.id } });
+    expect(m1.until.getTime() - Date.now()).toBeGreaterThan(9 * 60_000);
+    expect(m1.until.getTime() - Date.now()).toBeLessThanOrEqual(10 * 60_000);
+
+    // Muted: even a clean line is refused, but reading still works.
+    expect((await send(alice, 'a perfectly fine line')).body.error.code).toBe('CHAT_MUTED');
+    expect((await list(alice)).status).toBe(200);
+    expect((await status(alice)).body.mutedUntil).toBe(m1.until.toISOString());
+
+    // After it ends, the next broken rule is an hour; the one after that is the rest of the day.
+    await db.chatMute.update({
+      where: { userId: alice.id },
+      data: { until: new Date(Date.now() - 1000) },
+    });
+    expect((await send(alice, link(4))).body.error.code).toBe('CHAT_MUTED');
+    const m2 = await db.chatMute.findUniqueOrThrow({ where: { userId: alice.id } });
+    expect(m2.until.getTime() - Date.now()).toBeGreaterThan(59 * 60_000);
+    await db.chatMute.update({
+      where: { userId: alice.id },
+      data: { until: new Date(Date.now() - 1000) },
+    });
+    expect((await send(alice, link(5))).body.error.code).toBe('CHAT_MUTED');
+    const m3 = await db.chatMute.findUniqueOrThrow({ where: { userId: alice.id } });
+    expect(m3.until.getTime() - Date.now()).toBeGreaterThan(23 * 3_600_000);
+  });
+
+  it('a clean line after the mute ends goes through; breaking rules is counted per person', async () => {
+    for (let i = 1; i <= 3; i++) await send(alice, link(i));
+    await db.chatMute.update({
+      where: { userId: alice.id },
+      data: { until: new Date(Date.now() - 1000) },
+    });
+    expect((await send(alice, 'back and behaving')).status).toBe(201);
+    expect((await send(bob, link(9))).body.error.message).toContain('Warning 1 of 2');
+  });
+
+  it('two quick taps are not rule-breaking; passing the minute cap is', async () => {
+    await db.appConfiguration.update({
+      where: { key: 'rateLimit.chat.burstPer3s' },
+      data: { value: 1 },
+    });
+    invalidateConfigCache();
+    await send(alice, 'one');
+    expect((await send(alice, 'two')).status).toBe(429);
+    expect(await db.chatOffense.count()).toBe(0);
+
+    await db.appConfiguration.update({
+      where: { key: 'rateLimit.chat.burstPer3s' },
+      data: { value: 1000 },
+    });
+    await db.appConfiguration.createMany({
+      data: [{ key: 'rateLimit.chat.perMinute', value: 2 }],
+      skipDuplicates: true,
+    });
+    invalidateConfigCache();
+    await send(bob, 'first thing');
+    await send(bob, 'second thing');
+    const over = await send(bob, 'third thing');
+    expect(over.status).toBe(429);
+    expect(over.body.error.message).toContain('Warning 1 of 2');
+    expect(await db.chatOffense.count()).toBe(1);
+  });
+
+  it('an admin can lift a mute, and offences are forgotten after 24 hours', async () => {
+    for (let i = 1; i <= 3; i++) await send(alice, link(i));
+    const res = await call(unmutePOST as H, 'POST', {
+      id: alice.id,
+      body: { reason: 'mistake' },
+      headers: await adminHeaders(admin.id),
+    });
+    expect(res.status).toBe(200);
+    expect(await db.chatMute.count()).toBe(0);
+    expect(await db.adminAuditLog.count({ where: { action: 'CHAT_UNMUTE' } })).toBe(1);
+    await purgeChat(new Date(Date.now() + 25 * 3_600_000));
+    expect(await db.chatOffense.count()).toBe(0);
+  });
+});
+
+describe('reporting someone from the chat (D218)', () => {
+  const report = (p: Person, username: string, extra: object = {}) =>
+    call(reportPOST as H, 'POST', {
+      token: p.token,
+      body: {
+        reading: reading(),
+        target: { type: 'chat', username },
+        reason: 'HARASSMENT',
+        ...extra,
+      },
+    });
+
+  it('copies their last 20 lines into the report, and the admin case shows them', async () => {
+    for (let i = 0; i < 22; i++) {
+      await db.chatMessage.create({
+        data: {
+          roomId,
+          authorId: bob.id,
+          body: `rude line ${i}`,
+          createdAt: new Date(Date.now() - (30 - i) * 60_000),
+          expiresAt: new Date(Date.now() + 23 * 3_600_000),
+        },
+      });
+    }
+    expect((await report(alice, 'bob_ch')).status).toBe(202);
+    const row = await db.report.findFirstOrThrow();
+    expect(row.reportedUserId).toBe(bob.id);
+    const ev = row.chatEvidence as { lines: { body: string }[]; room: string };
+    expect(ev.lines).toHaveLength(20);
+    expect(ev.lines[19]!.body).toBe('rude line 21');
+    expect(ev.lines[0]!.body).toBe('rude line 2');
+
+    const c = await getCase({ type: 'user', id: bob.id });
+    expect(c.chatContext?.lines).toHaveLength(20);
+
+    // The chat is gone after 24 hours; the report keeps the copy.
+    await purgeChat(new Date(Date.now() + 30 * 3_600_000));
+    expect(await db.chatMessage.count()).toBe(0);
+    expect((await db.report.findFirstOrThrow()).chatEvidence).not.toBeNull();
+  });
+
+  it('is kept apart from a profile report on the same person', async () => {
+    await send(bob, 'hello there');
+    expect((await report(alice, 'bob_ch')).status).toBe(202);
+    const profile = await call(reportPOST as H, 'POST', {
+      token: alice.token,
+      body: { reading: reading(), target: { type: 'user', username: 'bob_ch' }, reason: 'OTHER' },
+    });
+    expect(profile.status).toBe(202);
+    expect(await db.report.count()).toBe(2);
+  });
+
+  // 🔒 Only someone in the room can report, only lines that exist, never yourself.
+  it('refuses outsiders, people with nothing recent, and reporting yourself', async () => {
+    await send(bob, 'hello there');
+    expect((await report(cara, 'bob_ch')).status).toBeGreaterThanOrEqual(400);
+    expect((await report(alice, 'alice_ch')).status).toBe(404); // nothing said yet
+    await send(alice, 'my own line');
+    expect((await report(alice, 'alice_ch')).status).toBe(400);
+    expect((await report(alice, 'nobody_here')).status).toBe(404);
+    expect(await db.report.count()).toBe(0);
   });
 });
 

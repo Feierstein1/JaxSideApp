@@ -230,7 +230,7 @@ describe('messaging friends (D98)', () => {
     await send(ann, 'new_m', 'welcome');
     expect((await send(newbie, 'ann_m', 'thanks!')).status).toBe(201); // replying is fine
     expect((await send(newbie, 'ann_m', 'see https://spam.example')).body.error.code).toBe(
-      'LINKS_NOT_YET',
+      'NO_LINKS',
     );
   });
 

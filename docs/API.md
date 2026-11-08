@@ -112,7 +112,9 @@ D218: live area chat. Text only, temporary, one room per map cell of about a mil
 | --- | --- | --- | --- | --- |
 | POST | `/api/v1/chat/status` | user (confirmed email) | yes | Where you are and whether chat is open there: `{ open, room: { title, zip }, people }` (`people` is "a few" under 5, the number from 5). Also counts you as present. |
 | POST | `/api/v1/chat/messages/list` | user (confirmed email) | yes | The room's lines, oldest first; `after` (ISO time) returns only newer ones. A line is `{ id, username, admin, createdAt, body }`: no pictures, IDs or places. `CHAT_CLOSED` (403) when off or too quiet. |
-| POST | `/api/v1/chat/messages` | user (confirmed email) | yes | Say something: 1 to 200 plain-text characters, no links, forbidden words refused, the same line twice refused. 1 per 3 s, 10 per minute, 100 per hour. Lines expire after 23 hours; a room keeps its newest 40 (up to 150 while under 30 minutes old). |
+| POST | `/api/v1/chat/messages` | user (confirmed email) | yes | Say something: 1 to 200 plain-text characters, links of any kind refused (D219), forbidden words refused, the same line twice refused. 1 per 3 s, 10 per minute, 100 per hour. Breaking a rule (a word, a link, a repeat, passing the minute or hour cap) gets 2 warnings, then a mute of 10 minutes, an hour, the rest of the day (`CHAT_MUTED`, 403; reading still works; `mutedUntil` is in the status and list responses). Lines expire after 23 hours; a room keeps its newest 40 (up to 150 while under 30 minutes old). |
+| POST | `/api/v1/reports` with `target: { type: "chat", username }` | user (confirmed email) | yes | D218: report someone's chat lines (you must be in the same room). Copies their last 20 lines into the report as evidence; reasons as for other reports. |
+| POST | `/api/v1/admin/chat/users/:id/unmute` | admin | no | Lift someone's chat mute early (a reason is audited). |
 | POST | `/api/v1/admin/chat/rooms/:id` | admin | no | Switch a room on or off, or rename it (`action`: `enable`, `disable`, `rename`; a reason is audited). |
 
 ## topics

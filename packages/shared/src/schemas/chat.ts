@@ -40,6 +40,9 @@ export const chatRoomAdminSchema = z.discriminatedUnion('action', [
   }),
 ]);
 
+/** Admin: lift someone's chat mute early. */
+export const chatUnmuteSchema = z.strictObject({ reason: reasonText });
+
 export interface ChatLine {
   id: string;
   username: string;
@@ -58,6 +61,8 @@ export interface ChatRoomInfo {
 /** `open` is false (and `people` null) when chat is off here or too few people are about. */
 export interface ChatStatus {
   open: boolean;
+  /** When a mute ends (ISO time), or null. A muted person can read but not send. */
+  mutedUntil: string | null;
   room: ChatRoomInfo | null;
   /** "a few" under 5 people, the number from 5. */
   people: string | null;

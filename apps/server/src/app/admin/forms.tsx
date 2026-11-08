@@ -422,6 +422,34 @@ export function ChatRoomControls({
   );
 }
 
+/** D218: lift someone's area-chat mute early. */
+export function ChatUnmuteButton({ userId }: { userId: string }) {
+  const { busy, error, run } = useSubmit();
+  return (
+    <span>
+      <button
+        style={ui.buttonSecondary}
+        disabled={busy}
+        onClick={() =>
+          run(async () => {
+            const reason = prompt('Reason for lifting the mute (kept in the audit log)');
+            if (!reason || reason.trim().length < 3) return 'Cancelled.';
+            await adminFetch(`/api/v1/admin/chat/users/${userId}/unmute`, {
+              method: 'POST',
+              body: { reason },
+            });
+            setTimeout(() => window.location.reload(), 500);
+            return 'Done.';
+          })
+        }
+      >
+        Lift mute
+      </button>
+      {error ? <span style={ui.error}>{error}</span> : null}
+    </span>
+  );
+}
+
 /** D146: take any place down now (asks for a reason; Removals → Keep undoes it). */
 export function RemovePlaceButton({ placeId, name }: { placeId: string; name: string }) {
   const { busy, error, done, run } = useSubmit();

@@ -64,7 +64,21 @@ export async function adminChatRoom(id: string, now = new Date()) {
       where: { roomId: id, lastSeenAt: { gte: new Date(now.getTime() - PRESENT_WITHIN_MS) } },
     }),
   ]);
-  return { room: { ...room, title: roomTitle(room) }, lines, present };
+  const mutes = await db.chatMute.findMany({
+    where: { userId: { in: [...new Set(lines.map((l) => l.author.id))] }, until: { gt: now } },
+    select: { userId: true },
+  });
+  return {
+    room: { ...room, title: roomTitle(room) },
+    lines,
+    present,
+    mutedIds: new Set(mutes.map((m) => m.userId)),
+  };
+}
+
+/** Lifts a chat mute early (their offences stay counted for the 24 hours). */
+export async function adminUnmuteChatUser(userId: string) {
+  await db.chatMute.deleteMany({ where: { userId } });
 }
 
 export async function adminSetChatRoom(

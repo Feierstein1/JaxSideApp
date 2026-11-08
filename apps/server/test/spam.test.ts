@@ -89,40 +89,31 @@ describe('duplicates (P5.5, D57)', () => {
   });
 });
 
-describe('links (P5.5, D57)', () => {
-  it('counts URLs and bare domains', () => {
+describe('links (D219: refused everywhere)', () => {
+  it('counts URLs and bare domains, not ordinary sentences', () => {
     expect(countLinks('see https://a.example/x and www.b.org and cheap-deals.shop/now')).toBe(3);
+    expect(countLinks('try joes.dev or best.ai')).toBe(2);
     expect(countLinks('meet at 5.30 near the St. Johns river')).toBe(0);
+    expect(countLinks('it.is fine, so.to speak, e.g. this')).toBe(0);
   });
 
-  it('up to 2 links publish; more are held for review with an automatic report', async () => {
-    expect((await post('menus: https://a.example.com and https://b.example.com')).status).toBe(201);
-    const r = await post('deals https://x.example.com https://y.example.com https://z.example.com');
-    expect(r.status).toBe(202);
-    expect(r.body.held).toBe(true);
-    const held = await db.generalPost.findFirstOrThrow({ where: { status: 'HELD_FOR_REVIEW' } });
-    expect(await db.report.findFirstOrThrow()).toMatchObject({
-      generalPostId: held.id,
-      reason: 'SPAM',
-      reporterUserId: null,
-    });
+  it('a post with a link is refused, however old the account', async () => {
+    const r = await post('menus: https://a.example.com');
+    expect(r.status).toBe(422);
+    expect(r.body.error.code).toBe('NO_LINKS');
+    expect((await post('check out mysite.com for more')).body.error.code).toBe('NO_LINKS');
+    expect(await db.generalPost.count()).toBe(0);
   });
 
-  it('any link from an account under a day old is held', async () => {
-    await db.user.update({ where: { id: userId }, data: { createdAt: new Date() } });
-    const r = await post('check out mysite.com for more');
-    expect(r.status).toBe(202);
-  });
-
-  // 🔒 edits can't be used to add a pile of links to a visible post.
-  it('an edit with too many links is refused', async () => {
+  // 🔒 edits can't be used to add a link to a visible post.
+  it('an edit that adds a link is refused', async () => {
     const id = (await post('Great coffee at the corner shop this morning')).body.post.id;
     const r = await call(postPATCH as H, 'PATCH', {
       token,
       id,
-      body: { body: 'a.com b.com c.com' },
+      body: { body: 'Great coffee at the corner shop, see a.com' },
     });
     expect(r.status).toBe(422);
-    expect(r.body.error.code).toBe('TOO_MANY_LINKS');
+    expect(r.body.error.code).toBe('NO_LINKS');
   });
 });

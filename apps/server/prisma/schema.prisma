@@ -205,6 +205,8 @@ model User {
   locationChecks  LocationCheck[]
   chatMessages    ChatMessage[]
   chatPresence    ChatPresence?
+  chatOffenses    ChatOffense[]
+  chatMute        ChatMute?
   locationFlags   LocationFlag[]       @relation("LocationFlagUser")
   flagsReviewed   LocationFlag[]       @relation("LocationFlagReviewer")
   configUpdates   AppConfiguration[]
@@ -936,6 +938,9 @@ model Report {
   adId               String?          @db.Uuid
   /// D98: snapshot of the reported message and the 10 around it, kept 1 year as evidence.
   messageEvidence    Json?
+  /// D218: the reported person's last 20 area-chat lines in the room, copied when reported (the
+  /// chat itself is deleted after 24 hours). Kept 1 year, like message evidence.
+  chatEvidence       Json?
   reason             ReportReason
   details            String?          @db.VarChar(1000)
   status             ReportStatus     @default(OPEN)
@@ -2390,4 +2395,26 @@ model ChatPresence {
 
   @@index([roomId, lastSeenAt])
   @@index([lastSeenAt])
+}
+
+/// D218: a chat rule broken (a blocked word, a link, a repeat, flooding). Kept 24 hours; the
+/// count in that time sets the response: 1-2 a warning, 3 a 10-minute mute, 4 an hour, 5+ a day.
+model ChatOffense {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @db.Uuid
+  kind      String   @db.VarChar(20)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+/// D218: a person muted in area chat until `until` (they can still read). One row per person.
+model ChatMute {
+  userId String   @id @db.Uuid
+  until  DateTime @db.Timestamptz(3)
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([until])
 }

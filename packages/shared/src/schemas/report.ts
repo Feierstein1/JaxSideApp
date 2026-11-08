@@ -67,6 +67,8 @@ export const reportTargetSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('topic'), id: z.uuid() }),
   /** D209: an ad in the feeds. */
   z.strictObject({ type: z.literal('ad'), id: z.uuid() }),
+  /** D218: someone's recent area-chat lines (you must be in the same room). */
+  z.strictObject({ type: z.literal('chat'), username: z.string().regex(/^[A-Za-z0-9_]{3,20}$/) }),
   z.strictObject({
     type: z.literal('user'),
     // Any existing name (old names can predate today's rules), so no reserved-word check.

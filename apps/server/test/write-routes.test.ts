@@ -49,6 +49,9 @@ import * as ownerConfirm from '@/app/api/v1/owner-claims/[id]/confirm/route';
 import * as ownerProof from '@/app/api/v1/owner-claims/[id]/proof/route';
 import * as ownerCancel from '@/app/api/v1/owner-claims/[id]/cancel/route';
 import * as contact from '@/app/api/v1/contact/route';
+import * as chatStatus from '@/app/api/v1/chat/status/route';
+import * as chatList from '@/app/api/v1/chat/messages/list/route';
+import * as chatSend from '@/app/api/v1/chat/messages/route';
 import * as messages from '@/app/api/v1/messages/route';
 import * as messageUnsend from '@/app/api/v1/messages/[id]/unsend/route';
 import * as messageHide from '@/app/api/v1/messages/[id]/hide/route';
@@ -405,6 +408,34 @@ const ROWS: Row[] = [
     id: 'post',
     location: false,
     body: () => ({}),
+  },
+  // D218: area chat (chat.test.ts has rooms, limits, mutes and reports).
+  {
+    route: 'chat/status',
+    method: 'POST',
+    handler: h(chatStatus, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at) }),
+  },
+  {
+    route: 'chat/messages/list',
+    method: 'POST',
+    handler: h(chatList, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at) }),
+  },
+  {
+    route: 'chat/messages',
+    method: 'POST',
+    handler: h(chatSend, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at), body: 'hello' }),
   },
   // D94: community place voting (place-voting.test.ts has the behavior).
   {
