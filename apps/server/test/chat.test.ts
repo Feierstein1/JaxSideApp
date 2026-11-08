@@ -167,6 +167,14 @@ describe('sending and reading', () => {
     expect((await list(alice)).body.lines[0].admin).toBe(true);
   });
 
+  it('a staff-badge account is marked staff as well as an admin role', async () => {
+    const badge = await person('badge_ch', { staffBadge: true });
+    await notePresence(badge.id, HERE);
+    await send(badge, 'Official note from staff');
+    const lines = (await list(alice)).body.lines;
+    expect(lines[0]).toMatchObject({ username: 'badge_ch', admin: true });
+  });
+
   it('asking for lines after a time returns only the newer ones', async () => {
     await send(alice, 'first line');
     const first = (await list(bob)).body.lines[0];

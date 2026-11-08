@@ -57,7 +57,9 @@ export async function adminChatRoom(id: string, now = new Date()) {
         id: true,
         body: true,
         createdAt: true,
-        author: { select: { id: true, username: true, role: true, status: true } },
+        author: {
+          select: { id: true, username: true, role: true, staffBadge: true, status: true },
+        },
       },
     }),
     db.chatPresence.count({

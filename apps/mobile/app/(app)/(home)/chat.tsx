@@ -40,7 +40,20 @@ const Line = memo(function Line({
   onName: (username: string) => void;
 }) {
   return (
-    <View style={{ paddingHorizontal: SPACE.md, paddingVertical: 5 }}>
+    <View
+      style={[
+        { paddingHorizontal: SPACE.md, paddingVertical: 5 },
+        // Staff lines stand out: the gold-tinted card and gold edge used on staff posts (D155).
+        line.admin
+          ? {
+              backgroundColor: DARK.adminCard,
+              borderLeftWidth: 4,
+              borderLeftColor: DARK.adminEdge,
+              marginVertical: 2,
+            }
+          : null,
+      ]}
+    >
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
         <Text
           accessibilityRole={mine ? undefined : 'button'}
@@ -54,8 +67,14 @@ const Line = memo(function Line({
           }}
         >
           {line.username}
-          {line.admin ? '  STAFF' : ''}
         </Text>
+        {line.admin ? (
+          <Text
+            style={{ fontSize: 10.5, fontWeight: '800', letterSpacing: 1, color: DARK.adminEdge }}
+          >
+            STAFF
+          </Text>
+        ) : null}
         <Text style={{ fontSize: 11, color: DARK.textMuted }}>{chatClock(line.createdAt)}</Text>
       </View>
       <Text style={{ fontSize: 14, lineHeight: 20 }}>{line.body}</Text>

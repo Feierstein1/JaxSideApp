@@ -48,7 +48,9 @@ export default async function ChatRoomPage(ctx: { params: Promise<{ id: string }
               <a href={`/admin/users/${l.author.id}`} style={{ fontWeight: 700 }}>
                 @{l.author.username}
               </a>{' '}
-              {l.author.role === 'ADMIN' ? <Pill tone="ok">staff</Pill> : null}
+              {l.author.role === 'ADMIN' || l.author.staffBadge ? (
+                <Pill tone="ok">staff</Pill>
+              ) : null}
               {mutedIds.has(l.author.id) ? (
                 <>
                   <Pill tone="alert">muted</Pill> <ChatUnmuteButton userId={l.author.id} />

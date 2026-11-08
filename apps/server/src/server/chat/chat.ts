@@ -28,6 +28,10 @@ export const roomTitle = (
 
 const info = (r: ChatRoom) => ({ title: roomTitle(r), zip: r.zip });
 
+/** D141 / D155: staff are people with the staff badge, or admins; their lines show in the staff color. */
+export const isStaff = (u: { role: string; staffBadge: boolean }) =>
+  u.staffBadge || u.role === 'ADMIN';
+
 /** Guests and unconfirmed accounts have no chat (D218). */
 function assertCanChat(user: User) {
   if (!user.emailVerifiedAt) {
@@ -85,14 +89,14 @@ export async function listChat(
       id: true,
       body: true,
       createdAt: true,
-      author: { select: { username: true, role: true } },
+      author: { select: { username: true, role: true, staffBadge: true } },
     },
   });
   return {
     lines: rows.map((m) => ({
       id: m.id,
       username: m.author.username,
-      admin: m.author.role === 'ADMIN',
+      admin: isStaff(m.author),
       createdAt: m.createdAt.toISOString(),
       body: m.body,
     })),
@@ -265,7 +269,7 @@ export async function sendChat(
   return {
     id: row.id,
     username: user.username,
-    admin: user.role === 'ADMIN',
+    admin: isStaff(user),
     createdAt: row.createdAt.toISOString(),
     body: row.body,
   };
