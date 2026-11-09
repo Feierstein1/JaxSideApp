@@ -50,6 +50,9 @@ interface Favorite {
   category: string;
 }
 
+/** D223: how many favorites the Account page lists before "See All Favorited Places". */
+const FAVORITES_SHOWN = 3;
+
 /**
  * Account (no location needed here, D16). D79: one scrolling page, like the "you" tab of
  * most social apps: your profile card (what others see) at the top with quick actions,
@@ -561,17 +564,28 @@ function Settings() {
         {favorites.length === 0 ? (
           <ListRow icon="star-outline" label="No favorites yet" />
         ) : (
-          favorites.map((f) => (
-            <ListRow
-              key={f.id}
-              icon={categoryIcon(f.category)}
-              iconColor={categoryColor(f.category)}
-              label={f.name}
-              detail={categoryLabel(f.category)}
-              href={`/places/${f.id}`}
-            />
-          ))
+          // D223: the 3 most recently saved; the rest are one tap away.
+          favorites
+            .slice(0, FAVORITES_SHOWN)
+            .map((f) => (
+              <ListRow
+                key={f.id}
+                icon={categoryIcon(f.category)}
+                iconColor={categoryColor(f.category)}
+                label={f.name}
+                detail={categoryLabel(f.category)}
+                href={`/places/${f.id}`}
+              />
+            ))
         )}
+        {favorites.length > FAVORITES_SHOWN ? (
+          <ListRow
+            icon="star"
+            label="See All Favorited Places"
+            detail={String(favorites.length)}
+            href="/account/favorites"
+          />
+        ) : null}
       </ListGroup>
 
       <ListGroup title="Your account">

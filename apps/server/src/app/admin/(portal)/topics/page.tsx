@@ -1,8 +1,13 @@
 import { TOPIC_CATEGORIES } from '@jax/shared';
-import { adminListTopics } from '@/server/topics';
+import { adminListTopics, topicApprovalRequired } from '@/server/topics';
 import { ui } from '../../admin-ui';
 import { requireAdminPage } from '../../require-admin-page';
-import { SuggestionActions, TopicForm, TopicStatusButton } from '../../topic-forms';
+import {
+  SuggestionActions,
+  TopicApprovalSwitch,
+  TopicForm,
+  TopicStatusButton,
+} from '../../topic-forms';
 import { Pager, when } from '../admin-table';
 import { pageNumber } from '@/server/admin/paging';
 
@@ -28,6 +33,7 @@ export default async function TopicsPage({
 }) {
   await requireAdminPage();
   const q = await searchParams;
+  const approval = await topicApprovalRequired();
   // D210: each section is paged on its own (page, wpage, hpage, dpage, rpage).
   const editId = q.edit && /^[0-9a-f-]{36}$/i.test(q.edit) ? q.edit : undefined;
   const [waitingPage, topicsPage, rejectedPage, heldPage, deletedPage, edited] = await Promise.all([
@@ -58,6 +64,22 @@ export default async function TopicsPage({
         the usual rules and reports apply.
       </p>
 
+      <div style={{ ...ui.card, marginBottom: 12 }}>
+        <p style={{ margin: '0 0 8px' }}>
+          <strong>
+            {approval
+              ? 'Topics people start need your approval.'
+              : 'Topics people start appear at once.'}
+          </strong>{' '}
+          {approval
+            ? 'They wait under “Suggestions waiting” until you approve or reject them.'
+            : 'Anyone old enough to start topics can post one right away; reports and the usual rules still apply.'}{' '}
+          The waiting time between topics and the account age rule apply either way, and staff are
+          never held.
+        </p>
+        <TopicApprovalSwitch required={approval} />
+      </div>
+
       {editing ? (
         <>
           <h2>Edit topic</h2>
@@ -76,7 +98,7 @@ export default async function TopicsPage({
         </p>
       )}
 
-      <h2>Suggestions waiting ({waitingPage.total})</h2>
+      <h2>Waiting for approval ({waitingPage.total})</h2>
       {waitingPage.total === 0 ? <p style={ui.muted}>None right now.</p> : null}
       <div style={{ display: 'grid', gap: 12 }}>
         {waiting.map((t) => (

@@ -275,3 +275,34 @@ export function TopicStatusButton({ id, open }: { id: string; open: boolean }) {
     </span>
   );
 }
+
+/** D222: the switch for "topics people start need admin approval". */
+export function TopicApprovalSwitch({ required }: { required: boolean }) {
+  const { busy, error, run } = useRun();
+  return (
+    <span>
+      <button
+        style={required ? ui.buttonSecondary : ui.button}
+        disabled={busy}
+        onClick={() =>
+          run(async () => {
+            const reason = prompt(
+              required
+                ? 'Remove admin approval? New topics will appear at once. Reason (kept in the audit log):'
+                : 'Make topics admin approved? New topics will wait for you. Reason (kept in the audit log):',
+            );
+            if (!reason || reason.trim().length < 3) return;
+            await adminFetch('/api/v1/admin/topics/approval', {
+              method: 'POST',
+              body: { required: !required, reason },
+            });
+            window.location.reload();
+          })
+        }
+      >
+        {required ? 'Remove admin approval' : 'Make topics admin approved'}
+      </button>
+      <ErrorText text={error} />
+    </span>
+  );
+}

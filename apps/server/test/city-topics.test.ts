@@ -51,6 +51,9 @@ const titles = (r: { body: { topics: { title: string }[] } }) => r.body.topics.m
 
 beforeEach(async () => {
   await resetDb();
+  // D222: these tests are about topics that appear at once; approval has its own file.
+  await db.appConfiguration.create({ data: { key: 'topics.requireApproval', value: 0 } });
+  invalidateConfigCache();
   await relaxBurstLimits();
   await importServiceArea(db, readBoundaryFile());
   invalidateConfigCache();

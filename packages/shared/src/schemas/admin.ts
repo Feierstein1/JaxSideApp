@@ -94,6 +94,12 @@ export const placeRatingsAdminSchema = z.strictObject({
   reason: reasonText,
 });
 
+/** D222: turn "topics people start need admin approval" on or off. */
+export const topicApprovalSchema = z.strictObject({
+  required: z.boolean(),
+  reason: reasonText,
+});
+
 /** P5.7: deciding an appeal. The note is shown to the person. */
 export const appealDecisionSchema = z.strictObject({
   accept: z.boolean(),

@@ -237,6 +237,9 @@ export const CONFIG_DEFAULTS = {
   /** D134: a topic its creator deleted stays visible to the admin this long, then goes. */
   'topics.deletedKeepDays': 7,
   /** D143: one new topic of each kind (City, Near me) per this many days, per person. */
+  // D222: 1 = a topic someone starts waits for an admin to approve it; 0 = topics appear at once.
+  // The admin switches this on the Topics page (staff are never held).
+  'topics.requireApproval': 1,
   'topics.newEveryDays': 30,
   /** D147: accounts must be this many days old to start a topic (posting in one is fine). */
   'topics.createMinAccountDays': 5,

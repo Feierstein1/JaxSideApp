@@ -48,6 +48,9 @@ const list = async (token: string, extra: Record<string, unknown> = {}) =>
 
 beforeEach(async () => {
   await resetDb();
+  // D222: these tests are about topics that appear at once; approval has its own file.
+  await db.appConfiguration.create({ data: { key: 'topics.requireApproval', value: 0 } });
+  invalidateConfigCache();
   await relaxBurstLimits();
   // D143's one-topic-a-month limit is tested in topic-limits.test.ts.
   await db.appConfiguration.create({ data: { key: 'topics.newEveryDays', value: 0 } });

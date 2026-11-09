@@ -14,7 +14,7 @@ import {
 import type { CityTopic, User } from '@/generated/prisma/client';
 import { Prisma } from '@/generated/prisma/client';
 import { skipsAccountWaits } from './account-age';
-import { getConfig } from './config';
+import { getConfig, invalidateConfigCache } from './config';
 import { db } from './db';
 import { decodeCursor, encodeCursor } from './discussions/cursor';
 import { ApiError } from './http';
@@ -254,23 +254,42 @@ export async function createUserTopic(
   userId: string,
   input: CreateTopicRequest,
   at: GeoPoint,
-): Promise<{ id: string; held: boolean }> {
+  opts: { staff?: boolean } = {},
+): Promise<{ id: string; held: boolean; pending: boolean }> {
   // D142: screened like a new post: a hold rule (spam, scams, borderline words) saves the
   // topic hidden for a moderator instead of refusing it.
   const screen = await screenText(`${input.title}\n${input.description ?? ''}`, 'new-content', {
     confirmWarning: input.confirmWarning,
   });
-  const status = screen.held ? 'HELD' : 'ACTIVE';
+  // D222: while approval is required, a topic waits for an admin (the Topics page, "Suggestions
+  // waiting") and shows in the creator's "My suggestions". Staff are never held.
+  const pending = !screen.held && !opts.staff && (await topicApprovalRequired());
+  const status = screen.held ? 'HELD' : pending ? 'SUGGESTED' : 'ACTIVE';
   const [row] = await db.$queryRaw<{ id: string }[]>`
     INSERT INTO "CityTopic" (id, scope, title, category, description, location, status,
-                             "createdById", "showCreator", "updatedAt")
+                             "createdById", "suggestedById", "showCreator", "updatedAt")
     VALUES (uuid_v7(), ${input.scope === 'local' ? 'LOCAL' : 'CITY'}::"TopicScope",
             ${input.title}, ${input.category ?? 'other'}, ${input.description ?? null},
             ${input.scope === 'local' ? point(at) : null}, ${status}::"CityTopicStatus",
-            ${userId}::uuid, ${input.showCreator ?? false}, now())
+            ${userId}::uuid, ${pending ? userId : null}::uuid, ${input.showCreator ?? false}, now())
     RETURNING id`;
   if (screen.held) await holdReport(holdFor(screen.rule), { cityTopicId: row!.id });
-  return { id: row!.id, held: screen.held };
+  return { id: row!.id, held: screen.held, pending };
+}
+
+/** D222: do topics that people start wait for an admin to approve them? */
+export async function topicApprovalRequired() {
+  return (await getConfig('topics.requireApproval')) === 1;
+}
+
+/** D222: the admin's switch ("Make topics admin approved" / "Remove admin approval"). */
+export async function setTopicApprovalRequired(required: boolean) {
+  await db.appConfiguration.upsert({
+    where: { key: 'topics.requireApproval' },
+    create: { key: 'topics.requireApproval', value: required ? 1 : 0 },
+    update: { value: required ? 1 : 0 },
+  });
+  invalidateConfigCache();
 }
 
 /**

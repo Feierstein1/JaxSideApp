@@ -69,10 +69,9 @@ const Line = memo(function Line({
           {line.username}
         </Text>
         {line.admin ? (
-          <Text
-            style={{ fontSize: 10.5, fontWeight: '800', letterSpacing: 1, color: DARK.adminEdge }}
-          >
-            STAFF
+          // The same blue as JAX in the JAXSIDE name (DARK.accent).
+          <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1, color: DARK.accent }}>
+            ADMIN
           </Text>
         ) : null}
         <Text style={{ fontSize: 11, color: DARK.textMuted }}>{chatClock(line.createdAt)}</Text>

@@ -5,6 +5,7 @@ import { NO_USER } from '@/server/discussions/comments';
 import { route } from '@/server/http';
 import { assertLocationEligible, coarsenPoint } from '@/server/location/eligibility';
 import { enforce } from '@/server/rate-limit';
+import { skipsAccountWaits } from '@/server/account-age';
 import { assertTopicAllowance, createUserTopic, getTopic, listTopics } from '@/server/topics';
 import { parseBody } from '@/server/validate';
 
@@ -31,7 +32,21 @@ export const POST = route(async (req) => {
   const at = await assertLocationEligible({ kind: 'user', user }, input.reading, 'general.post');
   // D143 / D147 (after the location check, per the route order): account age, one a month.
   await assertTopicAllowance(user, input.scope);
-  const { id, held } = await createUserTopic(user.id, input, coarsenPoint(at));
+  const { id, held, pending } = await createUserTopic(user.id, input, coarsenPoint(at), {
+    staff: skipsAccountWaits(user),
+  });
+  if (pending) {
+    // D222: waiting for an admin; told in the same way as a held topic (202).
+    return NextResponse.json(
+      {
+        held: true,
+        pending: true,
+        message:
+          'Thanks! A JaxSide admin will look at your topic before it appears. You can follow it under Account → My suggestions.',
+      },
+      { status: 202 },
+    );
+  }
   if (held) {
     // D142: like a held post (202): the creator is told it appears after review.
     return NextResponse.json(

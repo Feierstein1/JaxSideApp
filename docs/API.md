@@ -122,7 +122,8 @@ D218: live area chat. Text only, temporary, one room per map cell of about a mil
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
 | GET | `/api/v1/topics` | user or guest | yes | D125: open city topics (pinned first) and closed ones. Accounts and guests. |
-| POST | `/api/v1/topics` | user or guest | yes | D133: create a topic: city (anywhere in Duval) or local (placed at your coarsened location; seen and posted in within half a mile). Confirmed accounts; screened like posts. |
+| POST | `/api/v1/admin/topics/approval` | admin | no | D222: make topics need admin approval (`required: true`) or appear at once (`false`); a reason is audited. |
+| POST | `/api/v1/topics` | user or guest | yes | D133: create a topic (D222: while approval is on it comes back 202 `{ held, pending, message }` and waits for an admin; staff are never held): city (anywhere in Duval) or local (placed at your coarsened location; seen and posted in within half a mile). Confirmed accounts; screened like posts. |
 | GET | `/api/v1/topics/:id` | user or guest |  | D125: one city topic. D133: local topics are opened through their posts list, which checks that you're nearby, so they aren't served here. |
 | PATCH | `/api/v1/topics/:id` | user or guest |  | D134: the creator shows or hides their username on the topic (the only change allowed; the title, description and category can't be edited). |
 | DELETE | `/api/v1/topics/:id` | user or guest |  | D134: the creator deletes their topic (hidden at once; purged with its posts in a week). |

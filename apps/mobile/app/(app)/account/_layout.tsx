@@ -15,6 +15,7 @@ export default function AccountLayout() {
       <Stack.Screen name="password" options={{ title: 'Change password' }} />
       <Stack.Screen name="email" options={{ title: 'Change email' }} />
       <Stack.Screen name="blocked" options={{ title: 'Blocked users' }} />
+      <Stack.Screen name="favorites" options={{ title: 'Favorite places' }} />
       <Stack.Screen name="reports" options={{ title: 'My reports' }} />
       <Stack.Screen name="suggestions" options={{ title: 'My suggestions' }} />
       <Stack.Screen name="standing" options={{ title: 'Account standing' }} />
