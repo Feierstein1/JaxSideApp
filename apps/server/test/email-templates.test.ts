@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { renderEmail } from '@/server/mail/layout';
 import { EMAIL_LOGO } from '@/server/mail/logo';
 import {
   accountDeletedEmail,
-  businessInviteEmail,
   emailChangeCodeEmail,
   emailChangeNoticeEmail,
   emailChangeTakenEmail,
-  ownerCodeEmail,
   passwordResetEmail,
   registrationAttemptEmail,
   verificationEmail,
@@ -23,8 +22,6 @@ const ALL = [
   emailChangeNoticeEmail('a@example.test', 'completed'),
   emailChangeTakenEmail('a@example.test'),
   accountDeletedEmail('a@example.test', 30),
-  ownerCodeEmail('a@example.test', '482913', 'Bold Bean'),
-  businessInviteEmail('a@example.test', 'Bold Bean', 'http://localhost:3100/invite?token=abc', 7),
 ];
 
 describe('branded emails', () => {
@@ -49,20 +46,17 @@ describe('branded emails', () => {
     expect(mail.html).toContain(`href="${link}"`);
   });
 
-  it('escapes outside text, so a business name cannot add markup to the email', () => {
-    const mail = ownerCodeEmail('a@example.test', '482913', '<b onmouseover="x">Cafe</b> & "Co"');
-    expect(mail.html).not.toContain('<b onmouseover');
-    expect(mail.html).toContain(
+  it('escapes outside text, so a name cannot add markup to the email', () => {
+    // B6.5: the owner emails are gone; the layout every email uses still escapes its text.
+    const html = renderEmail({
+      preheader: 'x',
+      heading: '<b onmouseover="x">Cafe</b> & "Co"',
+      intro: ['<b onmouseover="x">Cafe</b>'],
+    });
+    expect(html).not.toContain('<b onmouseover');
+    expect(html).toContain(
       '&lt;b onmouseover=&quot;x&quot;&gt;Cafe&lt;/b&gt; &amp; &quot;Co&quot;',
     );
-    // D172: the business invite carries the place name too.
-    const invite = businessInviteEmail(
-      'a@example.test',
-      '<b onmouseover="x">Cafe</b>',
-      'http://x/i',
-      7,
-    );
-    expect(invite.html).not.toContain('<b onmouseover');
   });
 
   it('the logo is a real PNG of the stated size', () => {

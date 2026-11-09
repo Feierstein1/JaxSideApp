@@ -92,10 +92,13 @@ describe('B1.7 Businesses section', () => {
     expect((await listBusinesses('night owl')).rows).toHaveLength(0);
   });
 
-  it('shows the claim behind each place, the team and what the business wrote', async () => {
+  // 🔒 D185 / B6.5: a business never shows a personal app account, even one with an old claim.
+  it('shows how each place was verified, the team and what the business wrote', async () => {
     const b = await getBusiness(owner.id);
     expect(b.kind).toBe('owner');
-    expect(b.places[0]!.claim?.appUser).toMatchObject({ id: appUser.id, username: 'ann_b' });
+    expect(b.places[0]).toMatchObject({ name: 'Bold Bean', verifiedBy: null });
+    expect(JSON.stringify(b)).not.toContain('ann_b');
+    expect(JSON.stringify(b)).not.toContain(appUser.id);
     expect(b.team).toEqual([
       expect.objectContaining({
         username: 'sam.bb',

@@ -1,30 +1,21 @@
-import { listOwnerClaims } from '@/server/directory/owners';
+import { pageNumber } from '@/server/admin/paging';
+import { listPlaceRequests } from '@/server/admin/place-requests';
 import { ui } from '../../admin-ui';
-import { OwnerActions } from '../../forms';
+import { PlaceRequestActions } from '../../forms';
 import { requireAdminPage } from '../../require-admin-page';
 import { Pager, Pill, when } from '../admin-table';
-import { pageNumber } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['PENDING', 'VERIFIED', 'REJECTED', 'REVOKED'] as const;
-const LABEL = {
-  PENDING: 'To check',
-  VERIFIED: 'Owners',
-  REJECTED: 'Rejected',
-  REVOKED: 'Tag removed',
-};
-const HOW = {
-  EMAIL: 'Business email',
-  WEBSITE: 'Code on website / social page',
-  PHONE: 'Phone call',
-  TEAM: 'Added by the primary owner', // D157
-};
+const TABS = ['PENDING', 'APPROVED', 'REJECTED'] as const;
+const LABEL = { PENDING: 'To check', APPROVED: 'Approved', REJECTED: 'Turned down' };
 
 /**
- * D103: owner claims. To check: website/social proofs (open the link and look for the code),
- * phone calls (call the business's public number and read the code), and second owners for
- * a place that already has one. Owners: remove the tag for misuse.
+ * D185 / D224 (B6.4): requests from the owner website. "Verify me" names a place already on
+ * the map; "Add my business" brings a new one with the pin the owner confirmed. Check that
+ * the person really runs the place (call the number on file, look it up), then approve:
+ * a new place goes on the map and the business gets Owner access and its free month.
+ * Personal app accounts never come into it (D185); owners are business logins only.
  */
 export default async function OwnersPage({
   searchParams,
@@ -34,11 +25,14 @@ export default async function OwnersPage({
   await requireAdminPage();
   const q = await searchParams;
   const status = TABS.find((t) => t === q.status) ?? 'PENDING';
-  const list = await listOwnerClaims(status, pageNumber(q.page));
-  const rows = list.rows;
+  const list = await listPlaceRequests(status, pageNumber(q.page));
   return (
     <>
       <h1>Business owners</h1>
+      <p style={ui.muted}>
+        Owners sign up and verify on the JaxSide for Business website. Those who can’t verify with
+        Google, or whose place isn’t on the map yet, ask here.
+      </p>
       <nav style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
         {TABS.map((t) => (
           <a
@@ -52,45 +46,60 @@ export default async function OwnersPage({
       </nav>
       {list.total === 0 ? <p style={ui.muted}>Nothing here.</p> : null}
       <div style={{ display: 'grid', gap: 16 }}>
-        {rows.map((c) => (
-          <div key={c.id} style={ui.card}>
+        {list.rows.map((r) => (
+          <div key={r.id} style={ui.card}>
             <p style={{ marginTop: 0 }}>
-              <strong>{c.place.name}</strong> ·{' '}
-              <a href={`/admin/users/${c.user.id}`}>@{c.user.username}</a>{' '}
-              <Pill>{HOW[c.method]}</Pill> · {when(c.createdAt.toISOString())}
+              <Pill tone={r.kind === 'new' ? 'alert' : undefined}>
+                {r.kind === 'new' ? 'Add my business' : 'Verify me'}
+              </Pill>{' '}
+              <strong>{r.place?.name ?? r.typed.name}</strong> · from{' '}
+              <a href={`/admin/businesses/${r.business.id}`}>{r.business.login}</a> ·{' '}
+              {when(r.createdAt)}
             </p>
-            {c.method === 'WEBSITE' ? (
+            {r.kind === 'new' ? (
               <p>
-                Look for the code <strong>{c.publicCode}</strong> at{' '}
-                {c.proofUrl ? (
-                  <a href={c.proofUrl} target="_blank" rel="noreferrer noopener">
-                    {c.proofUrl}
-                  </a>
-                ) : (
-                  '(no link yet)'
-                )}
-                {c.place.website ? (
+                {r.typed.address ?? 'No address'} · {r.typed.category ?? 'no kind'}
+                {r.typed.pin ? (
                   <>
                     {' '}
-                    · place’s website on file:{' '}
-                    <a href={c.place.website} target="_blank" rel="noreferrer noopener">
-                      {c.place.website}
+                    ·{' '}
+                    <a
+                      href={`https://www.openstreetmap.org/?mlat=${r.typed.pin.latitude}&mlon=${r.typed.pin.longitude}#map=19/${r.typed.pin.latitude}/${r.typed.pin.longitude}`}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                    >
+                      see the pin
                     </a>
                   </>
-                ) : null}
+                ) : (
+                  ' · no pin'
+                )}
               </p>
-            ) : null}
-            {c.method === 'PHONE' && c.status === 'PENDING' ? (
+            ) : (
               <p>
-                Call <strong>{c.place.phone}</strong> (the number on file, not one the person gives
-                you), ask for the owner, and read them the code <strong>{c.phoneCode}</strong>. They
-                enter it in the app, which verifies them. Or approve here after the call.
+                {r.place?.address ?? ''}
+                {r.hasOwner ? <Pill tone="alert">already has an owner</Pill> : null}
+              </p>
+            )}
+            {r.nearby.length ? (
+              <p style={ui.muted}>
+                Near the pin: {r.nearby.map((p) => `${p.name} (${p.meters} m)`).join(', ')}
               </p>
             ) : null}
-            {c.method === 'EMAIL' ? <p>Confirmed a code sent to @{c.emailDomain}.</p> : null}
-            {c.note ? <p style={ui.muted}>Note: {c.note}</p> : null}
-            {c.decidedBy ? <p style={ui.muted}>Decided by @{c.decidedBy.username}</p> : null}
-            <OwnerActions id={c.id} status={c.status} primary={c.primary} />
+            <p style={ui.muted}>
+              Contact: {r.contact.name}
+              {r.contact.phone ? ` · ${r.contact.phone}` : ''}
+              {r.note ? ` · “${r.note}”` : ''}
+            </p>
+            {r.status === 'PENDING' ? (
+              <PlaceRequestActions id={r.id} nearby={r.nearby} />
+            ) : (
+              <p style={ui.muted}>
+                {LABEL[r.status as keyof typeof LABEL]}
+                {r.decidedAt ? ` ${when(r.decidedAt)}` : ''}
+                {r.decisionNote ? `: ${r.decisionNote}` : ''}
+              </p>
+            )}
           </div>
         ))}
       </div>

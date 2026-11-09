@@ -214,7 +214,7 @@ export default function PlaceScreen() {
           marginTop: SPACE.sm,
         }}
       >
-        {/* D103: owners can get a verified Owner tag for their posts here. */}
+        {/* B6.5 / D224: how owners run their place (on the business website, not here). */}
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push({ pathname: '/places/owner', params: { placeId: place.id } })}

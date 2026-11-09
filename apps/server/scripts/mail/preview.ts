@@ -14,7 +14,6 @@ import {
   emailChangeCodeEmail,
   emailChangeNoticeEmail,
   emailChangeTakenEmail,
-  ownerCodeEmail,
   passwordResetEmail,
   registrationAttemptEmail,
   verificationEmail,
@@ -38,7 +37,6 @@ async function main() {
     emailChangeNoticeEmail(to, 'completed'),
     emailChangeTakenEmail(to),
     accountDeletedEmail(to, 30),
-    ownerCodeEmail(to, '590372', 'Bold Bean Coffee'),
   ];
   for (const mail of mails) await getMailer().send(mail);
   console.log(`sent ${mails.length} emails; open http://localhost:8025`);

@@ -722,48 +722,54 @@ export function RemovalActions({ id, status }: { id: string; status: string }) {
   );
 }
 
-/** D103: approve or reject an owner claim, or remove a verified owner's tag. */
-export function OwnerActions({
+/**
+ * D185 / D224 (B6.4): a request from the owner website. Approve (adds a new place to the
+ * map, gives the business Owner access), approve onto a nearby existing place instead, or
+ * turn it down with a reason the business reads.
+ */
+export function PlaceRequestActions({
   id,
-  status,
-  primary = false,
+  nearby,
 }: {
   id: string;
-  status: string;
-  /** D157: this owner manages the place's owner team. */
-  primary?: boolean;
+  nearby: { id: string; name: string; meters: number }[];
 }) {
   const [note, setNote] = useState('');
+  const [usePlaceId, setUsePlaceId] = useState('');
   const { busy, error, done, run } = useSubmit();
-  const act = (action: 'approve' | 'reject' | 'revoke' | 'make-primary') =>
+  const decide = (decision: 'approve' | 'reject') =>
     run(async () => {
-      await adminFetch(`/api/v1/admin/owner-claims/${id}`, {
+      await adminFetch(`/api/v1/admin/place-requests/${id}`, {
         method: 'POST',
-        body: { action, ...(note.trim() ? { note: note.trim() } : {}) },
+        body:
+          decision === 'approve'
+            ? { decision, ...(usePlaceId ? { usePlaceId } : {}) }
+            : { decision, note: note.trim() },
       });
-      setTimeout(() => window.location.reload(), 500);
-      return action === 'approve'
-        ? 'Verified.'
-        : action === 'reject'
-          ? 'Rejected.'
-          : action === 'make-primary'
-            ? 'Now the primary owner.'
-            : 'Tag removed.';
+      setTimeout(() => window.location.reload(), 600);
+      return decision === 'approve' ? 'Approved.' : 'Sent back.';
     });
-  // D172: emails the owner a link to set up their business account (replaces older links).
-  const sendInvite = () =>
-    run(async () => {
-      await adminFetch(`/api/v1/admin/owner-claims/${id}/business-invite`, {
-        method: 'POST',
-        body: {},
-      });
-      return 'Invite sent to the owner’s email.';
-    });
-  if (status !== 'PENDING' && status !== 'VERIFIED') return null;
   return (
-    <div>
+    <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+      {nearby.length ? (
+        <label style={ui.label}>
+          Already on the map? Approve onto it instead
+          <select
+            style={ui.input}
+            value={usePlaceId}
+            onChange={(e) => setUsePlaceId(e.target.value)}
+          >
+            <option value="">No, add it as a new place</option>
+            {nearby.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.meters} m away)
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <label style={ui.label}>
-        Note (kept on the record)
+        Reason, if you turn it down (the business reads it)
         <input
           style={ui.input}
           value={note}
@@ -771,34 +777,18 @@ export function OwnerActions({
           maxLength={500}
         />
       </label>
-      {status === 'PENDING' ? (
-        <>
-          <button style={ui.button} disabled={busy} onClick={() => act('approve')}>
-            Verify owner
-          </button>{' '}
-          <button style={ui.buttonSecondary} disabled={busy} onClick={() => act('reject')}>
-            Reject
-          </button>
-        </>
-      ) : (
-        <>
-          <button style={ui.buttonSecondary} disabled={busy} onClick={() => act('revoke')}>
-            Remove Owner tag
-          </button>{' '}
-          {primary ? (
-            <>
-              <strong>Primary owner (manages the team)</strong>{' '}
-              <button style={ui.buttonSecondary} disabled={busy} onClick={sendInvite}>
-                Send business-site invite
-              </button>
-            </>
-          ) : (
-            <button style={ui.buttonSecondary} disabled={busy} onClick={() => act('make-primary')}>
-              Make primary owner
-            </button>
-          )}
-        </>
-      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button style={ui.button} disabled={busy} onClick={() => decide('approve')}>
+          Approve
+        </button>
+        <button
+          style={ui.buttonSecondary}
+          disabled={busy || note.trim().length < 3}
+          onClick={() => decide('reject')}
+        >
+          Turn down
+        </button>
+      </div>
       {error ? (
         <p role="alert" style={ui.error}>
           {error}

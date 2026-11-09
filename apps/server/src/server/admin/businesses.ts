@@ -174,15 +174,6 @@ export async function getBusiness(
         orderBy: { createdAt: 'asc' },
         include: {
           place: { select: { id: true, name: true, address: true, status: true } },
-          ownerClaim: {
-            select: {
-              id: true,
-              status: true,
-              method: true,
-              verifiedAt: true,
-              user: { select: { id: true, username: true, status: true } },
-            },
-          },
         },
       },
       employees: {
@@ -285,15 +276,9 @@ export async function getBusiness(
       staffName: p.staffName,
       since: p.createdAt.toISOString(),
       revokedAt: p.revokedAt?.toISOString() ?? null,
-      claim: p.ownerClaim
-        ? {
-            id: p.ownerClaim.id,
-            status: p.ownerClaim.status,
-            method: p.ownerClaim.method,
-            verifiedAt: p.ownerClaim.verifiedAt?.toISOString() ?? null,
-            appUser: p.ownerClaim.user,
-          }
-        : null,
+      // D185: how this Owner access was verified (never a personal app account, B6.5).
+      verifiedBy: p.verifiedBy,
+      verifiedAt: p.verifiedAt?.toISOString() ?? null,
     })),
     team: a.employees.map((e) => ({
       id: e.id,

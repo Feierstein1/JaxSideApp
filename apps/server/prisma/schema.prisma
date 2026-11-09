@@ -2212,6 +2212,11 @@ model BusinessVerificationRequest {
   placeId          String?                   @db.Uuid
   placeName        String                    @db.VarChar(200)
   placeAddress     String?                   @db.VarChar(300)
+  /// D224: a new place ("Add my business"): its kind (SUBMIT_CATEGORIES) and the pin the owner
+  /// confirmed on the website's map (geocoded from the address, then dragged if needed).
+  category         String?                   @db.VarChar(60)
+  latitude         Float?
+  longitude        Float?
   /// How the admin reaches the person (they choose; nothing else is asked).
   contactName      String                    @db.VarChar(100)
   contactPhone     String?                   @db.VarChar(40)

@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-182 endpoints.
+179 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -38,6 +38,14 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
 | GET | `/api/v1/business-pictures/:id` | signed link (from a post or profile) |  | D189: serves a business login's profile picture through a short-lived signed link ("The Owner" posts and replies carry the links). Expired or forged links get 403; removed, replaced or unknown pictures 404. |
+
+## chat
+
+| Method | Path | Who | Location | What it does |
+| --- | --- | --- | --- | --- |
+| POST | `/api/v1/chat/messages` | user (confirmed email) |  | D218: say something in your area's chat. Confirmed accounts only (not guests); 200 characters, plain text, no links; forbidden words refused; 1 line per 3 s, 10 a minute and 100 an hour; you must be in the room's cell now. |
+| POST | `/api/v1/chat/messages/list` | user (confirmed email) |  | D218: the room's lines, oldest first (only the newer ones when `after` is given). |
+| POST | `/api/v1/chat/status` | user (confirmed email) | yes | D218: where you are and whether area chat is open there (confirmed accounts; not guests). |
 
 ## contact
 
@@ -87,14 +95,6 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | POST | `/api/v1/notifications/read` | user |  | D76: mark all your notifications read (opening the bell does this). |
 | GET | `/api/v1/notifications/unread` | user |  | D76: the bell's badge. The app asks about every 30 s while open. |
 
-## owner-claims
-
-| Method | Path | Who | Location | What it does |
-| --- | --- | --- | --- | --- |
-| POST | `/api/v1/owner-claims/:id/cancel` | user |  | D103: withdraw your own claim (to start over another way). |
-| POST | `/api/v1/owner-claims/:id/confirm` | user |  | D103: enter the code from the business email or the admin's phone call (your claim only). |
-| POST | `/api/v1/owner-claims/:id/proof` | user |  | D103: where you posted the code (website or official social page); an admin checks it. |
-
 ## polls
 
 | Method | Path | Who | Location | What it does |
@@ -104,26 +104,12 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | POST | `/api/v1/polls/:id/vote` | user (confirmed email) | yes | D123: one final vote. Confirmed accounts a few days old, from inside Duval. The vote is stored under a per-poll code with the voter's ZIP; the ID and the reading are not. |
 | POST | `/api/v1/polls/suggestions` | user (confirmed email) |  | D133: suggest a poll question; the admin uses it or declines it. Confirmed accounts. |
 
-## chat
-
-D218: live area chat. Text only, temporary, one room per map cell of about a mile. Confirmed accounts only (guests and unconfirmed accounts are refused). The room comes from the verified location; the client cannot pick one. A room is open only when an admin has switched it on and at least 2 people were about in the last 10 minutes.
-
-| Method | Path | Who | Location | What it does |
-| --- | --- | --- | --- | --- |
-| POST | `/api/v1/chat/status` | user (confirmed email) | yes | Where you are and whether chat is open there: `{ open, room: { title, zip }, people }` (`people` is "a few" under 5, the number from 5). Also counts you as present. |
-| POST | `/api/v1/chat/messages/list` | user (confirmed email) | yes | The room's lines, oldest first; `after` (ISO time) returns only newer ones. A line is `{ id, username, admin, createdAt, body }`: no pictures, IDs or places. `CHAT_CLOSED` (403) when off or too quiet. |
-| POST | `/api/v1/chat/messages` | user (confirmed email) | yes | Say something: 1 to 200 plain-text characters, links of any kind refused (D219), forbidden words refused, the same line twice refused. 1 per 3 s, 10 per minute, 100 per hour. Breaking a rule (a word, a link, a repeat, passing the minute or hour cap) gets 2 warnings, then a mute of 10 minutes, an hour, the rest of the day (`CHAT_MUTED`, 403; reading still works; `mutedUntil` is in the status and list responses). Lines expire after 23 hours; a room keeps its newest 40 (up to 150 while under 30 minutes old). |
-| POST | `/api/v1/reports` with `target: { type: "chat", username }` | user (confirmed email) | yes | D218: report someone's chat lines (you must be in the same room). Copies their last 20 lines into the report as evidence; reasons as for other reports. |
-| POST | `/api/v1/admin/chat/users/:id/unmute` | admin | no | Lift someone's chat mute early (a reason is audited). |
-| POST | `/api/v1/admin/chat/rooms/:id` | admin | no | Switch a room on or off, or rename it (`action`: `enable`, `disable`, `rename`; a reason is audited). |
-
 ## topics
 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
 | GET | `/api/v1/topics` | user or guest | yes | D125: open city topics (pinned first) and closed ones. Accounts and guests. |
-| POST | `/api/v1/admin/topics/approval` | admin | no | D222: make topics need admin approval (`required: true`) or appear at once (`false`); a reason is audited. |
-| POST | `/api/v1/topics` | user or guest | yes | D133: create a topic (D222: while approval is on it comes back 202 `{ held, pending, message }` and waits for an admin; staff are never held): city (anywhere in Duval) or local (placed at your coarsened location; seen and posted in within half a mile). Confirmed accounts; screened like posts. |
+| POST | `/api/v1/topics` | user or guest | yes | D133: create a topic: city (anywhere in Duval) or local (placed at your coarsened location; seen and posted in within half a mile). Confirmed accounts; screened like posts. |
 | GET | `/api/v1/topics/:id` | user or guest |  | D125: one city topic. D133: local topics are opened through their posts list, which checks that you're nearby, so they aren't served here. |
 | PATCH | `/api/v1/topics/:id` | user or guest |  | D134: the creator shows or hides their username on the topic (the only change allowed; the title, description and category can't be edited). |
 | DELETE | `/api/v1/topics/:id` | user or guest |  | D134: the creator deletes their topic (hidden at once; purged with its posts in a week). |
@@ -272,12 +258,7 @@ D218: live area chat. Text only, temporary, one room per map cell of about a mil
 | PUT | `/api/v1/places/:id/favorite` | user |  |  |
 | DELETE | `/api/v1/places/:id/favorite` | user |  |  |
 | GET | `/api/v1/places/:id/friends-favorited` | user |  | D74/D76: which of your friends favorited this place (everyone else sees only the count). |
-| GET | `/api/v1/places/:id/owner-claims` | user (confirmed email) |  | D103: your owner claims for this place, and which ways to verify it supports. |
-| POST | `/api/v1/places/:id/owner-claims` | user (confirmed email) |  | D103: "I own this place". EMAIL sends a code to an address at the business's own web domain; WEBSITE gives a code to post publicly; PHONE has an admin call the business. |
-| GET | `/api/v1/places/:id/owner-team` | user (confirmed email) |  | D157: the place's owner team (only its members can see it). |
-| POST | `/api/v1/places/:id/owner-team` | user (confirmed email) |  | D157: the primary owner adds a team member by username. |
-| PATCH | `/api/v1/places/:id/owner-team/:claimId` | user (confirmed email) |  | D157: change a staff name (the primary owner for anyone, a member for themselves). |
-| DELETE | `/api/v1/places/:id/owner-team/:claimId` | user (confirmed email) |  | D157: the primary owner removes a team member. |
+| GET | `/api/v1/places/:id/owner-info` | user or guest |  | B6.5 / D224: the app's "I own this place" screen. Owners don't verify in the app any more (D185): they sign up on the JaxSide for Business website. This says whether the place already has a verified owner (never who) and where the website is (null until it's public). |
 | POST | `/api/v1/places/:id/posts` | user (confirmed email) | yes | P3.2: post in a place's room (within 0.3 mi, D19). |
 | POST | `/api/v1/places/:id/posts/list` | user | yes | P3.2: a place's room, newest first (within 0.3 mi, D19). |
 | PUT | `/api/v1/places/:id/rating` | user (confirmed email) | yes | D144: like (+1), dislike (-1) or take back (0) your vote on a place. Only while you're there (within the place radius), one vote per account (changeable), accounts a few days old, never on your own place, and not while an admin has voting locked. |
@@ -330,6 +311,8 @@ D218: live area chat. Text only, temporary, one room per map cell of about a mil
 | GET | `/api/v1/admin/cases` | admin (cookie + CSRF) |  | P5.14: the moderation queue (open reports grouped by item, most urgent first). |
 | GET | `/api/v1/admin/cases/:type/:id` | admin (cookie + CSRF) |  | P5.14: one case with its reports, context and the author's history. |
 | POST | `/api/v1/admin/cases/:type/:id` | admin (cookie + CSRF) |  | P5.14: decide the case (remove, approve, dismiss, escalate), optionally with a strike. |
+| POST | `/api/v1/admin/chat/rooms/:id` | admin (cookie + CSRF) |  | D218: switch a chat room on or off, or give it a name. Audited. |
+| POST | `/api/v1/admin/chat/users/:id/unmute` | admin (cookie + CSRF) |  | D218: lift a person's area-chat mute early. Audited. |
 | POST | `/api/v1/admin/contact/:id` | admin (cookie + CSRF) |  | D90: mark a Contact us message resolved (or open again). |
 | GET | `/api/v1/admin/contact/:id/reply-email` | admin (cookie + CSRF) |  | D90: the sender's account email, only if they allowed replies on this message. Every viewing is written to the audit log. |
 | GET | `/api/v1/admin/giveaways` | admin (cookie + CSRF) |  | D188: every giveaway and its winners. |
@@ -340,9 +323,8 @@ D218: live area chat. Text only, temporary, one room per map cell of about a mil
 | POST | `/api/v1/admin/login` | public |  | P5.11 step 1: password. Returns a short-lived challenge (and 2FA setup the first time). |
 | POST | `/api/v1/admin/login/verify` | public |  | P5.11 step 2: authenticator code. Starts the admin session (cookies). |
 | POST | `/api/v1/admin/logout` | admin (cookie + CSRF) |  | P5.11: end the admin session. |
-| POST | `/api/v1/admin/owner-claims/:id` | admin (cookie + CSRF) |  | D103: approve or reject an owner claim, or take a verified owner's tag away. Audited. |
-| POST | `/api/v1/admin/owner-claims/:id/business-invite` | admin (cookie + CSRF) |  | D172: (re)send a verified primary owner the business-site invite. Audited. |
 | GET | `/api/v1/admin/photos/:id` | admin (cookie + CSRF) |  | P6.5: moderators can see a reported photo, including after it's removed. |
+| POST | `/api/v1/admin/place-requests/:id` | admin (cookie + CSRF) |  | D224 (B6.4): approve or turn down a request from the owner website. Audited. |
 | POST | `/api/v1/admin/places` | admin (cookie + CSRF) |  | D146: add a place now (inside Duval), without a suggestion or votes. Audited. |
 | POST | `/api/v1/admin/places/:id/ratings` | admin (cookie + CSRF) |  | D144: lock or unlock voting on a place, or clear all its votes (abuse). Audited. |
 | POST | `/api/v1/admin/places/:id/remove` | admin (cookie + CSRF) |  | D146: take any place down now (no request needed). Keep in Removals undoes it. Audited. |
@@ -365,6 +347,7 @@ D218: live area chat. Text only, temporary, one room per map cell of about a mil
 | POST | `/api/v1/admin/topics` | admin (cookie + CSRF) |  | D125: create a citywide topic (open now, or from a start time). |
 | PATCH | `/api/v1/admin/topics/:id` | admin (cookie + CSRF) |  | D125: change a topic's wording, pin, start or end. |
 | POST | `/api/v1/admin/topics/:id/decide` | admin (cookie + CSRF) |  | D125: approve or reject a suggestion; close or reopen a topic. |
+| POST | `/api/v1/admin/topics/approval` | admin (cookie + CSRF) |  | D222: make topics need admin approval, or let them appear at once. Audited. |
 | GET | `/api/v1/admin/users` | admin (cookie + CSRF) |  | P5.14: find people by any part of the username; filter by strikes, banned, suspended. |
 | GET | `/api/v1/admin/users/:id` | admin (cookie + CSRF) |  | P5.14: a person's record: status, history, recent content (never their email). |
 | POST | `/api/v1/admin/users/:id/actions` | admin (cookie + CSRF) |  | P5.6 / P5.14: strike, suspend, ban, lift, note, or cancel a strike. |

@@ -17,6 +17,7 @@ export * from './schemas/business';
 export * from './schemas/chat';
 export * from './schemas/ads';
 export * from './schemas/ad-feed';
+export * from './schemas/place-requests';
 export * from './policies';
 export * from './guides';
 export * from './profile-colors';

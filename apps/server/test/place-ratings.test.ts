@@ -117,19 +117,14 @@ describe('rating a place (D144)', () => {
     },
   );
 
-  // 🔒 Only while there, not your own place, not brand-new accounts, not while locked.
+  // 🔒 Only while there, not brand-new accounts, not while locked. (B6.5: personal accounts
+  // aren't linked to a business any more, so there's no "own place" to refuse.)
   it(
-    'refuses votes from away, from the owner, from new accounts and while locked',
+    'refuses votes from away, from new accounts and while locked',
     { timeout: 30_000 },
     async () => {
       const away = await person();
       expect((await rate(away, 1, FAR)).status).toBe(403);
-
-      const owner = await person();
-      await db.ownerClaim.create({
-        data: { placeId: cafe, userId: owner.id, method: 'EMAIL', status: 'VERIFIED' },
-      });
-      expect((await rate(owner, 1)).body.error.code).toBe('OWNER');
 
       const fresh = await person(1);
       expect((await rate(fresh, 1)).body.error.code).toBe('ACCOUNT_TOO_NEW');

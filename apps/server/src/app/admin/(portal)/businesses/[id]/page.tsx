@@ -33,7 +33,13 @@ function stepLabel(next: { action: string; hours?: number } | null) {
     : `${next.hours} h suspension`;
 }
 
-/** B1.7: one business login: places, team, sign-ins, claims, activity, plan; and actions. */
+const VERIFIED_BY: Record<string, string> = {
+  GOOGLE: 'With Google',
+  ADMIN: 'By JaxSide',
+  LEGACY_CLAIM: 'Earlier, in the phone app',
+};
+
+/** B1.7: one business login: places, team, sign-ins, activity, plan; and actions. */
 export default async function BusinessPage({
   params,
   searchParams,
@@ -180,7 +186,7 @@ export default async function BusinessPage({
       <h2>Places</h2>
       {live.length === 0 ? <p style={ui.muted}>No places now.</p> : null}
       {live.length ? (
-        <Table head={['Place', 'Role', 'Since', 'Verified claim (phone app)', '']}>
+        <Table head={['Place', 'Role', 'Since', 'Verified', '']}>
           {live.map((p) => (
             <tr key={p.placeId}>
               <td style={td}>
@@ -196,15 +202,10 @@ export default async function BusinessPage({
               </td>
               <td style={td}>{when(p.since)}</td>
               <td style={td}>
-                {p.claim ? (
-                  <>
-                    <a href={`/admin/users/${p.claim.appUser.id}`}>@{p.claim.appUser.username}</a> (
-                    {words(p.claim.status)}, {words(p.claim.method)}
-                    {p.claim.verifiedAt ? `, ${when(p.claim.verifiedAt)}` : ''})
-                  </>
-                ) : (
-                  '—'
-                )}
+                {/* D185: how the Owner was verified; never a personal app account (B6.5). */}
+                {p.verifiedBy
+                  ? `${VERIFIED_BY[p.verifiedBy]}${p.verifiedAt ? `, ${when(p.verifiedAt)}` : ''}`
+                  : '—'}
               </td>
               <td style={td}>
                 {p.role === 'OWNER' ? <MoveOwnerForm placeId={p.placeId} /> : null}

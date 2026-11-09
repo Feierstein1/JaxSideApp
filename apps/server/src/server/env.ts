@@ -71,8 +71,12 @@ export const envSchema = z
     SMTP_PASS: secret(16).optional(),
     /** D90: optional inbox that gets a copy of each Contact us message. */
     SUPPORT_INBOX: z.string().email().optional(),
-    /** D172: the business website (apps/business), for the invite links this server emails. */
-    BUSINESS_BASE_URL: z.string().url().default('http://localhost:3100'),
+    /**
+     * B6.5 / D224: the public owner website, shown on the app's "I own this place" screen.
+     * Unset: the screen says it's coming soon. (Replaces BUSINESS_BASE_URL, used only by the
+     * retired in-app owner invites.)
+     */
+    BUSINESS_SITE_URL: z.string().url().optional(),
   })
   .superRefine((env, ctx) => {
     // Structural keyring checks (lengths, current key present, keys distinct).

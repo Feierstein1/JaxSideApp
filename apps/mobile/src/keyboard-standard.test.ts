@@ -24,7 +24,6 @@ function tsxFiles(dir: string): string[] {
  */
 const OK_WITHOUT: Record<string, string> = {
   'src/auth/EmailCodeCard.tsx': 'shown inside the verify gate and the account screen',
-  'src/places/OwnerTeam.tsx': 'shown inside the owner Screen',
   'src/standing/StrikeList.tsx': 'shown inside Screen keyboard (standing, appeal)',
   'app/(app)/(home)/index.tsx': 'search field at the top of the feed',
   'app/(app)/citywide/all.tsx': 'search field at the top of the list',

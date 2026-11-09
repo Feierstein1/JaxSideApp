@@ -44,10 +44,6 @@ import * as photos from '@/app/api/v1/photos/route';
 import * as voice from '@/app/api/v1/voice/route';
 import * as videos from '@/app/api/v1/videos/route';
 import * as guides from '@/app/api/v1/me/guides/route';
-import * as ownerClaims from '@/app/api/v1/places/[id]/owner-claims/route';
-import * as ownerConfirm from '@/app/api/v1/owner-claims/[id]/confirm/route';
-import * as ownerProof from '@/app/api/v1/owner-claims/[id]/proof/route';
-import * as ownerCancel from '@/app/api/v1/owner-claims/[id]/cancel/route';
 import * as contact from '@/app/api/v1/contact/route';
 import * as chatStatus from '@/app/api/v1/chat/status/route';
 import * as chatList from '@/app/api/v1/chat/messages/list/route';
@@ -84,8 +80,6 @@ import * as restrictedAppeal from '@/app/api/v1/appeals/restricted/route';
 import * as restrictedStanding from '@/app/api/v1/appeals/restricted/standing/route';
 import * as profile from '@/app/api/v1/me/profile/route';
 import * as favorite from '@/app/api/v1/places/[id]/favorite/route';
-import * as ownerTeam from '@/app/api/v1/places/[id]/owner-team/route';
-import * as ownerTeamMember from '@/app/api/v1/places/[id]/owner-team/[claimId]/route';
 import * as placeRating from '@/app/api/v1/places/[id]/rating/route';
 import * as roomList from '@/app/api/v1/places/[id]/posts/list/route';
 import * as roomPosts from '@/app/api/v1/places/[id]/posts/route';
@@ -582,70 +576,6 @@ const ROWS: Row[] = [
     id: null,
     location: false,
     body: () => ({ key: 'areaPost' }),
-  },
-  // D103: business owner claims (owners.test.ts has the behavior).
-  {
-    route: 'places/[id]/owner-claims',
-    method: 'POST',
-    handler: h(ownerClaims, 'POST'),
-    auth: true,
-    id: 'place',
-    location: false,
-    body: () => ({ method: 'WEBSITE' }),
-  },
-  // D157: the owner team (the primary owner manages it).
-  {
-    route: 'places/[id]/owner-team',
-    method: 'POST',
-    handler: h(ownerTeam, 'POST'),
-    auth: true,
-    id: 'place',
-    location: false,
-    body: () => ({ username: 'someone' }),
-  },
-  {
-    route: 'places/[id]/owner-team/[claimId]',
-    method: 'PATCH',
-    handler: h(ownerTeamMember, 'PATCH'),
-    auth: true,
-    id: 'place',
-    location: false,
-    body: () => ({ staffName: 'Sarah' }),
-  },
-  {
-    route: 'places/[id]/owner-team/[claimId]',
-    method: 'DELETE',
-    handler: h(ownerTeamMember, 'DELETE'),
-    auth: true,
-    id: 'place',
-    location: false,
-  },
-  {
-    route: 'owner-claims/[id]/confirm',
-    method: 'POST',
-    handler: h(ownerConfirm, 'POST'),
-    auth: true,
-    id: 'post',
-    location: false,
-    body: () => ({ code: '123456' }),
-  },
-  {
-    route: 'owner-claims/[id]/proof',
-    method: 'POST',
-    handler: h(ownerProof, 'POST'),
-    auth: true,
-    id: 'post',
-    location: false,
-    body: () => ({ proofUrl: 'https://example.com/code' }),
-  },
-  {
-    route: 'owner-claims/[id]/cancel',
-    method: 'POST',
-    handler: h(ownerCancel, 'POST'),
-    auth: true,
-    id: 'post',
-    location: false,
-    body: () => ({}),
   },
   // D102: the body is the video itself (video.test.ts).
   {

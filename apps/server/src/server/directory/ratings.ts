@@ -26,11 +26,8 @@ export async function ratePlace(
       `New accounts can rate places after ${minDays} days. Thanks for your patience.`,
     );
   }
-  const owner = await db.ownerClaim.findFirst({
-    where: { placeId, userId: user.id, status: 'VERIFIED' },
-    select: { id: true },
-  });
-  if (owner) throw new ApiError(403, 'OWNER', 'Owners can’t rate their own place.');
+  // D185 / B6.5: personal accounts are never linked to a business, so "owners can't rate
+  // their own place" can't be known here any more (the old in-app owner claim is gone).
 
   const counts = await db.$transaction(async (tx) => {
     const [place] = await tx.$queryRaw<{ ratingsLockedAt: Date | null }[]>`
