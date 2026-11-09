@@ -55,6 +55,10 @@ export async function listPlaceRequests(status: 'PENDING' | 'APPROVED' | 'REJECT
             ? { latitude: r.latitude, longitude: r.longitude }
             : null,
       },
+      // D225: from the owner's own Google listing (Google confirmed they run it).
+      googleConfirmed: !!r.googleLocation,
+      // D225: a live Owner already verified with this listing: the likely duplicate.
+      googleTakenBy: r.googleLocation ? await googleListingOwner(r.googleLocation) : null,
       // A place it would join: an existing place's Owner, or a nearby place with a like name.
       hasOwner: r.placeId ? await placeHasOwner(r.placeId) : false,
       nearby:
@@ -64,6 +68,15 @@ export async function listPlaceRequests(status: 'PENDING' | 'APPROVED' | 'REJECT
     })),
   );
   return toPage(list, total, page);
+}
+
+/** D225: the place of a live Owner access verified with this Google listing, if any. */
+async function googleListingOwner(googleLocation: string, tx: Prisma.TransactionClient = db) {
+  const a = await tx.businessPlaceAccess.findFirst({
+    where: { googleLocation, role: 'OWNER', revokedAt: null },
+    select: { place: { select: { id: true, name: true } } },
+  });
+  return a?.place ?? null;
 }
 
 async function placeHasOwner(placeId: string, tx: Prisma.TransactionClient = db) {
@@ -183,6 +196,14 @@ export async function decidePlaceRequest(
   const finalPlaceId = placeId;
   await db.$transaction(async (tx) => {
     // One Owner per place (also a partial unique index); never take a place from its owner.
+    // D225: one Google listing, one Owner.
+    if (r.googleLocation && (await googleListingOwner(r.googleLocation, tx))) {
+      throw new ApiError(
+        409,
+        'GOOGLE_TAKEN',
+        'Another business already runs a place with this Google listing. It’s likely a duplicate.',
+      );
+    }
     if (await placeHasOwner(finalPlaceId, tx)) {
       throw new ApiError(
         409,
@@ -205,7 +226,9 @@ export async function decidePlaceRequest(
         accountId: r.accountId,
         placeId: finalPlaceId,
         role: 'OWNER',
-        verifiedBy: 'ADMIN',
+        // D225: Google already confirmed they run it; otherwise JaxSide checked.
+        verifiedBy: r.googleLocation ? 'GOOGLE' : 'ADMIN',
+        googleLocation: r.googleLocation,
         verifiedAt: now,
         createdAt: now,
       },

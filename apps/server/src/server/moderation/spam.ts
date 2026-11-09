@@ -6,6 +6,7 @@ import { ApiError } from '../http';
 import { hit } from '../rate-limit';
 import type { Hold } from './screening';
 import { normalizedForms } from './screening';
+import { PHONE, PROMO_NUDGE, promoScore } from './promo';
 
 /**
  * P5.5 duplicate-content and spam checks (§11.3, D57). Runs after text screening on new
@@ -97,7 +98,10 @@ export function assertNoLinks(text: string) {
   }
 }
 
-/** New posts and comments: refuse duplicates and links. (Nothing is held for links any more.) */
+/**
+ * New posts and comments: refuse duplicates and links; D227: refuse phone numbers from new
+ * accounts, and hold posts that read like an ad (with a nudge to JaxSide for Business).
+ */
 export async function checkNewContent(
   user: User,
   text: string,
@@ -105,6 +109,25 @@ export async function checkNewContent(
 ): Promise<Hold | null> {
   await assertNotDuplicate(user, text, now);
   assertNoLinks(text);
+  const [phoneDays, holdScore] = await Promise.all([
+    getConfig('spam.newAccountPhoneDays'),
+    getConfig('spam.promoHoldScore'),
+  ]);
+  if (now.getTime() - user.createdAt.getTime() < phoneDays * 24 * HOUR_MS && PHONE.test(text)) {
+    throw new ApiError(
+      422,
+      'NO_PHONE_NEW_ACCOUNT',
+      `New accounts can’t post phone numbers for their first ${phoneDays} days.`,
+    );
+  }
+  const score = promoScore(text);
+  if (score >= holdScore) {
+    return {
+      reason: 'SELF_PROMOTION',
+      details: `Held by automatic screening: looks like an ad (score ${score}).`,
+      message: PROMO_NUDGE,
+    };
+  }
   return null;
 }
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { POST as interestPOST } from '@/app/api/v1/ads/[id]/interest/route';
 import { POST as adsPOST } from '@/app/api/v1/ads/route';
+import { POST as tapPOST } from '@/app/api/v1/ads/[id]/tap/route';
 import { POST as viewsPOST } from '@/app/api/v1/ads/views/route';
 import { POST as guestsPOST } from '@/app/api/v1/guests/route';
 import { POST as installPOST } from '@/app/api/v1/installations/route';
@@ -53,6 +54,8 @@ async function ad(
     status: 'APPROVED' | 'PAUSED';
     startsAt: Date;
     approvedAt: Date;
+    linkUrl: string;
+    linkLabel: string;
   }> = {},
 ) {
   const a = await db.ad.create({
@@ -67,6 +70,8 @@ async function ad(
       adultsOnly: extra.adultsOnly ?? false,
       startsAt: extra.startsAt ?? null,
       approvedAt: extra.approvedAt ?? new Date(),
+      linkUrl: extra.linkUrl ?? null,
+      linkLabel: extra.linkLabel ?? null,
     },
   });
   resetAdCache();
@@ -318,5 +323,42 @@ describe('counting (D206)', () => {
       data: { adId: a.id, viewer: 'x'.repeat(43), day: new Date(Date.now() - 4 * DAY) },
     });
     expect((await runMaintenance())?.adViewMarksDeleted).toBe(1);
+  });
+});
+
+describe('links in ads (D216)', () => {
+  const link = { linkUrl: 'https://boldbean.example/menu', linkLabel: 'See the menu' };
+
+  it('a paid plan shows the link button; Free never does', async () => {
+    await ad(owner.id, cafe, link);
+    expect((await ask(user.token)).body.ads[0].link).toEqual({
+      url: 'https://boldbean.example/menu',
+      label: 'See the menu',
+    });
+    // Moved down to Free: the button goes at once (the website also pauses such ads).
+    const free = await db.plan.findUniqueOrThrow({ where: { code: 'FREE' } });
+    await db.subscription.updateMany({ where: { accountId: owner.id }, data: { planId: free.id } });
+    resetAdCache();
+    expect((await ask(user.token)).body.ads[0].link).toBeNull();
+  });
+
+  it('a tap counts once per person per ad per day; another person counts again', async () => {
+    const a = await ad(owner.id, cafe, link);
+    const tap = (token: string) => call(tapPOST as H, 'POST', { token, id: a.id, body: {} });
+    expect((await tap(user.token)).body.counted).toBe(true);
+    expect((await tap(user.token)).body.counted).toBe(false);
+    expect((await tap(await guestToken())).body.counted).toBe(true);
+    expect((await db.adDailyStats.findFirstOrThrow()).taps).toBe(2);
+  });
+
+  // 🔒 The database keeps links to https with button text.
+  it('refuses a link without https, or without its button text', async () => {
+    await expect(
+      ad(owner.id, cafe, { linkUrl: 'http://x.example', linkLabel: 'Go' }),
+    ).rejects.toThrow();
+    await expect(ad(owner.id, cafe, { linkUrl: 'https://x.example' })).rejects.toThrow();
+    const plain = await ad(owner.id, cafe);
+    const tap = await call(tapPOST as H, 'POST', { token: user.token, id: plain.id, body: {} });
+    expect(tap.body.counted).toBe(false); // nothing to count on an ad without a link
   });
 });

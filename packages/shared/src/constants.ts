@@ -113,6 +113,10 @@ export const CONFIG_DEFAULTS = {
   'spam.duplicateWindowHours': 24,
   /** Shorter texts ("thanks!") may repeat. Counted after normalization. */
   'spam.duplicateMinLength': 20,
+  /** D227: a post this ad-like (promo signals; strong ones count 2) waits for a moderator. */
+  'spam.promoHoldScore': 3,
+  /** D227: new accounts can't post phone numbers for this many days. */
+  'spam.newAccountPhoneDays': 3,
   // D219: links of any kind are refused in posts, comments, edits and messages (no setting).
 
   // D73: a post reported by this many different people is hidden until a moderator decides.
@@ -323,6 +327,8 @@ export const CONFIG_DEFAULTS = {
   /** Batches of ad views the phone sends (one batch holds up to 50). */
   'rateLimit.adViews.perMinute': 30,
   'rateLimit.adInterest.perMinute': 30,
+  /** D216: link taps. */
+  'rateLimit.adTaps.perMinute': 30,
 } as const;
 
 export type ConfigKey = keyof typeof CONFIG_DEFAULTS;

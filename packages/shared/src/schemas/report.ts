@@ -12,6 +12,7 @@ export const REPORT_REASONS = [
   'CHILD_SAFETY',
   'IMPERSONATION',
   'SCAM',
+  'SELF_PROMOTION', // D227
   'OTHER',
   // D209: for ads only (D207's photo rules: show what you really sell).
   'AD_MISLEADING',
@@ -30,6 +31,7 @@ export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
   CHILD_SAFETY: 'Child safety',
   IMPERSONATION: 'Impersonation',
   SCAM: 'Scam or fraud',
+  SELF_PROMOTION: 'Advertising or self-promotion',
   OTHER: 'Something else',
   AD_MISLEADING: 'Misleading or false offer',
   AD_AI_FOOD: 'AI-made food or drink photo',

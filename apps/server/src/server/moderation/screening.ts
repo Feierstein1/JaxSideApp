@@ -151,6 +151,8 @@ export async function holdReport(
 export interface Hold {
   reason: ReportReason;
   details: string;
+  /** D227: what the author is told instead of the usual "a moderator will review this". */
+  message?: string;
 }
 
 export function holdFor(rule: Rule): Hold {

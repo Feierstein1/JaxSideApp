@@ -47,6 +47,8 @@ export interface LiveAd {
   radiusMeters: number | null;
   cityWide: boolean;
   place: { id: string; name: string; latitude: number; longitude: number };
+  /** D216: shown only when the business's current plan allows links (`ads.links`). */
+  link: { url: string; label: string } | null;
 }
 
 let cache: { at: number; ads: LiveAd[] } | null = null;
@@ -78,10 +80,10 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
     },
     include: { plan: { include: { entitlements: true } } },
   });
-  const liveLimit = new Map(
+  const plans = new Map(
     subs.map((s) => [
       s.accountId,
-      { ...NO_PLAN_ENTITLEMENTS, ...planEntitlements(s.plan.entitlements) }['ads.live'],
+      { ...NO_PLAN_ENTITLEMENTS, ...planEntitlements(s.plan.entitlements) },
     ]),
   );
   const perAccount = new Map<string, number>();
@@ -92,7 +94,8 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
     if (r.place.status !== 'ACTIVE') continue;
     if (!inSchedule(r, now)) continue;
     const used = perAccount.get(r.accountId) ?? 0;
-    if (used >= (liveLimit.get(r.accountId) ?? 0)) continue;
+    const plan = plans.get(r.accountId) ?? NO_PLAN_ENTITLEMENTS;
+    if (used >= plan['ads.live']) continue;
     perAccount.set(r.accountId, used + 1);
     out.push({
       id: r.id,
@@ -105,6 +108,11 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
       zips: r.zips,
       radiusMeters: r.radiusMeters,
       cityWide: r.cityWide,
+      // D216: a downgrade hides the button at once (the website also pauses such ads).
+      link:
+        r.linkUrl && r.linkLabel && plan['ads.links']
+          ? { url: r.linkUrl, label: r.linkLabel }
+          : null,
       place: {
         id: r.place.id,
         name: r.place.name,
@@ -291,6 +299,7 @@ export async function pickAdsFor(
     imageUrl: ad.mediaId ? signedAdImageUrl(ad.mediaId, now) : null,
     adultsOnly: ad.adultsOnly,
     place: { id: ad.place.id, name: ad.place.name },
+    link: ad.link,
     myChoice: myChoice.get(ad.id) ?? null,
   }));
 }

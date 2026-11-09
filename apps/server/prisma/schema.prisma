@@ -98,6 +98,7 @@ enum ReportReason {
   AD_MISLEADING // D209: ads only
   AD_AI_FOOD // D209 / D207: AI-made food or drink photo
   AD_AI_IMAGE // D209 / D207: over-the-top AI flyer or image
+  SELF_PROMOTION // D227: someone advertising their own business in a discussion
 }
 
 enum ReportStatus {
@@ -2043,6 +2044,10 @@ model Ad {
   zips          String[]         @db.VarChar(5)
   /// D204: shown to everyone in the area (Premium's CITY reach); no ZIPs or radius then.
   cityWide      Boolean          @default(false)
+  /// D216: paid plans only (`ads.links`): one button that opens this https address after
+  /// "You're leaving JaxSide". Both or neither (CHECK); a change needs approval again.
+  linkUrl       String?          @db.VarChar(500)
+  linkLabel     String?          @db.VarChar(25)
   createdById   String?          @db.Uuid
   submittedAt   DateTime?        @db.Timestamptz(3)
   approvedAt    DateTime?        @db.Timestamptz(3)
@@ -2059,6 +2064,7 @@ model Ad {
   /// D209.
   reports       Report[]
   viewMarks     AdViewMark[]
+  tapMarks      AdTapMark[]
 
   @@index([accountId, status])
   @@index([status, startsAt, endsAt])
@@ -2095,6 +2101,8 @@ model AdDailyStats {
   views         Int      @default(0)
   interested    Int      @default(0)
   notInterested Int      @default(0)
+  /// D216: taps on the ad's link button, once per person per ad per day.
+  taps          Int      @default(0)
   ad            Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
 
   @@id([adId, day])
@@ -2129,6 +2137,17 @@ enum AdInterestKind {
 /// D206: a view is counted once per person per ad per day. `viewer` is a keyed hash of the
 /// person or guest (never the ID itself); rows are deleted after two days.
 model AdViewMark {
+  adId   String   @db.Uuid
+  viewer String   @db.Char(43)
+  day    DateTime @db.Date
+  ad     Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@id([adId, viewer, day])
+  @@index([day])
+}
+
+/// D216: a link tap is counted once per person per ad per day (like AdViewMark).
+model AdTapMark {
   adId   String   @db.Uuid
   viewer String   @db.Char(43)
   day    DateTime @db.Date
@@ -2217,6 +2236,9 @@ model BusinessVerificationRequest {
   category         String?                   @db.VarChar(60)
   latitude         Float?
   longitude        Float?
+  /// D225: "Add it from Google": the Google Business Profile listing ("locations/..."), taken
+  /// only from the website's own signed Google results. One open request per listing.
+  googleLocation   String?                   @db.VarChar(100)
   /// How the admin reaches the person (they choose; nothing else is asked).
   contactName      String                    @db.VarChar(100)
   contactPhone     String?                   @db.VarChar(40)
@@ -2233,6 +2255,7 @@ model BusinessVerificationRequest {
 
   /// One open request per business and place.
   @@unique([accountId, placeId], map: "BusinessVerificationRequest_one_open", where: raw("status = 'PENDING'"))
+  @@unique([googleLocation], map: "BusinessVerificationRequest_one_open_google", where: raw("status = 'PENDING' AND \"googleLocation\" IS NOT NULL"))
   @@index([status, createdAt])
   @@index([accountId])
   @@index([placeId])

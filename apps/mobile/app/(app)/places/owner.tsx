@@ -12,8 +12,8 @@ import { Banner, Button, FormError, PageTitle, Screen } from '@/ui';
 interface OwnerInfo {
   placeName: string;
   hasVerifiedOwner: boolean;
-  /** The JaxSide for Business website; null until it's public. */
-  businessSiteUrl: string | null;
+  /** The JaxSide for Business sign-up page; null until the website is public. */
+  signupUrl: string | null;
 }
 
 const STEPS = [
@@ -67,11 +67,11 @@ export default function OwnerInfoScreen() {
               <Text style={[TYPE.body, { flex: 1 }]}>{s}</Text>
             </View>
           ))}
-          {info.businessSiteUrl ? (
+          {info.signupUrl ? (
             <Button
               title="Go to JaxSide for Business"
               icon="open-outline"
-              onPress={() => void Linking.openURL(info.businessSiteUrl!)}
+              onPress={() => void Linking.openURL(info.signupUrl!)}
             />
           ) : (
             <View

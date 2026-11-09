@@ -1,6 +1,9 @@
 import type { CONFIG_DEFAULTS } from '@jax/shared';
 
 export const CONFIG_DESCRIPTIONS: Partial<Record<keyof typeof CONFIG_DEFAULTS, string>> = {
+  'spam.promoHoldScore':
+    'Posts this ad-like wait for a moderator, with a nudge to JaxSide for Business (D227)',
+  'spam.newAccountPhoneDays': 'New accounts can’t post phone numbers for this many days (D227)',
   'ads.firstSlot': 'Ads: the first ad comes after this many posts (D206)',
   'ads.every': 'Ads: one ad about every this many posts, signed-in people (D206)',
   'ads.everyGuest': 'Ads: one ad about every this many posts, guests (D206)',

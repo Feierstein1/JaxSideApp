@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Image, Pressable, View } from 'react-native';
+import { Image, Linking, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK, type AdCard as Ad, type ReportTarget } from '@jax/shared';
 import { useGuest } from '@/auth/guest';
@@ -9,7 +9,17 @@ import { ReportSheet } from '@/report/ReportSheet';
 import { Text } from '@/text';
 import { RADIUS, SPACE } from '@/tokens';
 import { IconButton, openMenu } from '@/ui';
-import { setAdInterest } from './api';
+import { showAlert } from '@/dialog';
+import { adLinkTapped, setAdInterest } from './api';
+
+/** "www.boldbean.com" from the link, for the leaving notice. */
+function hostOf(url: string) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
 
 type Choice = 'INTERESTED' | 'NOT_INTERESTED' | null;
 
@@ -25,6 +35,25 @@ export function AdCard({ ad }: { ad: Ad }) {
   const [choice, setChoice] = useState<Choice>(ad.myChoice);
   const [busy, setBusy] = useState(false);
   const [reporting, setReporting] = useState<ReportTarget>();
+
+  /** D216: the link opens the phone's browser, only after saying where it goes. */
+  function openLink(link: { url: string; label: string }) {
+    showAlert(
+      'You’re leaving JaxSide',
+      `This opens ${hostOf(link.url)} in your browser.`,
+      [
+        { text: 'Stay here', style: 'cancel' },
+        {
+          text: 'Open',
+          onPress: () => {
+            void adLinkTapped(ad.id);
+            void Linking.openURL(link.url);
+          },
+        },
+      ],
+      { icon: 'open-outline', tone: 'info' },
+    );
+  }
 
   /** D209: the ad's own menu (top right); Report first, room for more later. */
   function openAdMenu() {
@@ -163,6 +192,27 @@ export function AdCard({ ad }: { ad: Ad }) {
               resizeMode="cover"
               accessibilityIgnoresInvertColors
             />
+          ) : null}
+          {ad.link ? (
+            <Pressable
+              accessibilityRole="link"
+              accessibilityHint={`Opens ${hostOf(ad.link.url)} after a notice`}
+              onPress={() => openLink(ad.link!)}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                height: 40,
+                marginTop: 4,
+                borderRadius: RADIUS.md,
+                backgroundColor: DARK.accent,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Text style={{ color: DARK.onAccent, fontWeight: '800' }}>{ad.link.label}</Text>
+              <Ionicons name="open-outline" size={16} color={DARK.onAccent} />
+            </Pressable>
           ) : null}
           {isGuest ? null : (
             <View style={{ flexDirection: 'row', gap: SPACE.sm, marginTop: 4 }}>

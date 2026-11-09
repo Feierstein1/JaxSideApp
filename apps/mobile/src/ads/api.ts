@@ -32,6 +32,11 @@ export async function fetchAds(context: AdContext, count: number) {
   return res.ads;
 }
 
+/** D216: the link button was used (after "You're leaving JaxSide"); never bothers anyone. */
+export function adLinkTapped(adId: string) {
+  return api.post(`/api/v1/ads/${adId}/tap`, {}).catch(() => undefined);
+}
+
 export function setAdInterest(adId: string, choice: 'INTERESTED' | 'NOT_INTERESTED' | null) {
   return api.post<{ choice: typeof choice }>(`/api/v1/ads/${adId}/interest`, { choice });
 }

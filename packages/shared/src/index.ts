@@ -26,4 +26,5 @@ export * from './screening';
 export * from './ads';
 export * from './ad-denials';
 export * from './ad-rules';
+export * from './google-categories';
 export * from './plans';

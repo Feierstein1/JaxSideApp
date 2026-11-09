@@ -37,8 +37,33 @@ export const adDraftSchema = z
       .max(AD_ZIPS_MAX, `Pick at most ${AD_ZIPS_MAX} ZIP codes`)
       .default([])
       .refine((z) => new Set(z).size === z.length, 'Each ZIP code once'),
+    /** D204: shown to everyone in the area (CITY reach); no ZIPs or radius then. */
+    cityWide: z.boolean().default(false),
+    /** D216: one link button, paid plans only. The website checks the address further. */
+    linkUrl: z
+      .string()
+      .trim()
+      .max(500)
+      .startsWith('https://', 'Links start with https://')
+      .nullable()
+      .default(null),
+    linkLabel: z.string().trim().min(2).max(25).nullable().default(null),
   })
   .superRefine((ad, ctx) => {
+    if ((ad.linkUrl === null) !== (ad.linkLabel === null)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['linkLabel'],
+        message: 'A link needs its button text, and button text needs a link',
+      });
+    }
+    if (ad.cityWide && (ad.zips.length || ad.radiusMeters !== null)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['zips'],
+        message: 'A city-wide ad has no ZIP codes or radius',
+      });
+    }
     if ((ad.dailyStartMin === null) !== (ad.dailyEndMin === null)) {
       ctx.addIssue({
         code: 'custom',

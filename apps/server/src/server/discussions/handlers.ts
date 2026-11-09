@@ -281,7 +281,7 @@ async function heldResponse(
   return NextResponse.json(
     {
       held: true,
-      message: 'Thanks. A moderator will review this before it appears to others.',
+      message: hold.message ?? 'Thanks. A moderator will review this before it appears to others.',
     },
     { status: 202 },
   );

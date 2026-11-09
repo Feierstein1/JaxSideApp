@@ -52,6 +52,7 @@ export default async function OwnersPage({
               <Pill tone={r.kind === 'new' ? 'alert' : undefined}>
                 {r.kind === 'new' ? 'Add my business' : 'Verify me'}
               </Pill>{' '}
+              {r.googleConfirmed ? <Pill>Google confirmed</Pill> : null}{' '}
               <strong>{r.place?.name ?? r.typed.name}</strong> · from{' '}
               <a href={`/admin/businesses/${r.business.id}`}>{r.business.login}</a> ·{' '}
               {when(r.createdAt)}
@@ -72,7 +73,8 @@ export default async function OwnersPage({
                     </a>
                   </>
                 ) : (
-                  ' · no pin'
+                  // B6.3: a typed address the website couldn't place: not checked against Duval.
+                  ' · no pin: not confirmed in Duval (ask them to send it again with the map)'
                 )}
               </p>
             ) : (
@@ -81,6 +83,15 @@ export default async function OwnersPage({
                 {r.hasOwner ? <Pill tone="alert">already has an owner</Pill> : null}
               </p>
             )}
+            {r.googleTakenBy ? (
+              <p>
+                <Pill tone="alert">Likely duplicate</Pill> This Google listing already runs{' '}
+                <a href={`/admin/places?q=${encodeURIComponent(r.googleTakenBy.name)}`}>
+                  {r.googleTakenBy.name}
+                </a>
+                .
+              </p>
+            ) : null}
             {r.nearby.length ? (
               <p style={ui.muted}>
                 Near the pin: {r.nearby.map((p) => `${p.name} (${p.meters} m)`).join(', ')}

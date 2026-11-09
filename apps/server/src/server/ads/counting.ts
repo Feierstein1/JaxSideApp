@@ -41,6 +41,29 @@ export async function recordAdViews(viewer: string, adIds: string[], now = new D
   return rows[0]?.n ?? 0;
 }
 
+/**
+ * D216: a tap on the ad's link button (after "You're leaving JaxSide"), once per person per
+ * ad per day, like views. Returns whether it counted. Only for an ad whose link is live.
+ */
+export async function recordAdTap(viewer: string, adId: string, now = new Date()) {
+  const day = statsDay(now);
+  const rows = await db.$queryRaw<{ n: number }[]>`
+    WITH ins AS (
+      INSERT INTO "AdTapMark" ("adId", "viewer", "day")
+      SELECT a.id, ${viewerKey(viewer)}, ${day}::date FROM "Ad" a
+      WHERE a.id = ${adId}::uuid AND a."linkUrl" IS NOT NULL AND ${COUNTABLE}
+      ON CONFLICT DO NOTHING
+      RETURNING "adId"
+    ), up AS (
+      INSERT INTO "AdDailyStats" ("adId", "day", "taps")
+      SELECT "adId", ${day}::date, 1 FROM ins
+      ON CONFLICT ("adId", "day") DO UPDATE SET "taps" = "AdDailyStats"."taps" + 1
+      RETURNING 1
+    )
+    SELECT count(*)::int AS n FROM up`;
+  return (rows[0]?.n ?? 0) > 0;
+}
+
 type Choice = 'INTERESTED' | 'NOT_INTERESTED';
 const column = (c: Choice) =>
   c === 'INTERESTED' ? Prisma.raw('"interested"') : Prisma.raw('"notInterested"');
@@ -85,9 +108,9 @@ export async function setAdInterest(
 
 /** Daily maintenance: view marks after two days, choices once older than both windows. */
 export async function purgeAdMarks(now: Date, keepChoicesDays: number) {
-  const viewMarks = await db.adViewMark.deleteMany({
-    where: { day: { lt: new Date(statsDay(now).getTime() - 2 * 86_400_000) } },
-  });
+  const cutoff = new Date(statsDay(now).getTime() - 2 * 86_400_000);
+  const viewMarks = await db.adViewMark.deleteMany({ where: { day: { lt: cutoff } } });
+  await db.adTapMark.deleteMany({ where: { day: { lt: cutoff } } }); // D216
   const choices = await db.adInterest.deleteMany({
     where: { updatedAt: { lt: new Date(now.getTime() - keepChoicesDays * 86_400_000) } },
   });

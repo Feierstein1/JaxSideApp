@@ -150,7 +150,8 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       },
       {
         heading: 'Businesses',
-        body: 'Owners can verify their business and get an Owner tag on their posts in its discussion. If you own or work at a place, say so when you post about it. Repeated promotions or ads aren’t allowed, and a verified owner who misuses the tag loses it. Staff who aren’t owners just say “I work here”; there is no tag for staff.',
+        // D224 / D227: owners run their place on JaxSide for Business; no ads from personal accounts.
+        body: 'Recommending a place you like is welcome. Advertising your own business in posts, comments or chat isn’t: deals, “order now”, phone numbers or “follow us” belong on JaxSide for Business, where owners post as “The Owner” on their place’s page and run ads (the first month is free). If you own or work at a place and talk about it, say so. Posts that look like ads may wait for a moderator before others see them.',
       },
       {
         heading: 'What happens',

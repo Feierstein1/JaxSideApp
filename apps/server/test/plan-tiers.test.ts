@@ -74,6 +74,7 @@ describe('the starter tiers (D202)', () => {
       'ads.reach': 'CITY',
       'ads.maxZips': 30,
       'ads.maxDays': null,
+      'ads.links': true, // D216
       insights: true,
       'insights.reach': 'ALL',
       'insights.nearbyZips': 0,
@@ -129,6 +130,7 @@ describe('what a business can use (D202)', () => {
       'ads.reach': 'OWN_ZIP',
       'ads.maxZips': 1,
       'ads.maxDays': 7,
+      'ads.links': false, // D216: paid plans only
       insights: true,
       'insights.reach': 'OWN_ZIP',
       'insights.nearbyZips': 0,

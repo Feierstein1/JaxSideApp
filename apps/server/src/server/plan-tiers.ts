@@ -25,6 +25,7 @@ export const STARTER_TIERS: {
       'ads.reach': 'OWN_ZIP',
       'ads.maxZips': 1,
       'ads.maxDays': 7,
+      'ads.links': false, // D216: paid plans only
       insights: true,
       'insights.reach': 'OWN_ZIP',
       'insights.nearbyZips': 0,
@@ -41,6 +42,7 @@ export const STARTER_TIERS: {
       'ads.reach': 'ZIPS',
       'ads.maxZips': 3,
       'ads.maxDays': null,
+      'ads.links': true,
       insights: true,
       'insights.reach': 'NEARBY',
       'insights.nearbyZips': 4,
@@ -57,6 +59,7 @@ export const STARTER_TIERS: {
       'ads.reach': 'CITY',
       'ads.maxZips': 30,
       'ads.maxDays': null,
+      'ads.links': true,
       insights: true,
       'insights.reach': 'ALL',
       'insights.nearbyZips': 0,

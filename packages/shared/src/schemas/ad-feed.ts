@@ -52,6 +52,8 @@ export interface AdCard {
   /** Q30: alcohol deals show "21+". */
   adultsOnly: boolean;
   place: { id: string; name: string };
+  /** D216: one button (paid plans only); null when the ad has none or the plan doesn't allow it. */
+  link: { url: string; label: string } | null;
   /** The reader's own choice on this ad, if any. */
   myChoice: 'INTERESTED' | 'NOT_INTERESTED' | null;
 }

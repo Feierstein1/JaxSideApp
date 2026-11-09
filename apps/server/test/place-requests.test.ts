@@ -161,6 +161,40 @@ describe('verify me / add my business (D224)', () => {
   });
 });
 
+describe('Add it from Google (D225)', () => {
+  const fromGoogle = () =>
+    request({
+      placeName: 'Riverside Tacos',
+      placeAddress: '1 W Bay St, Jacksonville, FL',
+      category: 'restaurant',
+      ...NEW_SPOT,
+      googleLocation: 'locations/123',
+    });
+
+  it('shows as Google confirmed; approving records the owner as verified by Google', async () => {
+    const r = await fromGoogle();
+    expect((await listPlaceRequests('PENDING')).rows[0]).toMatchObject({ googleConfirmed: true });
+    expect((await decide(r.id, { decision: 'approve' })).status).toBe(200);
+    expect(
+      await db.businessPlaceAccess.findFirstOrThrow({ where: { accountId: owner.id } }),
+    ).toMatchObject({ verifiedBy: 'GOOGLE', googleLocation: 'locations/123' });
+  });
+
+  // 🔒 One Google listing, one owner; one open request per listing.
+  it('refuses a listing another business already runs, and a second open request for it', async () => {
+    const other = await db.businessAccount.create({
+      data: { email: 'b@x.test', passwordHash: 'x' },
+    });
+    await db.businessPlaceAccess.create({
+      data: { accountId: other.id, placeId: cafe, role: 'OWNER', googleLocation: 'locations/123' },
+    });
+    const r = await fromGoogle();
+    expect((await listPlaceRequests('PENDING')).rows[0]?.googleTakenBy).toMatchObject({ id: cafe });
+    expect((await decide(r.id, { decision: 'approve' })).body.error.code).toBe('GOOGLE_TAKEN');
+    await expect(fromGoogle()).rejects.toThrow();
+  });
+});
+
 describe('the app’s "I own this place" screen (B6.5)', () => {
   // 🔒 It says whether the place has a verified owner, never who.
   it('says whether there is an owner and where the website is, nothing about who', async () => {
@@ -170,7 +204,7 @@ describe('the app’s "I own this place" screen (B6.5)', () => {
     expect((await info()).body).toEqual({
       placeName: 'Bold Bean',
       hasVerifiedOwner: false,
-      businessSiteUrl: null,
+      signupUrl: null,
     });
     await db.businessPlaceAccess.create({
       data: { accountId: owner.id, placeId: cafe, role: 'OWNER' },

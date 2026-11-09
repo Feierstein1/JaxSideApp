@@ -121,6 +121,11 @@ export const AD_DENIAL_GROUPS = [
         text: 'Some details (hours, prices or what’s offered) don’t match your place.',
       },
       {
+        code: 'LINK_BAD',
+        label: 'Link goes somewhere it shouldn’t',
+        text: 'The link must go to your own site or page, match what the ad says, and be safe to open.',
+      },
+      {
         code: 'UNCLEAR_OFFER',
         label: 'Hard to tell what’s offered',
         text: 'It’s hard to tell what the ad is offering. Please make the offer clear.',

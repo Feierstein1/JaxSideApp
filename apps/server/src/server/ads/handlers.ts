@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { adInterestSchema, adSlotsRequestSchema, adViewsSchema } from '@jax/shared';
+import {
+  adInterestSchema,
+  adSlotsRequestSchema,
+  adViewsSchema,
+  emptyBodySchema,
+} from '@jax/shared';
 import { requireActor, requireUser } from '../auth/require-actor';
 import {
   actorKey,
@@ -13,7 +18,7 @@ import { getConfig } from '../config';
 import { enforce } from '../rate-limit';
 import { topicAnchor } from '../topics';
 import { parseBody } from '../validate';
-import { recordAdViews, setAdInterest } from './counting';
+import { recordAdTap, recordAdViews, setAdInterest } from './counting';
 import { pickAdsFor } from './serve';
 
 /**
@@ -21,7 +26,7 @@ import { pickAdsFor } from './serve';
  * strict schema → rate limit → location (the same rule as reading that screen's posts).
  */
 
-const limit = (subject: string, key: 'ads' | 'adViews' | 'adInterest') =>
+const limit = (subject: string, key: 'ads' | 'adViews' | 'adInterest' | 'adTaps') =>
   enforce([
     {
       key: `${key}:${subject}`,
@@ -86,4 +91,13 @@ export async function adInterest(req: Request, ctx: IdCtx) {
   const { choice } = await parseBody(req, adInterestSchema);
   await limit(`user:${user.id}`, 'adInterest');
   return NextResponse.json({ choice: await setAdInterest(user.id, adId, choice) });
+}
+
+/** POST /ads/:id/tap: the link button was tapped (D216; guests too, once a day each). */
+export async function adTap(req: Request, ctx: IdCtx) {
+  const actor = await requireActor(req);
+  const adId = await idFrom(ctx);
+  await parseBody(req, emptyBodySchema);
+  await limit(actorKey(actor), 'adTaps');
+  return NextResponse.json({ counted: await recordAdTap(actorKey(actor), adId) });
 }

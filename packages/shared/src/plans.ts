@@ -30,6 +30,8 @@ export const PLAN_ENTITLEMENTS = {
   'ads.maxZips': z.number().int().min(1).max(30),
   /** D204: the longest an ad may run, in days; null = no limit. */
   'ads.maxDays': z.number().int().min(1).max(365).nullable(),
+  /** D216: an ad may carry one link button (paid plans). */
+  'ads.links': z.boolean(),
   /** Area counts for the place (Q29 / D179). */
   insights: z.boolean(),
   /** D204: which ZIPs Insights covers. */
@@ -50,6 +52,7 @@ export const NO_PLAN_ENTITLEMENTS: Required<PlanEntitlements> = {
   'ads.reach': 'OWN_ZIP',
   'ads.maxZips': 1,
   'ads.maxDays': 7,
+  'ads.links': false,
   insights: false,
   'insights.reach': 'OWN_ZIP',
   'insights.nearbyZips': 0,

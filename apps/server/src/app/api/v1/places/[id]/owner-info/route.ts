@@ -22,9 +22,11 @@ export const GET = route<Ctx>(async (req, ctx) => {
     where: { placeId, role: 'OWNER', revokedAt: null },
     select: { id: true },
   });
+  const site = getEnv().BUSINESS_SITE_URL;
   return NextResponse.json({
     placeName: place.name,
     hasVerifiedOwner: !!owner,
-    businessSiteUrl: getEnv().BUSINESS_SITE_URL ?? null,
+    // The website's sign-up page (B6.3); null until the website is public.
+    signupUrl: site ? new URL('/signup', site).toString() : null,
   });
 });

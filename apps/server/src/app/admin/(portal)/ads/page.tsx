@@ -115,6 +115,16 @@ async function Review({
                   <br />
                   Shown to: {a.reach}
                   <br />
+                  {a.link ? (
+                    <>
+                      {/* D216: exactly where the button goes; check it opens what the ad says. */}
+                      Link button “{a.link.label}” goes to <strong>{a.link.host}</strong>:{' '}
+                      <a href={a.link.url} target="_blank" rel="noreferrer noopener nofollow">
+                        {a.link.url}
+                      </a>
+                      <br />
+                    </>
+                  ) : null}
                   From <a href={`/admin/businesses/${a.business.id}`}>{a.business.email}</a>
                   {a.madeBy ? ` (made by ${a.madeBy})` : ''}
                   {a.submittedAt ? ` · sent ${when(a.submittedAt)}` : ''}

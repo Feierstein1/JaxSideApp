@@ -29,6 +29,15 @@ const forReview = {
 } satisfies Prisma.AdInclude;
 
 /** Ads waiting for approval, oldest first, 20 a page (D210). */
+/** The address's host ("www.boldbean.com"), or the raw text if it doesn't parse. */
+function hostOf(url: string) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
 export async function listPendingAds(page = 1) {
   const where = { status: 'PENDING_REVIEW' } as const;
   const [ads, total] = await Promise.all([
@@ -63,6 +72,11 @@ export async function listPendingAds(page = 1) {
           .filter(Boolean)
           .join(' · ') || 'No targeting',
     submittedAt: a.submittedAt?.toISOString() ?? null,
+    /** D216: the link in full and its host, so the reviewer sees exactly where it goes. */
+    link:
+      a.linkUrl && a.linkLabel
+        ? { url: a.linkUrl, label: a.linkLabel, host: hostOf(a.linkUrl) }
+        : null,
     /** D213: sent back with the decision, so a newer change isn't approved unseen. */
     updatedAt: a.updatedAt.toISOString(),
   }));
@@ -103,6 +117,8 @@ export async function decideAd(
     zips: ad.zips,
     radiusMeters: ad.radiusMeters,
     cityWide: ad.cityWide,
+    linkUrl: ad.linkUrl,
+    linkLabel: ad.linkLabel,
   };
   // D211: the business reads the chosen reason in plain words (plus any note).
   const reason = approve ? null : adDenialMessage(input.reasonCode!, input.note);
