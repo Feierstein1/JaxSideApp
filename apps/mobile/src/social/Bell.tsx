@@ -1,4 +1,5 @@
 import { Pressable, View } from 'react-native';
+import { stopMedia } from '@/discussion/media-focus';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK } from '@jax/shared';
@@ -19,7 +20,10 @@ export function Bell() {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={count ? `Notifications, ${count} new` : 'Notifications'}
-      onPress={() => router.push('/notifications')}
+      onPress={() => {
+        stopMedia(); // D228
+        router.push('/notifications');
+      }}
       hitSlop={6}
       style={({ pressed }) => ({
         width: 34,

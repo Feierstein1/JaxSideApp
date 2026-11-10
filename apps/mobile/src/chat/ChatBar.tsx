@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Pressable } from 'react-native';
+import { stopMedia } from '@/discussion/media-focus';
 import { router, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK, type ChatStatus } from '@jax/shared';
@@ -57,7 +58,10 @@ export function ChatBar({ reloadKey }: { reloadKey?: string }) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Open JaxSide Chat for ${room.title}, ${status.people} here`}
-      onPress={() => router.push('/chat')}
+      onPress={() => {
+        stopMedia(); // D228
+        router.push('/chat');
+      }}
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',

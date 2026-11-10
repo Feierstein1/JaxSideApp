@@ -1,4 +1,5 @@
 import { Pressable, View } from 'react-native';
+import { stopMedia } from '@/discussion/media-focus';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK } from '@jax/shared';
@@ -16,7 +17,10 @@ export function MessagesButton() {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={count ? `Messages, ${count} unread` : 'Messages'}
-      onPress={() => router.push('/messages')}
+      onPress={() => {
+        stopMedia(); // D228
+        router.push('/messages');
+      }}
       hitSlop={8}
       style={{ paddingHorizontal: 6 }}
     >
