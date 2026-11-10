@@ -13,10 +13,11 @@ import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
 import { fetchRoom } from '@/discussion/api';
+import { stopMedia } from '@/discussion/media-focus';
 import { PostList } from '@/discussion/PostList';
 import { PostTypeTabs } from '@/discussion/PostTypeTabs';
 import { formatDistance } from '@/format';
-import { getFreshReading } from '@/location/device';
+import { getFreshReading, useReloadWhenMoved } from '@/location/device';
 import { haptic } from '@/motion';
 import { OsmAttribution } from '@/places/Attribution';
 import { refreshLimiter } from '@/refresh-limit';
@@ -101,6 +102,28 @@ export default function PlaceScreen() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // D228: you walked out of range of the room you were reading: go back to the Places list,
+  // which reloads for where you are now. A place opened from far away (locked) stays put.
+  const wasOpen = useRef(false);
+  wasOpen.current = !!place?.withinRoomRadius;
+  useReloadWhenMoved(() => {
+    void (async () => {
+      try {
+        const reading = await getFreshReading({ fresh: true });
+        const next = (await api.post<{ place: PlaceSummary }>(`/api/v1/places/${id}`, { reading }))
+          .place;
+        if (wasOpen.current && !next.withinRoomRadius) {
+          stopMedia();
+          router.replace('/places');
+        } else {
+          setPlace(next);
+        }
+      } catch {
+        // keep what is on screen; the next request reports the problem
+      }
+    })();
+  });
 
   async function toggleFavorite() {
     if (!place) return;

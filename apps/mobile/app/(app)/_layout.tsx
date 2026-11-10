@@ -9,6 +9,7 @@ import { ensureGuide } from '@/guides/guide';
 import { LocationGate } from '@/location/LocationGate';
 import { haptic } from '@/motion';
 import { FONT } from '@/text';
+import { stopMedia } from '@/discussion/media-focus';
 import { useIdleReset } from '@/idle-reset';
 import { headerOptions, type IconName } from '@/ui';
 
@@ -61,6 +62,11 @@ export default function AppLayout() {
   const inChat = segments.includes('chat');
   const granted = !!permission?.granted;
   useIdleReset(); // D217
+  // D228: a clip or video stops the moment you switch tabs or screens (tab screens stay mounted).
+  const here = segments.join('/');
+  useEffect(() => {
+    stopMedia();
+  }, [here]);
   // D104: once, the first time a guest gets in.
   useEffect(() => {
     if (isGuest && granted) void ensureGuide('guestWelcome');
@@ -84,7 +90,12 @@ export default function AppLayout() {
 
   return (
     <Tabs
-      screenListeners={{ tabPress: () => haptic.select() }}
+      screenListeners={{
+        tabPress: () => {
+          stopMedia(); // D228: stop at the tap, before the screen changes
+          haptic.select();
+        },
+      }}
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: DARK.page },
