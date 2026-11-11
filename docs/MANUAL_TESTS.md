@@ -308,6 +308,40 @@ checks. Tick each box when it looks right; note anything odd next to it.
 - [x] Account shows "Include me in area statistics" (on), with an explanation. Turning it off and on saves.
 - [x] Privacy Policy has the "Area statistics" section.
 
+## 7l. Events and the event calendar (D230)
+
+Set up first: in the admin portal (Events → Add an event) add two events: one **today** at a place
+or pin where you'll be (start about 30 minutes ago, end in 2 hours), one next week somewhere else
+in Duval, with a picture.
+
+- [ ] The bottom bar reads Home, Places, Topics, **Events**, Account. Friends is the people icon in
+      the top bar, left of Messages; it opens Friends (guests don't see it).
+- [ ] Events → **List**: both events, under "Today" and their date, with picture, time, place,
+      Free/price, Indoor/Outdoor. **Load more events** shows only when there are more.
+- [ ] **Calendar**: every day square is the same size; today has the teal outline; the two days
+      show **1**. The arrows change month. Tapping a day opens its list, grouped by neighborhood
+      with the ZIP, yours first.
+- [ ] **Filters**: Within 2 miles hides the far event; Businesses / Community, Indoor / Outdoor,
+      Free only and Events I follow each narrow the list; the button shows how many are on.
+      Search finds an event by a word in its title.
+- [ ] An event page: pictures swipe, tags, the date and time, the place, the description, All dates
+      (for several dates). **Follow** turns to Following; follow the next-week event.
+- [ ] Bell: following an event that starts tomorrow or within the hour shows a reminder within a
+      minute or so; tapping it opens the event. Cancel an event in the admin portal: followers get
+      "was cancelled" and the event shows Cancelled.
+- [ ] Today's event, standing inside its area: the event page shows **"Are you at …?"**.
+      **Not now** hides it for today; **Yes, I'm here** opens the event chat.
+- [ ] Event chat: the title, "N here", the red **Emergency? Call 911** line (tapping it offers to
+      call). Send a line; it appears. "Shots fired" is refused with the 911 message. Walk out of
+      the area: the chat says you've left and won't send.
+- [ ] Tap a name in event chat → **Report chat rule-breaking** sends a report (admin Reports queue).
+- [ ] Event page → **Report this event** offers the event reasons (wrong details, not a real event…).
+- [ ] **Suggest** (+): pick a category, a day on the calendar and times; it says thanks. **My
+      suggestions** shows it as Waiting; it appears in the admin portal under Events → Waiting
+      without a pin; approving needs a pin (Edit) first.
+- [ ] Guests see the Events tab and event pages, but Follow and Suggest ask them to make an account.
+- [ ] Terms, Privacy Policy, Community Guidelines and Data Retention have their new Events parts.
+
 ## 8. Profiles and blocking
 
 - [x] Tap a username on a post or comment: profile shows bio, join date, post count, recent posts.

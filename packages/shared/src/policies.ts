@@ -27,7 +27,7 @@ const CONTACT: PolicySection = {
   heading: 'Contact us',
   body: 'JaxSide is run by JaxSide LLC, a Florida company. Questions about these policies or your account: use Contact us in the app (Account → Contact us) or email support@jaxside.com. Mail: JaxSide LLC, 7901 4th St N #35372, St Petersburg, FL 33702.',
 };
-const UPDATED = '2026-11-08';
+const UPDATED = '2026-11-11';
 
 export const POLICIES: Record<PolicyKey, Policy> = {
   terms: {
@@ -55,6 +55,10 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       {
         heading: 'Accounts',
         body: 'Keep your password safe. We may suspend or end accounts that break these terms, including attempts to get around a ban. You can delete your account at any time in Account → Settings.',
+      },
+      {
+        heading: 'Events',
+        body: 'Events on the calendar are put on by the people, businesses and organizers who list them, not by JaxSide. We check each event before it’s listed, but dates, times, prices and details can change or be wrong, so confirm with the host. Event chat is for people at the event; it is not an emergency service. In an emergency, call 911.',
       },
       {
         heading: 'No warranty',
@@ -101,6 +105,10 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       {
         heading: 'Area statistics',
         body: 'When you open JaxSide, we count that someone used the app in your ZIP code that day, and in which part of the day (morning, afternoon, evening or night), to see which parts of Jacksonville are busy. We also count activity in place discussions. Only totals are kept. Your exact location and your account are never part of them: a coded entry that can’t be traced back to you is kept for the rest of the month so you count once, then deleted, and the code’s key is destroyed. Small groups (fewer than 10 people) are never shown. You can turn this off in Account → Settings.',
+      },
+      {
+        heading: 'Events and event chat',
+        body: 'Following an event lets us remind you in the app before it starts; nobody else sees who follows an event, and hosts see only totals. Event chat works only while you are inside the event’s area: each time you open it or send a line, your phone’s current location is checked (like posting) and not saved apart from the 30-day abuse record. When you tap “Yes, I’m here”, we note it to let you into that day’s chat and delete the note 24 hours after the event; only totals are kept for the host (fewer than 10 people are never shown). Event chat lines, like area chat, are deleted after 24 hours unless someone reports them. If you suggest an event, it’s linked to your account so you can follow what happened to it.',
       },
       {
         heading: 'Polls',
@@ -154,6 +162,11 @@ export const POLICIES: Record<PolicyKey, Policy> = {
         body: 'Recommending a place you like is welcome. Advertising your own business in posts, comments or chat isn’t: deals, “order now”, phone numbers or “follow us” belong on JaxSide for Business, where owners post as “The Owner” on their place’s page and run ads (the first month is free). If you own or work at a place and talk about it, say so. Posts that look like ads may wait for a moderator before others see them.',
       },
       {
+        heading: 'Events and event chat',
+        // D230
+        body: '• Suggest only real public events in Duval County, with the right date, time and place. No private parties, no events you made up, and no ads dressed up as events.\n• Event chat is for people at the event: what’s on, where things are, lost and found. No meetups with strangers, no selling tickets, and no rumors.\n• Never post an emergency in chat. If someone is hurt or in danger, call 911 first.',
+      },
+      {
         heading: 'What happens',
         body: 'Content that breaks these rules is removed. Accounts get a warning, then temporary suspensions, then a permanent ban. Serious cases may skip steps. Child sexual abuse material is reported to the authorities.',
       },
@@ -197,6 +210,11 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       {
         heading: 'Messages and notifications',
         body: 'Private messages stay until you or the other person delete them. An unsent message is erased a day after it was unsent. Notifications are deleted 7 days after you read them, and after 30 days if you never do.',
+      },
+      {
+        heading: 'Events and chat',
+        // D218 / D230
+        body: 'Area chat and event chat lines are deleted after 24 hours; a line copied into a report is kept with the report for a year. Your “Yes, I’m here” for an event is deleted 24 hours after the event; only totals are kept. Event pages stay open for 30 days after the event ends. Who follows an event is never shown to anyone.',
       },
       {
         heading: 'Devices and support',

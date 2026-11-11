@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-179 endpoints.
+203 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -25,13 +25,14 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | --- | --- | --- | --- | --- |
 | POST | `/api/v1/ads` | public |  | D206 / B3.4: the ads to show on the screen the phone is on (guests too). |
 | POST | `/api/v1/ads/:id/interest` | public |  | D206: Interested / Not interested on an ad (accounts only). |
+| POST | `/api/v1/ads/:id/tap` | public |  | D216: a tap on an ad's link button (counted once per person per ad per day). |
 | POST | `/api/v1/ads/views` | public |  | D206: a batch of ad views (counted once per person per ad per day). |
 
 ## badges
 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
-| GET | `/api/v1/badges` | user |  | Q26: both top-bar badges in one request (chats with something unseen, and the bell), so the app's 30 s check is one request and one rate-limit counter instead of two. The separate /messages/unread and /notifications/unread stay for older app versions. |
+| GET | `/api/v1/badges` | user |  | Q26: both top-bar badges in one request (chats with something unseen, and the bell), so the app's 30 s check is one request and one rate-limit counter instead of two. The separate /messages/unread and /notifications/unread stay for older app versions. D230: it also makes any due reminders for events the person follows. |
 
 ## business-pictures
 
@@ -52,6 +53,29 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
 | POST | `/api/v1/contact` | user or guest |  | D90: Contact us: a support ticket or a general message, read in the admin portal. |
+
+## event-images
+
+| Method | Path | Who | Location | What it does |
+| --- | --- | --- | --- | --- |
+| GET | `/api/v1/event-images/:id` | signed link (from a post or profile) |  | D230: serves an event's picture through a short-lived signed link (event cards and pages carry the links). Expired or forged links get 403; unknown pictures, or pictures of events nobody can see (drafts, denied, removed), 404. |
+
+## events
+
+| Method | Path | Who | Location | What it does |
+| --- | --- | --- | --- | --- |
+| POST | `/api/v1/events/:id` | user or guest | yes | D230: an event's page. A read, but POST because it carries the location reading (D16). Drafts, events in review, suggestions, denied and removed events are 404, like unknown ones. |
+| POST | `/api/v1/events/:id/chat` | user (confirmed email) |  | D230: say something in an event's chat. Area chat's limits, screening and mutes (checked inside), the location on every line, and no emergency posts (call 911 instead). |
+| POST | `/api/v1/events/:id/chat/join` | user (confirmed email) | yes | D230: "Yes, I'm here". Only while the chat is open and you're inside the event area (checked on the server). Confirmed accounts. |
+| POST | `/api/v1/events/:id/chat/list` | user (confirmed email) |  | D230: an event chat's lines (usernames only) and the organizer's pinned updates. Only for people who said they're there and are still inside the event area. |
+| POST | `/api/v1/events/:id/chat/status` | user | yes | D230: where you stand with an event's chat: closed, open but you're away, "are you here?", or joined. Accounts only (the event page asks while it's open). |
+| PUT | `/api/v1/events/:id/follow` | user |  | D230: follow an event (Followed events; bell reminders before it starts). Accounts only. |
+| DELETE | `/api/v1/events/:id/follow` | user |  | D230: stop following an event. |
+| POST | `/api/v1/events/day` | user or guest | yes | D230: one day's events, grouped by neighborhood (the nearest first), then by start time. |
+| POST | `/api/v1/events/list` | user or guest | yes | D230: the list view: events that haven't ended, soonest first, 20 at a time. |
+| POST | `/api/v1/events/month` | user or guest | yes | D230: the calendar: how many events on each day of a month, with the tab's filters. |
+| GET | `/api/v1/events/suggestions` | user (confirmed email) | yes | D230: your event suggestions and what happened to them. |
+| POST | `/api/v1/events/suggestions` | user (confirmed email) | yes | D230: suggest a missing event. It waits for JaxSide to check it and set its pin. Confirmed accounts inside Duval, 3 a day, screened like posts. |
 
 ## friends
 
@@ -315,6 +339,15 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | POST | `/api/v1/admin/chat/users/:id/unmute` | admin (cookie + CSRF) |  | D218: lift a person's area-chat mute early. Audited. |
 | POST | `/api/v1/admin/contact/:id` | admin (cookie + CSRF) |  | D90: mark a Contact us message resolved (or open again). |
 | GET | `/api/v1/admin/contact/:id/reply-email` | admin (cookie + CSRF) |  | D90: the sender's account email, only if they allowed replies on this message. Every viewing is written to the audit log. |
+| POST | `/api/v1/admin/events` | admin (cookie + CSRF) |  | D230: an admin adds an event (approved at once; the pin must be inside Duval). Audited. |
+| PATCH | `/api/v1/admin/events/:id` | admin (cookie + CSRF) |  | D230: change an event (followers of an approved one are told if its dates or place change). |
+| POST | `/api/v1/admin/events/:id/copy` | admin (cookie + CSRF) |  | D230: Duplicate (years 0) or Repeat yearly (years 1). The copy waits for review. Audited. |
+| POST | `/api/v1/admin/events/:id/decide` | admin (cookie + CSRF) |  | D230: approve, deny, cancel, remove or restore an event. Audited. |
+| POST | `/api/v1/admin/events/:id/images` | admin (cookie + CSRF) |  | D230: add a picture to an event (the image bytes as the body). Cleaned like photos: real type checked, re-encoded, all metadata dropped. At most 6 per event. Audited. |
+| GET | `/api/v1/admin/events/:id/images/:imageId` | admin (cookie + CSRF) |  | D230: an event's picture for the admin pages (any status, so waiting events can be checked). |
+| DELETE | `/api/v1/admin/events/:id/images/:imageId` | admin (cookie + CSRF) |  | D230: take a picture off an event (deleted from storage too). Audited. |
+| POST | `/api/v1/admin/events/geocode` | admin (cookie + CSRF) |  | D230: find a pin for an address (US Census geocoder, D224). `match` is null if not found. |
+| GET | `/api/v1/admin/events/places` | admin (cookie + CSRF) |  | D230: places to hold an event at (active ones only), for the event form's place picker. |
 | GET | `/api/v1/admin/giveaways` | admin (cookie + CSRF) |  | D188: every giveaway and its winners. |
 | POST | `/api/v1/admin/giveaways` | admin (cookie + CSRF) |  | D188: create a giveaway with its criteria. |
 | GET | `/api/v1/admin/giveaways/:id` | admin (cookie + CSRF) |  | D188: one giveaway: criteria, winners, and the eligible accounts (`?page=`, 50 a page). |
@@ -323,6 +356,7 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | POST | `/api/v1/admin/login` | public |  | P5.11 step 1: password. Returns a short-lived challenge (and 2FA setup the first time). |
 | POST | `/api/v1/admin/login/verify` | public |  | P5.11 step 2: authenticator code. Starts the admin session (cookies). |
 | POST | `/api/v1/admin/logout` | admin (cookie + CSRF) |  | P5.11: end the admin session. |
+| POST | `/api/v1/admin/organizers/:id` | admin (cookie + CSRF) |  | D230: approve, reject or revoke an event organizer (the business account's ID). Audited. |
 | GET | `/api/v1/admin/photos/:id` | admin (cookie + CSRF) |  | P6.5: moderators can see a reported photo, including after it's removed. |
 | POST | `/api/v1/admin/place-requests/:id` | admin (cookie + CSRF) |  | D224 (B6.4): approve or turn down a request from the owner website. Audited. |
 | POST | `/api/v1/admin/places` | admin (cookie + CSRF) |  | D146: add a place now (inside Duval), without a suggestion or votes. Audited. |
