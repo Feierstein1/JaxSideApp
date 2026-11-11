@@ -43,9 +43,10 @@ export function Tag({
   );
 }
 
-/** The business that puts it on: its place's icon and name. */
+/** Who puts it on: a business (its place's icon and name) or an organizer ("Hosted by"). */
 export function HostLine({ e }: { e: EventCardView }) {
-  if (e.host.kind !== 'business' || !e.host.name) return null;
+  if (!e.host.name || e.host.kind === 'community') return null;
+  const business = e.host.kind === 'business';
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
       <View
@@ -58,13 +59,17 @@ export function HostLine({ e }: { e: EventCardView }) {
           justifyContent: 'center',
         }}
       >
-        <Ionicons name={categoryIcon(e.host.placeCategory ?? '')} size={11} color={DARK.onTeal} />
+        <Ionicons
+          name={business ? categoryIcon(e.host.placeCategory ?? '') : 'megaphone'}
+          size={11}
+          color={DARK.onTeal}
+        />
       </View>
       <Text
         style={[TYPE.caption, { color: DARK.text, fontWeight: '700', flexShrink: 1 }]}
         numberOfLines={1}
       >
-        {e.host.name}
+        {business ? e.host.name : `Hosted by ${e.host.name}`}
       </Text>
     </View>
   );

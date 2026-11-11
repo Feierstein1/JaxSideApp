@@ -200,6 +200,25 @@ async function move(
   if (r.count !== 1) throw new ApiError(409, 'ALREADY_DECIDED', 'Someone changed it first.');
 }
 
+/** D230: tells the business or organizer on the website that its event was decided. */
+async function tellBusiness(e: Event, approved: boolean, reason: string | null, now: Date) {
+  if (!e.businessAccountId) return;
+  await db.businessNotice.create({
+    data: {
+      accountId: e.businessAccountId,
+      placeId: e.placeId,
+      kind: approved ? 'EVENT_APPROVED' : 'EVENT_DENIED',
+      title: (approved
+        ? `Your event “${e.title}” is on the calendar`
+        : `Your event “${e.title}” needs changes`
+      ).slice(0, 120),
+      body: approved ? 'People can find and follow it in the app now.' : reason,
+      link: `/events/${e.id}`,
+      createdAt: now,
+    },
+  });
+}
+
 export async function adminDecideEvent(
   adminId: string,
   id: string,
@@ -219,20 +238,22 @@ export async function adminDecideEvent(
       if (!(await db.eventSession.count({ where: { eventId: id } }))) {
         throw new ApiError(409, 'NEEDS_DATES', 'Add at least one date before approving.');
       }
-      return move(e, ['SUGGESTED', 'IN_REVIEW', 'DENIED'], {
+      await move(e, ['SUGGESTED', 'IN_REVIEW', 'DENIED'], {
         status: 'APPROVED',
         reviewedById: adminId,
         reviewedAt: now,
         decisionReason: null,
       });
+      return tellBusiness(e, true, null, now);
     }
     case 'deny':
-      return move(e, ['SUGGESTED', 'IN_REVIEW'], {
+      await move(e, ['SUGGESTED', 'IN_REVIEW'], {
         status: 'DENIED',
         reviewedById: adminId,
         reviewedAt: now,
         decisionReason: d.reason,
       });
+      return tellBusiness(e, false, d.reason, now);
     case 'cancel':
       await move(e, ['APPROVED'], {
         status: 'CANCELLED',

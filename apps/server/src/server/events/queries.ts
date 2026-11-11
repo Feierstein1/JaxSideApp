@@ -79,6 +79,7 @@ type CardRow = {
   place_id: string | null;
   place_name: string | null;
   place_category: string | null;
+  organizer_name: string | null;
   neighborhood: string | null;
   zip: string | null;
   setting: 'INDOOR' | 'OUTDOOR' | 'MIXED';
@@ -103,6 +104,8 @@ function selectCards(viewerId: string, at: GeoPoint, where: Prisma.Sql, tail: Pr
            (SELECT count(*)::int FROM "EventSession" x WHERE x."eventId" = e.id) AS day_count,
            e."venueName" AS venue_name, e.address, e."placeId" AS place_id,
            p.name AS place_name, p.category AS place_category,
+           (SELECT o.name FROM "EventOrganizer" o
+             WHERE o."accountId" = e."businessAccountId" AND o.status = 'VERIFIED') AS organizer_name,
            e.neighborhood, e.zip, e.setting::text AS setting, e.free, e."priceText" AS price_text,
            e."adultsOnly" AS adults_only, e."familyFriendly" AS family_friendly,
            e."hostKind"::text AS host_kind,
@@ -146,8 +149,8 @@ function toCard(r: CardRow, now = new Date()): EventCard {
     familyFriendly: r.family_friendly,
     host: {
       kind: host,
-      // Organizer names arrive with organizer accounts (P18.9).
-      name: host === 'business' ? r.place_name : null,
+      // A business is its place's name; an organizer shows its approved name (P18.9).
+      name: host === 'business' ? r.place_name : host === 'organizer' ? r.organizer_name : null,
       placeId: host === 'business' ? r.place_id : null,
       placeCategory: host === 'business' ? r.place_category : null,
     },

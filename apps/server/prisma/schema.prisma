@@ -1811,8 +1811,9 @@ model BusinessAccount {
   notices              BusinessNotice[]
 
   /// D230: events this business or organizer put on, and its updates in their chats.
-  events         Event[]
-  eventChatLines EventChatMessage[]
+  events          Event[]
+  eventChatLines  EventChatMessage[]
+  eventOrganizers EventOrganizer[]
 
   @@index([createdById])
 }
@@ -2204,6 +2205,10 @@ enum BusinessNoticeKind {
   AD_REJECTED // B3.3
   FROM_JAXSIDE // anything else an admin tells the business
   STRIKE // D191: a strike on this login (or, for the Owner, on one of its employees)
+  ORGANIZER_APPROVED // D230: the account may now post events as an organizer
+  ORGANIZER_REJECTED // D230: turned down (the note says why)
+  EVENT_APPROVED // D230: an event the business sent is on the calendar
+  EVENT_DENIED // D230: an event the business sent was turned down (the note says why)
 }
 
 /**
@@ -2649,4 +2654,38 @@ model EventChatMessage {
   @@index([expiresAt])
   @@index([authorId, createdAt])
   @@index([businessAccountId])
+}
+
+enum OrganizerStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  /// Was verified; an admin took it back (its events stay, it can't add more).
+  REVOKED
+}
+
+/**
+ * D230: an event organizer (festival, nonprofit, promoter) with no storefront, so no Google
+ * listing to verify against (D185). The website creates it at sign-up ("I organize events");
+ * JaxSide approves it in the admin portal. `name` shows on its events as "Hosted by".
+ * Owner accounts only; a business can be an organizer too.
+ */
+model EventOrganizer {
+  accountId        String          @id @db.Uuid
+  name             String          @db.VarChar(100)
+  /// Checked by the admin; never shown in the app (no links, D219).
+  website          String?         @db.VarChar(300)
+  about            String?         @db.VarChar(500)
+  contactName      String          @db.VarChar(100)
+  contactPhone     String?         @db.VarChar(40)
+  status           OrganizerStatus @default(PENDING)
+  createdAt        DateTime        @default(now()) @db.Timestamptz(3)
+  decidedAt        DateTime?       @db.Timestamptz(3)
+  /// The admin (User id); a plain id kept for the record.
+  decidedByAdminId String?         @db.Uuid
+  /// Shown to the organizer when turned down or revoked.
+  decisionNote     String?         @db.VarChar(500)
+  account          BusinessAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
 }

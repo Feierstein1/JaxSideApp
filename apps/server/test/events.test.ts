@@ -27,6 +27,7 @@ import { purgeEventChat } from '@/server/events/chat';
 import { POST as adsPOST } from '@/app/api/v1/ads/route';
 import { resetAdCache } from '@/server/ads/serve';
 import { ensureTiers } from '@/server/plan-tiers';
+import { POST as organizerPOST } from '@/app/api/v1/admin/organizers/[id]/route';
 import { listCases } from '@/server/admin/queue';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
@@ -573,5 +574,63 @@ describe('events as ads (P18.8)', () => {
         data: { accountId: org.id, template: 'BANNER', headline: 'Nothing', status: 'DRAFT' },
       }),
     ).rejects.toThrow();
+  });
+});
+
+describe('event organizers (P18.9)', () => {
+  it('approving an organizer tells them, and their name shows on their events', async () => {
+    const acct = await db.businessAccount.create({
+      data: { email: 'fest@example.test', passwordHash: 'x' },
+    });
+    await db.eventOrganizer.create({
+      data: { accountId: acct.id, name: 'Riverside Avondale Preservation', contactName: 'Pat' },
+    });
+    const id = await addEvent({ hostKind: 'organizer' });
+    await db.event.update({ where: { id }, data: { businessAccountId: acct.id } });
+    // Not shown until approved.
+    expect((await detail(me.token, id)).body.event.host.name).toBeNull();
+    const bad = await call(organizerPOST as H, 'POST', {
+      headers: admin,
+      id: acct.id,
+      body: { action: 'reject', note: '' },
+    });
+    expect(bad.status).toBe(400);
+    const ok = await call(organizerPOST as H, 'POST', {
+      headers: admin,
+      id: acct.id,
+      body: { action: 'approve' },
+    });
+    expect(ok.status).toBe(200);
+    expect((await detail(me.token, id)).body.event.host).toMatchObject({
+      kind: 'organizer',
+      name: 'Riverside Avondale Preservation',
+    });
+    const notice = await db.businessNotice.findFirstOrThrow({ where: { accountId: acct.id } });
+    expect(notice.kind).toBe('ORGANIZER_APPROVED');
+    // Approving twice isn't a thing.
+    expect(
+      (
+        await call(organizerPOST as H, 'POST', {
+          headers: admin,
+          id: acct.id,
+          body: { action: 'approve' },
+        })
+      ).status,
+    ).toBe(409);
+  });
+
+  it('a business is told when its event is approved or denied', async () => {
+    const acct = await db.businessAccount.create({
+      data: { email: 'bar@example.test', passwordHash: 'x' },
+    });
+    const id = await addEvent();
+    await db.event.update({
+      where: { id },
+      data: { status: 'IN_REVIEW', businessAccountId: acct.id },
+    });
+    await decide(id, { action: 'deny', reason: 'Add the real start time' });
+    const n = await db.businessNotice.findFirstOrThrow({ where: { accountId: acct.id } });
+    expect(n.kind).toBe('EVENT_DENIED');
+    expect(n.body).toBe('Add the real start time');
   });
 });
