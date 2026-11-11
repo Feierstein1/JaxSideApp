@@ -38,6 +38,11 @@ export const PLAN_ENTITLEMENTS = {
   'insights.reach': z.enum(INSIGHTS_REACH),
   /** D204: ZIPs beside the place's own (for NEARBY). */
   'insights.nearbyZips': z.number().int().min(0).max(30),
+  /**
+   * D231: events the account may add while on this plan (organizers and businesses); null = no
+   * limit. Free: 10 in the free month. Standard / Premium: no limit until the owner decides.
+   */
+  'events.limit': z.number().int().min(0).max(1000).nullable(),
 } as const;
 
 export type PlanEntitlementKey = keyof typeof PLAN_ENTITLEMENTS;
@@ -56,6 +61,8 @@ export const NO_PLAN_ENTITLEMENTS: Required<PlanEntitlements> = {
   insights: false,
   'insights.reach': 'OWN_ZIP',
   'insights.nearbyZips': 0,
+  // D231: without a current plan, no new events (like ads); the free month gives 10.
+  'events.limit': 0,
 };
 
 export const isPlanEntitlementKey = (key: string): key is PlanEntitlementKey =>

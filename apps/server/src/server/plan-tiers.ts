@@ -29,6 +29,7 @@ export const STARTER_TIERS: {
       insights: true,
       'insights.reach': 'OWN_ZIP',
       'insights.nearbyZips': 0,
+      'events.limit': 10, // D231
     },
   },
   {
@@ -46,6 +47,7 @@ export const STARTER_TIERS: {
       insights: true,
       'insights.reach': 'NEARBY',
       'insights.nearbyZips': 4,
+      'events.limit': null, // D231: to be decided
     },
   },
   {
@@ -63,6 +65,7 @@ export const STARTER_TIERS: {
       insights: true,
       'insights.reach': 'ALL',
       'insights.nearbyZips': 0,
+      'events.limit': null, // D231: to be decided
     },
   },
 ];

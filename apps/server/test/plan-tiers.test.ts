@@ -78,6 +78,7 @@ describe('the starter tiers (D202)', () => {
       insights: true,
       'insights.reach': 'ALL',
       'insights.nearbyZips': 0,
+      'events.limit': null, // D231
     });
     expect(planEntitlements(plans[1]!.entitlements)).toMatchObject({
       'ads.live': 3,
@@ -134,6 +135,7 @@ describe('what a business can use (D202)', () => {
       insights: true,
       'insights.reach': 'OWN_ZIP',
       'insights.nearbyZips': 0,
+      'events.limit': 10, // D231: the free month, 10 events
     });
     const later = new Date(Date.now() + (FREE_TIER_DAYS + 1) * DAY);
     expect((await entitlementsFor(owner.id, later)).plan).toBeNull();
