@@ -234,6 +234,92 @@ Either way, showing it costs nothing extra: it's one number read with the profil
 
 ---
 
+## 7. Year in Duval (potential build, owner 2026-11-11)
+
+**Idea:** each December, a private recap for each person: neighborhoods they posted in, medals earned, their
+top-voted post, places they rated, polls they answered.
+
+**Suggested shape:**
+
+- Built only from the person's own records (posts, ratings, medals, poll votes). **Not** from the anonymous area
+  statistics (D116), which by design can't be tied back to a person.
+- Shown only to that person, inside the app. No share button (owner: sharing outside the app works against
+  anonymity).
+- A few swipeable cards, generated once by a December job and kept until the end of January.
+
+**Questions for the owner:** which numbers to show; whether masked or deleted posts count; the first run date
+(December after launch).
+
+---
+
+## 8. Events and event rooms (draft for discussion, owner 2026-11-11)
+
+**Idea:** people at the same event can talk to each other while it's happening. Example: at PorchFest, people
+didn't know which porch each band was playing on. An event room answers "where is X playing?" from people who are
+actually there.
+
+**Why it matters:** the owner sees the lack of event coverage as the app's main weakness. Events also solve the
+cold-start problem: they put many people in one spot at one time, so a room feels alive even before the app is
+widely used.
+
+**Suggested shape:**
+
+- **An event** = name, start and end time, an area (one or more pins with a radius, so PorchFest can have a pin per
+  porch), and an optional organizer.
+- **The room** opens only for people inside the event area during the event window (same location rules as place
+  discussions). It has:
+  - text chat, reusing area chat (D218);
+  - a pinned info card: a map of the stages or porches, and the schedule;
+  - quick taps such as "Starting now," "Long line," "Sold out," "Lost & found."
+- **After the event:** the room closes and is purged on the area-chat timetable.
+- **Organizer posts:** verified organizers post official updates with a label, like "The Owner" (D157), through
+  the business website.
+- **Before the event:** listed in an "Upcoming in Duval" list with an "Interested" count only, and no public list
+  of who is going.
+
+**Where events come from** (the upkeep problem):
+
+- **Admin-curated calendar.** Someone adds 10–20 local events a week in the admin portal. This is the only
+  reliable way to cover grassroots events (PorchFest, Art Walk, Riverside Arts Market, neighborhood festivals),
+  which aren't on ticket sites. Budget the hours, or give it to an ambassador.
+- **Organizer submissions** through the business website (business accounts already exist). They're free at
+  first; a "featured event" placement could be a paid option later.
+- **User suggestions**, confirmed by people nearby, like place voting (D94).
+- **Ticketing data** for big venues (arena, stadium, amphitheater, Florida Theatre). Ticketmaster has a free event
+  search service. Eventbrite stopped offering public event search a few years ago. Check each service's current
+  terms before use.
+
+**Concerns:**
+
+- **Crowd safety and panic posts.** A false "shots fired" post at a packed event can cause harm. Event rooms need
+  slow mode, alarming phrases held for review, an admin on watch for big events, and a fixed "Emergency? Call 911"
+  line. JaxSide must never present itself as a safety or emergency tool.
+- **Weak phone signal at big crowds.** Chat polls every 3 seconds (D114), so failures must be quiet and retried.
+  Keep event pages light.
+- **GPS drift in crowds and downtown.** Event areas need a more generous radius than places.
+- **Moderation spikes** concentrate on event nights.
+- **Event names** are other people's brands. Say "at PorchFest" plainly, use no logos, and partner with organizers
+  where possible.
+
+**Questions for the owner:** who keeps the calendar; free organizer submissions at launch; whether events need a
+scope decision (events and RSVPs are on the out-of-scope list; this design deliberately has no RSVP list).
+
+---
+
+## Owner's calls on other ideas (2026-11-11)
+
+- **Sharing posts outside the app: ruled out.** It works against anonymity.
+- **"My spots" on profiles:** use the existing favorites instead. *Privacy note:* a public list of someone's
+  favorite places can reveal where they live or work, so make it opt-in or friends-only, and never show it with
+  masked posts.
+- **Home-screen widget:** liked; what it shows still needs working out.
+- **Phone notifications:** the owner is still thinking. Note that "get an answer now" questions mostly go unseen
+  without them.
+- **Meetups: ruled out.** People are anonymous, and the owner doesn't want liability for strangers meeting.
+- **Game mode for people to play together:** back burner.
+
+---
+
 ## Overall suggestions
 
 - **Suggested order** (most value first, least risk and work):
