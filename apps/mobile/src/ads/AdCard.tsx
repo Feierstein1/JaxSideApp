@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Image, Linking, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { DARK, type AdCard as Ad, type ReportTarget } from '@jax/shared';
+import { router } from 'expo-router';
+import { DARK, dateLabel, timeLabel, type AdCard as Ad, type ReportTarget } from '@jax/shared';
 import { useGuest } from '@/auth/guest';
 import { photoUri } from '@/discussion/photos';
 import { haptic } from '@/motion';
@@ -116,10 +117,12 @@ export function AdCard({ ad }: { ad: Ad }) {
 
   const image = ad.imageUrl ? { uri: photoUri(ad.imageUrl) } : null;
   const banner = ad.template === 'BANNER';
+  // D230: an organizer's event ad has no place; it's sponsored by the event.
+  const sponsor = ad.place?.name ?? ad.event?.title ?? '';
   return (
     <>
       <View
-        accessibilityLabel={`Sponsored by ${ad.place.name}: ${ad.headline}`}
+        accessibilityLabel={`Sponsored by ${sponsor}: ${ad.headline}`}
         style={{
           marginHorizontal: SPACE.md,
           marginVertical: 6,
@@ -148,7 +151,7 @@ export function AdCard({ ad }: { ad: Ad }) {
               numberOfLines={1}
               style={{ flexShrink: 1, color: DARK.text, fontSize: 12, fontWeight: '700' }}
             >
-              {ad.place.name}
+              {sponsor}
             </Text>
             {ad.adultsOnly ? (
               <View
@@ -192,6 +195,33 @@ export function AdCard({ ad }: { ad: Ad }) {
               resizeMode="cover"
               accessibilityIgnoresInvertColors
             />
+          ) : null}
+          {ad.event ? (
+            // D230: an ad for an event shows when it is and opens the event (Follow is there).
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`See event: ${ad.event.title}, ${dateLabel(ad.event.date)} at ${timeLabel(ad.event.startTime)}`}
+              onPress={() => router.push(`/events/event/${ad.event!.id}`)}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                minHeight: 40,
+                marginTop: 4,
+                paddingHorizontal: SPACE.md,
+                borderRadius: RADIUS.md,
+                backgroundColor: DARK.tealSoft,
+                borderWidth: 1,
+                borderColor: DARK.accent,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Ionicons name="calendar" size={16} color={DARK.accent} />
+              <Text style={{ flex: 1, color: DARK.text, fontWeight: '700' }}>
+                {dateLabel(ad.event.date)} · {timeLabel(ad.event.startTime)}
+              </Text>
+              <Text style={{ color: DARK.accent, fontWeight: '800' }}>See event</Text>
+            </Pressable>
           ) : null}
           {ad.link ? (
             <Pressable

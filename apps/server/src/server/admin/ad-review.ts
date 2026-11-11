@@ -21,8 +21,19 @@ import { entitlementsFor } from './plans';
  * Each decision keeps a snapshot of what the ad said, and the business is told in its bell.
  */
 
+/** D230: what an ad promotes, for the admin pages: its place, or its event when it has none. */
+export function adSubject(a: {
+  place: { id: string; name: string; address?: string | null } | null;
+  event: { id: string; title: string } | null;
+}) {
+  if (a.place) return { id: a.place.id, name: a.place.name, address: a.place.address ?? null };
+  if (a.event) return { id: a.event.id, name: `Event: ${a.event.title}`, address: null };
+  return { id: '', name: '(nothing)', address: null };
+}
+
 const forReview = {
   place: { select: { id: true, name: true, address: true } },
+  event: { select: { id: true, title: true } },
   account: { select: { id: true, email: true } },
   createdBy: { select: { email: true, username: true } },
   media: { select: { id: true, mimeType: true } },
@@ -57,7 +68,7 @@ export async function listPendingAds(page = 1) {
     adultsOnly: a.adultsOnly,
     // Through the admin route (it serves any business image, for review).
     imageUrl: a.media ? `/api/v1/admin/business-pictures/${a.media.id}` : null,
-    place: a.place,
+    place: adSubject(a),
     business: { id: a.account.id, email: a.account.email ?? '' },
     madeBy: a.createdBy?.username ?? a.createdBy?.email ?? null,
     schedule: describeSchedule(a),
@@ -177,7 +188,8 @@ export async function decideAd(
           : `Your ad “${ad.headline}” needs changes`
         ).slice(0, 120),
         body: approve ? 'It shows in the app on its schedule.' : reason,
-        link: `/places/${ad.placeId}/ads/${adId}`,
+        // D230: an organizer's ad has no place.
+        link: ad.placeId ? `/places/${ad.placeId}/ads/${adId}` : `/ads/${adId}`,
         createdAt: now,
       },
     });

@@ -2058,8 +2058,11 @@ model AdMedia {
 model Ad {
   id            String           @id @default(uuid(7)) @db.Uuid
   accountId     String           @db.Uuid
-  /// The place the ad promotes (one the business runs).
-  placeId       String           @db.Uuid
+  /// The place the ad promotes (one the business runs). D230: optional; an event organizer's
+  /// ad promotes an event instead (CHECK `Ad_place_or_event`: a place, an event, or both).
+  placeId       String?          @db.Uuid
+  /// D230: the event the ad promotes (the same content shows as a listing and an ad).
+  eventId       String?          @db.Uuid
   status        AdStatus         @default(DRAFT)
   template      AdTemplate
   headline      String           @db.VarChar(80)
@@ -2090,7 +2093,8 @@ model Ad {
   updatedAt     DateTime         @updatedAt @db.Timestamptz(3)
   account       BusinessAccount  @relation("AdOwner", fields: [accountId], references: [id], onDelete: Cascade)
   createdBy     BusinessAccount? @relation("AdCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  place         BusinessPlace    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  place         BusinessPlace?   @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  event         Event?           @relation(fields: [eventId], references: [id], onDelete: Restrict)
   media         AdMedia?         @relation(fields: [mediaId], references: [id], onDelete: SetNull)
   reviews       AdReview[]
   dailyStats    AdDailyStats[]
@@ -2104,6 +2108,7 @@ model Ad {
   @@index([accountId, status])
   @@index([status, startsAt, endsAt])
   @@index([placeId])
+  @@index([eventId])
   @@index([mediaId])
   @@index([createdById])
 }
@@ -2560,6 +2565,8 @@ model Event {
   follows           EventFollow[]
   notifications     Notification[]
   reports           Report[]
+  /// D230: ads promoting this event.
+  ads               Ad[]
 
   @@index([status, lastEndsAt])
   @@index([placeId])

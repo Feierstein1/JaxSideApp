@@ -1,4 +1,6 @@
 import {
+  localDate,
+  localTime,
   inSchedule,
   NO_PLAN_ENTITLEMENTS,
   planEntitlements,
@@ -46,7 +48,11 @@ export interface LiveAd {
   zips: string[];
   radiusMeters: number | null;
   cityWide: boolean;
-  place: { id: string; name: string; latitude: number; longitude: number };
+  place: { id: string; name: string } | null;
+  /** D230: the event it promotes, if any (only while it has a date to come). */
+  event: { id: string; title: string; date: string; startTime: string } | null;
+  /** Where the ad is "from" for radius targeting: its place, or its event's pin. */
+  anchor: { latitude: number; longitude: number };
   /** D216: shown only when the business's current plan allows links (`ads.links`). */
   link: { url: string; label: string } | null;
 }
@@ -64,6 +70,22 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
     orderBy: [{ approvedAt: 'asc' }, { id: 'asc' }],
     include: {
       place: { select: { id: true, name: true, latitude: true, longitude: true, status: true } },
+      // D230: an event ad shows while its event is approved and has a date to come.
+      event: {
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          latitude: true,
+          longitude: true,
+          sessions: {
+            where: { endsAt: { gt: now } },
+            orderBy: { startsAt: 'asc' },
+            take: 1,
+            select: { startsAt: true },
+          },
+        },
+      },
       account: {
         select: { revokedAt: true, suspendedAt: true, suspendedUntil: true },
       },
@@ -91,7 +113,12 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
   for (const r of rows) {
     const a = r.account;
     if (a.revokedAt || a.suspendedAt || (a.suspendedUntil && a.suspendedUntil > now)) continue;
-    if (r.place.status !== 'ACTIVE') continue;
+    if (r.place && r.place.status !== 'ACTIVE') continue;
+    const next = r.event?.sessions[0];
+    if (r.event && (r.event.status !== 'APPROVED' || !next || r.event.latitude === null)) continue;
+    const anchor =
+      r.place ?? (r.event ? { latitude: r.event.latitude!, longitude: r.event.longitude! } : null);
+    if (!anchor) continue;
     if (!inSchedule(r, now)) continue;
     const used = perAccount.get(r.accountId) ?? 0;
     const plan = plans.get(r.accountId) ?? NO_PLAN_ENTITLEMENTS;
@@ -113,12 +140,17 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
         r.linkUrl && r.linkLabel && plan['ads.links']
           ? { url: r.linkUrl, label: r.linkLabel }
           : null,
-      place: {
-        id: r.place.id,
-        name: r.place.name,
-        latitude: r.place.latitude,
-        longitude: r.place.longitude,
-      },
+      place: r.place ? { id: r.place.id, name: r.place.name } : null,
+      event:
+        r.event && next
+          ? {
+              id: r.event.id,
+              title: r.event.title,
+              date: localDate(next.startsAt),
+              startTime: localTime(next.startsAt),
+            }
+          : null,
+      anchor: { latitude: anchor.latitude, longitude: anchor.longitude },
     });
   }
   return out;
@@ -259,7 +291,7 @@ export async function pickAdsFor(
       !hidden.has(ad.accountId) &&
       !(ad.adultsOnly && !reader.userId) &&
       (onlyAccount === null || ad.accountId === onlyAccount) &&
-      targetsReader(ad, ad.place, { point: reader.point, zip }),
+      targetsReader(ad, ad.anchor, { point: reader.point, zip }),
   );
   if (!eligible.length) return [];
 
@@ -272,7 +304,8 @@ export async function pickAdsFor(
   const views = new Map(stats.map((s) => [s.adId, s.views]));
   const avg = eligible.reduce((n, a) => n + (views.get(a.id) ?? 0), 0) / eligible.length;
   const pool = eligible.map((ad) => {
-    const isBoosted = liked.has(ad.accountId) || favoritePlaces.has(ad.place.id);
+    const isBoosted =
+      liked.has(ad.accountId) || (ad.place !== null && favoritePlaces.has(ad.place.id));
     const pace = Math.min(4, Math.max(0.25, (avg + 1) / ((views.get(ad.id) ?? 0) + 1)));
     return {
       item: ad,
@@ -298,7 +331,8 @@ export async function pickAdsFor(
     body: ad.body,
     imageUrl: ad.mediaId ? signedAdImageUrl(ad.mediaId, now) : null,
     adultsOnly: ad.adultsOnly,
-    place: { id: ad.place.id, name: ad.place.name },
+    place: ad.place,
+    event: ad.event,
     link: ad.link,
     myChoice: myChoice.get(ad.id) ?? null,
   }));

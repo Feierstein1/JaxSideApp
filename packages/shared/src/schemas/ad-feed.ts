@@ -51,7 +51,13 @@ export interface AdCard {
   imageUrl: string | null;
   /** Q30: alcohol deals show "21+". */
   adultsOnly: boolean;
-  place: { id: string; name: string };
+  /** The place it promotes; null for an event organizer's ad (D230). */
+  place: { id: string; name: string } | null;
+  /**
+   * D230: the event it promotes (its next date, Jacksonville time): the card shows when it is
+   * and opens the event.
+   */
+  event: { id: string; title: string; date: string; startTime: string } | null;
   /** D216: one button (paid plans only); null when the ad has none or the plan doesn't allow it. */
   link: { url: string; label: string } | null;
   /** The reader's own choice on this ad, if any. */

@@ -24,6 +24,9 @@ import { POST as chatJoinPOST } from '@/app/api/v1/events/[id]/chat/join/route';
 import { POST as chatListPOST } from '@/app/api/v1/events/[id]/chat/list/route';
 import { POST as chatStatusPOST } from '@/app/api/v1/events/[id]/chat/status/route';
 import { purgeEventChat } from '@/server/events/chat';
+import { POST as adsPOST } from '@/app/api/v1/ads/route';
+import { resetAdCache } from '@/server/ads/serve';
+import { ensureTiers } from '@/server/plan-tiers';
 import { listCases } from '@/server/admin/queue';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
@@ -515,5 +518,60 @@ describe('event chat (P18.7)', () => {
     expect(
       (await purgeEventChat(new Date(session.endsAt.getTime() + 25 * 3_600_000))).attendance,
     ).toBe(2);
+  });
+});
+
+describe('events as ads (P18.8)', () => {
+  it('an organizer’s ad promotes an event with no place, and stops when it’s cancelled', async () => {
+    await ensureTiers(db);
+    const id = await addEvent({ hostKind: 'organizer', ...DOWNTOWN });
+    const org = await db.businessAccount.create({
+      data: { email: 'fest@example.test', passwordHash: 'x' },
+    });
+    const plan = await db.plan.findUniqueOrThrow({ where: { code: 'PREMIUM' } });
+    await db.subscription.create({
+      data: { accountId: org.id, planId: plan.id, startsAt: new Date(Date.now() - DAY) },
+    });
+    await db.ad.create({
+      data: {
+        accountId: org.id,
+        eventId: id,
+        template: 'BANNER',
+        headline: 'PorchFest this Saturday',
+        status: 'APPROVED',
+        cityWide: true,
+        approvedAt: new Date(),
+      },
+    });
+    resetAdCache();
+    const ask = () =>
+      call(adsPOST as H, 'POST', {
+        token: me.token,
+        body: { reading: reading(), context: { kind: 'feed' }, count: 3 },
+      });
+    const r = await ask();
+    expect(r.status).toBe(200);
+    expect(r.body.ads).toHaveLength(1);
+    expect(r.body.ads[0].place).toBeNull();
+    expect(r.body.ads[0].event).toMatchObject({
+      id,
+      title: 'Riverside PorchFest',
+      date: inDays(3),
+      startTime: '12:00',
+    });
+    await decide(id, { action: 'cancel', reason: 'Storm' });
+    resetAdCache();
+    expect((await ask()).body.ads).toHaveLength(0);
+  });
+
+  it('🔒 an ad must promote a place or an event (database rule)', async () => {
+    const org = await db.businessAccount.create({
+      data: { email: 'x@example.test', passwordHash: 'x' },
+    });
+    await expect(
+      db.ad.create({
+        data: { accountId: org.id, template: 'BANNER', headline: 'Nothing', status: 'DRAFT' },
+      }),
+    ).rejects.toThrow();
   });
 });

@@ -1,3 +1,4 @@
+import { adSubject } from './ad-review';
 import { describeSchedule } from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
 import { statsDay } from '../ads/serve';
@@ -111,6 +112,7 @@ export async function listAdsWithStats(tab: 'live' | 'past', page: number, now =
         zips: true,
         radiusMeters: true,
         place: { select: { id: true, name: true } },
+        event: { select: { id: true, title: true } },
       },
     }),
     db.ad.count({ where }),
@@ -124,7 +126,7 @@ export async function listAdsWithStats(tab: 'live' | 'past', page: number, now =
       headline: a.headline,
       status: a.status,
       template: a.template,
-      place: a.place,
+      place: adSubject(a),
       reach: reachOf(a),
       startsAt: a.startsAt?.toISOString() ?? null,
       endsAt: a.endsAt?.toISOString() ?? null,
@@ -143,6 +145,7 @@ export async function getAdStats(adId: string, daysPage: number, now = new Date(
     where: { id: adId },
     include: {
       place: { select: { id: true, name: true, address: true } },
+      event: { select: { id: true, title: true } },
       account: { select: { id: true, email: true } },
       media: { select: { id: true } },
     },
@@ -168,7 +171,7 @@ export async function getAdStats(adId: string, daysPage: number, now = new Date(
       template: ad.template,
       adultsOnly: ad.adultsOnly,
       imageUrl: ad.media ? `/api/v1/admin/business-pictures/${ad.media.id}` : null,
-      place: ad.place,
+      place: adSubject(ad),
       business: { id: ad.account.id, email: ad.account.email ?? '' },
       schedule: describeSchedule(ad),
       reach: reachOf(ad),
