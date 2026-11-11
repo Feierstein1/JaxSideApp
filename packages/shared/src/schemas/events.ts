@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isValidDate, MONTH_RE, TIME_RE, type SessionInput } from '../event-time';
+import type { ChatLine } from './chat';
 import { locationReadingSchema } from './location';
 
 /*
@@ -308,3 +309,64 @@ export const blankSession = (date: string): SessionInput => ({
   start: '18:00',
   end: '21:00',
 });
+
+// ───────────────────────────── Event chat ─────────────────────────────
+
+/**
+ * D230: where you stand with an event's chat right now.
+ * - closed: it isn't open (more than an hour before, or over 2 hours after)
+ * - away: it's open, but you aren't inside the event area
+ * - ask: you're there: show "Are you at [event]?"
+ * - joined: you said yes (and you're still there)
+ */
+export interface EventChatStatus {
+  state: 'closed' | 'away' | 'ask' | 'joined';
+  /** The session the chat is for (null when closed and none is coming up). */
+  sessionId: string | null;
+  opensAt: string | null;
+  closesAt: string | null;
+  /** "a few" under 5, the number from 5 (people who said they're there). */
+  people: string | null;
+  mutedUntil: string | null;
+}
+
+/** An organizer's update, pinned at the top of the chat. */
+export interface EventChatUpdate {
+  id: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface EventChatList {
+  lines: ChatLine[];
+  updates: EventChatUpdate[];
+  people: string;
+  mutedUntil: string | null;
+  closesAt: string;
+}
+
+/**
+ * D230: phrases refused in event chat, so a false alarm can't spread through a crowd. The
+ * person is told to call 911 if it's real. Matched on whole words, any case.
+ */
+export const EVENT_CHAT_ALARM_PHRASES = [
+  'shots fired',
+  'shooter',
+  'shooting',
+  'gunman',
+  'gun',
+  'guns',
+  'bomb',
+  'stampede',
+  'evacuate',
+  'stabbing',
+  'stabbed',
+  'terrorist',
+  'explosion',
+] as const;
+
+/** True when a line contains one of the alarm phrases. */
+export function hasAlarmPhrase(text: string): boolean {
+  const words = ` ${text.toLowerCase().replace(/[^a-z0-9]+/g, ' ')} `;
+  return EVENT_CHAT_ALARM_PHRASES.some((p) => words.includes(` ${p} `));
+}

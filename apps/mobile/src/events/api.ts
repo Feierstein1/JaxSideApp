@@ -1,4 +1,7 @@
 import type {
+  ChatLine,
+  EventChatList,
+  EventChatStatus,
   EventDay,
   EventDetail,
   EventFilters,
@@ -76,3 +79,25 @@ export const mySuggestions = async () =>
 export const NO_FILTERS: Filters = { kind: 'all' };
 export const filterCount = (f: Filters) =>
   [f.nearby, f.kind !== 'all', f.setting, f.freeOnly, f.following].filter(Boolean).length;
+
+/** D230: the event's chat. The server checks you're at the event on every call. */
+export const eventChat = {
+  status: async (id: string) =>
+    api.post<EventChatStatus>(`/api/v1/events/${id}/chat/status`, {
+      reading: await getFreshReading(),
+    }),
+  join: async (id: string) =>
+    api.post<{ joined: true; people: string }>(`/api/v1/events/${id}/chat/join`, {
+      reading: await getFreshReading({ fresh: true }),
+    }),
+  list: async (id: string, after?: string) =>
+    api.post<EventChatList>(`/api/v1/events/${id}/chat/list`, {
+      reading: await getFreshReading(),
+      ...(after ? { after } : {}),
+    }),
+  send: async (id: string, body: string) =>
+    api.post<{ line: ChatLine }>(`/api/v1/events/${id}/chat`, {
+      reading: await getFreshReading(),
+      body,
+    }),
+};

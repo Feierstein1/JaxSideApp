@@ -19,6 +19,11 @@ import { POST as installPOST } from '@/app/api/v1/installations/route';
 import { GET as badgesGET } from '@/app/api/v1/badges/route';
 import { GET as notificationsGET } from '@/app/api/v1/notifications/route';
 import { POST as reportPOST } from '@/app/api/v1/reports/route';
+import { POST as chatSendPOST } from '@/app/api/v1/events/[id]/chat/route';
+import { POST as chatJoinPOST } from '@/app/api/v1/events/[id]/chat/join/route';
+import { POST as chatListPOST } from '@/app/api/v1/events/[id]/chat/list/route';
+import { POST as chatStatusPOST } from '@/app/api/v1/events/[id]/chat/status/route';
+import { purgeEventChat } from '@/server/events/chat';
 import { listCases } from '@/server/admin/queue';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
@@ -403,5 +408,112 @@ describe('reporting events (P18.6)', () => {
     expect(d.status).toBe(200);
     expect((await detail(me.token, id)).status).toBe(404);
     void adminId;
+  });
+});
+
+describe('event chat (P18.7)', () => {
+  /** An event on now: started 30 minutes ago, ends in 2 hours, 150 m around downtown. */
+  async function onNow(over: Record<string, unknown> = {}) {
+    const start = new Date(Date.now() - 30 * 60_000);
+    const end = new Date(Date.now() + 120 * 60_000);
+    return addEvent({
+      ...DOWNTOWN,
+      sessions: [{ date: localDate(start), start: localTime(start), end: localTime(end) }],
+      ...over,
+    });
+  }
+  const at = (fn: H, token: string, id: string, where = DOWNTOWN, extra = {}) =>
+    call(fn, 'POST', { token, id, body: { reading: reading(where), ...extra } });
+
+  it('asks people at the event, lets them in, and shows their lines', async () => {
+    const id = await onNow();
+    expect((await at(chatStatusPOST as H, me.token, id)).body.state).toBe('ask');
+    expect((await at(chatJoinPOST as H, me.token, id)).status).toBe(200);
+    expect((await at(chatStatusPOST as H, me.token, id)).body.state).toBe('joined');
+    const sent = await at(chatSendPOST as H, me.token, id, DOWNTOWN, {
+      body: 'Which porch has the jazz trio?',
+    });
+    expect(sent.status).toBe(201);
+    const list = await at(chatListPOST as H, me.token, id);
+    expect(list.body.lines.map((l: { body: string }) => l.body)).toEqual([
+      'Which porch has the jazz trio?',
+    ]);
+    expect(findForbiddenKeys(list.body)).toEqual([]);
+  });
+
+  it('🔒 people away from the event, or who haven’t joined, can’t read or send', async () => {
+    const id = await onNow();
+    expect((await at(chatStatusPOST as H, other.token, id, RIVERSIDE)).body.state).toBe('away');
+    expect((await at(chatJoinPOST as H, other.token, id, RIVERSIDE)).body.error.code).toBe(
+      'NOT_AT_EVENT',
+    );
+    expect((await at(chatListPOST as H, other.token, id)).body.error.code).toBe('NOT_JOINED');
+    const send = await at(chatSendPOST as H, other.token, id, DOWNTOWN, { body: 'hello' });
+    expect(send.body.error.code).toBe('NOT_JOINED');
+    // Joined, then walked away: refused again.
+    await at(chatJoinPOST as H, me.token, id);
+    expect((await at(chatListPOST as H, me.token, id, RIVERSIDE)).body.error.code).toBe(
+      'NOT_AT_EVENT',
+    );
+    expect(await db.eventChatMessage.count()).toBe(0);
+  });
+
+  it('🔒 is closed before it opens and for cancelled events', async () => {
+    const later = await addEvent({ ...DOWNTOWN });
+    expect((await at(chatStatusPOST as H, me.token, later)).body.state).toBe('closed');
+    expect((await at(chatJoinPOST as H, me.token, later)).body.error.code).toBe('CHAT_CLOSED');
+    const now = await onNow({ title: 'Called off' });
+    await decide(now, { action: 'cancel', reason: 'Storm' });
+    expect((await at(chatJoinPOST as H, me.token, now)).status).toBe(404);
+  });
+
+  it('refuses alarming phrases with a 911 message, without counting it against you', async () => {
+    const id = await onNow();
+    await at(chatJoinPOST as H, me.token, id);
+    const r = await at(chatSendPOST as H, me.token, id, DOWNTOWN, {
+      body: 'Shots fired near the stage!',
+    });
+    expect(r.body.error.code).toBe('EVENT_CHAT_ALARM');
+    expect(r.body.error.message).toContain('911');
+    expect(await db.chatOffense.count({ where: { userId: me.id } })).toBe(0);
+  });
+
+  it('pins organizer updates, reports copy the person’s lines, and the purge clears answers', async () => {
+    const id = await onNow();
+    await at(chatJoinPOST as H, me.token, id);
+    await at(chatJoinPOST as H, other.token, id);
+    await at(chatSendPOST as H, other.token, id, DOWNTOWN, { body: 'rude line here' });
+    const session = await db.eventSession.findFirstOrThrow({ where: { eventId: id } });
+    const biz = await db.businessAccount.create({
+      data: { email: 'org@example.test', passwordHash: 'x' },
+    });
+    await db.eventChatMessage.create({
+      data: {
+        sessionId: session.id,
+        businessAccountId: biz.id,
+        body: 'Main stage starts at 3',
+        expiresAt: new Date(Date.now() + 3_600_000),
+      },
+    });
+    const list = await at(chatListPOST as H, me.token, id);
+    expect(list.body.updates.map((u: { body: string }) => u.body)).toEqual([
+      'Main stage starts at 3',
+    ]);
+    expect(list.body.lines).toHaveLength(1);
+    const rep = await call(reportPOST as H, 'POST', {
+      token: me.token,
+      body: {
+        reading: reading(),
+        target: { type: 'eventChat', eventId: id, username: 'other_user' },
+        reason: 'HARASSMENT',
+      },
+    });
+    expect(rep.status).toBe(202);
+    const saved = await db.report.findFirstOrThrow({ where: { reportedUserId: other.id } });
+    expect(JSON.stringify(saved.chatEvidence)).toContain('rude line here');
+    // A day after the session ends, the "I'm here" answers are gone.
+    expect(
+      (await purgeEventChat(new Date(session.endsAt.getTime() + 25 * 3_600_000))).attendance,
+    ).toBe(2);
   });
 });

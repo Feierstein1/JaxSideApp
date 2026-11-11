@@ -15,6 +15,8 @@ export default function EventsLayout() {
       <Stack.Screen name="event/[id]" options={{ title: 'Event' }} />
       <Stack.Screen name="suggest" options={{ title: 'Suggest an event' }} />
       <Stack.Screen name="suggestions" options={{ title: 'My suggestions' }} />
+      {/* D230: full screen, no tab bar (the app layout hides it on chat screens). */}
+      <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
     </Stack>
   );
 }

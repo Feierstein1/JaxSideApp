@@ -107,7 +107,7 @@ export async function listChat(
 }
 
 /** Same words in the same order, whatever the capitals, spacing or punctuation. */
-const comparable = (s: string) =>
+export const comparable = (s: string) =>
   s
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
@@ -134,8 +134,8 @@ export async function trimRoom(roomId: string, now = new Date()) {
   if (drop.length) await db.chatMessage.deleteMany({ where: { id: { in: drop } } });
 }
 
-/** Until when this person is muted, or null. */
-async function activeMute(userId: string, now = new Date()) {
+/** Until when this person is muted, or null (D230: event chat shares the mute). */
+export async function activeMute(userId: string, now = new Date()) {
   const m = await db.chatMute.findUnique({ where: { userId } });
   return m && m.until > now ? m.until : null;
 }
@@ -148,7 +148,12 @@ const MUTE_AFTER = [10 * MINUTE, 60 * MINUTE, 24 * 60 * MINUTE];
  * D218: records a broken chat rule and answers with a warning, or, from the third in a day,
  * a timed mute (10 minutes, then an hour, then the rest of the day). Never returns.
  */
-async function violation(userId: string, kind: string, err: ApiError, now: Date): Promise<never> {
+export async function violation(
+  userId: string,
+  kind: string,
+  err: ApiError,
+  now: Date,
+): Promise<never> {
   await db.chatOffense.create({ data: { userId, kind, createdAt: now } });
   const count = await db.chatOffense.count({
     where: { userId, createdAt: { gt: new Date(now.getTime() - 24 * 60 * MINUTE) } },
@@ -170,7 +175,7 @@ async function violation(userId: string, kind: string, err: ApiError, now: Date)
   throw mutedError(until, now);
 }
 
-function mutedError(until: Date, now: Date) {
+export function mutedError(until: Date, now: Date) {
   return new ApiError(
     403,
     'CHAT_MUTED',
@@ -182,26 +187,26 @@ function mutedError(until: Date, now: Date) {
   );
 }
 
-const COUNTED: Record<string, string> = {
+export const COUNTED: Record<string, string> = {
   CONTENT_BLOCKED: 'WORD',
   CONTENT_WARNING: 'WORD',
   NO_LINKS: 'LINK',
   DUPLICATE_MESSAGE: 'REPEAT',
 };
 
-export async function sendChat(
-  user: User,
-  input: { reading: LocationReading; body: string },
-  now = new Date(),
-): Promise<ChatLine> {
-  assertCanChat(user);
-  const mute = await activeMute(user.id, now);
+/**
+ * D218: before a line is sent: not muted, then the burst cap (two quick taps aren't
+ * rule-breaking), then the minute and hour caps (going over those counts as flooding).
+ * D230: shared with event chat.
+ */
+export async function chatSendLimits(userId: string, now = new Date()) {
+  const mute = await activeMute(userId, now);
   if (mute) throw mutedError(mute, now);
   // Two quick taps are not rule-breaking: only the minute and hour caps count against you.
   await enforce(
     [
       {
-        key: `chat-burst:user:${user.id}`,
+        key: `chat-burst:user:${userId}`,
         limitKey: 'rateLimit.chat.burstPer3s',
         windowSeconds: 3,
       },
@@ -212,12 +217,12 @@ export async function sendChat(
     await enforce(
       [
         {
-          key: `chat-min:user:${user.id}`,
+          key: `chat-min:user:${userId}`,
           limitKey: 'rateLimit.chat.perMinute',
           windowSeconds: 60,
         },
         {
-          key: `chat-hour:user:${user.id}`,
+          key: `chat-hour:user:${userId}`,
           limitKey: 'rateLimit.chat.perHour',
           windowSeconds: 3_600,
         },
@@ -226,10 +231,19 @@ export async function sendChat(
     );
   } catch (e) {
     if (e instanceof ApiError && e.code === 'RATE_LIMITED') {
-      return violation(user.id, 'FLOOD', e, now);
+      return violation(userId, 'FLOOD', e, now);
     }
     throw e;
   }
+}
+
+export async function sendChat(
+  user: User,
+  input: { reading: LocationReading; body: string },
+  now = new Date(),
+): Promise<ChatLine> {
+  assertCanChat(user);
+  await chatSendLimits(user.id, now);
   const room = await openRoom(user, input.reading);
   const body = input.body.trim().slice(0, CHAT_MAX);
   try {

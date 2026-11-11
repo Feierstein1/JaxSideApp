@@ -7,6 +7,7 @@ import { ApiError } from './http';
 import { autoSuspendConfig, maybeAutoSuspend } from './moderation/auto-suspend';
 import { getPublicProfile } from './profiles';
 import { chatReportEvidence } from './chat/chat';
+import { eventChatReportEvidence } from './events/chat';
 import { messageReportEvidence } from './social/messages';
 
 /**
@@ -82,6 +83,22 @@ async function resolveTarget(target: ReportTarget, viewerUserId: string | null) 
     // D218: a person's area-chat lines; only someone in the same room can report them.
     if (!viewerUserId) throw NOT_FOUND();
     const { authorId, evidence } = await chatReportEvidence(viewerUserId, target.username);
+    return {
+      key: `chat:${authorId}`,
+      data: { reportedUserId: authorId, chatEvidence: evidence },
+      authorUserId: authorId,
+      authorGuestId: null,
+      business: false,
+    } satisfies ResolvedTarget;
+  }
+  if (target.type === 'eventChat') {
+    // D230: a person's lines in an event's chat; only someone who joined it can report them.
+    if (!viewerUserId) throw NOT_FOUND();
+    const { authorId, evidence } = await eventChatReportEvidence(
+      viewerUserId,
+      target.eventId,
+      target.username,
+    );
     return {
       key: `chat:${authorId}`,
       data: { reportedUserId: authorId, chatEvidence: evidence },

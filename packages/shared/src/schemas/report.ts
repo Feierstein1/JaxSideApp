@@ -87,6 +87,12 @@ export const reportTargetSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('ad'), id: z.uuid() }),
   /** D230: an event on the calendar. */
   z.strictObject({ type: z.literal('event'), id: z.uuid() }),
+  /** D230: someone's lines in an event's chat (you must have joined that chat). */
+  z.strictObject({
+    type: z.literal('eventChat'),
+    eventId: z.uuid(),
+    username: z.string().regex(/^[A-Za-z0-9_]{3,20}$/),
+  }),
   /** D218: someone's recent area-chat lines (you must be in the same room). */
   z.strictObject({ type: z.literal('chat'), username: z.string().regex(/^[A-Za-z0-9_]{3,20}$/) }),
   z.strictObject({
