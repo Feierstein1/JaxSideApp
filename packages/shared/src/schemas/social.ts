@@ -49,7 +49,11 @@ export interface NotificationView {
     | 'MENTION'
     | 'GIVEAWAY_WIN'
     | 'STRIKE'
-    | 'CONTENT_REMOVED';
+    | 'CONTENT_REMOVED'
+    | 'EVENT_TOMORROW'
+    | 'EVENT_SOON'
+    | 'EVENT_CHANGED'
+    | 'EVENT_CANCELLED';
   actor: FriendUser | null;
   /** FRIEND_REQUEST still waiting: its request ID, so it can be answered from the bell. */
   pendingRequestId: string | null;
@@ -76,6 +80,11 @@ export interface NotificationView {
     what: 'post' | 'comment' | 'photo' | null;
     reason: string;
   } | null;
+  /**
+   * D230: EVENT_* (from JaxSide, so `actor` is null): the event to open and, for reminders,
+   * when the session starts (Jacksonville date and time).
+   */
+  event?: { id: string; title: string; date: string | null; startTime: string | null } | null;
   createdAt: string;
   read: boolean;
 }

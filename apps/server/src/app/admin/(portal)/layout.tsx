@@ -36,6 +36,7 @@ const NAV: NavGroup[] = [
       { href: '/admin/polls', label: 'Polls' },
       { href: '/admin/giveaways', label: 'Giveaways' },
       { href: '/admin/topics', label: 'Topics' },
+      { href: '/admin/events', label: 'Events' },
       { href: '/admin/stats', label: 'Area stats' },
     ],
   },

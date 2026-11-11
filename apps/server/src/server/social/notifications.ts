@@ -1,4 +1,6 @@
 import {
+  localDate,
+  localTime,
   MENTION_NOTIFY_MAX,
   mentionedUsernames,
   type DiscussionKind,
@@ -43,6 +45,11 @@ const FROM_LIVE_ACTOR = {
     { actorBusinessId: { not: null }, actorBusiness: { revokedAt: null } },
     { giveawayWinnerId: { not: null } },
     { moderationActionId: { not: null }, moderationAction: { voidedAt: null } },
+    // D230: event notices, while the event can still be seen.
+    {
+      eventId: { not: null },
+      event: { status: { in: ['APPROVED' as const, 'CANCELLED' as const] } },
+    },
   ],
 };
 
@@ -239,6 +246,8 @@ export async function listNotifications(userId: string): Promise<NotificationVie
         select: { id: true, username: true, profile: true },
       },
       giveawayWinner: { select: { id: true, giveaway: { select: { title: true } } } },
+      event: { select: { id: true, title: true } },
+      eventSession: { select: { startsAt: true } },
       // Only what the person may see: never the internal note or who decided.
       moderationAction: {
         select: {
@@ -291,6 +300,14 @@ export async function listNotifications(userId: string): Promise<NotificationVie
       ? { winId: r.giveawayWinner.id, title: r.giveawayWinner.giveaway.title }
       : null,
     moderation: r.moderationAction ? moderationNotice(r.moderationAction) : null,
+    event: r.event
+      ? {
+          id: r.event.id,
+          title: r.event.title,
+          date: r.eventSession ? localDate(r.eventSession.startsAt) : null,
+          startTime: r.eventSession ? localTime(r.eventSession.startsAt) : null,
+        }
+      : null,
     createdAt: r.createdAt.toISOString(),
     read: r.readAt !== null,
   }));

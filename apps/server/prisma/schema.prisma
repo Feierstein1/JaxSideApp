@@ -99,6 +99,8 @@ enum ReportReason {
   AD_AI_FOOD // D209 / D207: AI-made food or drink photo
   AD_AI_IMAGE // D209 / D207: over-the-top AI flyer or image
   SELF_PROMOTION // D227: someone advertising their own business in a discussion
+  EVENT_WRONG_DETAILS // D230: wrong date, time or place, or cancelled
+  EVENT_FAKE // D230: not a real event
 }
 
 enum ReportStatus {
@@ -246,6 +248,12 @@ model User {
   giveawayPicks    GiveawayWinner[] @relation("GiveawayPicker")
   /// D206: Interested / Not interested on ads.
   adInterests      AdInterest[]
+
+  /// D230: events this person suggested (or, for admins, created), follows, "I'm here", chat lines.
+  eventsCreated   Event[]            @relation("EventCreator")
+  eventFollows    EventFollow[]
+  eventAttendance EventAttendance[]
+  eventChatLines  EventChatMessage[]
 
   @@index([status])
 }
@@ -495,6 +503,9 @@ model BusinessPlace {
   verificationRequests BusinessVerificationRequest[]
   /// D202: the free month used for this place (at most one).
   freeTierSubscription Subscription?
+
+  /// D230: events held at this place.
+  events Event[]
 
   @@unique([sourceName, sourceId])
   @@index([location], type: Gist)
@@ -963,6 +974,10 @@ model Report {
 
   modActions ModerationAction[]
 
+  /// D230: a reported event.
+  eventId String? @db.Uuid
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
   @@index([status, createdAt])
   @@index([generalPostId])
   @@index([businessPostId])
@@ -974,6 +989,7 @@ model Report {
   @@index([messageId])
   @@index([cityTopicId])
   @@index([adId])
+  @@index([eventId])
   @@index([reporterUserId, createdAt])
   @@index([reporterGuestId])
   @@index([resolvedById])
@@ -1019,6 +1035,11 @@ enum NotificationType {
   STRIKE
   /// D205: an admin removed something you posted and chose to tell you, with the reason.
   CONTENT_REMOVED
+  /// D230: a followed event starts tomorrow / within the hour / changed / was cancelled.
+  EVENT_TOMORROW
+  EVENT_SOON
+  EVENT_CHANGED
+  EVENT_CANCELLED
 }
 
 model Notification {
@@ -1049,6 +1070,13 @@ model Notification {
   moderationActionId String?           @db.Uuid
   moderationAction   ModerationAction? @relation(fields: [moderationActionId], references: [id], onDelete: Cascade)
 
+  /// D230: EVENT_* notices: the event and, for reminders, the session.
+  eventId        String?       @db.Uuid
+  event          Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventSessionId String?       @db.Uuid
+  eventSession   EventSession? @relation(fields: [eventSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventSessionId, type], map: "Notification_event_once", where: raw("\"eventSessionId\" IS NOT NULL"))
   @@index([userId, createdAt])
   // P13.1: the unread bell count; createdAt for the purge
   @@index([userId], where: raw("\"readAt\" IS NULL"))
@@ -1061,6 +1089,9 @@ model Notification {
   @@index([businessPostId], where: raw("\"businessPostId\" IS NOT NULL"))
   @@index([commentId], where: raw("\"commentId\" IS NOT NULL"))
   @@index([giveawayWinnerId], where: raw("\"giveawayWinnerId\" IS NOT NULL"))
+  // D230: deleting an event or session finds its notices; a reminder goes out once per session.
+  @@index([eventId], where: raw("\"eventId\" IS NOT NULL"))
+  @@index([eventSessionId], where: raw("\"eventSessionId\" IS NOT NULL"))
   // D205: deleting a moderation record (cascade) finds its notice
   @@index([moderationActionId], where: raw("\"moderationActionId\" IS NOT NULL"))
   // P13.7: purge of read notifications
@@ -1779,6 +1810,10 @@ model BusinessAccount {
   notifications        Notification[]
   notices              BusinessNotice[]
 
+  /// D230: events this business or organizer put on, and its updates in their chats.
+  events         Event[]
+  eventChatLines EventChatMessage[]
+
   @@index([createdById])
 }
 
@@ -2445,4 +2480,166 @@ model ChatMute {
   user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([until])
+}
+
+// ─────────────────────────────── D230: events ───────────────────────────────
+
+enum EventStatus {
+  /// An app user's suggestion: no pin yet; JaxSide sets it when approving.
+  SUGGESTED
+  /// A business's or organizer's event being written on the website.
+  DRAFT
+  /// Sent for review (website); every event is reviewed before it shows (D230).
+  IN_REVIEW
+  APPROVED
+  DENIED
+  /// Called off: still listed (marked Cancelled) until its dates pass; followers are told.
+  CANCELLED
+  /// Taken down by moderation.
+  REMOVED
+}
+
+enum EventHostKind {
+  COMMUNITY
+  BUSINESS
+  ORGANIZER
+}
+
+enum EventSetting {
+  INDOOR
+  OUTDOOR
+  MIXED
+}
+
+/// D230: an event on the calendar. Shown in the app only while APPROVED or CANCELLED.
+model Event {
+  id                String           @id @default(uuid(7)) @db.Uuid
+  status            EventStatus
+  hostKind          EventHostKind    @default(COMMUNITY)
+  title             String           @db.VarChar(100)
+  description       String           @db.VarChar(2000)
+  category          String           @db.VarChar(30)
+  setting           EventSetting
+  free              Boolean
+  priceText         String?          @db.VarChar(60)
+  adultsOnly        Boolean          @default(false)
+  familyFriendly    Boolean          @default(false)
+  /// A business event's place (pin and address come from it), or a place an event is held at.
+  placeId           String?          @db.Uuid
+  venueName         String?          @db.VarChar(120)
+  address           String?          @db.VarChar(300)
+  /// The pin (inside Duval, checked on save). Null only for SUGGESTED events (CHECK).
+  latitude          Float?
+  longitude         Float?
+  /// From the pin on save: the ZIP (Census outline) and the nearest neighborhood (D72).
+  zip               String?          @db.Char(5)
+  neighborhood      String?          @db.VarChar(80)
+  /// The event area for its chat: this far around the pin.
+  chatRadiusMeters  Int              @default(150)
+  /// The business or organizer account that owns it (website), if any.
+  businessAccountId String?          @db.Uuid
+  /// The admin who added it, or the app user who suggested it.
+  createdById       String?          @db.Uuid
+  /// First start and last end of its sessions (kept in step with them; for lists and purges).
+  firstStartsAt     DateTime?        @db.Timestamptz(3)
+  lastEndsAt        DateTime?        @db.Timestamptz(3)
+  submittedAt       DateTime?        @db.Timestamptz(3)
+  /// The admin (User id) who approved or denied it; a plain id kept for the record.
+  reviewedById      String?          @db.Uuid
+  reviewedAt        DateTime?        @db.Timestamptz(3)
+  decisionReason    String?          @db.VarChar(300)
+  cancelledAt       DateTime?        @db.Timestamptz(3)
+  cancelReason      String?          @db.VarChar(300)
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime         @updatedAt @db.Timestamptz(3)
+  place             BusinessPlace?   @relation(fields: [placeId], references: [id], onDelete: SetNull)
+  businessAccount   BusinessAccount? @relation(fields: [businessAccountId], references: [id], onDelete: Cascade)
+  createdBy         User?            @relation("EventCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  sessions          EventSession[]
+  images            EventImage[]
+  follows           EventFollow[]
+  notifications     Notification[]
+  reports           Report[]
+
+  @@index([status, lastEndsAt])
+  @@index([placeId])
+  @@index([businessAccountId])
+  @@index([createdById])
+}
+
+/// D230: one date of an event (start and end instants; Jacksonville time in the app).
+model EventSession {
+  id            String             @id @default(uuid(7)) @db.Uuid
+  eventId       String             @db.Uuid
+  startsAt      DateTime           @db.Timestamptz(3)
+  endsAt        DateTime           @db.Timestamptz(3)
+  event         Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  attendance    EventAttendance[]
+  chatLines     EventChatMessage[]
+  notifications Notification[]
+
+  @@unique([eventId, startsAt])
+  @@index([startsAt])
+  @@index([endsAt])
+}
+
+/// D230: an event's picture, cleaned like photos (no metadata), in the private bucket.
+model EventImage {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  eventId    String   @db.Uuid
+  storageKey String   @unique @db.VarChar(200)
+  mimeType   String   @db.VarChar(40)
+  width      Int
+  height     Int
+  bytes      Int
+  position   Int      @default(0) @db.SmallInt
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, position])
+}
+
+/// D230: following an event (no one sees who follows; organizers see counts from 10).
+model EventFollow {
+  userId    String   @db.Uuid
+  eventId   String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+  @@index([eventId])
+}
+
+/// D230: "Yes, I'm at the event": lets the person into the session's chat. Deleted 24 hours
+/// after the session ends (only counts are kept).
+model EventAttendance {
+  userId    String       @db.Uuid
+  sessionId String       @db.Uuid
+  createdAt DateTime     @default(now()) @db.Timestamptz(3)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session   EventSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, sessionId])
+  @@index([sessionId])
+}
+
+/// D230: a line in an event session's chat: a person, or the organizer (pinned). Gone after
+/// 23 hours like area chat (D218).
+model EventChatMessage {
+  id                String           @id @default(uuid(7)) @db.Uuid
+  sessionId         String           @db.Uuid
+  authorId          String?          @db.Uuid
+  businessAccountId String?          @db.Uuid
+  body              String           @db.VarChar(200)
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  expiresAt         DateTime         @db.Timestamptz(3)
+  session           EventSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  author            User?            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  businessAccount   BusinessAccount? @relation(fields: [businessAccountId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@index([expiresAt])
+  @@index([authorId, createdAt])
+  @@index([businessAccountId])
 }

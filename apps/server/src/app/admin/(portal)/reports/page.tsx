@@ -15,6 +15,7 @@ const KIND = {
   message: 'Private message',
   topic: 'Topic',
   ad: 'Ad', // D209
+  event: 'Event', // D230
 };
 
 /** P5.14: open reports, one row per reported item, most urgent first. */

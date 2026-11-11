@@ -24,7 +24,8 @@ export type CaseType =
   | 'user'
   | 'message'
   | 'topic' // D133
-  | 'ad'; // D209
+  | 'ad' // D209
+  | 'event'; // D230
 export interface CaseRef {
   type: CaseType;
   id: string;
@@ -32,7 +33,7 @@ export interface CaseRef {
 
 const COLUMN: Record<
   Exclude<CaseType, 'user' | 'message'>,
-  'generalPostId' | 'businessPostId' | 'commentId' | 'photoId' | 'cityTopicId' | 'adId'
+  'generalPostId' | 'businessPostId' | 'commentId' | 'photoId' | 'cityTopicId' | 'adId' | 'eventId'
 > = {
   general: 'generalPostId',
   business: 'businessPostId',
@@ -40,6 +41,7 @@ const COLUMN: Record<
   photo: 'photoId',
   topic: 'cityTopicId',
   ad: 'adId',
+  event: 'eventId',
 };
 
 export function refOf(r: {
@@ -52,7 +54,9 @@ export function refOf(r: {
   messageEvidence?: unknown;
   cityTopicId?: string | null;
   adId?: string | null;
+  eventId?: string | null;
 }): CaseRef | null {
+  if (r.eventId) return { type: 'event', id: r.eventId }; // D230
   if (r.adId) return { type: 'ad', id: r.adId }; // D209
   if (r.cityTopicId) return { type: 'topic', id: r.cityTopicId };
   // D98: a reported message (its snapshot keeps the case even after it's unsent).
@@ -101,6 +105,7 @@ export async function listCases(opts: { type?: CaseType; page?: number } = {}) {
   const grouped = Prisma.sql`
     WITH r AS (
       SELECT CASE
+               WHEN "eventId" IS NOT NULL THEN 'event'
                WHEN "adId" IS NOT NULL THEN 'ad'
                WHEN "cityTopicId" IS NOT NULL THEN 'topic'
                WHEN "messageId" IS NOT NULL OR "messageEvidence"->>'messageId' IS NOT NULL
@@ -111,7 +116,7 @@ export async function listCases(opts: { type?: CaseType; page?: number } = {}) {
                WHEN "photoId" IS NOT NULL THEN 'photo'
                WHEN "reportedUserId" IS NOT NULL THEN 'user'
              END AS type,
-             COALESCE("adId", "cityTopicId", "messageId", ("messageEvidence"->>'messageId')::uuid,
+             COALESCE("eventId", "adId", "cityTopicId", "messageId", ("messageEvidence"->>'messageId')::uuid,
                       "generalPostId", "businessPostId", "commentId", "photoId",
                       "reportedUserId") AS id,
              reason::text AS reason, "reporterUserId", "reporterGuestId", "reporterBusinessId",
@@ -247,6 +252,26 @@ async function subject(
         author: asBusiness(a.account),
       }
     );
+  }
+  if (ref.type === 'event') {
+    // D230: a reported event: its title and description, and who suggested it or which
+    // business or organizer runs it.
+    const e = await db.event.findUnique({
+      where: { id: ref.id },
+      include: {
+        createdBy: { select: { id: true, username: true, status: true, role: true } },
+        businessAccount: businessLogin,
+      },
+    });
+    if (!e) return null;
+    const by = e.createdBy && e.createdBy.role !== 'ADMIN' ? e.createdBy : null;
+    return {
+      body: `Event: ${e.title} · ${e.description}`,
+      status: e.status === 'REMOVED' ? 'REMOVED' : 'VISIBLE',
+      author:
+        asBusiness(e.businessAccount) ??
+        (by ? { id: by.id, username: by.username, status: by.status } : null),
+    };
   }
   if (ref.type === 'topic') {
     // D133: a topic's title and description, and who made it.
@@ -651,6 +676,16 @@ async function setStatus(
     resetAdCache();
     return a.status !== 'ENDED';
   }
+  if (ref.type === 'event') {
+    // D230: removing an event takes it off the calendar; restoring puts it back as approved.
+    const e = await tx.event.findUniqueOrThrow({ where: { id: ref.id } });
+    if (to === 'REMOVED' && e.status !== 'REMOVED') {
+      await tx.event.update({ where: { id: ref.id }, data: { status: 'REMOVED' } });
+    } else if (to === 'VISIBLE' && e.status === 'REMOVED') {
+      await tx.event.update({ where: { id: ref.id }, data: { status: 'APPROVED' } });
+    }
+    return e.status !== 'REMOVED';
+  }
   if (ref.type === 'topic') {
     // D133: a removed topic is hidden everywhere (its posts with it); restoring reopens it.
     const t = await tx.cityTopic.findUniqueOrThrow({ where: { id: ref.id } });
@@ -784,7 +819,8 @@ export async function decideCase(input: {
         ...(input.ref.type === 'user' ||
         input.ref.type === 'message' ||
         input.ref.type === 'topic' ||
-        input.ref.type === 'ad'
+        input.ref.type === 'ad' ||
+        input.ref.type === 'event'
           ? {}
           : { [COLUMN[input.ref.type]]: input.ref.id }),
         reportId: open[0]?.id ?? null,

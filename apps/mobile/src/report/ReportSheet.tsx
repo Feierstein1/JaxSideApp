@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   AD_REPORT_REASONS,
   CONTENT_REPORT_REASONS,
+  EVENT_REPORT_REASONS,
   REPORT_DETAILS_MAX,
   REPORT_REASON_LABELS,
   type ReportReason,
@@ -65,7 +66,12 @@ export function ReportSheet({
   const isAd = target?.type === 'ad';
   /** D209: the Do / Don't step, every time an ad is reported. */
   const [rulesRead, setRulesRead] = useState(false);
-  const reasons: readonly ReportReason[] = isAd ? AD_REPORT_REASONS : CONTENT_REPORT_REASONS;
+  // D230: events have their own reasons too.
+  const reasons: readonly ReportReason[] = isAd
+    ? AD_REPORT_REASONS
+    : target?.type === 'event'
+      ? EVENT_REPORT_REASONS
+      : CONTENT_REPORT_REASONS;
   /** D104: the first report shows its guide before the sheet opens; closing it cancels. */
   const [ready, setReady] = useState(false);
   const closeRef = useRef(onClose);

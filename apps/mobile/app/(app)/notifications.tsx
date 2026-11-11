@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
-import { DARK, profileColor, type NotificationView } from '@jax/shared';
+import { DARK, dateLabel, profileColor, timeLabel, type NotificationView } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
 import { timeAgo } from '@/format';
 import { haptic } from '@/motion';
@@ -143,6 +143,66 @@ function GiveawayRow({ n }: { n: NotificationView }) {
   );
 }
 
+/** D230: what a notice about a followed event says. */
+function eventLine(n: NotificationView): string {
+  const e = n.event!;
+  const when = e.startTime ? timeLabel(e.startTime) : '';
+  switch (n.type) {
+    case 'EVENT_SOON':
+      return `${e.title} starts soon${when ? ` (${when})` : ''}`;
+    case 'EVENT_TOMORROW':
+      return `${e.title} is tomorrow${e.date ? `, ${dateLabel(e.date)}` : ''}${when ? ` at ${when}` : ''}`;
+    case 'EVENT_CANCELLED':
+      return `${e.title} was cancelled`;
+    default:
+      return `${e.title} changed its date, time or place`;
+  }
+}
+
+/** D230: a followed event: a reminder, a change or a cancellation. Opens the event. */
+function EventRow({ n }: { n: NotificationView }) {
+  const line = eventLine(n);
+  const off = n.type === 'EVENT_CANCELLED';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${line}. ${timeAgo(n.createdAt)}. Opens the event.`}
+      onPress={() => router.push(`/events/event/${n.event!.id}`)}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACE.md,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        minHeight: 64,
+        opacity: pressed ? 0.8 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: off ? DARK.errorSoft : DARK.accent,
+        }}
+      >
+        <Ionicons
+          name={off ? 'close-circle' : 'calendar'}
+          size={20}
+          color={off ? DARK.error : DARK.onAccent}
+        />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontWeight: n.read ? '600' : '800' }}>{line}</Text>
+        <Text style={[TYPE.caption, { color: DARK.textMuted }]}>{timeAgo(n.createdAt)}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={DARK.textMuted} />
+    </Pressable>
+  );
+}
+
 /** D205: what a strike or removal notice says. */
 function moderationLine(n: NotificationView): string {
   const m = n.moderation!;
@@ -245,7 +305,8 @@ export default function Notifications() {
   const waiting = items?.filter((n) => n.actor && n.pendingRequestId) ?? [];
   const rest =
     items?.filter(
-      (n) => (n.actor || n.actorIsOwner || n.giveaway || n.moderation) && !n.pendingRequestId,
+      (n) =>
+        (n.actor || n.actorIsOwner || n.giveaway || n.moderation || n.event) && !n.pendingRequestId,
     ) ?? [];
   const isActivity = (n: NotificationView) => n.target !== null;
 
@@ -273,7 +334,7 @@ export default function Notifications() {
         <EmptyState
           icon="notifications-off-outline"
           title="You’re all caught up"
-          body="Comments on your posts, replies, @mentions, friend requests, giveaway prizes and notices about your account show up here."
+          body="Comments on your posts, replies, @mentions, friend requests, reminders for events you follow, giveaway prizes and notices about your account show up here."
         />
       ) : (
         <>
@@ -306,7 +367,9 @@ export default function Notifications() {
           {rest.length ? (
             <ListGroup first={!waiting.length} title="Earlier">
               {rest.map((n) =>
-                n.giveaway ? (
+                n.event ? (
+                  <EventRow key={n.id} n={n} />
+                ) : n.giveaway ? (
                   <GiveawayRow key={n.id} n={n} />
                 ) : n.moderation ? (
                   <ModerationRow key={n.id} n={n} />

@@ -147,7 +147,7 @@ export const attachVideo = (
 // ───────────────────────────── Signed links ─────────────────────────────
 
 /** `kind` keeps a link for one kind of image from opening another kind with the same ID. */
-type LinkKind = 'photo' | 'business-picture' | 'ad-image';
+type LinkKind = 'photo' | 'business-picture' | 'ad-image' | 'event-image';
 
 function sig(id: string, exp: number, kind: LinkKind = 'photo') {
   return createHmac('sha256', getEnv().SESSION_SECRET)
@@ -186,6 +186,22 @@ export function checkSignature(
 export function signedAdImageUrl(id: string, now = new Date()) {
   const exp = Math.ceil(now.getTime() / 1000 / 600) * 600 + LINK_TTL_SECONDS;
   return `/api/v1/ad-images/${id}?exp=${exp}&sig=${sig(id, exp, 'ad-image')}`;
+}
+
+/** D230: an event's picture, the same way (works for an hour). */
+export function signedEventImageUrl(id: string, now = new Date()) {
+  const exp = Math.ceil(now.getTime() / 1000 / 600) * 600 + LINK_TTL_SECONDS;
+  return `/api/v1/event-images/${id}?exp=${exp}&sig=${sig(id, exp, 'event-image')}`;
+}
+
+/** D230: bytes for a picture of an event people can see (approved or cancelled), or null. */
+export async function readEventImage(id: string) {
+  const m = await db.eventImage.findFirst({
+    where: { id, event: { status: { in: ['APPROVED', 'CANCELLED'] } } },
+  });
+  if (!m) return null;
+  const body = await objectStore().get(m.storageKey);
+  return body ? { body, mimeType: m.mimeType } : null;
 }
 
 /** D206: bytes for an ad image that belongs to an approved ad, or null. */

@@ -33,6 +33,7 @@ import MARK from '../assets/brand-mark.png';
 import { DARK } from '@jax/shared';
 import { UserBadge } from './auth/UserBadge';
 import { Bell } from './social/Bell';
+import { FriendsButton } from './social/FriendsButton';
 import { MessagesButton } from './social/MessagesButton';
 import { showMenu, type MenuItem } from './dialog';
 import { haptic, useReducedMotion } from './motion';
@@ -78,8 +79,10 @@ export const headerOptions = {
   headerTitle: () => <BrandMark />,
   headerTitleAlign: 'left' as const,
   // D76 / D119: messages and the notification bell (plus the GUEST pill for guests).
+  // D230: friends moved here from the bottom bar.
   headerRight: () => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <FriendsButton />
       <MessagesButton />
       <Bell />
       <UserBadge />

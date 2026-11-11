@@ -141,15 +141,21 @@ export default function AppLayout() {
           },
         })}
       />
+      {/* D230: Events in Friends' old spot; tapping it always shows the Events page. */}
+      <Tabs.Screen
+        name="events"
+        options={{ title: 'Events', tabBarIcon: tabIcon('calendar') }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('events', { screen: 'index' });
+          },
+        })}
+      />
+      {/* D230: Friends opens from the people button in the top bar, not a tab. */}
       <Tabs.Screen
         name="friends"
-        options={{
-          headerShown: false,
-          title: 'Friends',
-          // D76: friends are for registered users.
-          href: isGuest ? null : undefined,
-          tabBarIcon: tabIcon('people'),
-        }}
+        options={{ ...noTabButton, headerShown: false, title: 'Friends' }}
       />
       {/* D98: opened from the Messages button, not a tab. */}
       <Tabs.Screen

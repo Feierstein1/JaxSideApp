@@ -31,6 +31,8 @@ interface ResolvedTarget {
     cityTopicId?: string;
     /** D209: a reported ad. */
     adId?: string;
+    /** D230: a reported event. */
+    eventId?: string;
     messageEvidence?: Prisma.InputJsonValue;
     /** D218: the person's recent area-chat lines, copied when reported. */
     chatEvidence?: Prisma.InputJsonValue;
@@ -112,6 +114,22 @@ async function resolveTarget(target: ReportTarget, viewerUserId: string | null) 
       key: `ad:${target.id}`,
       data: { adId: target.id },
       authorUserId: null,
+      authorGuestId: null,
+      business: false,
+    } satisfies ResolvedTarget;
+  }
+  if (target.type === 'event') {
+    // D230: an event people can see. Who put it on: the app user who suggested it (an admin's
+    // own events have no author to report back to; a business's are handled by the admin).
+    const e = await db.event.findFirst({
+      where: { id: target.id, status: { in: ['APPROVED', 'CANCELLED'] } },
+      select: { createdById: true, createdBy: { select: { role: true } } },
+    });
+    if (!e) throw NOT_FOUND();
+    return {
+      key: `event:${target.id}`,
+      data: { eventId: target.id },
+      authorUserId: e.createdBy?.role === 'ADMIN' ? null : e.createdById,
       authorGuestId: null,
       business: false,
     } satisfies ResolvedTarget;
@@ -261,6 +279,7 @@ function targetWhere(t: ResolvedTarget) {
   if (t.data.messageId) return { messageId: t.data.messageId };
   if (t.data.cityTopicId) return { cityTopicId: t.data.cityTopicId };
   if (t.data.adId) return { adId: t.data.adId };
+  if (t.data.eventId) return { eventId: t.data.eventId };
   // A report has exactly one target column (DB check `Report_one_target`). A chat report and
   // a profile report on the same person are different reports.
   return {
@@ -296,6 +315,7 @@ export async function listMyReports(userId: string): Promise<MyReport[]> {
       reportedUser: { select: { username: true, status: true } },
       cityTopic: { select: { title: true, status: true } },
       ad: { select: { headline: true, status: true } },
+      event: { select: { title: true, status: true } },
     },
   });
   return rows.map((r) => {
@@ -312,7 +332,9 @@ export async function listMyReports(userId: string): Promise<MyReport[]> {
               ? 'topic'
               : r.ad
                 ? 'ad'
-                : 'user';
+                : r.event
+                  ? 'event'
+                  : 'user';
     return {
       id: r.id,
       targetType,
@@ -326,11 +348,15 @@ export async function listMyReports(userId: string): Promise<MyReport[]> {
             : r.cityTopic.title
           : r.ad
             ? `Ad: ${r.ad.headline}`
-            : content
-              ? preview(content.body, content.status)
-              : r.reportedUser && r.reportedUser.status !== 'DELETED'
-                ? r.reportedUser.username
-                : '[no longer visible]',
+            : r.event
+              ? r.event.status === 'REMOVED'
+                ? '[no longer visible]'
+                : `Event: ${r.event.title}`
+              : content
+                ? preview(content.body, content.status)
+                : r.reportedUser && r.reportedUser.status !== 'DELETED'
+                  ? r.reportedUser.username
+                  : '[no longer visible]',
       reason: r.reason,
       status: r.status,
       createdAt: r.createdAt.toISOString(),

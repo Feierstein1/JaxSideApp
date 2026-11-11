@@ -25,6 +25,7 @@ export const CASE_TYPES = [
   'message',
   'topic', // D133
   'ad', // D209
+  'event', // D230
 ] as const;
 export const CASE_DECISIONS = ['remove', 'approve', 'dismiss', 'escalate'] as const;
 

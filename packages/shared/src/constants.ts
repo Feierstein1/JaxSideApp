@@ -288,6 +288,22 @@ export const CONFIG_DEFAULTS = {
   'chat.keepMaximum': 150,
   'chat.keepBusyMinutes': 30,
   'chat.expireHours': 23,
+  // D230 events and the event calendar
+  /** The Nearby filter: events within this distance of you. */
+  'events.nearbyMiles': 2,
+  /** Event chat opens this long before a session starts… */
+  'events.chatOpensBeforeMinutes': 60,
+  /** …and closes this long after it ends. */
+  'events.chatClosesAfterMinutes': 120,
+  /** An event page stays open this long after its last session ended. */
+  'events.pastVisibleDays': 30,
+  /** The follower count shows from this many followers. */
+  'events.followerCountMin': 10,
+  /** Accounts must be this many days old to suggest an event. */
+  'events.suggestMinAccountDays': 3,
+  'rateLimit.eventList.perMinute': 60,
+  'rateLimit.eventFollow.perMinute': 30,
+  'rateLimit.eventSuggest.perDay': 3,
   /** Reading chats and the unread count (a chat checks every 3 s while open). */
   'rateLimit.messageRead.perMinute': 120,
   /** Accounts younger than this can only reply, not start chats. */

@@ -158,7 +158,7 @@ export function TopBar() {
 
 export type NavGroup = { title: string; links: { href: string; label: string }[] };
 
-function csrfToken(): string {
+export function csrfToken(): string {
   const m = document.cookie.match(/(?:^|;\s*)jax_admin_csrf=([^;]+)/);
   return m ? decodeURIComponent(m[1]!) : '';
 }
