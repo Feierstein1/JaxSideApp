@@ -11,6 +11,8 @@ import type { Event, EventStatus, Prisma } from '@/generated/prisma/client';
 import { pageWindow, toPage } from '../admin/paging';
 import { db } from '../db';
 import { ApiError } from '../http';
+import { nearestNeighborhood } from '../location/neighborhood';
+import { isInServiceArea } from '../location/service-area';
 import { notifyFollowers } from './notify';
 import {
   copyEventImages,
@@ -20,6 +22,7 @@ import {
   resolveWhere,
   settingKey,
   syncSessions,
+  zipAt,
 } from './save';
 
 /*
@@ -238,6 +241,22 @@ export async function adminDecideEvent(
       if (!(await db.eventSession.count({ where: { eventId: id } }))) {
         throw new ApiError(409, 'NEEDS_DATES', 'Add at least one date before approving.');
       }
+      // The website can't name neighborhoods (the list lives here), and its pins aren't
+      // checked here otherwise: set the ZIP and neighborhood, and refuse a pin outside Duval.
+      if (!(await isInServiceArea(db, e.latitude, e.longitude!))) {
+        throw new ApiError(
+          409,
+          'OUTSIDE_SERVICE_AREA',
+          'This event’s pin is outside Duval County.',
+        );
+      }
+      await db.event.update({
+        where: { id },
+        data: {
+          zip: await zipAt(e.latitude, e.longitude!),
+          neighborhood: nearestNeighborhood({ latitude: e.latitude, longitude: e.longitude! }),
+        },
+      });
       await move(e, ['SUGGESTED', 'IN_REVIEW', 'DENIED'], {
         status: 'APPROVED',
         reviewedById: adminId,

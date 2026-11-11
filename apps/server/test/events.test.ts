@@ -23,7 +23,7 @@ import { POST as chatSendPOST } from '@/app/api/v1/events/[id]/chat/route';
 import { POST as chatJoinPOST } from '@/app/api/v1/events/[id]/chat/join/route';
 import { POST as chatListPOST } from '@/app/api/v1/events/[id]/chat/list/route';
 import { POST as chatStatusPOST } from '@/app/api/v1/events/[id]/chat/status/route';
-import { purgeEventChat } from '@/server/events/chat';
+import { countEventDays, purgeEventChat } from '@/server/events/chat';
 import { POST as adsPOST } from '@/app/api/v1/ads/route';
 import { resetAdCache } from '@/server/ads/serve';
 import { ensureTiers } from '@/server/plan-tiers';
@@ -515,7 +515,10 @@ describe('event chat (P18.7)', () => {
     expect(rep.status).toBe(202);
     const saved = await db.report.findFirstOrThrow({ where: { reportedUserId: other.id } });
     expect(JSON.stringify(saved.chatEvidence)).toContain('rude line here');
-    // A day after the session ends, the "I'm here" answers are gone.
+    // Counted for Insights before the purge, then a day after the session the answers go.
+    await countEventDays();
+    const stats = await db.eventDailyStats.findFirstOrThrow({ where: { eventId: id } });
+    expect(stats).toMatchObject({ attendees: 2, chatLines: 1 });
     expect(
       (await purgeEventChat(new Date(session.endsAt.getTime() + 25 * 3_600_000))).attendance,
     ).toBe(2);
@@ -632,5 +635,23 @@ describe('event organizers (P18.9)', () => {
     const n = await db.businessNotice.findFirstOrThrow({ where: { accountId: acct.id } });
     expect(n.kind).toBe('EVENT_DENIED');
     expect(n.body).toBe('Add the real start time');
+  });
+
+  it('approving a website event names its neighborhood and ZIP, and refuses a pin outside Duval', async () => {
+    const acct = await db.businessAccount.create({
+      data: { email: 'org2@example.test', passwordHash: 'x' },
+    });
+    const id = await addEvent();
+    await db.event.update({
+      where: { id },
+      data: { status: 'IN_REVIEW', businessAccountId: acct.id, neighborhood: null, zip: null },
+    });
+    expect((await decide(id, { action: 'approve' })).status).toBe(200);
+    const e = await db.event.findUniqueOrThrow({ where: { id } });
+    expect(e.neighborhood).toBeTruthy();
+    expect(e.zip).toMatch(/^322\d\d$/);
+    const far = await addEvent({ title: 'Far away' });
+    await db.event.update({ where: { id: far }, data: { status: 'IN_REVIEW', ...ST_AUGUSTINE } });
+    expect((await decide(far, { action: 'approve' })).body.error.code).toBe('OUTSIDE_SERVICE_AREA');
   });
 });

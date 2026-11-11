@@ -1,7 +1,7 @@
 import { purgeAdMarks } from '../ads/counting';
 import { purgeChat } from '../chat/chat';
 import { purgeOldPresence } from '../chat/presence';
-import { purgeEventChat } from '../events/chat';
+import { countEventDays, purgeEventChat } from '../events/chat';
 import { Prisma } from '@/generated/prisma/client';
 import { evaluateAchievements } from '../achievements';
 import { finalizeDuePolls } from '../polls';
@@ -104,7 +104,9 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
   // D218: chat presence sightings are kept 60 minutes.
   await purgeOldPresence(now);
   await purgeChat(now); // lines an hour after they expired; rooms idle for 7 days
-  // D230: event chat lines the same way; "I'm here" answers 24 hours after their session.
+  // D230: count recent event days for Insights first, then delete event chat lines the same
+  // way as area chat and "I'm here" answers 24 hours after their session.
+  await countEventDays(now);
   await purgeEventChat(now);
 
   // P4.4: guests expire after N days without activity (server-side clock).

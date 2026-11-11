@@ -2523,48 +2523,48 @@ enum EventSetting {
 
 /// D230: an event on the calendar. Shown in the app only while APPROVED or CANCELLED.
 model Event {
-  id                String           @id @default(uuid(7)) @db.Uuid
+  id                String            @id @default(uuid(7)) @db.Uuid
   status            EventStatus
-  hostKind          EventHostKind    @default(COMMUNITY)
-  title             String           @db.VarChar(100)
-  description       String           @db.VarChar(2000)
-  category          String           @db.VarChar(30)
+  hostKind          EventHostKind     @default(COMMUNITY)
+  title             String            @db.VarChar(100)
+  description       String            @db.VarChar(2000)
+  category          String            @db.VarChar(30)
   setting           EventSetting
   free              Boolean
-  priceText         String?          @db.VarChar(60)
-  adultsOnly        Boolean          @default(false)
-  familyFriendly    Boolean          @default(false)
+  priceText         String?           @db.VarChar(60)
+  adultsOnly        Boolean           @default(false)
+  familyFriendly    Boolean           @default(false)
   /// A business event's place (pin and address come from it), or a place an event is held at.
-  placeId           String?          @db.Uuid
-  venueName         String?          @db.VarChar(120)
-  address           String?          @db.VarChar(300)
+  placeId           String?           @db.Uuid
+  venueName         String?           @db.VarChar(120)
+  address           String?           @db.VarChar(300)
   /// The pin (inside Duval, checked on save). Null only for SUGGESTED events (CHECK).
   latitude          Float?
   longitude         Float?
   /// From the pin on save: the ZIP (Census outline) and the nearest neighborhood (D72).
-  zip               String?          @db.Char(5)
-  neighborhood      String?          @db.VarChar(80)
+  zip               String?           @db.Char(5)
+  neighborhood      String?           @db.VarChar(80)
   /// The event area for its chat: this far around the pin.
-  chatRadiusMeters  Int              @default(150)
+  chatRadiusMeters  Int               @default(150)
   /// The business or organizer account that owns it (website), if any.
-  businessAccountId String?          @db.Uuid
+  businessAccountId String?           @db.Uuid
   /// The admin who added it, or the app user who suggested it.
-  createdById       String?          @db.Uuid
+  createdById       String?           @db.Uuid
   /// First start and last end of its sessions (kept in step with them; for lists and purges).
-  firstStartsAt     DateTime?        @db.Timestamptz(3)
-  lastEndsAt        DateTime?        @db.Timestamptz(3)
-  submittedAt       DateTime?        @db.Timestamptz(3)
+  firstStartsAt     DateTime?         @db.Timestamptz(3)
+  lastEndsAt        DateTime?         @db.Timestamptz(3)
+  submittedAt       DateTime?         @db.Timestamptz(3)
   /// The admin (User id) who approved or denied it; a plain id kept for the record.
-  reviewedById      String?          @db.Uuid
-  reviewedAt        DateTime?        @db.Timestamptz(3)
-  decisionReason    String?          @db.VarChar(300)
-  cancelledAt       DateTime?        @db.Timestamptz(3)
-  cancelReason      String?          @db.VarChar(300)
-  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime         @updatedAt @db.Timestamptz(3)
-  place             BusinessPlace?   @relation(fields: [placeId], references: [id], onDelete: SetNull)
-  businessAccount   BusinessAccount? @relation(fields: [businessAccountId], references: [id], onDelete: Cascade)
-  createdBy         User?            @relation("EventCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  reviewedById      String?           @db.Uuid
+  reviewedAt        DateTime?         @db.Timestamptz(3)
+  decisionReason    String?           @db.VarChar(300)
+  cancelledAt       DateTime?         @db.Timestamptz(3)
+  cancelReason      String?           @db.VarChar(300)
+  createdAt         DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime          @updatedAt @db.Timestamptz(3)
+  place             BusinessPlace?    @relation(fields: [placeId], references: [id], onDelete: SetNull)
+  businessAccount   BusinessAccount?  @relation(fields: [businessAccountId], references: [id], onDelete: Cascade)
+  createdBy         User?             @relation("EventCreator", fields: [createdById], references: [id], onDelete: SetNull)
   sessions          EventSession[]
   images            EventImage[]
   follows           EventFollow[]
@@ -2572,6 +2572,7 @@ model Event {
   reports           Report[]
   /// D230: ads promoting this event.
   ads               Ad[]
+  dailyStats        EventDailyStats[]
 
   @@index([status, lastEndsAt])
   @@index([placeId])
@@ -2688,4 +2689,23 @@ model EventOrganizer {
   account          BusinessAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
+}
+
+/**
+ * D230: an event's counts per Jacksonville day of a session (for organizers' Insights, through
+ * the 10-or-more rule). Counted nightly before the "I'm here" answers (24 h) and chat lines
+ * (23 h) are deleted; no person is ever recorded here.
+ */
+model EventDailyStats {
+  eventId   String   @db.Uuid
+  day       DateTime @db.Date
+  /// People who said "Yes, I'm here" that day.
+  attendees Int      @default(0)
+  /// Lines people wrote in that day's chat.
+  chatLines Int      @default(0)
+  /// Followers when it was counted.
+  followers Int      @default(0)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, day])
 }

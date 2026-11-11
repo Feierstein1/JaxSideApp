@@ -350,3 +350,27 @@ export async function purgeEventChat(now = new Date()) {
   });
   return { lines: lines.count, attendance: attendance.count };
 }
+
+/**
+ * D230 (nightly, before the purge): saves each recent event day's counts for organizers'
+ * Insights: people who said they were there, chat lines, followers. Counts never go down when
+ * it runs again after some answers or lines were already deleted.
+ */
+export async function countEventDays(now = new Date()) {
+  const r = await db.$executeRaw`
+    INSERT INTO "EventDailyStats" ("eventId", day, attendees, "chatLines", followers)
+    SELECT s."eventId",
+           (s."startsAt" AT TIME ZONE 'America/New_York')::date AS day,
+           sum((SELECT count(*) FROM "EventAttendance" a WHERE a."sessionId" = s.id))::int,
+           sum((SELECT count(*) FROM "EventChatMessage" m
+                WHERE m."sessionId" = s.id AND m."authorId" IS NOT NULL))::int,
+           max((SELECT count(*) FROM "EventFollow" f WHERE f."eventId" = s."eventId"))::int
+    FROM "EventSession" s
+    WHERE s."startsAt" > ${new Date(now.getTime() - 3 * 86_400_000)} AND s."startsAt" <= ${now}
+    GROUP BY 1, 2
+    ON CONFLICT ("eventId", day) DO UPDATE SET
+      attendees = GREATEST("EventDailyStats".attendees, EXCLUDED.attendees),
+      "chatLines" = GREATEST("EventDailyStats"."chatLines", EXCLUDED."chatLines"),
+      followers = EXCLUDED.followers`;
+  return r;
+}
