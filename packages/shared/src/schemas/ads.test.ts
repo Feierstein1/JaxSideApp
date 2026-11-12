@@ -36,6 +36,24 @@ describe('ad drafts', () => {
     // A window past midnight is fine.
     expect(bad({ dailyStartMin: 22 * 60, dailyEndMin: 120 })).toBe(true);
   });
+
+  // D236: an organizer's ad promotes an event and has no place; it needs one or the other.
+  it('takes a place, an event or both, never neither; city-wide needs no area', () => {
+    const EVENT = '01a1936d-1930-746f-9bf1-cc48335965d4';
+    const ok = (body: Record<string, unknown>) =>
+      adDraftSchema.safeParse({ template: 'BANNER', headline: 'Jazz night', ...body }).success;
+    expect(ok({ eventId: EVENT })).toBe(true);
+    expect(ok({ placeId: PLACE, eventId: EVENT })).toBe(true);
+    expect(ok({})).toBe(false);
+    const cityWide = adDraftSchema.parse({
+      eventId: EVENT,
+      template: 'BANNER',
+      headline: 'Jazz night downtown',
+      mediaId: MEDIA,
+      cityWide: true,
+    });
+    expect(adSubmitProblems(cityWide, now)).toEqual([]);
+  });
 });
 
 describe('ready to send for approval', () => {

@@ -78,6 +78,7 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
           status: true,
           latitude: true,
           longitude: true,
+          zip: true,
           sessions: {
             where: { endsAt: { gt: now } },
             orderBy: { startsAt: 'asc' },
@@ -124,6 +125,9 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
     const plan = plans.get(r.accountId) ?? NO_PLAN_ENTITLEMENTS;
     if (used >= plan['ads.live']) continue;
     perAccount.set(r.accountId, used + 1);
+    // D236: on a plan whose reach is its own ZIP, an event ad reaches the event's ZIP (set when
+    // the event was approved), whatever the ad row says; organizers have no ZIP of their own.
+    const ownZipEvent = !!r.event && plan['ads.reach'] === 'OWN_ZIP';
     out.push({
       id: r.id,
       accountId: r.accountId,
@@ -132,9 +136,9 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
       body: r.body,
       mediaId: r.mediaId && r.media?.status === 'ACTIVE' ? r.mediaId : null,
       adultsOnly: r.adultsOnly,
-      zips: r.zips,
-      radiusMeters: r.radiusMeters,
-      cityWide: r.cityWide,
+      zips: ownZipEvent ? (r.event!.zip ? [r.event!.zip] : []) : r.zips,
+      radiusMeters: ownZipEvent ? null : r.radiusMeters,
+      cityWide: ownZipEvent ? false : r.cityWide,
       // D216: a downgrade hides the button at once (the website also pauses such ads).
       link:
         r.linkUrl && r.linkLabel && plan['ads.links']

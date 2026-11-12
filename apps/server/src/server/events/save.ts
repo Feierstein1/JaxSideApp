@@ -80,6 +80,13 @@ export async function resolveWhere(input: {
   };
 }
 
+/** D236: a host place must be on the map (the website checks it's the business's own). */
+export async function assertHostPlace(input: EventInputParsed) {
+  if (!input.hostPlaceId || input.hostPlaceId === input.placeId) return;
+  const ok = await db.businessPlace.count({ where: { id: input.hostPlaceId, status: 'ACTIVE' } });
+  if (!ok) throw new ApiError(404, 'PLACE_NOT_FOUND', 'That place isn’t in the directory.');
+}
+
 /** The columns an input sets (everything but status, who and where). */
 export function eventColumns(input: EventInputParsed) {
   return {
@@ -93,6 +100,11 @@ export function eventColumns(input: EventInputParsed) {
     adultsOnly: input.adultsOnly,
     familyFriendly: input.familyFriendly,
     chatRadiusMeters: input.chatRadiusMeters,
+    // D236: a business event's own place (defaults to where it's held, the D230 shape).
+    hostPlaceId:
+      input.hostKind === 'business' ? (input.hostPlaceId ?? input.placeId ?? null) : null,
+    linkUrl: input.linkUrl,
+    linkLabel: input.linkLabel,
   } satisfies Partial<Prisma.EventUncheckedCreateInput>;
 }
 

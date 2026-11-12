@@ -15,6 +15,7 @@ import { nearestNeighborhood } from '../location/neighborhood';
 import { isInServiceArea } from '../location/service-area';
 import { notifyFollowers } from './notify';
 import {
+  assertHostPlace,
   copyEventImages,
   eventColumns,
   hostKey,
@@ -104,6 +105,7 @@ export async function adminGetEvent(id: string) {
       sessions: { orderBy: { startsAt: 'asc' } },
       images: { orderBy: { position: 'asc' } },
       place: { select: { id: true, name: true, address: true } },
+      hostPlace: { select: { id: true, name: true } },
       businessAccount: { select: { id: true, email: true } },
       createdBy: { select: { id: true, username: true, role: true } },
       _count: { select: { follows: true } },
@@ -123,6 +125,12 @@ export async function adminGetEvent(id: string) {
     adultsOnly: e.adultsOnly,
     familyFriendly: e.familyFriendly,
     place: e.place,
+    // D236: a business event's own place, the venue question, and its link.
+    hostPlace: e.hostPlace,
+    venueStatus: e.venueStatus,
+    venueAnsweredAt: e.venueAnsweredAt?.toISOString() ?? null,
+    linkUrl: e.linkUrl,
+    linkLabel: e.linkLabel,
     venueName: e.venueName,
     address: e.address,
     latitude: e.latitude,
@@ -155,6 +163,7 @@ async function eventOr404(id: string) {
 /** An admin adds an event: approved at once (the owner seeds the calendar). */
 export async function adminCreateEvent(adminId: string, input: EventInputParsed, now = new Date()) {
   const where = await resolveWhere(input);
+  await assertHostPlace(input);
   return db.$transaction(async (tx) => {
     const e = await tx.event.create({
       data: {
@@ -178,8 +187,15 @@ export async function adminCreateEvent(adminId: string, input: EventInputParsed,
 export async function adminUpdateEvent(id: string, input: EventInputParsed) {
   const before = await eventOr404(id);
   const where = await resolveWhere(input);
+  await assertHostPlace(input);
+  // D236: a new venue place means a new question (asked again when it's approved).
+  const venue =
+    before.placeId !== where.placeId ? { venueStatus: 'NONE' as const, venueAnsweredAt: null } : {};
   const changed = await db.$transaction(async (tx) => {
-    await tx.event.update({ where: { id }, data: { ...eventColumns(input), ...where } });
+    await tx.event.update({
+      where: { id },
+      data: { ...eventColumns(input), ...where, ...venue },
+    });
     const datesChanged = await syncSessions(tx, id, input.sessions);
     const moved =
       before.latitude !== where.latitude ||
@@ -217,6 +233,38 @@ async function tellBusiness(e: Event, approved: boolean, reason: string | null, 
       ).slice(0, 120),
       body: approved ? 'People can find and follow it in the app now.' : reason,
       link: `/events/${e.id}`,
+      createdAt: now,
+    },
+  });
+}
+
+/**
+ * D236 (D232): an approved event from the website held at someone else's place: that place's
+ * Owner is asked whether it's really there (a notice on the website, which also emails it).
+ * The event doesn't wait. Nothing to ask for the host's own place, a place without a verified
+ * owner, an event JaxSide added, or one already asked or answered.
+ */
+async function askVenue(e: Event, now: Date) {
+  if (!e.businessAccountId || !e.placeId || e.placeId === e.hostPlaceId) return;
+  if (e.venueStatus !== 'NONE') return;
+  const owner = await db.businessPlaceAccess.findFirst({
+    where: { placeId: e.placeId, role: 'OWNER', revokedAt: null },
+    select: { accountId: true, place: { select: { name: true } } },
+  });
+  if (!owner || owner.accountId === e.businessAccountId) return;
+  const asked = await db.event.updateMany({
+    where: { id: e.id, venueStatus: 'NONE' },
+    data: { venueStatus: 'ASKED' },
+  });
+  if (!asked.count) return;
+  await db.businessNotice.create({
+    data: {
+      accountId: owner.accountId,
+      placeId: e.placeId,
+      kind: 'EVENT_AT_YOUR_PLACE',
+      title: `“${e.title}” is listed at ${owner.place.name}`.slice(0, 120),
+      body: 'Is this event held at your place? Say yes and the app shows it as confirmed by you; say no and JaxSide takes a look.',
+      link: `/events/${e.id}/venue`,
       createdAt: now,
     },
   });
@@ -263,7 +311,8 @@ export async function adminDecideEvent(
         reviewedAt: now,
         decisionReason: null,
       });
-      return tellBusiness(e, true, null, now);
+      await tellBusiness(e, true, null, now);
+      return askVenue(e, now);
     }
     case 'deny':
       await move(e, ['SUGGESTED', 'IN_REVIEW'], {

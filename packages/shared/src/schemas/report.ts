@@ -21,6 +21,8 @@ export const REPORT_REASONS = [
   // D230: for events only.
   'EVENT_WRONG_DETAILS',
   'EVENT_FAKE',
+  // D236: only the venue place's owner, from the website ("Not at my place").
+  'EVENT_NOT_AT_MY_PLACE',
 ] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
@@ -41,6 +43,7 @@ export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
   AD_AI_IMAGE: 'Over-the-top AI flyer or image',
   EVENT_WRONG_DETAILS: 'Wrong date, time or place, or called off',
   EVENT_FAKE: 'Not a real event',
+  EVENT_NOT_AT_MY_PLACE: 'Not held at this place (the place’s owner)',
 };
 
 /** D209: the reasons that apply to ads, in the order the app lists them. */

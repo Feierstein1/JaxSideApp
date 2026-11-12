@@ -31,6 +31,7 @@ export const PLAN_ENTITLEMENTS = {
   /** D204: the longest an ad may run, in days; null = no limit. */
   'ads.maxDays': z.number().int().min(1).max(365).nullable(),
   /** D216: an ad may carry one link button (paid plans). */
+  /** D216 / D236: a link button on its ads and its events. */
   'ads.links': z.boolean(),
   /** Area counts for the place (Q29 / D179). */
   insights: z.boolean(),

@@ -101,6 +101,7 @@ enum ReportReason {
   SELF_PROMOTION // D227: someone advertising their own business in a discussion
   EVENT_WRONG_DETAILS // D230: wrong date, time or place, or cancelled
   EVENT_FAKE // D230: not a real event
+  EVENT_NOT_AT_MY_PLACE // D234: the venue's owner says it isn't held there (website only)
 }
 
 enum ReportStatus {
@@ -505,7 +506,9 @@ model BusinessPlace {
   freeTierSubscription Subscription?
 
   /// D230: events held at this place.
-  events Event[]
+  events       Event[]
+  /// D234: events this place's business hosts (wherever they're held).
+  hostedEvents Event[] @relation("EventHostPlace")
 
   @@unique([sourceName, sourceId])
   @@index([location], type: Gist)
@@ -1814,8 +1817,47 @@ model BusinessAccount {
   events          Event[]
   eventChatLines  EventChatMessage[]
   eventOrganizers EventOrganizer[]
+  /// D234: the team this owner account runs, and the team this login belongs to.
+  teamMembers     BusinessTeamMember[] @relation("TeamOwner")
+  teamMembership  BusinessTeamMember[] @relation("TeamMember")
+  teamInvitesSent BusinessTeamMember[] @relation("TeamInviter")
 
   @@index([createdById])
+}
+
+/**
+ * D234 (D232): a Manager or Staff member of an owner account, over everything the account does
+ * (places, events, ads), invited by email. `memberAccountId` is their own login, set when they
+ * accept (`acceptedAt`); until then only the invite (a hashed token) exists. `allPlaces` false
+ * limits them to the places they have `BusinessPlaceAccess` rows for (businesses with several
+ * places). One live membership per email per team, and a login is on one team at most.
+ */
+model BusinessTeamMember {
+  id              String           @id @default(uuid(7)) @db.Uuid
+  ownerAccountId  String           @db.Uuid
+  memberAccountId String?          @db.Uuid
+  /// Lower-cased; where the invite went (and the member's sign-in email once they accept).
+  /// Null only for staff logins made before D236 (username only), until they add one.
+  email           String?          @db.VarChar(254)
+  role            BusinessRole
+  allPlaces       Boolean          @default(true)
+  /// Shown after "The Owner" on posts ("The Owner · Sarah"); optional.
+  displayName     String?          @db.VarChar(30)
+  /// SHA-256 of the invite link's token; cleared when accepted.
+  inviteTokenHash String?          @unique @db.Char(64)
+  inviteExpiresAt DateTime?        @db.Timestamptz(3)
+  invitedById     String?          @db.Uuid
+  acceptedAt      DateTime?        @db.Timestamptz(3)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  revokedAt       DateTime?        @db.Timestamptz(3)
+  owner           BusinessAccount  @relation("TeamOwner", fields: [ownerAccountId], references: [id], onDelete: Cascade)
+  member          BusinessAccount? @relation("TeamMember", fields: [memberAccountId], references: [id], onDelete: Cascade)
+  invitedBy       BusinessAccount? @relation("TeamInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@unique([ownerAccountId, email], map: "BusinessTeamMember_one_live_email", where: raw("\"revokedAt\" IS NULL"))
+  @@unique([memberAccountId], map: "BusinessTeamMember_one_team", where: raw("\"revokedAt\" IS NULL"))
+  @@index([memberAccountId])
+  @@index([invitedById])
 }
 
 /// A cookie session on the business website (same shape as admin sessions, D3).
@@ -2209,6 +2251,7 @@ enum BusinessNoticeKind {
   ORGANIZER_REJECTED // D230: turned down (the note says why)
   EVENT_APPROVED // D230: an event the business sent is on the calendar
   EVENT_DENIED // D230: an event the business sent was turned down (the note says why)
+  EVENT_AT_YOUR_PLACE // D234: an organizer's approved event names your place; confirm it
 }
 
 /**
@@ -2534,8 +2577,18 @@ model Event {
   priceText         String?           @db.VarChar(60)
   adultsOnly        Boolean           @default(false)
   familyFriendly    Boolean           @default(false)
-  /// A business event's place (pin and address come from it), or a place an event is held at.
+  /// Where it is held, when that's a place on JaxSide (pin and address come from it). D234: it
+  /// may be another business's place (the venue); `hostPlaceId` is then the host's own place.
   placeId           String?           @db.Uuid
+  /// D234: a business event's host place (one of its own); shown as the host. Null otherwise.
+  hostPlaceId       String?           @db.Uuid
+  /// D234: whether the venue place's owner confirmed it (NONE: nobody to ask: no venue place,
+  /// it's the host's own place, or the place has no verified owner). The event doesn't wait.
+  venueStatus       EventVenueStatus  @default(NONE)
+  venueAnsweredAt   DateTime?         @db.Timestamptz(3)
+  /// D234 (D216 rules): a ticket or info link, paid plans only (`ads.links`); both or neither.
+  linkUrl           String?           @db.VarChar(500)
+  linkLabel         String?           @db.VarChar(25)
   venueName         String?           @db.VarChar(120)
   address           String?           @db.VarChar(300)
   /// The pin (inside Duval, checked on save). Null only for SUGGESTED events (CHECK).
@@ -2563,6 +2616,7 @@ model Event {
   createdAt         DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime          @updatedAt @db.Timestamptz(3)
   place             BusinessPlace?    @relation(fields: [placeId], references: [id], onDelete: SetNull)
+  hostPlace         BusinessPlace?    @relation("EventHostPlace", fields: [hostPlaceId], references: [id], onDelete: SetNull)
   businessAccount   BusinessAccount?  @relation(fields: [businessAccountId], references: [id], onDelete: Cascade)
   createdBy         User?             @relation("EventCreator", fields: [createdById], references: [id], onDelete: SetNull)
   sessions          EventSession[]
@@ -2573,11 +2627,32 @@ model Event {
   /// D230: ads promoting this event.
   ads               Ad[]
   dailyStats        EventDailyStats[]
+  tapMarks          EventTapMark[]
 
   @@index([status, lastEndsAt])
   @@index([placeId])
+  @@index([hostPlaceId])
   @@index([businessAccountId])
   @@index([createdById])
+}
+
+/// D234: a venue place's owner was asked whether an organizer's event is really at its place.
+enum EventVenueStatus {
+  NONE // nothing to confirm
+  ASKED // the owner was told (bell and email on the website); no answer yet
+  CONFIRMED // "Yes": the app shows "Confirmed by [place]"
+  DISPUTED // "Not at my place": a report for JaxSide; the app stops naming the place
+}
+
+/// D234: a tap on an event's link, once per person per event per day (like `AdTapMark`).
+model EventTapMark {
+  eventId String   @db.Uuid
+  viewer  String   @db.Char(43)
+  day     DateTime @db.Date
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, viewer, day])
+  @@index([day])
 }
 
 /// D230: one date of an event (start and end instants; Jacksonville time in the app).
@@ -2705,6 +2780,8 @@ model EventDailyStats {
   chatLines Int      @default(0)
   /// Followers when it was counted.
   followers Int      @default(0)
+  /// D234: people who tapped its link (once each a day).
+  taps      Int      @default(0)
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@id([eventId, day])

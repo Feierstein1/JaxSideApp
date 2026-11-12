@@ -74,6 +74,11 @@ export interface EventFormValues {
   adultsOnly: boolean;
   familyFriendly: boolean;
   place: { id: string; name: string; address: string | null } | null;
+  /** D236: a business event's own place (kept as it is; the website sets it). */
+  hostPlace?: { id: string; name: string } | null;
+  /** D236: the host's link button (paid plans); an admin can fix or clear it. */
+  linkUrl?: string | null;
+  linkLabel?: string | null;
   venueName: string | null;
   address: string | null;
   latitude: number | null;
@@ -165,6 +170,9 @@ export function EventForm({ id, initial }: { id?: string; initial?: EventFormVal
         adultsOnly: v.adultsOnly,
         familyFriendly: v.familyFriendly,
         ...(v.place ? { placeId: v.place.id } : { latitude, longitude }),
+        ...(v.hostKind === 'business' && v.hostPlace ? { hostPlaceId: v.hostPlace.id } : {}),
+        linkUrl: v.linkUrl?.trim() || null,
+        linkLabel: v.linkLabel?.trim() || null,
         ...(v.venueName?.trim() ? { venueName: v.venueName.trim() } : {}),
         ...(v.address?.trim() ? { address: v.address.trim() } : {}),
         chatRadiusMeters: v.chatRadiusMeters,
@@ -375,6 +383,29 @@ export function EventForm({ id, initial }: { id?: string; initial?: EventFormVal
             max={EVENT_CHAT_RADIUS.max}
             value={v.chatRadiusMeters}
             onChange={(e) => set('chatRadiusMeters', Number(e.target.value))}
+          />
+        </label>
+      </div>
+      {/* D236: the host's link (paid plans show it); fix or clear one that breaks the rules. */}
+      <div style={row}>
+        <label style={{ ...ui.label, flex: 2, minWidth: 220 }}>
+          Link (optional, starts with https://)
+          <input
+            style={ui.input}
+            value={v.linkUrl ?? ''}
+            maxLength={500}
+            placeholder="https://tickets.example.com/show"
+            onChange={(e) => set('linkUrl', e.target.value)}
+          />
+        </label>
+        <label style={{ ...ui.label, flex: 1, minWidth: 160 }}>
+          Button text
+          <input
+            style={ui.input}
+            value={v.linkLabel ?? ''}
+            maxLength={25}
+            placeholder="Get tickets"
+            onChange={(e) => set('linkLabel', e.target.value)}
           />
         </label>
       </div>

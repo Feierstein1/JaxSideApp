@@ -28,6 +28,7 @@ import * as ads from '@/app/api/v1/ads/route';
 import * as adViews from '@/app/api/v1/ads/views/route';
 import * as adInterest from '@/app/api/v1/ads/[id]/interest/route';
 import * as adTap from '@/app/api/v1/ads/[id]/tap/route';
+import * as eventTap from '@/app/api/v1/events/[id]/tap/route';
 import * as guests from '@/app/api/v1/guests/route';
 import * as installations from '@/app/api/v1/installations/route';
 import * as locationStatus from '@/app/api/v1/location/status/route';
@@ -822,6 +823,16 @@ const ROWS: Row[] = [
     route: 'ads/[id]/tap',
     method: 'POST',
     handler: h(adTap, 'POST'),
+    auth: true,
+    id: 'post',
+    location: false,
+    body: () => ({}),
+  },
+  {
+    // D236: a tap on an event's link button (any UUID: the guards run before the lookup).
+    route: 'events/[id]/tap',
+    method: 'POST',
+    handler: h(eventTap, 'POST'),
     auth: true,
     id: 'post',
     location: false,

@@ -17,6 +17,7 @@ import {
   type EventPage,
 } from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
+import { entitlementsFor } from '../admin/plans';
 import { getConfig } from '../config';
 import { db } from '../db';
 import { decodeCursor, encodeCursor } from '../discussions/cursor';
@@ -78,6 +79,10 @@ type CardRow = {
   address: string | null;
   place_id: string | null;
   place_name: string | null;
+  host_place_id: string | null;
+  host_place_name: string | null;
+  host_place_category: string | null;
+  venue_status: 'NONE' | 'ASKED' | 'CONFIRMED' | 'DISPUTED';
   place_category: string | null;
   organizer_name: string | null;
   neighborhood: string | null;
@@ -104,6 +109,8 @@ function selectCards(viewerId: string, at: GeoPoint, where: Prisma.Sql, tail: Pr
            (SELECT count(*)::int FROM "EventSession" x WHERE x."eventId" = e.id) AS day_count,
            e."venueName" AS venue_name, e.address, e."placeId" AS place_id,
            p.name AS place_name, p.category AS place_category,
+           hp.id AS host_place_id, hp.name AS host_place_name, hp.category AS host_place_category,
+           e."venueStatus"::text AS venue_status,
            (SELECT o.name FROM "EventOrganizer" o
              WHERE o."accountId" = e."businessAccountId" AND o.status = 'VERIFIED') AS organizer_name,
            e.neighborhood, e.zip, e.setting::text AS setting, e.free, e."priceText" AS price_text,
@@ -118,6 +125,7 @@ function selectCards(viewerId: string, at: GeoPoint, where: Prisma.Sql, tail: Pr
     FROM "EventSession" s
     JOIN "Event" e ON e.id = s."eventId"
     LEFT JOIN "BusinessPlace" p ON p.id = e."placeId"
+    LEFT JOIN "BusinessPlace" hp ON hp.id = e."hostPlaceId"
     WHERE ${where}
     ${tail}`;
 }
@@ -139,7 +147,9 @@ function toCard(r: CardRow, now = new Date()): EventCard {
     endTime: localTime(r.ends_at),
     dayNumber: r.day_number,
     dayCount: r.day_count,
-    venue: r.venue_name ?? r.place_name ?? r.address,
+    // D236: while the place's owner disputes it, the place isn't named.
+    venue: r.venue_name ?? (r.venue_status === 'DISPUTED' ? null : r.place_name) ?? r.address,
+    venueConfirmedBy: r.venue_status === 'CONFIRMED' ? r.place_name : null,
     neighborhood: r.neighborhood,
     zip: r.zip,
     setting: settingKey(r.setting),
@@ -149,10 +159,12 @@ function toCard(r: CardRow, now = new Date()): EventCard {
     familyFriendly: r.family_friendly,
     host: {
       kind: host,
-      // A business is its place's name; an organizer shows its approved name (P18.9).
-      name: host === 'business' ? r.place_name : host === 'organizer' ? r.organizer_name : null,
-      placeId: host === 'business' ? r.place_id : null,
-      placeCategory: host === 'business' ? r.place_category : null,
+      // A business is its own place's name (D236: wherever the event is held); an organizer
+      // shows its approved name (P18.9).
+      name:
+        host === 'business' ? r.host_place_name : host === 'organizer' ? r.organizer_name : null,
+      placeId: host === 'business' ? r.host_place_id : null,
+      placeCategory: host === 'business' ? r.host_place_category : null,
     },
     imageUrl: r.image_id ? signedEventImageUrl(r.image_id, now) : null,
     following: r.following,
@@ -289,7 +301,15 @@ export async function eventDetail(
   const [event, sessions, images, followers, min] = await Promise.all([
     db.event.findUniqueOrThrow({
       where: { id },
-      select: { description: true, address: true, latitude: true, longitude: true },
+      select: {
+        description: true,
+        address: true,
+        latitude: true,
+        longitude: true,
+        linkUrl: true,
+        linkLabel: true,
+        businessAccountId: true,
+      },
     }),
     db.eventSession.findMany({
       where: { eventId: id, endsAt: { gt: now } },
@@ -324,5 +344,16 @@ export async function eventDetail(
       height: i.height,
     })),
     followerCount: followers >= min ? followers : null,
+    link: await eventLink(event, now),
   };
+}
+
+/** D236: the host's link button, only while its plan allows links (a downgrade hides it). */
+async function eventLink(
+  e: { linkUrl: string | null; linkLabel: string | null; businessAccountId: string | null },
+  now: Date,
+) {
+  if (!e.linkUrl || !e.linkLabel || !e.businessAccountId) return null;
+  const { entitlements } = await entitlementsFor(e.businessAccountId, now);
+  return entitlements['ads.links'] ? { url: e.linkUrl, label: e.linkLabel } : null;
 }

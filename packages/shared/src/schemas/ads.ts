@@ -19,7 +19,10 @@ export const AD_ZIPS_MAX = 30;
 
 export const adDraftSchema = z
   .strictObject({
-    placeId: z.uuid(),
+    /** The place it advertises; D236: optional for an organizer's ad, which promotes an event. */
+    placeId: z.uuid().optional(),
+    /** D230 / D236: the event it promotes (a business may give both). */
+    eventId: z.uuid().optional(),
     template: z.enum(['BANNER', 'POST', 'FEATURE']),
     headline: z.string().trim().max(MAX_HEADLINE),
     body: z.string().trim().max(MAX_BODY).nullable().default(null),
@@ -50,6 +53,14 @@ export const adDraftSchema = z
     linkLabel: z.string().trim().min(2).max(25).nullable().default(null),
   })
   .superRefine((ad, ctx) => {
+    // D236: like the database's `Ad_place_or_event`.
+    if (!ad.placeId && !ad.eventId) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['placeId'],
+        message: 'An ad promotes a place or an event',
+      });
+    }
     if ((ad.linkUrl === null) !== (ad.linkLabel === null)) {
       ctx.addIssue({
         code: 'custom',
@@ -99,8 +110,12 @@ export function adSubmitProblems(ad: AdDraft, now: Date): string[] {
   if (t.image.required && !ad.mediaId) {
     problems.push(`A ${t.label.toLowerCase()} needs a picture or GIF.`);
   }
-  if (ad.radiusMeters === null && ad.zips.length === 0) {
-    problems.push('Choose who sees it: a distance around your place, ZIP codes, or both.');
+  if (!ad.cityWide && ad.radiusMeters === null && ad.zips.length === 0) {
+    problems.push(
+      ad.placeId
+        ? 'Choose who sees it: a distance around your place, ZIP codes, or both.'
+        : 'Choose who sees it: a distance around the event, ZIP codes, or both.',
+    );
   }
   if (ad.endsAt && new Date(ad.endsAt) <= now) {
     problems.push('The end date has already passed.');

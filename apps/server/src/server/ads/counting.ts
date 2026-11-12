@@ -14,7 +14,7 @@ import { COUNTABLE, statsDay } from './serve';
  */
 
 /** A keyed hash of the viewer: same person, same value; can't be turned back into an ID. */
-function viewerKey(viewer: string) {
+export function viewerKey(viewer: string) {
   return createHmac('sha256', getEnv().SESSION_SECRET)
     .update(`ad-view:${viewer}`)
     .digest('base64url');
@@ -111,6 +111,7 @@ export async function purgeAdMarks(now: Date, keepChoicesDays: number) {
   const cutoff = new Date(statsDay(now).getTime() - 2 * 86_400_000);
   const viewMarks = await db.adViewMark.deleteMany({ where: { day: { lt: cutoff } } });
   await db.adTapMark.deleteMany({ where: { day: { lt: cutoff } } }); // D216
+  await db.eventTapMark.deleteMany({ where: { day: { lt: cutoff } } }); // D236
   const choices = await db.adInterest.deleteMany({
     where: { updatedAt: { lt: new Date(now.getTime() - keepChoicesDays * 86_400_000) } },
   });

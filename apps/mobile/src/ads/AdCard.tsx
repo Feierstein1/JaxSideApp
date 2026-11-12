@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Image, Linking, Pressable, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { DARK, dateLabel, timeLabel, type AdCard as Ad, type ReportTarget } from '@jax/shared';
@@ -10,17 +10,8 @@ import { ReportSheet } from '@/report/ReportSheet';
 import { Text } from '@/text';
 import { RADIUS, SPACE } from '@/tokens';
 import { IconButton, openMenu } from '@/ui';
-import { showAlert } from '@/dialog';
+import { hostOf, openOutsideLink } from '@/links';
 import { adLinkTapped, setAdInterest } from './api';
-
-/** "www.boldbean.com" from the link, for the leaving notice. */
-function hostOf(url: string) {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
-}
 
 type Choice = 'INTERESTED' | 'NOT_INTERESTED' | null;
 
@@ -39,21 +30,7 @@ export function AdCard({ ad }: { ad: Ad }) {
 
   /** D216: the link opens the phone's browser, only after saying where it goes. */
   function openLink(link: { url: string; label: string }) {
-    showAlert(
-      'You’re leaving JaxSide',
-      `This opens ${hostOf(link.url)} in your browser.`,
-      [
-        { text: 'Stay here', style: 'cancel' },
-        {
-          text: 'Open',
-          onPress: () => {
-            void adLinkTapped(ad.id);
-            void Linking.openURL(link.url);
-          },
-        },
-      ],
-      { icon: 'open-outline', tone: 'info' },
-    );
+    openOutsideLink(link.url, () => void adLinkTapped(ad.id));
   }
 
   /** D209: the ad's own menu (top right); Report first, room for more later. */

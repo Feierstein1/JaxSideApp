@@ -21,6 +21,22 @@ const STATUS_NOTE: Record<string, string> = {
   REMOVED: 'Removed by moderation. Nobody sees it.',
 };
 
+/** D236: what the venue place's owner said (the event never waits for it). */
+const VENUE_NOTE: Record<string, string> = {
+  ASKED: 'The owner of {place} was asked to confirm it’s held there; no answer yet.',
+  CONFIRMED: 'The owner of {place} confirmed it’s held there (the app says “Confirmed by”).',
+  DISPUTED:
+    'The owner of {place} says it isn’t held there (see the report in the queue). The app doesn’t name the place meanwhile; fix the place below, or remove the event.',
+};
+
+function hostOfUrl(url: string) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return 'not a valid address';
+  }
+}
+
 /** D230: one event: review it, edit it, its pictures, Duplicate and Repeat yearly. */
 export default async function EventPage({
   params,
@@ -60,6 +76,23 @@ export default async function EventPage({
           ? ` · suggested by ${e.createdBy.username}`
           : ''}
       </p>
+      {e.hostPlace && e.place && e.hostPlace.id !== e.place.id ? (
+        <p>
+          Hosted by {e.hostPlace.name}, held at {e.place.name}.
+        </p>
+      ) : null}
+      {e.venueStatus !== 'NONE' && e.place ? (
+        <p>
+          {VENUE_NOTE[e.venueStatus]?.replace('{place}', e.place.name)}
+          {e.venueAnsweredAt ? ` (answered ${when(e.venueAnsweredAt)})` : ''}
+        </p>
+      ) : null}
+      {e.linkUrl ? (
+        <p>
+          Link button “{e.linkLabel}” goes to <code>{e.linkUrl}</code> ({hostOfUrl(e.linkUrl)}). It
+          shows only while the host’s plan allows links.
+        </p>
+      ) : null}
       {e.decisionReason ? <p>Reason given: {e.decisionReason}</p> : null}
       {e.cancelReason ? <p>Cancelled because: {e.cancelReason}</p> : null}
       <EventCopyButtons id={e.id} />
@@ -76,6 +109,9 @@ export default async function EventPage({
           adultsOnly: e.adultsOnly,
           familyFriendly: e.familyFriendly,
           place: e.place,
+          hostPlace: e.hostPlace,
+          linkUrl: e.linkUrl,
+          linkLabel: e.linkLabel,
           venueName: e.venueName,
           address: e.address,
           latitude: e.latitude,

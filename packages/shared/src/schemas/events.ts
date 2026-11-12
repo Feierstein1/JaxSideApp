@@ -76,6 +76,9 @@ const sessionsSchema = z
 /**
  * D230: an event as an admin or a business types it. A place (its pin and address come from
  * the place) or a pin with an optional address; the server checks the pin is inside Duval.
+ * D236: `placeId` is where it's held (any place on JaxSide); a business event also names its
+ * own place as the host (`hostPlaceId`; it defaults to `placeId`, the D230 shape), so a
+ * business can hold an event elsewhere (another place, or a pin and address).
  */
 export const eventInputSchema = z
   .strictObject({
@@ -90,6 +93,8 @@ export const eventInputSchema = z
     adultsOnly: z.boolean().default(false),
     familyFriendly: z.boolean().default(false),
     placeId: z.uuid().optional(),
+    /** D236: a business event's own place (the host); defaults to `placeId`. */
+    hostPlaceId: z.uuid().optional(),
     venueName: text(1, EVENT_VENUE_MAX).optional(),
     address: text(3, EVENT_ADDRESS_MAX).optional(),
     latitude: z.number().min(-90).max(90).optional(),
@@ -100,6 +105,15 @@ export const eventInputSchema = z
       .max(EVENT_CHAT_RADIUS.max)
       .default(EVENT_CHAT_RADIUS.default),
     sessions: sessionsSchema,
+    /** D236 (D216 rules): a ticket or info link, paid plans only. The website checks it further. */
+    linkUrl: z
+      .string()
+      .trim()
+      .max(500)
+      .startsWith('https://', 'Links start with https://')
+      .nullable()
+      .default(null),
+    linkLabel: z.string().trim().min(2).max(25).nullable().default(null),
   })
   .refine((e) => (e.latitude === undefined) === (e.longitude === undefined), {
     message: 'Give both latitude and longitude',
@@ -109,9 +123,17 @@ export const eventInputSchema = z
     message: 'Pick a place or set a pin',
     path: ['placeId'],
   })
-  .refine((e) => e.hostKind !== 'business' || !!e.placeId, {
-    message: 'A business event happens at the business’s place',
-    path: ['placeId'],
+  .refine((e) => e.hostKind !== 'business' || !!(e.hostPlaceId ?? e.placeId), {
+    message: 'A business event names the business’s place',
+    path: ['hostPlaceId'],
+  })
+  .refine((e) => e.hostKind === 'business' || !e.hostPlaceId, {
+    message: 'Only a business event has a host place',
+    path: ['hostPlaceId'],
+  })
+  .refine((e) => (e.linkUrl === null) === (e.linkLabel === null), {
+    message: 'A link needs its button text, and button text needs a link',
+    path: ['linkLabel'],
   })
   .refine((e) => !e.free || !e.priceText, {
     message: 'A free event has no price',
@@ -212,6 +234,11 @@ export interface EventCard {
   dayCount: number;
   /** Venue name, the place's name, or the address. */
   venue: string | null;
+  /**
+   * D236: the venue place's name once its owner confirmed the event is held there ("Confirmed
+   * by …"); null otherwise (and the place isn't named at all while its owner disputes it).
+   */
+  venueConfirmedBy: string | null;
   neighborhood: string | null;
   zip: string | null;
   setting: EventSetting;
@@ -281,6 +308,8 @@ export interface EventDetail extends EventCard {
   images: EventImageView[];
   /** Shown from 10 followers (`events.followerCountMin`); null below that. */
   followerCount: number | null;
+  /** D236: the host's link button, while its plan allows links (`ads.links`). */
+  link: { url: string; label: string } | null;
 }
 
 /** Helpers for forms: a blank session to start from. */

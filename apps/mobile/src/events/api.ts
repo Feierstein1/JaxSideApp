@@ -62,6 +62,11 @@ export const setEventFollow = (id: string, follow: boolean) =>
         `/api/v1/events/${id}/follow`,
       );
 
+/** D236: the event's link button was used (after "You're leaving JaxSide"). */
+export function eventLinkTapped(id: string) {
+  return api.post(`/api/v1/events/${id}/tap`, {}).catch(() => undefined);
+}
+
 /** The filters' starting point, and how many are on (for the Filters button's badge). */
 export const NO_FILTERS: Filters = { kind: 'all' };
 export const filterCount = (f: Filters) =>

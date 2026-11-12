@@ -22,9 +22,10 @@ import { useGuest } from '@/auth/guest';
 import { DecoBox } from '@/deco';
 import { showAlert } from '@/dialog';
 import { photoUri } from '@/discussion/photos';
-import { fetchEvent, setEventFollow } from '@/events/api';
+import { eventLinkTapped, fetchEvent, setEventFollow } from '@/events/api';
 import { HostLine, Tag, timeRange } from '@/events/EventCard';
 import { EventChatEntry } from '@/events/EventChatEntry';
+import { openOutsideLink } from '@/links';
 import { haptic } from '@/motion';
 import { ReportSheet } from '@/report/ReportSheet';
 import { Text } from '@/text';
@@ -34,7 +35,7 @@ import { Button, ErrorState } from '@/ui';
 /**
  * D230: an event's page: pictures, what and when, where, who puts it on, the description,
  * every date still to come, Follow (reminders in the bell), Report, and, while it's on and
- * you're there, its chat.
+ * you're there, its chat. D236: the host's link (tickets, info) and "Confirmed by [place]".
  */
 export default function EventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -159,6 +160,16 @@ export default function EventScreen() {
           </View>
         )}
 
+        {e.link && !e.cancelled ? (
+          <Button
+            variant="secondary"
+            icon="open-outline"
+            title={e.link.label}
+            onPress={() => openOutsideLink(e.link!.url, () => void eventLinkTapped(e.id))}
+            style={{ marginTop: 0 }}
+          />
+        ) : null}
+
         <EventChatEntry event={e} />
 
         <DecoBox shape="chamfer" fill={DARK.card} style={{ padding: SPACE.md, gap: SPACE.sm }}>
@@ -170,6 +181,9 @@ export default function EventScreen() {
                 .filter(Boolean)
                 .join('\n')}
             />
+          ) : null}
+          {e.venueConfirmedBy ? (
+            <Row icon="checkmark-circle-outline" text={`Confirmed by ${e.venueConfirmedBy}`} />
           ) : null}
           {e.neighborhood ? (
             <Row
@@ -221,7 +235,7 @@ function Row({
   icon,
   text,
 }: {
-  icon: 'time-outline' | 'location-outline' | 'navigate-outline';
+  icon: 'time-outline' | 'location-outline' | 'navigate-outline' | 'checkmark-circle-outline';
   text: string;
 }) {
   return (
