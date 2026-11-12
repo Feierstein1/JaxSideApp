@@ -56,6 +56,10 @@ describe('seed', { timeout: 20_000 }, () => {
     const admin = await db.user.findUniqueOrThrow({ where: { usernameNormalized: 'dev_admin' } });
     expect(admin.role).toBe('ADMIN');
     expect(await verifyPassword(admin.passwordHash, 'dev password 123')).toBe(true);
+    // Seeding again with another dev password never changes an existing account's password.
+    await seed(db, { includeDevData: true, devPassword: 'a different one 456' });
+    const again = await db.user.findUniqueOrThrow({ where: { usernameNormalized: 'dev_admin' } });
+    expect(await verifyPassword(again.passwordHash, 'dev password 123')).toBe(true);
   });
 
   it('skips dev places when includeDevData is false', async () => {

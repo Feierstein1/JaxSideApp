@@ -14,15 +14,18 @@ import {
   type PlaceRow,
   type ZipRow,
 } from '@/server/stats/report';
+import { LIVE_PERIODS, isLive, mapCounts, mapShapes, type MapCounts } from '@/server/stats/map';
 import { ui } from '../../admin-ui';
+import { ZipMap } from '../../zip-map';
 import { requireAdminPage } from '../../require-admin-page';
 import { Pager, td, th, words } from '../admin-table';
 import { pageNumber, slicePage, type Page } from '@/server/admin/paging';
 
 export const dynamic = 'force-dynamic';
 
-type Tab = 'zips' | 'places' | 'travel';
+type Tab = 'map' | 'zips' | 'places' | 'travel';
 const TABS: { key: Tab; label: string }[] = [
+  { key: 'map', label: 'Map' },
   { key: 'zips', label: 'ZIP codes' },
   { key: 'places', label: 'Places' },
   { key: 'travel', label: 'Travel between areas' },
@@ -57,10 +60,14 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   await requireAdminPage();
   const q = await searchParams;
   const tab: Tab = TABS.find((t) => t.key === q.tab)?.key ?? 'zips';
-  const choices = await periods();
-  const period = choices.find((p) => p.key === q.period)?.key ?? '7d';
+  // D229: the map also offers today, this week and this month so far (counted live).
+  const tables = await periods();
+  const choices = tab === 'map' ? [...LIVE_PERIODS, ...tables] : tables;
+  const period =
+    choices.find((p) => p.key === q.period)?.key ?? (tab === 'map' ? 'this-week' : '7d');
   const range = parsePeriod(period);
-  const { from, to } = bounds(range);
+  const map = tab === 'map' ? await mapCounts(period) : null;
+  const { from, to } = map ?? bounds(range);
   const dir = q.dir === 'asc' ? 'asc' : 'desc';
   const link = (over: Partial<Q>) => {
     const p = new URLSearchParams({ tab, period, ...(q.sort ? { sort: q.sort } : {}), dir });
@@ -148,7 +155,9 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
         </span>
       </form>
 
-      {tab === 'zips' && q.zip ? (
+      {map ? (
+        <MapView counts={map} period={period} />
+      ) : tab === 'zips' && q.zip ? (
         <ZipDetail zip={q.zip} range={range} back={link({ zip: undefined })} pager={pager} />
       ) : tab === 'zips' ? (
         <ZipTable
@@ -190,6 +199,39 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
 type HeadT = (p: { label: string; col?: string }) => React.ReactElement;
 /** D210: one page (20 rows) of an already-sorted table, with its Previous / Next. */
 type PagerT = <T>(rows: T[]) => { page: Page<T>; nav: React.ReactElement };
+
+/** D229: the ZIP map; a click opens that ZIP's day-by-day page (finished days only). */
+async function MapView({ counts, period }: { counts: MapCounts; period: string }) {
+  const shapes = await mapShapes();
+  const byZip = Object.fromEntries(counts.zips.map((z) => [z.zip, z]));
+  const days = isLive(period) ? '7d' : period;
+  return (
+    <>
+      <ZipMap
+        viewBox={shapes.viewBox}
+        county={shapes.county}
+        zips={shapes.zips}
+        counts={byZip}
+        measure={counts.measure}
+        partsMeasure={counts.partsMeasure}
+        zipHref={Object.fromEntries(
+          shapes.zips.map((z) => [
+            z.zip,
+            `/admin/stats?${new URLSearchParams({ tab: 'zips', period: days, zip: z.zip })}`,
+          ]),
+        )}
+      />
+      <p style={ui.muted}>
+        {counts.measure === 'people'
+          ? 'Each person is counted once per ZIP for the period (someone in two ZIPs counts in both).'
+          : 'Each day’s distinct people, added up over the period.'}{' '}
+        Counted when a signed-in person opens the area feed there; guests and people who turned this
+        off in Settings aren’t counted. Sections under {MIN_GROUP} people are gray and never show a
+        number. Click a ZIP for its day-by-day numbers.
+      </p>
+    </>
+  );
+}
 
 function Empty() {
   return <p style={ui.muted}>No counts for this period yet. They’re added each night.</p>;

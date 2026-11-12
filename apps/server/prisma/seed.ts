@@ -91,15 +91,17 @@ export async function seed(db: PrismaClient, opts: SeedOptions) {
       const id = uuidv7();
       const data = {
         username: u.username,
-        passwordHash,
         role: u.role,
         emailVerifiedAt: u.verified ? now : null,
       };
       await db.user.upsert({
         where: { usernameNormalized: u.username.toLowerCase() },
+        // The password is set only when the account is created: running the seed again (every
+        // deploy runs it) never changes a password someone chose.
         update: data,
         create: {
           ...data,
+          passwordHash,
           id,
           ...encryptedEmailFields(id, u.email),
           usernameNormalized: u.username.toLowerCase(),

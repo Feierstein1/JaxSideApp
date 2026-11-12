@@ -90,7 +90,18 @@ import * as postComments from '@/app/api/v1/posts/[id]/comments/route';
 import * as postOne from '@/app/api/v1/posts/[id]/route';
 import * as postVote from '@/app/api/v1/posts/[id]/vote/route';
 import * as posts from '@/app/api/v1/posts/route';
+import * as eventOne from '@/app/api/v1/events/[id]/route';
+import * as eventChat from '@/app/api/v1/events/[id]/chat/route';
+import * as eventChatJoin from '@/app/api/v1/events/[id]/chat/join/route';
+import * as eventChatList from '@/app/api/v1/events/[id]/chat/list/route';
+import * as eventChatStatus from '@/app/api/v1/events/[id]/chat/status/route';
+import * as eventFollow from '@/app/api/v1/events/[id]/follow/route';
+import * as eventDay from '@/app/api/v1/events/day/route';
+import * as eventList from '@/app/api/v1/events/list/route';
+import * as eventMonth from '@/app/api/v1/events/month/route';
+import * as eventSuggest from '@/app/api/v1/events/suggestions/route';
 import { createSession } from '@/server/auth/sessions';
+import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
 import { importOsmPlaces } from '@/server/directory/osm';
 import { readBoundaryFile } from '@/server/location/boundary-file';
@@ -104,7 +115,16 @@ const OUT = { latitude: 30.1661, longitude: -81.7065, accuracyMeters: 10 }; // O
 const r = (p: typeof IN) => ({ ...p, timestamp: Date.now() - 2_000 });
 
 type Id =
-  'place' | 'post' | 'bizPost' | 'comment' | 'username' | 'friendRequest' | 'poll' | 'topic' | null;
+  | 'place'
+  | 'post'
+  | 'bizPost'
+  | 'comment'
+  | 'username'
+  | 'friendRequest'
+  | 'poll'
+  | 'topic'
+  | 'event'
+  | null;
 interface Row {
   route: string;
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -980,6 +1000,114 @@ const ROWS: Row[] = [
     id: 'comment',
     location: false,
   },
+  // D230: Events. The reads are POST because they carry the reading (events.test.ts has the
+  // behavior); location is checked before the event is looked up.
+  {
+    route: 'events/list',
+    method: 'POST',
+    handler: h(eventList, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at) }),
+  },
+  {
+    route: 'events/month',
+    method: 'POST',
+    handler: h(eventMonth, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at), month: '2027-06' }),
+  },
+  {
+    route: 'events/day',
+    method: 'POST',
+    handler: h(eventDay, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at), date: '2027-06-05' }),
+  },
+  {
+    route: 'events/[id]',
+    method: 'POST',
+    handler: h(eventOne, 'POST'),
+    auth: true,
+    id: 'event',
+    location: true,
+    body: (at) => ({ reading: r(at) }),
+  },
+  {
+    route: 'events/[id]/follow',
+    method: 'PUT',
+    handler: h(eventFollow, 'PUT'),
+    auth: true,
+    id: 'event',
+    location: false,
+  },
+  {
+    route: 'events/[id]/follow',
+    method: 'DELETE',
+    handler: h(eventFollow, 'DELETE'),
+    auth: true,
+    id: 'event',
+    location: false,
+  },
+  {
+    route: 'events/[id]/chat/status',
+    method: 'POST',
+    handler: h(eventChatStatus, 'POST'),
+    auth: true,
+    id: 'event',
+    location: true,
+    body: (at) => ({ reading: r(at) }),
+  },
+  {
+    route: 'events/[id]/chat/join',
+    method: 'POST',
+    handler: h(eventChatJoin, 'POST'),
+    auth: true,
+    id: 'event',
+    location: true,
+    body: (at) => ({ reading: r(at) }),
+  },
+  {
+    route: 'events/[id]/chat/list',
+    method: 'POST',
+    handler: h(eventChatList, 'POST'),
+    auth: true,
+    id: 'event',
+    location: true,
+    body: (at) => ({ reading: r(at) }),
+  },
+  {
+    route: 'events/[id]/chat',
+    method: 'POST',
+    handler: h(eventChat, 'POST'),
+    auth: true,
+    id: 'event',
+    location: true,
+    body: (at) => ({ reading: r(at), body: 'hello' }),
+  },
+  {
+    route: 'events/suggestions',
+    method: 'POST',
+    handler: h(eventSuggest, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({
+      reading: r(at),
+      title: 'Riverside market',
+      description: 'Local makers and food.',
+      category: 'food',
+      setting: 'outdoor',
+      free: true,
+      where: 'Riverside Arts Market',
+      sessions: [{ date: '2027-06-05', start: '10:00', end: '15:00' }],
+    }),
+  },
 ];
 
 let owner: string; // created the fixtures
@@ -993,6 +1121,7 @@ const ids: Record<Exclude<Id, null>, string> = {
   friendRequest: '',
   poll: '',
   topic: '',
+  event: '',
 };
 
 beforeAll(async () => {
@@ -1046,6 +1175,21 @@ beforeAll(async () => {
   ids.friendRequest = (await db.friendship.findFirstOrThrow()).id;
   // D125: an open citywide topic.
   ids.topic = (await db.cityTopic.create({ data: { title: 'Game day', status: 'ACTIVE' } })).id;
+  // D230: an approved event with a pin.
+  ids.event = (
+    await db.event.create({
+      data: {
+        status: 'APPROVED',
+        title: 'Riverside market',
+        description: 'Local makers and food.',
+        category: 'food',
+        setting: 'OUTDOOR',
+        free: true,
+        latitude: 30.316,
+        longitude: -81.687,
+      },
+    })
+  ).id;
   // D123: an open poll.
   ids.poll = (
     await db.poll.create({
@@ -1077,8 +1221,11 @@ beforeAll(async () => {
       'rateLimit.login.perMinutePerIp',
       'rateLimit.login.perMinutePerAccount',
       'rateLimit.verifyEmailResend.perHour',
+      'rateLimit.chat.burstPer3s',
+      'rateLimit.chat.perMinute',
     ].map((key) => ({ key, value: 1000 })),
   });
+  invalidateConfigCache(); // read while the fixtures were made
 });
 
 const call = (row: Row, opts: { token?: string; body?: unknown }) =>
@@ -1154,7 +1301,8 @@ describe('write route table (P3.7)', () => {
         x.id !== 'place' &&
         x.id !== 'username' &&
         // D133: unfollowing removes your own follow, not someone else's content.
-        x.route !== 'topics/[id]/follow',
+        x.route !== 'topics/[id]/follow' &&
+        x.route !== 'events/[id]/follow',
     ).map((x) => [label(x), x] as const),
   )('%s → 404 for someone else’s content', async (_l, row) => {
     const res = await call(row, { token: other, body: row.body?.(IN) });
