@@ -132,22 +132,12 @@ function DaySquare({
         {day}
       </Text>
       {count ? (
-        <View
-          style={{
-            alignSelf: 'flex-end',
-            minWidth: 20,
-            height: 20,
-            borderRadius: 10,
-            paddingHorizontal: 5,
-            backgroundColor: DARK.accent,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+        // Just the number, in the accent blue (no badge behind it).
+        <Text
+          style={{ alignSelf: 'flex-end', fontSize: 13, fontWeight: '800', color: DARK.accent }}
         >
-          <Text style={{ fontSize: 11, fontWeight: '800', color: DARK.onAccent }}>
-            {count > 99 ? '99+' : count}
-          </Text>
-        </View>
+          {count > 99 ? '99+' : count}
+        </Text>
       ) : null}
     </Pressable>
   );
