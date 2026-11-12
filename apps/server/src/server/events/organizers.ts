@@ -4,14 +4,16 @@ import { db } from '../db';
 import { ApiError } from '../http';
 
 /*
- * D230: event organizers (festivals, nonprofits, promoters). The business website creates the
- * profile when someone signs up as an organizer; JaxSide approves it here. Only a VERIFIED
- * organizer's events can be sent for review on the website, and its name shows on its events
- * as "Hosted by".
+ * D230 / D237: event organizers (festivals, nonprofits, promoters). The business website
+ * creates the profile when someone signs up as an organizer, and they can send events right
+ * away (JaxSide reviews every event). Here JaxSide can tick them as checked, or close them
+ * (REJECTED; REVOKED rows are from before D237): a closed organizer can't make or send events
+ * on the website, and its name no longer shows as "Hosted by".
  */
 
-export async function adminListOrganizers(status: OrganizerStatus, page = 1) {
-  const where = { status };
+export async function adminListOrganizers(statuses: OrganizerStatus[], page = 1) {
+  const where = { status: { in: statuses } };
+  const status = statuses[0];
   const [rows, total] = await Promise.all([
     db.eventOrganizer.findMany({
       where,
@@ -48,43 +50,45 @@ export async function adminListOrganizers(status: OrganizerStatus, page = 1) {
   );
 }
 
-const NEXT: Record<
-  'approve' | 'reject' | 'revoke',
-  { from: OrganizerStatus[]; to: OrganizerStatus }
-> = {
+const NEXT: Record<'approve' | 'reject', { from: OrganizerStatus[]; to: OrganizerStatus }> = {
   approve: { from: ['PENDING', 'REJECTED', 'REVOKED'], to: 'VERIFIED' },
-  reject: { from: ['PENDING'], to: 'REJECTED' },
-  revoke: { from: ['VERIFIED'], to: 'REVOKED' },
+  reject: { from: ['PENDING', 'VERIFIED'], to: 'REJECTED' },
 };
 
-/** Approve, reject or revoke; the organizer is told in the website's bell. */
+/**
+ * D237: tick an organizer as checked, close one, or reopen a closed one. Ticking a new one is
+ * quiet (they were never waiting); closing and reopening tell them in the website's bell.
+ */
 export async function adminDecideOrganizer(
   adminId: string,
   accountId: string,
-  d: { action: 'approve' } | { action: 'reject' | 'revoke'; note: string },
+  d: { action: 'approve' } | { action: 'reject'; note: string },
   now = new Date(),
 ) {
   const step = NEXT[d.action];
   const note = 'note' in d ? d.note : null;
   await db.$transaction(async (tx) => {
+    const before = await tx.eventOrganizer.findUnique({
+      where: { accountId },
+      select: { status: true },
+    });
     const r = await tx.eventOrganizer.updateMany({
       where: { accountId, status: { in: step.from } },
       data: { status: step.to, decidedAt: now, decidedByAdminId: adminId, decisionNote: note },
     });
-    if (r.count !== 1) {
+    if (r.count !== 1 || !before) {
       throw new ApiError(409, 'WRONG_STATUS', 'This organizer can’t be changed that way now.');
     }
+    if (d.action === 'approve' && before.status === 'PENDING') return;
     await tx.businessNotice.create({
       data: {
         accountId,
         kind: d.action === 'approve' ? 'ORGANIZER_APPROVED' : 'ORGANIZER_REJECTED',
         title:
           d.action === 'approve'
-            ? 'You’re approved as an event organizer'
-            : d.action === 'reject'
-              ? 'Your organizer request was turned down'
-              : 'Your organizer approval was taken back',
-        body: d.action === 'approve' ? 'You can now send events for review.' : note,
+            ? 'Your organizer account is open again'
+            : 'Your organizer account was closed',
+        body: d.action === 'approve' ? 'You can make and send events for review again.' : note,
         link: '/events',
         createdAt: now,
       },

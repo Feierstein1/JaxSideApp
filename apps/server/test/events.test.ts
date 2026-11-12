@@ -554,7 +554,7 @@ describe('events as ads (P18.8)', () => {
 });
 
 describe('event organizers (P18.9)', () => {
-  it('approving an organizer tells them, and their name shows on their events', async () => {
+  it('an organizer is named at once (D237); ticking it as checked is quiet', async () => {
     const acct = await db.businessAccount.create({
       data: { email: 'fest@example.test', passwordHash: 'x' },
     });
@@ -563,36 +563,43 @@ describe('event organizers (P18.9)', () => {
     });
     const id = await addEvent({ hostKind: 'organizer' });
     await db.event.update({ where: { id }, data: { businessAccountId: acct.id } });
-    // Not shown until approved.
-    expect((await detail(me.token, id)).body.event.host.name).toBeNull();
-    const bad = await call(organizerPOST as H, 'POST', {
-      headers: admin,
-      id: acct.id,
-      body: { action: 'reject', note: '' },
-    });
-    expect(bad.status).toBe(400);
-    const ok = await call(organizerPOST as H, 'POST', {
-      headers: admin,
-      id: acct.id,
-      body: { action: 'approve' },
-    });
-    expect(ok.status).toBe(200);
+    // Named while nobody has checked it yet.
     expect((await detail(me.token, id)).body.event.host).toMatchObject({
       kind: 'organizer',
       name: 'Riverside Avondale Preservation',
     });
-    const notice = await db.businessNotice.findFirstOrThrow({ where: { accountId: acct.id } });
-    expect(notice.kind).toBe('ORGANIZER_APPROVED');
-    // Approving twice isn't a thing.
+    const decideOrg = (body: Record<string, unknown>) =>
+      call(organizerPOST as H, 'POST', { headers: admin, id: acct.id, body });
+    expect((await decideOrg({ action: 'approve' })).status).toBe(200);
+    expect(await db.businessNotice.count({ where: { accountId: acct.id } })).toBe(0);
+    // Ticking twice isn't a thing.
+    expect((await decideOrg({ action: 'approve' })).status).toBe(409);
+  });
+
+  // 🔒 D237: closing (from new or checked) needs a note, tells them, and hides their name.
+  it('closing an organizer, new or checked, hides its name; reopening brings it back', async () => {
+    const acct = await db.businessAccount.create({
+      data: { email: 'fest@example.test', passwordHash: 'x' },
+    });
+    await db.eventOrganizer.create({
+      data: { accountId: acct.id, name: 'Jax Pop-Ups', contactName: 'Pat', status: 'VERIFIED' },
+    });
+    const id = await addEvent({ hostKind: 'organizer' });
+    await db.event.update({ where: { id }, data: { businessAccountId: acct.id } });
+    const decideOrg = (body: Record<string, unknown>) =>
+      call(organizerPOST as H, 'POST', { headers: admin, id: acct.id, body });
+    expect((await decideOrg({ action: 'reject', note: '' })).status).toBe(400);
+    expect((await decideOrg({ action: 'revoke', note: 'Old action' })).status).toBe(400);
+    expect((await decideOrg({ action: 'reject', note: 'Not a real organizer' })).status).toBe(200);
     expect(
-      (
-        await call(organizerPOST as H, 'POST', {
-          headers: admin,
-          id: acct.id,
-          body: { action: 'approve' },
-        })
-      ).status,
-    ).toBe(409);
+      await db.eventOrganizer.findUniqueOrThrow({ where: { accountId: acct.id } }),
+    ).toMatchObject({ status: 'REJECTED', decisionNote: 'Not a real organizer' });
+    expect((await detail(me.token, id)).body.event.host.name).toBeNull();
+    expect(
+      await db.businessNotice.findFirstOrThrow({ where: { accountId: acct.id } }),
+    ).toMatchObject({ kind: 'ORGANIZER_REJECTED', body: 'Not a real organizer' });
+    expect((await decideOrg({ action: 'approve' })).status).toBe(200);
+    expect((await detail(me.token, id)).body.event.host.name).toBe('Jax Pop-Ups');
   });
 
   it('a business is told when its event is approved or denied', async () => {

@@ -8,39 +8,39 @@ import { hrefWith, Pager, Table, Tabs, td, when } from '../admin-table';
 
 export const dynamic = 'force-dynamic';
 
-const TABS: { status: OrganizerStatus; label: string }[] = [
-  { status: 'PENDING', label: 'Waiting' },
-  { status: 'VERIFIED', label: 'Approved' },
-  { status: 'REJECTED', label: 'Turned down' },
-  { status: 'REVOKED', label: 'Taken back' },
+const TABS: { key: string; statuses: OrganizerStatus[]; label: string }[] = [
+  { key: 'new', statuses: ['PENDING'], label: 'Not checked yet' },
+  { key: 'checked', statuses: ['VERIFIED'], label: 'Checked' },
+  { key: 'closed', statuses: ['REJECTED', 'REVOKED'], label: 'Closed' },
 ];
 
 /**
- * D230: event organizers (festivals, nonprofits, promoters) who signed up on the business
- * website. They have no Google listing to verify, so check them here (their website, a call)
- * before they can send events. Their name shows on their events as "Hosted by".
+ * D230 / D237: event organizers (festivals, nonprofits, promoters) who signed up on the
+ * business website. They don't wait for JaxSide: they send events at once and every event is
+ * reviewed. Checking them is optional (a tick); closing one stops it making or sending events.
  */
 export default async function OrganizersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; page?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string }>;
 }) {
   await requireAdminPage();
   const sp = await searchParams;
-  const status = (TABS.find((t) => t.status === sp.status)?.status ?? 'PENDING') as OrganizerStatus;
-  const list = await adminListOrganizers(status, pageNumber(sp.page));
+  const tab = TABS.find((t) => t.key === sp.tab) ?? TABS[0]!;
+  const list = await adminListOrganizers(tab.statuses, pageNumber(sp.page));
   return (
     <>
       <h1>Event organizers</h1>
       <p style={ui.muted}>
-        People who put on events without a storefront. Check who they are (their website, a call to
-        the number they gave) before approving. Approved organizers can send events for review.
+        People who put on events without a storefront. They can send events as soon as they sign up,
+        and every event is reviewed. Ticking one as checked is optional (their website, a call to
+        the number they gave). Closing one stops it making or sending events; it sees your note.
       </p>
       <Tabs
         items={TABS.map((t) => ({
-          href: hrefWith('/admin/organizers', {}, { status: t.status }),
+          href: hrefWith('/admin/organizers', {}, { tab: t.key }),
           label: t.label,
-          on: t.status === status,
+          on: t.key === tab.key,
         }))}
       />
       {list.total === 0 ? (
@@ -71,7 +71,7 @@ export default async function OrganizersPage({
           ))}
         </Table>
       )}
-      <Pager page={list} base="/admin/organizers" params={{ status }} />
+      <Pager page={list} base="/admin/organizers" params={{ tab: tab.key }} />
     </>
   );
 }

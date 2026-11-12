@@ -112,7 +112,8 @@ function selectCards(viewerId: string, at: GeoPoint, where: Prisma.Sql, tail: Pr
            hp.id AS host_place_id, hp.name AS host_place_name, hp.category AS host_place_category,
            e."venueStatus"::text AS venue_status,
            (SELECT o.name FROM "EventOrganizer" o
-             WHERE o."accountId" = e."businessAccountId" AND o.status = 'VERIFIED') AS organizer_name,
+             WHERE o."accountId" = e."businessAccountId"
+               AND o.status IN ('PENDING', 'VERIFIED')) AS organizer_name,
            e.neighborhood, e.zip, e.setting::text AS setting, e.free, e."priceText" AS price_text,
            e."adultsOnly" AS adults_only, e."familyFriendly" AS family_friendly,
            e."hostKind"::text AS host_kind,
@@ -160,7 +161,7 @@ function toCard(r: CardRow, now = new Date()): EventCard {
     host: {
       kind: host,
       // A business is its own place's name (D236: wherever the event is held); an organizer
-      // shows its approved name (P18.9).
+      // shows its name unless JaxSide closed it (P18.9, D237).
       name:
         host === 'business' ? r.host_place_name : host === 'organizer' ? r.organizer_name : null,
       placeId: host === 'business' ? r.host_place_id : null,

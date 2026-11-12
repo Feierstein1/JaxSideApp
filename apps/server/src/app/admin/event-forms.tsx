@@ -659,11 +659,12 @@ export function EventImages({ id, images }: { id: string; images: { id: string; 
   );
 }
 
-/** D230: approve an event organizer, turn one down, or take back an approval. */
+/** D237: tick an organizer as checked, close it (with a note it sees), or reopen it. */
 export function OrganizerDecision({ accountId, status }: { accountId: string; status: string }) {
   const [note, setNote] = useState('');
   const { busy, error, done, run } = useSubmit();
-  const decide = (action: 'approve' | 'reject' | 'revoke') =>
+  const closed = status === 'REJECTED' || status === 'REVOKED';
+  const decide = (action: 'approve' | 'reject') =>
     run(async () => {
       if (action !== 'approve' && note.trim().length < 3) {
         throw new Error('Write a short note first (the organizer sees it).');
@@ -676,30 +677,31 @@ export function OrganizerDecision({ accountId, status }: { accountId: string; st
     });
   return (
     <div style={{ minWidth: 220 }}>
-      <input
-        style={{ ...ui.input, margin: '0 0 6px' }}
-        value={note}
-        maxLength={500}
-        placeholder={status === 'VERIFIED' ? 'Note (to take back)' : 'Note (to reject)'}
-        aria-label="Note"
-        onChange={(e) => setNote(e.target.value)}
-      />
+      {closed ? null : (
+        <input
+          style={{ ...ui.input, margin: '0 0 6px' }}
+          value={note}
+          maxLength={500}
+          placeholder="Note (to close it)"
+          aria-label="Note"
+          onChange={(e) => setNote(e.target.value)}
+        />
+      )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {status !== 'VERIFIED' ? (
-          <button style={ui.button} disabled={busy} onClick={() => decide('approve')}>
-            Approve
-          </button>
-        ) : null}
         {status === 'PENDING' ? (
-          <button style={ui.buttonSecondary} disabled={busy} onClick={() => decide('reject')}>
-            Reject
+          <button style={ui.button} disabled={busy} onClick={() => decide('approve')}>
+            ✓ Checked
           </button>
         ) : null}
-        {status === 'VERIFIED' ? (
-          <button style={ui.buttonDanger} disabled={busy} onClick={() => decide('revoke')}>
-            Take back
+        {closed ? (
+          <button style={ui.button} disabled={busy} onClick={() => decide('approve')}>
+            Reopen
           </button>
-        ) : null}
+        ) : (
+          <button style={ui.buttonDanger} disabled={busy} onClick={() => decide('reject')}>
+            Close
+          </button>
+        )}
       </div>
       <Feedback error={error} done={done} />
     </div>

@@ -196,11 +196,14 @@ export type AdminEventDecision = z.infer<typeof adminEventDecisionSchema>;
 /** Copy an event: as it is (to edit), or with every date a year later. */
 export const adminEventCopySchema = z.strictObject({ years: z.int().min(0).max(1).default(0) });
 
-/** D230: approve an event organizer, turn one down, or take back an approval. */
+/**
+ * D230 / D237: organizers don't wait for JaxSide. `approve` is a check mark ("we checked
+ * them"; it also reopens a closed one); `reject` closes an organizer, new or checked, with a
+ * note the website shows (no new events, no sending).
+ */
 export const adminOrganizerDecisionSchema = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('approve') }),
   z.strictObject({ action: z.literal('reject'), note: z.string().trim().min(3).max(500) }),
-  z.strictObject({ action: z.literal('revoke'), note: z.string().trim().min(3).max(500) }),
 ]);
 
 /** Find a pin for an address (US Census geocoder, D224). */
