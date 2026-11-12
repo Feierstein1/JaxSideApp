@@ -16,7 +16,7 @@ import { EventCard } from '@/events/EventCard';
 import { EventFilterBar, useEventFilters } from '@/events/EventFilters';
 import { Text } from '@/text';
 import { SPACE, TYPE } from '@/tokens';
-import { Button, EmptyState, ErrorState, FloatingButton, Segmented } from '@/ui';
+import { Button, EmptyState, ErrorState, Segmented } from '@/ui';
 
 type View_ = 'list' | 'calendar';
 
@@ -24,7 +24,8 @@ type View_ = 'list' | 'calendar';
  * D230: the Events tab. Search and filters on black, then a Calendar (a month of equal squares
  * with each day's count; tap a day for its events; shown first, D233) or a List (what's coming
  * up, soonest first, grouped by day, "Load more" instead of endless scrolling, D112). D233:
- * app users don't suggest events; "Post an event" explains how hosts do it on the website.
+ * app users don't suggest events; "Want to add an event?" (under the calendar and list) explains
+ * how hosts do it on the website.
  */
 export default function EventsScreen() {
   const [view, setView] = useState<View_>('calendar');
@@ -111,7 +112,7 @@ export default function EventsScreen() {
         />
       </View>
       <StepEdge />
-      <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 110, gap: SPACE.sm }}>
+      <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 48, gap: SPACE.sm }}>
         {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
         {view === 'calendar' ? (
           <>
@@ -128,7 +129,7 @@ export default function EventsScreen() {
             </Text>
           </>
         ) : (
-          <EventList items={items} error={!!error} onHost={host} />
+          <EventList items={items} error={!!error} />
         )}
         {view === 'list' && cursor ? (
           <Button
@@ -139,32 +140,25 @@ export default function EventsScreen() {
             onPress={() => void loadMore()}
           />
         ) : null}
+        {/* D233: how hosts add events (on JaxSide for Business), under the calendar or list. */}
+        <View style={{ alignItems: 'center', marginTop: SPACE.md }}>
+          <Button
+            variant="link"
+            icon="add-circle-outline"
+            title="Want to add an event?"
+            onPress={host}
+          />
+        </View>
       </ScrollView>
-      <FloatingButton title="Post" label="Post an event" icon="add" onPress={host} />
     </View>
   );
 }
 
 /** Upcoming events with a heading for each day. */
-function EventList({
-  items,
-  error,
-  onHost,
-}: {
-  items: EventCardView[] | null;
-  error: boolean;
-  onHost: () => void;
-}) {
+function EventList({ items, error }: { items: EventCardView[] | null; error: boolean }) {
   if (!items) return error ? null : <ActivityIndicator color={DARK.accent} />;
   if (!items.length) {
-    return (
-      <EmptyState
-        icon="calendar-outline"
-        title="No events found"
-        body="Try other filters. Hosting one? Businesses and organizers post events on JaxSide for Business."
-        action={{ label: 'Post an event', onPress: onHost, icon: 'add' }}
-      />
-    );
+    return <EmptyState icon="calendar-outline" title="No events found" body="Try other filters." />;
   }
   return (
     <>
