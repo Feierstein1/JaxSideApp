@@ -1089,7 +1089,6 @@ const ROWS: Row[] = [
     location: true,
     body: (at) => ({ reading: r(at), body: 'hello' }),
   },
-
 ];
 
 let owner: string; // created the fixtures
