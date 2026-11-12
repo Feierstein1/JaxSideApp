@@ -27,8 +27,8 @@ import {
 
 /*
  * D230: the admin portal's Events pages. The owner seeds the calendar here before launch
- * (admin events are approved at once), and reviews everything else: app users' suggestions
- * and the website's business and organizer events. Every action is audited by the route.
+ * (admin events are approved at once), and reviews everything else: the website's business and
+ * organizer events (and any app suggestions left from before D233). Every action is audited by the route.
  */
 
 export const ADMIN_EVENT_TABS = {

@@ -299,11 +299,8 @@ export const CONFIG_DEFAULTS = {
   'events.pastVisibleDays': 30,
   /** The follower count shows from this many followers. */
   'events.followerCountMin': 10,
-  /** Accounts must be this many days old to suggest an event. */
-  'events.suggestMinAccountDays': 3,
   'rateLimit.eventList.perMinute': 60,
   'rateLimit.eventFollow.perMinute': 30,
-  'rateLimit.eventSuggest.perDay': 3,
   /** Reading chats and the unread count (a chat checks every 3 s while open). */
   'rateLimit.messageRead.perMinute': 120,
   /** Accounts younger than this can only reply, not start chats. */

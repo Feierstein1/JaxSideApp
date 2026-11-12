@@ -7,8 +7,6 @@ import type {
   EventFilters,
   EventMonth,
   EventPage,
-  MyEventSuggestion,
-  SuggestEventRequest,
 } from '@jax/shared';
 import { api } from '@/api';
 import { getFreshReading } from '@/location/device';
@@ -63,17 +61,6 @@ export const setEventFollow = (id: string, follow: boolean) =>
     : api.delete<{ following: boolean; followerCount: number | null }>(
         `/api/v1/events/${id}/follow`,
       );
-
-export async function suggestEvent(input: Omit<SuggestEventRequest, 'reading'>) {
-  const reading = await getFreshReading({ fresh: true });
-  return api.post<{ id: string; message: string }>('/api/v1/events/suggestions', {
-    reading,
-    ...input,
-  });
-}
-
-export const mySuggestions = async () =>
-  (await api.get<{ suggestions: MyEventSuggestion[] }>('/api/v1/events/suggestions')).suggestions;
 
 /** The filters' starting point, and how many are on (for the Filters button's badge). */
 export const NO_FILTERS: Filters = { kind: 'all' };

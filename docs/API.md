@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-203 endpoints.
+202 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -72,10 +72,9 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | PUT | `/api/v1/events/:id/follow` | user |  | D230: follow an event (Followed events; bell reminders before it starts). Accounts only. |
 | DELETE | `/api/v1/events/:id/follow` | user |  | D230: stop following an event. |
 | POST | `/api/v1/events/day` | user or guest | yes | D230: one day's events, grouped by neighborhood (the nearest first), then by start time. |
+| GET | `/api/v1/events/host-info` | user or guest |  | D233: the app's "Post an event" screen. App users don't suggest events: hosts add them on the JaxSide for Business website (D230 / D232). This only says where its sign-up page is (null until the website is public). |
 | POST | `/api/v1/events/list` | user or guest | yes | D230: the list view: events that haven't ended, soonest first, 20 at a time. |
 | POST | `/api/v1/events/month` | user or guest | yes | D230: the calendar: how many events on each day of a month, with the tab's filters. |
-| GET | `/api/v1/events/suggestions` | user (confirmed email) | yes | D230: your event suggestions and what happened to them. |
-| POST | `/api/v1/events/suggestions` | user (confirmed email) | yes | D230: suggest a missing event. It waits for JaxSide to check it and set its pin. Confirmed accounts inside Duval, 3 a day, screened like posts. |
 
 ## friends
 

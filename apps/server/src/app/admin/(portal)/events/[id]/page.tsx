@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 const STATUS_NOTE: Record<string, string> = {
   SUGGESTED:
-    'An app user suggested this. Set its place or pin and check the details (Edit), then approve it.',
+    'An app user suggested this before suggestions were turned off (D233). Set its place or pin and check the details (Edit), then approve it, or deny it.',
   IN_REVIEW: 'Waiting for review. It shows in the app once you approve it.',
   DRAFT: 'The business is still writing this on the website. Nobody sees it yet.',
   APPROVED: 'On the calendar.',

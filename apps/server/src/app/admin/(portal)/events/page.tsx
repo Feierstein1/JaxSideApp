@@ -15,8 +15,8 @@ const TAB_LABELS: Record<AdminEventTab, string> = {
 
 /**
  * D230: the event calendar. Add events (yours are approved at once, so the calendar can be
- * filled before launch); review app users' suggestions and the website's business and
- * organizer events under Waiting.
+ * filled before launch); review the website's business and organizer events under Waiting
+ * (app users don't suggest events, D233).
  */
 export default async function EventsPage({
   searchParams,
@@ -34,8 +34,8 @@ export default async function EventsPage({
     <>
       <h1>Events</h1>
       <p style={ui.muted}>
-        Everything on the app’s event calendar. Events you add here show at once; app users’
-        suggestions and the business website’s events wait here for review.
+        Everything on the app’s event calendar. Events you add here show at once; events from
+        businesses and organizers on the business website wait here for review.
       </p>
       <p>
         <a href="/admin/events/new" style={{ ...ui.button, textDecoration: 'none' }}>

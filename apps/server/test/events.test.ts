@@ -10,10 +10,7 @@ import { DELETE as unfollowDELETE, PUT as followPUT } from '@/app/api/v1/events/
 import { POST as detailPOST } from '@/app/api/v1/events/[id]/route';
 import { POST as listPOST } from '@/app/api/v1/events/list/route';
 import { POST as monthPOST } from '@/app/api/v1/events/month/route';
-import {
-  GET as mySuggestionsGET,
-  POST as suggestPOST,
-} from '@/app/api/v1/events/suggestions/route';
+import { GET as hostInfoGET } from '@/app/api/v1/events/host-info/route';
 import { POST as guestsPOST } from '@/app/api/v1/guests/route';
 import { POST as installPOST } from '@/app/api/v1/installations/route';
 import { GET as badgesGET } from '@/app/api/v1/badges/route';
@@ -352,40 +349,16 @@ describe('following and reminders (P18.4)', () => {
   });
 });
 
-describe('suggestions (P18.5)', () => {
-  const suggestion = {
-    title: 'Avondale art walk',
-    description: 'Galleries open late on St. Johns Ave.',
-    category: 'arts',
-    setting: 'mixed',
-    free: true,
-    where: 'Shoppes of Avondale',
-    sessions: [{ date: inDays(6), start: '17:00', end: '21:00' }],
-  };
-  const suggest = (token: string, at = DOWNTOWN) =>
-    call(suggestPOST as H, 'POST', { token, body: { reading: reading(at), ...suggestion } });
-
-  it('waits for review without a pin; approving needs one', async () => {
-    const r = await suggest(me.token);
-    expect(r.status).toBe(201);
-    expect(titles(await list(other.token))).toEqual([]);
-    expect((await decide(r.body.id, { action: 'approve' })).body.error.code).toBe('NEEDS_PIN');
-    await call(adminEditPATCH as H, 'PATCH', {
-      headers: admin,
-      id: r.body.id,
-      body: base({ ...suggestion, where: undefined, address: suggestion.where }),
-    });
-    expect((await decide(r.body.id, { action: 'approve' })).status).toBe(200);
-    expect(titles(await list(other.token))).toEqual(['Avondale art walk']);
-    const mine = await call(mySuggestionsGET as H, 'GET', { token: me.token });
-    expect(mine.body.suggestions[0].status).toBe('approved');
-  });
-
-  it('🔒 new accounts and people outside Duval can’t suggest', async () => {
-    const fresh = await person('fresh_one', { createdAt: new Date() });
-    expect((await suggest(fresh.token)).body.error.code).toBe('ACCOUNT_TOO_NEW');
-    expect((await suggest(me.token, ST_AUGUSTINE)).status).toBe(403);
-    expect(await db.event.count()).toBe(0);
+describe('posting events (D233)', () => {
+  // 🔒 App users can't add events: the old suggestion route is gone, and the app only points
+  // to JaxSide for Business.
+  it('there is no way to suggest an event from the app; the screen says where to go', async () => {
+    const r = await call(hostInfoGET as H, 'GET', { token: me.token });
+    expect(r.status).toBe(200);
+    expect(Object.keys(r.body)).toEqual(['signupUrl']);
+    const { existsSync } = await import('node:fs');
+    const gone = new URL('../src/app/api/v1/events/suggestions/route.ts', import.meta.url);
+    expect(existsSync(gone)).toBe(false);
   });
 });
 

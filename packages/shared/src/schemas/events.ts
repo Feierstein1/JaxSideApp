@@ -120,33 +120,6 @@ export const eventInputSchema = z
 export type EventInput = z.input<typeof eventInputSchema>;
 export type EventInputParsed = z.infer<typeof eventInputSchema>;
 
-/**
- * D230: an app user suggests an event. No pin: they type where it is, and JaxSide sets the
- * pin when approving it.
- */
-export const suggestEventSchema = z.strictObject({
-  /** Suggesting needs you to be in Duval (like suggesting a place). */
-  reading: locationReadingSchema,
-  title: text(3, EVENT_TITLE_MAX),
-  description: text(1, 1000),
-  category: z.enum(categoryKeys),
-  setting: z.enum(settingKeys),
-  free: z.boolean(),
-  /** Where it is: a place name, an address or both. */
-  where: text(3, EVENT_ADDRESS_MAX),
-  sessions: z.array(eventSessionSchema).min(1).max(10),
-});
-export type SuggestEventRequest = z.input<typeof suggestEventSchema>;
-
-/** Your suggestions and what happened to them. */
-export interface MyEventSuggestion {
-  id: string;
-  title: string;
-  status: 'waiting' | 'approved' | 'denied';
-  reason: string | null;
-  createdAt: string;
-}
-
 /** The Events tab's filters (search, where, who, setting, cost, followed). */
 export const eventFiltersShape = {
   q: z.string().trim().max(60).optional(),

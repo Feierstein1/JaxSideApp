@@ -9,7 +9,6 @@ import {
   type EventCard as EventCardView,
 } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
-import { useGuest } from '@/auth/guest';
 import { StepEdge } from '@/deco';
 import { fetchList, fetchMonth } from '@/events/api';
 import { Calendar } from '@/events/Calendar';
@@ -22,14 +21,14 @@ import { Button, EmptyState, ErrorState, FloatingButton, Segmented } from '@/ui'
 type View_ = 'list' | 'calendar';
 
 /**
- * D230: the Events tab. Search and filters on black, then a List (what's coming up, soonest
- * first, grouped by day, "Load more" instead of endless scrolling, D112) or a Calendar
- * (a month of equal squares with each day's count; tap a day for its events).
+ * D230: the Events tab. Search and filters on black, then a Calendar (a month of equal squares
+ * with each day's count; tap a day for its events; shown first, D233) or a List (what's coming
+ * up, soonest first, grouped by day, "Load more" instead of endless scrolling, D112). D233:
+ * app users don't suggest events; "Post an event" explains how hosts do it on the website.
  */
 export default function EventsScreen() {
-  const [view, setView] = useState<View_>('list');
+  const [view, setView] = useState<View_>('calendar');
   const [filters] = useEventFilters();
-  const { isGuest, promptAccount } = useGuest();
 
   // List view
   const [items, setItems] = useState<EventCardView[] | null>(null);
@@ -87,8 +86,7 @@ export default function EventsScreen() {
     }
   }
 
-  const suggest = () =>
-    isGuest ? promptAccount('suggest events') : router.push('/events/suggest');
+  const host = () => router.push('/events/host');
 
   return (
     <View style={{ flex: 1, backgroundColor: DARK.page }}>
@@ -105,8 +103,8 @@ export default function EventsScreen() {
         <Segmented
           stretch
           options={[
-            { key: 'list', label: 'List', icon: 'list-outline' },
             { key: 'calendar', label: 'Calendar', icon: 'calendar-outline' },
+            { key: 'list', label: 'List', icon: 'list-outline' },
           ]}
           value={view}
           onChange={(v) => setView(v as View_)}
@@ -130,7 +128,7 @@ export default function EventsScreen() {
             </Text>
           </>
         ) : (
-          <EventList items={items} error={!!error} onSuggest={suggest} />
+          <EventList items={items} error={!!error} onHost={host} />
         )}
         {view === 'list' && cursor ? (
           <Button
@@ -141,15 +139,8 @@ export default function EventsScreen() {
             onPress={() => void loadMore()}
           />
         ) : null}
-        {!isGuest ? (
-          <Button
-            variant="link"
-            title="My suggestions"
-            onPress={() => router.push('/events/suggestions')}
-          />
-        ) : null}
       </ScrollView>
-      <FloatingButton title="Suggest" label="Suggest an event" icon="add" onPress={suggest} />
+      <FloatingButton title="Post" label="Post an event" icon="add" onPress={host} />
     </View>
   );
 }
@@ -158,11 +149,11 @@ export default function EventsScreen() {
 function EventList({
   items,
   error,
-  onSuggest,
+  onHost,
 }: {
   items: EventCardView[] | null;
   error: boolean;
-  onSuggest: () => void;
+  onHost: () => void;
 }) {
   if (!items) return error ? null : <ActivityIndicator color={DARK.accent} />;
   if (!items.length) {
@@ -170,8 +161,8 @@ function EventList({
       <EmptyState
         icon="calendar-outline"
         title="No events found"
-        body="Try other filters, or tell us about an event that’s missing."
-        action={{ label: 'Suggest an event', onPress: onSuggest, icon: 'add' }}
+        body="Try other filters. Hosting one? Businesses and organizers post events on JaxSide for Business."
+        action={{ label: 'Post an event', onPress: onHost, icon: 'add' }}
       />
     );
   }

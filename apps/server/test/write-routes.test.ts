@@ -99,7 +99,6 @@ import * as eventFollow from '@/app/api/v1/events/[id]/follow/route';
 import * as eventDay from '@/app/api/v1/events/day/route';
 import * as eventList from '@/app/api/v1/events/list/route';
 import * as eventMonth from '@/app/api/v1/events/month/route';
-import * as eventSuggest from '@/app/api/v1/events/suggestions/route';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
@@ -1090,24 +1089,7 @@ const ROWS: Row[] = [
     location: true,
     body: (at) => ({ reading: r(at), body: 'hello' }),
   },
-  {
-    route: 'events/suggestions',
-    method: 'POST',
-    handler: h(eventSuggest, 'POST'),
-    auth: true,
-    id: null,
-    location: true,
-    body: (at) => ({
-      reading: r(at),
-      title: 'Riverside market',
-      description: 'Local makers and food.',
-      category: 'food',
-      setting: 'outdoor',
-      free: true,
-      where: 'Riverside Arts Market',
-      sessions: [{ date: '2027-06-05', start: '10:00', end: '15:00' }],
-    }),
-  },
+
 ];
 
 let owner: string; // created the fixtures

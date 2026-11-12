@@ -164,7 +164,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       {
         heading: 'Events and event chat',
         // D230
-        body: '• Suggest only real public events in Duval County, with the right date, time and place. No private parties, no events you made up, and no ads dressed up as events.\n• Event chat is for people at the event: what’s on, where things are, lost and found. No meetups with strangers, no selling tickets, and no rumors.\n• Never post an emergency in chat. If someone is hurt or in danger, call 911 first.',
+        body: '• Events are added by businesses and event organizers on JaxSide for Business, and JaxSide checks each one before it goes on the calendar. Report an event that isn’t real, isn’t public or is an ad dressed up as an event.\n• Event chat is for people at the event: what’s on, where things are, lost and found. No meetups with strangers, no selling tickets, and no rumors.\n• Never post an emergency in chat. If someone is hurt or in danger, call 911 first.',
       },
       {
         heading: 'What happens',
