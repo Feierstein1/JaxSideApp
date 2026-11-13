@@ -1,7 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import {
   addDays,
+  EVENT_FLYERS_MAX,
   EVENT_IMAGES_MAX,
+  type EventImageKind,
   sessionInstants,
   type EventHostKind,
   type EventInputParsed,
@@ -151,14 +153,22 @@ export function nextYear(date: string) {
 
 // ───────────────────────────── Pictures ─────────────────────────────
 
-/** Adds a cleaned picture (no metadata, at most 1600 px) to an event; at most 6 each. */
-export async function addEventImage(eventId: string, body: Buffer) {
-  const count = await db.eventImage.count({ where: { eventId } });
-  if (count >= EVENT_IMAGES_MAX) {
+/**
+ * Adds a cleaned picture (no metadata, at most 1600 px) to an event: a photo (at most 6) or,
+ * D242, a flyer (at most 2, shown whole). The database enforces the same limits.
+ */
+export async function addEventImage(eventId: string, body: Buffer, kind: EventImageKind = 'photo') {
+  const max = kind === 'flyer' ? EVENT_FLYERS_MAX : EVENT_IMAGES_MAX;
+  const count = await db.eventImage.count({
+    where: { eventId, kind: kind === 'flyer' ? 'FLYER' : 'PHOTO' },
+  });
+  if (count >= max) {
     throw new ApiError(
       409,
       'TOO_MANY_IMAGES',
-      `An event can have up to ${EVENT_IMAGES_MAX} pictures.`,
+      kind === 'flyer'
+        ? `An event can have up to ${EVENT_FLYERS_MAX} flyers.`
+        : `An event can have up to ${EVENT_IMAGES_MAX} photos.`,
     );
   }
   const clean = await processImage(body);
@@ -173,6 +183,7 @@ export async function addEventImage(eventId: string, body: Buffer) {
   return db.eventImage.create({
     data: {
       eventId,
+      kind: kind === 'flyer' ? 'FLYER' : 'PHOTO',
       storageKey,
       mimeType: clean.mimeType,
       width: clean.width,
@@ -206,6 +217,7 @@ export async function copyEventImages(fromId: string, toId: string) {
     await db.eventImage.create({
       data: {
         eventId: toId,
+        kind: img.kind,
         storageKey,
         mimeType: img.mimeType,
         width: img.width,

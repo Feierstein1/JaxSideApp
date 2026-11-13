@@ -118,7 +118,7 @@ function selectCards(viewerId: string, at: GeoPoint, where: Prisma.Sql, tail: Pr
            e."adultsOnly" AS adults_only, e."familyFriendly" AS family_friendly,
            e."hostKind"::text AS host_kind,
            (SELECT i.id FROM "EventImage" i WHERE i."eventId" = e.id
-             ORDER BY i.position, i.id LIMIT 1) AS image_id,
+             ORDER BY (i.kind = 'FLYER'), i.position, i.id LIMIT 1) AS image_id,
            EXISTS (SELECT 1 FROM "EventFollow" f
                    WHERE f."eventId" = e.id AND f."userId" = ${viewerId}::uuid) AS following,
            e.status::text AS status,
@@ -324,7 +324,8 @@ export async function eventDetail(
     }),
     db.eventImage.findMany({
       where: { eventId: id },
-      orderBy: [{ position: 'asc' }, { id: 'asc' }],
+      // D242: flyers first (the app shows them whole), then photos.
+      orderBy: [{ kind: 'asc' }, { position: 'asc' }, { id: 'asc' }],
     }),
     db.eventFollow.count({ where: { eventId: id } }),
     getConfig('events.followerCountMin'),
@@ -345,6 +346,7 @@ export async function eventDetail(
     })),
     images: images.map((i) => ({
       id: i.id,
+      kind: i.kind === 'FLYER' ? ('flyer' as const) : ('photo' as const),
       url: signedEventImageUrl(i.id, now),
       width: i.width,
       height: i.height,

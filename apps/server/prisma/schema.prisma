@@ -101,7 +101,7 @@ enum ReportReason {
   SELF_PROMOTION // D227: someone advertising their own business in a discussion
   EVENT_WRONG_DETAILS // D230: wrong date, time or place, or cancelled
   EVENT_FAKE // D230: not a real event
-  EVENT_NOT_AT_MY_PLACE // D234: the venue's owner says it isn't held there (website only)
+  EVENT_NOT_AT_MY_PLACE // D236: the venue's owner says it isn't held there (website only)
 }
 
 enum ReportStatus {
@@ -506,9 +506,14 @@ model BusinessPlace {
   freeTierSubscription Subscription?
 
   /// D230: events held at this place.
-  events       Event[]
-  /// D234: events this place's business hosts (wherever they're held).
-  hostedEvents Event[] @relation("EventHostPlace")
+  events         Event[]
+  /// D236: events this place's business hosts (wherever they're held).
+  hostedEvents   Event[]              @relation("EventHostPlace")
+  /// D242: the Owner's requested changes to its details.
+  changeRequests PlaceChangeRequest[]
+  /// D242: set when JaxSide approved an Owner's change; map imports then keep the name,
+  /// category, address and pin as they are.
+  detailsSetAt   DateTime?            @db.Timestamptz(3)
 
   @@unique([sourceName, sourceId])
   @@index([location], type: Gist)
@@ -1752,38 +1757,41 @@ model PollSuggestion {
 /// Owners sign in with an email; employees the owner creates sign in with a username
 /// (CHECK: at least one of the two).
 model BusinessAccount {
-  id                 String    @id @default(uuid(7)) @db.Uuid
+  id                 String               @id @default(uuid(7)) @db.Uuid
   /// Lower-cased. Plain text by the owner's choice (Q32); never in a public response.
-  email              String?   @unique @db.VarChar(254)
+  email              String?              @unique @db.VarChar(254)
   /// Employees only; lower-cased.
-  username           String?   @unique @db.VarChar(40)
+  username           String?              @unique @db.VarChar(40)
   passwordHash       String
-  mustChangePassword Boolean   @default(false)
-  passwordChangedAt  DateTime? @db.Timestamptz(3)
-  failedLogins       Int       @default(0)
-  lockedUntil        DateTime? @db.Timestamptz(3)
+  mustChangePassword Boolean              @default(false)
+  passwordChangedAt  DateTime?            @db.Timestamptz(3)
+  failedLogins       Int                  @default(0)
+  lockedUntil        DateTime?            @db.Timestamptz(3)
   /// Optional two-factor (B1.2): the authenticator secret, encrypted; on once confirmed.
   totpSecretEnc      String?
-  totpEnabledAt      DateTime? @db.Timestamptz(3)
+  totpEnabledAt      DateTime?            @db.Timestamptz(3)
   totpLastStep       BigInt?
   /// The Owner account that created this employee login; null for owners.
-  createdById        String?   @db.Uuid
-  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  createdById        String?              @db.Uuid
+  createdAt          DateTime             @default(now()) @db.Timestamptz(3)
   /// A JaxSide admin suspended the account (B1.7); sign-in refused until lifted.
-  suspendedAt        DateTime? @db.Timestamptz(3)
+  suspendedAt        DateTime?            @db.Timestamptz(3)
   /// Revoked by its Owner or an admin; never signs in again.
-  revokedAt          DateTime? @db.Timestamptz(3)
+  revokedAt          DateTime?            @db.Timestamptz(3)
   /// D185: the Google account ID ("sub") for Sign in with Google (owners only). A login that
   /// only ever uses Google gets a random, unusable passwordHash.
-  googleSub          String?   @unique @db.VarChar(255)
+  googleSub          String?              @unique @db.VarChar(255)
   /// B1.8: email a summary of new activity (at most once a day; needs an email).
-  emailNotices       Boolean   @default(false)
+  emailNotices       Boolean              @default(false)
   /// D191: a strike's suspension; sign-in refused until then (an admin's open-ended
   /// suspension stays in suspendedAt).
-  suspendedUntil     DateTime? @db.Timestamptz(3)
+  suspendedUntil     DateTime?            @db.Timestamptz(3)
   /// D189: the login's profile picture (an uploaded image, shown next to what it writes).
-  avatarMediaId      String?   @unique @db.Uuid
-  noticesEmailedAt   DateTime? @db.Timestamptz(3)
+  avatarMediaId      String?              @unique @db.Uuid
+  noticesEmailedAt   DateTime?            @db.Timestamptz(3)
+  /// D242 (D238): what an owner account is, chosen at sign-up: a business (with a place) or an
+  /// event organizer. Null for team logins, and for owner accounts not set yet.
+  kind               BusinessAccountKind?
 
   createdBy            BusinessAccount?              @relation("BusinessEmployees", fields: [createdById], references: [id], onDelete: SetNull)
   employees            BusinessAccount[]             @relation("BusinessEmployees")
@@ -1814,19 +1822,22 @@ model BusinessAccount {
   notices              BusinessNotice[]
 
   /// D230: events this business or organizer put on, and its updates in their chats.
-  events          Event[]
-  eventChatLines  EventChatMessage[]
-  eventOrganizers EventOrganizer[]
-  /// D234: the team this owner account runs, and the team this login belongs to.
-  teamMembers     BusinessTeamMember[] @relation("TeamOwner")
-  teamMembership  BusinessTeamMember[] @relation("TeamMember")
-  teamInvitesSent BusinessTeamMember[] @relation("TeamInviter")
+  events                Event[]
+  eventChatLines        EventChatMessage[]
+  eventOrganizers       EventOrganizer[]
+  /// D236: the team this owner account runs, and the team this login belongs to.
+  teamMembers           BusinessTeamMember[]   @relation("TeamOwner")
+  teamMembership        BusinessTeamMember[]   @relation("TeamMember")
+  teamInvitesSent       BusinessTeamMember[]   @relation("TeamInviter")
+  /// D242: changes to a place's details, or to the organizer name, waiting for JaxSide.
+  placeChangeRequests   PlaceChangeRequest[]
+  organizerNameRequests OrganizerNameRequest[]
 
   @@index([createdById])
 }
 
 /**
- * D234 (D232): a Manager or Staff member of an owner account, over everything the account does
+ * D236 (D232): a Manager or Staff member of an owner account, over everything the account does
  * (places, events, ads), invited by email. `memberAccountId` is their own login, set when they
  * accept (`acceptedAt`); until then only the invite (a hashed token) exists. `allPlaces` false
  * limits them to the places they have `BusinessPlaceAccess` rows for (businesses with several
@@ -1858,6 +1869,12 @@ model BusinessTeamMember {
   @@unique([memberAccountId], map: "BusinessTeamMember_one_team", where: raw("\"revokedAt\" IS NULL"))
   @@index([memberAccountId])
   @@index([invitedById])
+}
+
+/// D242 (D238): one kind per owner account.
+enum BusinessAccountKind {
+  BUSINESS
+  ORGANIZER
 }
 
 /// A cookie session on the business website (same shape as admin sessions, D3).
@@ -2251,7 +2268,12 @@ enum BusinessNoticeKind {
   ORGANIZER_REJECTED // D230: turned down (the note says why)
   EVENT_APPROVED // D230: an event the business sent is on the calendar
   EVENT_DENIED // D230: an event the business sent was turned down (the note says why)
-  EVENT_AT_YOUR_PLACE // D234: an organizer's approved event names your place; confirm it
+  EVENT_AT_YOUR_PLACE // D236: an organizer's approved event names your place; confirm it
+  EVENT_DUPLICATE // D242: the event sent is already on the calendar
+  PLACE_CHANGE_APPROVED // D242: the place's new details are live
+  PLACE_CHANGE_REJECTED // D242: the change was turned down (the note says why)
+  ORGANIZER_NAME_APPROVED // D242
+  ORGANIZER_NAME_REJECTED // D242
 }
 
 /**
@@ -2550,6 +2572,9 @@ enum EventStatus {
   CANCELLED
   /// Taken down by moderation.
   REMOVED
+  /// D242: "Already on the calendar": a copy of an event JaxSide already has (`duplicateOfId`).
+  /// Not a denial: no strike, and the sender is told it's already listed.
+  DUPLICATE
 }
 
 enum EventHostKind {
@@ -2577,16 +2602,16 @@ model Event {
   priceText         String?           @db.VarChar(60)
   adultsOnly        Boolean           @default(false)
   familyFriendly    Boolean           @default(false)
-  /// Where it is held, when that's a place on JaxSide (pin and address come from it). D234: it
+  /// Where it is held, when that's a place on JaxSide (pin and address come from it). D236: it
   /// may be another business's place (the venue); `hostPlaceId` is then the host's own place.
   placeId           String?           @db.Uuid
-  /// D234: a business event's host place (one of its own); shown as the host. Null otherwise.
+  /// D236: a business event's host place (one of its own); shown as the host. Null otherwise.
   hostPlaceId       String?           @db.Uuid
-  /// D234: whether the venue place's owner confirmed it (NONE: nobody to ask: no venue place,
+  /// D236: whether the venue place's owner confirmed it (NONE: nobody to ask: no venue place,
   /// it's the host's own place, or the place has no verified owner). The event doesn't wait.
   venueStatus       EventVenueStatus  @default(NONE)
   venueAnsweredAt   DateTime?         @db.Timestamptz(3)
-  /// D234 (D216 rules): a ticket or info link, paid plans only (`ads.links`); both or neither.
+  /// D236 (D216 rules): a ticket or info link, paid plans only (`ads.links`); both or neither.
   linkUrl           String?           @db.VarChar(500)
   linkLabel         String?           @db.VarChar(25)
   venueName         String?           @db.VarChar(120)
@@ -2617,6 +2642,10 @@ model Event {
   updatedAt         DateTime          @updatedAt @db.Timestamptz(3)
   place             BusinessPlace?    @relation(fields: [placeId], references: [id], onDelete: SetNull)
   hostPlace         BusinessPlace?    @relation("EventHostPlace", fields: [hostPlaceId], references: [id], onDelete: SetNull)
+  /// D242: the event already on the calendar that this one duplicates (DUPLICATE only).
+  duplicateOfId     String?           @db.Uuid
+  duplicateOf       Event?            @relation("EventDuplicates", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates        Event[]           @relation("EventDuplicates")
   businessAccount   BusinessAccount?  @relation(fields: [businessAccountId], references: [id], onDelete: Cascade)
   createdBy         User?             @relation("EventCreator", fields: [createdById], references: [id], onDelete: SetNull)
   sessions          EventSession[]
@@ -2632,11 +2661,12 @@ model Event {
   @@index([status, lastEndsAt])
   @@index([placeId])
   @@index([hostPlaceId])
+  @@index([duplicateOfId])
   @@index([businessAccountId])
   @@index([createdById])
 }
 
-/// D234: a venue place's owner was asked whether an organizer's event is really at its place.
+/// D236: a venue place's owner was asked whether an organizer's event is really at its place.
 enum EventVenueStatus {
   NONE // nothing to confirm
   ASKED // the owner was told (bell and email on the website); no answer yet
@@ -2644,7 +2674,7 @@ enum EventVenueStatus {
   DISPUTED // "Not at my place": a report for JaxSide; the app stops naming the place
 }
 
-/// D234: a tap on an event's link, once per person per event per day (like `AdTapMark`).
+/// D236: a tap on an event's link, once per person per event per day (like `AdTapMark`).
 model EventTapMark {
   eventId String   @db.Uuid
   viewer  String   @db.Char(43)
@@ -2672,17 +2702,24 @@ model EventSession {
 }
 
 /// D230: an event's picture, cleaned like photos (no metadata), in the private bucket.
+/// D242: a flyer (shown whole, up to 2) or a photo (cropped in the gallery, up to 6).
+enum EventImageKind {
+  FLYER
+  PHOTO
+}
+
 model EventImage {
-  id         String   @id @default(uuid(7)) @db.Uuid
-  eventId    String   @db.Uuid
-  storageKey String   @unique @db.VarChar(200)
-  mimeType   String   @db.VarChar(40)
+  id         String         @id @default(uuid(7)) @db.Uuid
+  eventId    String         @db.Uuid
+  kind       EventImageKind @default(PHOTO)
+  storageKey String         @unique @db.VarChar(200)
+  mimeType   String         @db.VarChar(40)
   width      Int
   height     Int
   bytes      Int
-  position   Int      @default(0) @db.SmallInt
-  createdAt  DateTime @default(now()) @db.Timestamptz(3)
-  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  position   Int            @default(0) @db.SmallInt
+  createdAt  DateTime       @default(now()) @db.Timestamptz(3)
+  event      Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([eventId, position])
 }
@@ -2780,9 +2817,67 @@ model EventDailyStats {
   chatLines Int      @default(0)
   /// Followers when it was counted.
   followers Int      @default(0)
-  /// D234: people who tapped its link (once each a day).
+  /// D236: people who tapped its link (once each a day).
   taps      Int      @default(0)
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@id([eventId, day])
+}
+
+/// D242: where a requested change stands.
+enum ChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  /// The business took it back.
+  CANCELLED
+}
+
+/**
+ * D242 (D238 A): an Owner asks JaxSide to change its place's name, category, address and pin
+ * (each optional, at least one), with a note for the reviewer. Approving changes the place for
+ * everyone. One open request per place.
+ */
+model PlaceChangeRequest {
+  id               String              @id @default(uuid(7)) @db.Uuid
+  placeId          String              @db.Uuid
+  accountId        String              @db.Uuid
+  name             String?             @db.VarChar(200)
+  category         String?             @db.VarChar(60)
+  address          String?             @db.VarChar(300)
+  latitude         Float?
+  longitude        Float?
+  /// For the reviewer (why, proof).
+  note             String?             @db.VarChar(500)
+  status           ChangeRequestStatus @default(PENDING)
+  /// Shown to the business when turned down.
+  decisionNote     String?             @db.VarChar(500)
+  decidedByAdminId String?             @db.Uuid
+  decidedAt        DateTime?           @db.Timestamptz(3)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  place            BusinessPlace       @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  account          BusinessAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([placeId], map: "PlaceChangeRequest_one_open", where: raw("status = 'PENDING'"))
+  @@index([status, createdAt])
+  @@index([accountId])
+}
+
+/// D242 (D238 A): an organizer asks JaxSide to change its organizer name. One open at a time.
+model OrganizerNameRequest {
+  id               String              @id @default(uuid(7)) @db.Uuid
+  accountId        String              @db.Uuid
+  /// The name when it was asked (the organizer's name may change later).
+  currentName      String              @db.VarChar(100)
+  name             String              @db.VarChar(100)
+  note             String?             @db.VarChar(500)
+  status           ChangeRequestStatus @default(PENDING)
+  decisionNote     String?             @db.VarChar(500)
+  decidedByAdminId String?             @db.Uuid
+  decidedAt        DateTime?           @db.Timestamptz(3)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  account          BusinessAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId], map: "OrganizerNameRequest_one_open", where: raw("status = 'PENDING'"))
+  @@index([status, createdAt])
 }

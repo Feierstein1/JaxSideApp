@@ -46,8 +46,12 @@ export const EVENT_ADDRESS_MAX = 300;
 export const EVENT_PRICE_MAX = 60;
 /** Sessions per event (a weekly event for a year is 52). */
 export const EVENT_SESSIONS_MAX = 60;
-/** Pictures per event. */
+/** Photos per event (D242: flyers count separately). */
 export const EVENT_IMAGES_MAX = 6;
+/** D242: flyers per event, shown whole (not cropped) above the photos. */
+export const EVENT_FLYERS_MAX = 2;
+export const EVENT_IMAGE_KINDS = ['flyer', 'photo'] as const;
+export type EventImageKind = (typeof EVENT_IMAGE_KINDS)[number];
 /** The event area for its chat: a circle around the pin. */
 export const EVENT_CHAT_RADIUS = { min: 50, default: 150, max: 1600 } as const;
 /** A session may last at most a day (longer events are several sessions). */
@@ -190,6 +194,11 @@ export const adminEventDecisionSchema = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('cancel'), reason: reasonText }),
   z.strictObject({ action: z.literal('remove'), reason: reasonText }),
   z.strictObject({ action: z.literal('restore') }),
+  /**
+   * D242: "Already on the calendar": the event sent copies one JaxSide already has. Not a
+   * denial (no strike); the sender is told it's already listed.
+   */
+  z.strictObject({ action: z.literal('duplicate'), duplicateOfId: z.uuid() }),
 ]);
 export type AdminEventDecision = z.infer<typeof adminEventDecisionSchema>;
 
@@ -300,6 +309,8 @@ export interface EventPage {
 
 export interface EventImageView {
   id: string;
+  /** D242: flyers first (shown whole), then photos. */
+  kind: EventImageKind;
   url: string;
   width: number;
   height: number;

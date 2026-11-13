@@ -6,7 +6,14 @@ import { requireAdminPage } from '../require-admin-page';
 export const dynamic = 'force-dynamic';
 
 const NAV: NavGroup[] = [
-  { title: 'Overview', links: [{ href: '/admin', label: 'Dashboard' }] },
+  {
+    title: 'Overview',
+    links: [
+      { href: '/admin', label: 'Dashboard' },
+      // D242: everything waiting for JaxSide, oldest first.
+      { href: '/admin/review', label: 'Review queue' },
+    ],
+  },
   {
     title: 'Moderation',
     links: [
@@ -27,6 +34,7 @@ const NAV: NavGroup[] = [
       { href: '/admin/businesses', label: 'Businesses' },
       { href: '/admin/ads', label: 'Ads' },
       { href: '/admin/organizers', label: 'Event organizers' },
+      { href: '/admin/changes', label: 'Change requests' },
     ],
   },
   {

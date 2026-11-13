@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 import type { EventCategory, EventSetting } from '@jax/shared';
-import { adminGetEvent } from '@/server/events/admin';
+import { adminGetEvent, likelyDuplicates } from '@/server/events/admin';
 import { ApiError } from '@/server/http';
 import { ui } from '../../../admin-ui';
 import { EventCopyButtons, EventDecision, EventForm, EventImages } from '../../../event-forms';
@@ -17,6 +17,7 @@ const STATUS_NOTE: Record<string, string> = {
   DRAFT: 'The business is still writing this on the website. Nobody sees it yet.',
   APPROVED: 'On the calendar.',
   DENIED: 'Denied. The business (or the suggester) can see why.',
+  DUPLICATE: 'Already on the calendar: a copy of another event. The sender was told; no strike.',
   CANCELLED: 'Cancelled: still listed, marked Cancelled, until its dates pass.',
   REMOVED: 'Removed by moderation. Nobody sees it.',
 };
@@ -93,6 +94,11 @@ export default async function EventPage({
           shows only while the host’s plan allows links.
         </p>
       ) : null}
+      {e.duplicateOf ? (
+        <p>
+          Copy of <a href={`/admin/events/${e.duplicateOf.id}`}>{e.duplicateOf.title}</a>.
+        </p>
+      ) : null}
       {e.decisionReason ? <p>Reason given: {e.decisionReason}</p> : null}
       {e.cancelReason ? <p>Cancelled because: {e.cancelReason}</p> : null}
       <EventCopyButtons id={e.id} />
@@ -121,7 +127,13 @@ export default async function EventPage({
         }}
       />
       <EventImages id={e.id} images={e.images} />
-      <EventDecision id={e.id} status={e.status} />
+      <EventDecision
+        id={e.id}
+        status={e.status}
+        candidates={
+          e.status === 'IN_REVIEW' || e.status === 'SUGGESTED' ? await likelyDuplicates(e.id) : []
+        }
+      />
     </>
   );
 }

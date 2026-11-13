@@ -61,6 +61,10 @@ export const COLORS = {
   // Functional colors outside the brand palette, kept for clarity and accessibility.
   error: '#B00020', // 7.3:1 on white
   errorSoft: '#FDECEE', // D78: light red tint behind form errors; error and black text pass
+  /** D242: green, e.g. the "Business Account" label (white or black text on it per test). */
+  success: '#1B6E3A', // 6.6:1 on white; white text on it
+  onSuccess: BRAND.white,
+  successSoft: '#E3F4E8', // light green tint; success and black text pass
 } as const;
 
 /**
@@ -94,6 +98,11 @@ export const DARK = {
 
   error: '#FF8A80',
   errorSoft: '#3D2224',
+
+  /** D242: green on dark, e.g. the "Business Account" label (Event Organizer uses gold). */
+  success: '#5BD08A', // text and icons; ≥ 4.5:1 on every layer
+  onSuccess: BRAND.black, // black text on a green fill
+  successSoft: '#173A26', // green-tinted label background; success and text pass
 
   /** D155: posts and comments by staff (the ADMIN badge): a gold-tinted card, gold edge. */
   adminCard: '#382E17',

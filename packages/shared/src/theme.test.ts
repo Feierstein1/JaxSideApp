@@ -83,6 +83,17 @@ describe('category colors (D70)', () => {
   });
 });
 
+describe('green (D242)', () => {
+  it.each([
+    ['success on white', COLORS.success, COLORS.background],
+    ['onSuccess on success', COLORS.onSuccess, COLORS.success],
+    ['success on successSoft', COLORS.success, COLORS.successSoft],
+    ['text on successSoft', COLORS.text, COLORS.successSoft],
+  ])('%s passes 4.5:1', (_label, fg, bg) => {
+    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 describe('dark theme (D79)', () => {
   const bgs = {
     page: DARK.page,
@@ -92,7 +103,9 @@ describe('dark theme (D79)', () => {
   } as const;
   // Text and links must read at 4.5:1 on every layer they can sit on.
   it.each(
-    (['text', 'textMuted', 'placeholder', 'accent', 'tealText', 'error'] as const).flatMap((fg) =>
+    (
+      ['text', 'textMuted', 'placeholder', 'accent', 'tealText', 'error', 'success'] as const
+    ).flatMap((fg) =>
       Object.entries(bgs).map(([bg, hex]) => [`${fg} on ${bg}`, DARK[fg], hex] as const),
     ),
   )('%s passes 4.5:1', (_label, fg, bg) => {
@@ -107,6 +120,9 @@ describe('dark theme (D79)', () => {
     ['tealText on tealSoft', DARK.tealText, DARK.tealSoft],
     ['text on tealSoft', DARK.text, DARK.tealSoft],
     ['error on errorSoft', DARK.error, DARK.errorSoft],
+    ['onSuccess on success', DARK.onSuccess, DARK.success], // D242
+    ['success on successSoft', DARK.success, DARK.successSoft],
+    ['text on successSoft', DARK.text, DARK.successSoft],
     ['text on bar', DARK.text, DARK.bar],
     ['textMuted on bar', DARK.textMuted, DARK.bar],
   ])('%s passes 4.5:1', (_label, fg, bg) => {

@@ -6,6 +6,7 @@ import {
   COLORS,
   EVENT_CATEGORIES,
   EVENT_CHAT_RADIUS,
+  EVENT_FLYERS_MAX,
   EVENT_IMAGES_MAX,
   EVENT_SETTINGS,
   localDate,
@@ -493,7 +494,17 @@ export function EventForm({ id, initial }: { id?: string; initial?: EventFormVal
 }
 
 /** Approve, deny, cancel, remove or restore, depending on where the event stands. */
-export function EventDecision({ id, status }: { id: string; status: string }) {
+export function EventDecision({
+  id,
+  status,
+  candidates = [],
+}: {
+  id: string;
+  status: string;
+  /** D242: events on the calendar that look like this one. */
+  candidates?: { id: string; title: string; meters: number | null }[];
+}) {
+  const [dupId, setDupId] = useState('');
   const [reason, setReason] = useState('');
   const { busy, error, done, run } = useSubmit();
   const decide = (action: string, needsReason = false) =>
@@ -502,6 +513,14 @@ export function EventDecision({ id, status }: { id: string; status: string }) {
       await adminFetch(`/api/v1/admin/events/${id}/decide`, {
         method: 'POST',
         body: needsReason ? { action, reason } : { action },
+      });
+      window.location.reload();
+    });
+  const duplicate = (duplicateOfId: string) =>
+    run(async () => {
+      await adminFetch(`/api/v1/admin/events/${id}/decide`, {
+        method: 'POST',
+        body: { action: 'duplicate', duplicateOfId },
       });
       window.location.reload();
     });
@@ -553,6 +572,50 @@ export function EventDecision({ id, status }: { id: string; status: string }) {
           </button>
         ) : null}
       </div>
+      {waiting ? (
+        <div style={{ marginTop: 16 }}>
+          <h3 style={{ margin: '0 0 4px' }}>Already on the calendar?</h3>
+          <p style={ui.muted}>
+            If someone sent an event JaxSide already has, mark it as a copy: no strike, and they’re
+            told it’s already listed.
+          </p>
+          {candidates.length ? (
+            <ul style={{ paddingLeft: 18 }}>
+              {candidates.map((c) => (
+                <li key={c.id} style={{ marginBottom: 6 }}>
+                  <a href={`/admin/events/${c.id}`}>{c.title}</a>
+                  {c.meters !== null ? ` · ${Math.round(c.meters)} m away` : ''}{' '}
+                  <button
+                    style={{ ...ui.buttonSecondary, padding: '3px 10px' }}
+                    disabled={busy}
+                    onClick={() => duplicate(c.id)}
+                  >
+                    Already on the calendar: this one
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p style={ui.muted}>No look-alikes on the same day nearby.</p>
+          )}
+          <div style={{ ...row, gap: 8 }}>
+            <input
+              style={{ ...ui.input, maxWidth: 340, margin: 0 }}
+              value={dupId}
+              placeholder="Or paste the other event’s ID"
+              aria-label="Other event’s ID"
+              onChange={(e) => setDupId(e.target.value.trim())}
+            />
+            <button
+              style={ui.buttonSecondary}
+              disabled={busy || !dupId}
+              onClick={() => duplicate(dupId)}
+            >
+              Already on the calendar
+            </button>
+          </div>
+        </div>
+      ) : null}
       <Feedback error={error} done={done} />
     </div>
   );
@@ -584,11 +647,19 @@ export function EventCopyButtons({ id }: { id: string }) {
 }
 
 /** The event's pictures: add (cleaned on the server) and remove. */
-export function EventImages({ id, images }: { id: string; images: { id: string; url: string }[] }) {
+export function EventImages({
+  id,
+  images,
+}: {
+  id: string;
+  images: { id: string; url: string; kind: 'flyer' | 'photo' }[];
+}) {
   const { busy, error, done, run } = useSubmit();
-  const upload = (file: File) =>
+  const flyers = images.filter((i) => i.kind === 'flyer').length;
+  const photos = images.length - flyers;
+  const upload = (file: File, kind: 'flyer' | 'photo') =>
     run(async () => {
-      const res = await fetch(`/api/v1/admin/events/${id}/images`, {
+      const res = await fetch(`/api/v1/admin/events/${id}/images?kind=${kind}`, {
         method: 'POST',
         headers: {
           'Content-Type': file.type || 'application/octet-stream',
@@ -610,8 +681,9 @@ export function EventImages({ id, images }: { id: string; images: { id: string; 
     <div style={{ ...ui.card, maxWidth: 760, marginTop: 16 }}>
       <h2 style={{ marginTop: 0 }}>Pictures</h2>
       <p style={ui.muted}>
-        Up to {EVENT_IMAGES_MAX}. The first one shows on the event’s card. Real photos or the
-        organizer’s own flyer; no AI-made pictures (D207).
+        Up to {EVENT_FLYERS_MAX} flyers (the app shows them whole, first) and {EVENT_IMAGES_MAX}{' '}
+        photos (the first photo shows on the event’s card). Real photos or the organizer’s own
+        flyer; no AI-made pictures (D207).
       </p>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {images.map((img) => (
@@ -628,6 +700,9 @@ export function EventImages({ id, images }: { id: string; images: { id: string; 
               }}
             />
             <div>
+              <span style={{ ...ui.muted, marginRight: 6 }}>
+                {img.kind === 'flyer' ? 'Flyer' : 'Photo'}
+              </span>
               <button
                 style={{ ...ui.buttonSecondary, padding: '3px 10px', marginTop: 4 }}
                 disabled={busy}
@@ -639,21 +714,28 @@ export function EventImages({ id, images }: { id: string; images: { id: string; 
           </div>
         ))}
       </div>
-      {images.length < EVENT_IMAGES_MAX ? (
-        <label style={{ ...ui.label, display: 'block', marginTop: 12 }}>
-          Add a picture
-          <input
-            type="file"
-            accept="image/*"
-            disabled={busy}
-            style={{ display: 'block', marginTop: 6 }}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void upload(f);
-            }}
-          />
-        </label>
-      ) : null}
+      {(
+        [
+          ['flyer', 'Add a flyer', flyers < EVENT_FLYERS_MAX],
+          ['photo', 'Add a photo', photos < EVENT_IMAGES_MAX],
+        ] as const
+      ).map(([kind, label, room]) =>
+        room ? (
+          <label key={kind} style={{ ...ui.label, display: 'block', marginTop: 12 }}>
+            {label}
+            <input
+              type="file"
+              accept="image/*"
+              disabled={busy}
+              style={{ display: 'block', marginTop: 6 }}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void upload(f, kind);
+              }}
+            />
+          </label>
+        ) : null,
+      )}
       <Feedback error={error} done={done} />
     </div>
   );
@@ -702,6 +784,50 @@ export function OrganizerDecision({ accountId, status }: { accountId: string; st
             Close
           </button>
         )}
+      </div>
+      <Feedback error={error} done={done} />
+    </div>
+  );
+}
+
+/** D242: approve a business's change request, or turn it down with a note it reads. */
+export function ChangeDecision({
+  kind,
+  id,
+}: {
+  kind: 'place-changes' | 'organizer-names';
+  id: string;
+}) {
+  const [note, setNote] = useState('');
+  const { busy, error, done, run } = useSubmit();
+  const decide = (decision: 'approve' | 'reject') =>
+    run(async () => {
+      if (decision === 'reject' && note.trim().length < 3) {
+        throw new Error('Write a short note first (the business sees it).');
+      }
+      await adminFetch(`/api/v1/admin/${kind}/${id}`, {
+        method: 'POST',
+        body: decision === 'approve' ? { decision } : { decision, note },
+      });
+      window.location.reload();
+    });
+  return (
+    <div style={{ minWidth: 220 }}>
+      <input
+        style={{ ...ui.input, margin: '0 0 6px' }}
+        value={note}
+        maxLength={500}
+        placeholder="Note (to turn it down)"
+        aria-label="Note"
+        onChange={(e) => setNote(e.target.value)}
+      />
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <button style={ui.button} disabled={busy} onClick={() => decide('approve')}>
+          Approve
+        </button>
+        <button style={ui.buttonSecondary} disabled={busy} onClick={() => decide('reject')}>
+          Turn down
+        </button>
       </div>
       <Feedback error={error} done={done} />
     </div>

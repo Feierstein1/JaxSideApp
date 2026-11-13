@@ -36,7 +36,7 @@ export const ADMIN_EVENT_TABS = {
   waiting: ['SUGGESTED', 'IN_REVIEW'],
   upcoming: ['APPROVED', 'CANCELLED'],
   past: ['APPROVED', 'CANCELLED'],
-  closed: ['DENIED', 'REMOVED'],
+  closed: ['DENIED', 'REMOVED', 'DUPLICATE'],
 } as const satisfies Record<string, EventStatus[]>;
 export type AdminEventTab = keyof typeof ADMIN_EVENT_TABS;
 
@@ -106,6 +106,7 @@ export async function adminGetEvent(id: string) {
       images: { orderBy: { position: 'asc' } },
       place: { select: { id: true, name: true, address: true } },
       hostPlace: { select: { id: true, name: true } },
+      duplicateOf: { select: { id: true, title: true } },
       businessAccount: { select: { id: true, email: true } },
       createdBy: { select: { id: true, username: true, role: true } },
       _count: { select: { follows: true } },
@@ -144,7 +145,12 @@ export async function adminGetEvent(id: string) {
       end: localTime(s.endsAt),
     })),
     // Admin-only link (cookie session), so pictures of events still in review show too.
-    images: e.images.map((i) => ({ id: i.id, url: `/api/v1/admin/events/${e.id}/images/${i.id}` })),
+    images: e.images.map((i) => ({
+      id: i.id,
+      kind: i.kind === 'FLYER' ? ('flyer' as const) : ('photo' as const),
+      url: `/api/v1/admin/events/${e.id}/images/${i.id}`,
+    })),
+    duplicateOf: e.duplicateOf,
     businessAccount: e.businessAccount,
     createdBy: e.createdBy,
     follows: e._count.follows,
@@ -210,7 +216,7 @@ export async function adminUpdateEvent(id: string, input: EventInputParsed) {
 async function move(
   e: Event,
   from: EventStatus[],
-  data: Prisma.EventUpdateManyMutationInput & { status: EventStatus },
+  data: Prisma.EventUncheckedUpdateManyInput & { status: EventStatus },
 ) {
   if (!from.includes(e.status)) {
     throw new ApiError(409, 'WRONG_STATUS', `This event is ${e.status.toLowerCase()}.`);
@@ -343,7 +349,77 @@ export async function adminDecideEvent(
         cancelledAt: null,
         cancelReason: null,
       });
+    case 'duplicate': {
+      // D242: it copies an event that's on the calendar (approved or cancelled), not itself.
+      const original = await db.event.findFirst({
+        where: { id: d.duplicateOfId, status: { in: ['APPROVED', 'CANCELLED'] } },
+        select: { id: true, title: true },
+      });
+      if (!original || original.id === e.id) {
+        throw new ApiError(
+          409,
+          'NOT_ON_CALENDAR',
+          'Pick an event that’s on the calendar (approved or cancelled).',
+        );
+      }
+      await move(e, ['SUGGESTED', 'IN_REVIEW'], {
+        status: 'DUPLICATE',
+        duplicateOfId: original.id,
+        reviewedById: adminId,
+        reviewedAt: now,
+        decisionReason: null,
+      });
+      if (!e.businessAccountId) return;
+      await db.businessNotice.create({
+        data: {
+          accountId: e.businessAccountId,
+          placeId: e.hostPlaceId,
+          kind: 'EVENT_DUPLICATE',
+          title: `“${e.title}” is already on the JaxSide calendar`.slice(0, 120),
+          body: `It’s listed as “${original.title}”, so we didn’t add a second one. Nothing is wrong with your account.`.slice(
+            0,
+            500,
+          ),
+          link: `/events/${e.id}`,
+          createdAt: now,
+        },
+      });
+      return;
+    }
   }
+}
+
+/**
+ * D242: events on the calendar that look like this one (to answer "Already on the
+ * calendar"): approved or cancelled, with a session starting the same Jacksonville day as one
+ * of its sessions, and either within 400 m of its pin or a similar title. Closest first.
+ */
+export async function likelyDuplicates(id: string) {
+  return db.$queryRaw<{ id: string; title: string; status: string; meters: number | null }[]>`
+    WITH me AS (SELECT * FROM "Event" WHERE id = ${id}::uuid),
+    my_days AS (
+      SELECT DISTINCT (s."startsAt" AT TIME ZONE 'America/New_York')::date AS d
+      FROM "EventSession" s WHERE s."eventId" = ${id}::uuid
+    )
+    SELECT e.id, e.title, e.status::text AS status,
+           CASE WHEN me.latitude IS NULL OR e.latitude IS NULL THEN NULL
+                ELSE ST_Distance(
+                  ST_SetSRID(ST_MakePoint(e.longitude, e.latitude), 4326)::geography,
+                  ST_SetSRID(ST_MakePoint(me.longitude, me.latitude), 4326)::geography) END AS meters
+    FROM "Event" e, me
+    WHERE e.id <> me.id AND e.status IN ('APPROVED', 'CANCELLED')
+      AND EXISTS (
+        SELECT 1 FROM "EventSession" s
+        WHERE s."eventId" = e.id
+          AND (s."startsAt" AT TIME ZONE 'America/New_York')::date IN (SELECT d FROM my_days))
+      AND (
+        (me.latitude IS NOT NULL AND e.latitude IS NOT NULL AND ST_DWithin(
+          ST_SetSRID(ST_MakePoint(e.longitude, e.latitude), 4326)::geography,
+          ST_SetSRID(ST_MakePoint(me.longitude, me.latitude), 4326)::geography, 400))
+        OR lower(e.title) = lower(me.title)
+        OR (length(me.title) >= 6 AND lower(e.title) LIKE '%' || lower(left(me.title, 12)) || '%'))
+    ORDER BY meters NULLS LAST, e."firstStartsAt"
+    LIMIT 5`;
 }
 
 /**

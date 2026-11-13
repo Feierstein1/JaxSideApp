@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-203 endpoints.
+206 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -72,6 +72,7 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | PUT | `/api/v1/events/:id/follow` | user |  | D230: follow an event (Followed events; bell reminders before it starts). Accounts only. |
 | DELETE | `/api/v1/events/:id/follow` | user |  | D230: stop following an event. |
 | POST | `/api/v1/events/:id/tap` | user or guest |  | D236: a tap on an event's link button (counted once per person per event per day). |
+| POST | `/api/v1/events/coming-up` | user | yes | D241: events you follow that start today or tomorrow (the "Coming up" strip). Accounts only (guests can't follow); a read, so it needs a verified in-Duval location (D16). |
 | POST | `/api/v1/events/day` | user or guest | yes | D230: one day's events, grouped by neighborhood (the nearest first), then by start time. |
 | GET | `/api/v1/events/host-info` | user or guest |  | D233: the app's "Post an event" screen. App users don't suggest events: hosts add them on the JaxSide for Business website (D230 / D232). This only says where its sign-up page is (null until the website is public). |
 | POST | `/api/v1/events/list` | user or guest | yes | D230: the list view: events that haven't ended, soonest first, 20 at a time. |
@@ -343,7 +344,7 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | PATCH | `/api/v1/admin/events/:id` | admin (cookie + CSRF) |  | D230: change an event (followers of an approved one are told if its dates or place change). |
 | POST | `/api/v1/admin/events/:id/copy` | admin (cookie + CSRF) |  | D230: Duplicate (years 0) or Repeat yearly (years 1). The copy waits for review. Audited. |
 | POST | `/api/v1/admin/events/:id/decide` | admin (cookie + CSRF) |  | D230: approve, deny, cancel, remove or restore an event. Audited. |
-| POST | `/api/v1/admin/events/:id/images` | admin (cookie + CSRF) |  | D230: add a picture to an event (the image bytes as the body). Cleaned like photos: real type checked, re-encoded, all metadata dropped. At most 6 per event. Audited. |
+| POST | `/api/v1/admin/events/:id/images` | admin (cookie + CSRF) |  | D230: add a picture to an event (the image bytes as the body). Cleaned like photos: real type checked, re-encoded, all metadata dropped. At most 6 photos per event; D239: `?kind=flyer` adds a flyer instead (at most 2, shown whole). Audited. |
 | GET | `/api/v1/admin/events/:id/images/:imageId` | admin (cookie + CSRF) |  | D230: an event's picture for the admin pages (any status, so waiting events can be checked). |
 | DELETE | `/api/v1/admin/events/:id/images/:imageId` | admin (cookie + CSRF) |  | D230: take a picture off an event (deleted from storage too). Audited. |
 | POST | `/api/v1/admin/events/geocode` | admin (cookie + CSRF) |  | D230: find a pin for an address (US Census geocoder, D224). `match` is null if not found. |
@@ -356,8 +357,10 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | POST | `/api/v1/admin/login` | public |  | P5.11 step 1: password. Returns a short-lived challenge (and 2FA setup the first time). |
 | POST | `/api/v1/admin/login/verify` | public |  | P5.11 step 2: authenticator code. Starts the admin session (cookies). |
 | POST | `/api/v1/admin/logout` | admin (cookie + CSRF) |  | P5.11: end the admin session. |
+| POST | `/api/v1/admin/organizer-names/:id` | admin (cookie + CSRF) |  | D239: approve or turn down a organizer name change (a note is needed to turn it down). Audited. |
 | POST | `/api/v1/admin/organizers/:id` | admin (cookie + CSRF) |  | D230: approve, reject or revoke an event organizer (the business account's ID). Audited. |
 | GET | `/api/v1/admin/photos/:id` | admin (cookie + CSRF) |  | P6.5: moderators can see a reported photo, including after it's removed. |
+| POST | `/api/v1/admin/place-changes/:id` | admin (cookie + CSRF) |  | D239: approve or turn down a place change (a note is needed to turn it down). Audited. |
 | POST | `/api/v1/admin/place-requests/:id` | admin (cookie + CSRF) |  | D224 (B6.4): approve or turn down a request from the owner website. Audited. |
 | POST | `/api/v1/admin/places` | admin (cookie + CSRF) |  | D146: add a place now (inside Duval), without a suggestion or votes. Audited. |
 | POST | `/api/v1/admin/places/:id/ratings` | admin (cookie + CSRF) |  | D144: lock or unlock voting on a place, or clear all its votes (abuse). Audited. |

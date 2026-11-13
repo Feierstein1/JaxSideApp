@@ -322,11 +322,24 @@ export async function importOsmPlaces(
                  ${OSM_SOURCE}, source_id, ${OSM_ATTRIBUTION}, now(), now()
           FROM osm_stage
           ON CONFLICT ("sourceName", "sourceId") DO UPDATE SET
-            name = EXCLUDED.name, "nameNormalized" = EXCLUDED."nameNormalized",
-            category = EXCLUDED.category, address = EXCLUDED.address,
+            -- D242: a place whose Owner changed its details (approved by JaxSide) keeps them.
+            name = CASE WHEN "BusinessPlace"."detailsSetAt" IS NULL THEN EXCLUDED.name
+                        ELSE "BusinessPlace".name END,
+            "nameNormalized" = CASE WHEN "BusinessPlace"."detailsSetAt" IS NULL
+                                    THEN EXCLUDED."nameNormalized"
+                                    ELSE "BusinessPlace"."nameNormalized" END,
+            category = CASE WHEN "BusinessPlace"."detailsSetAt" IS NULL THEN EXCLUDED.category
+                            ELSE "BusinessPlace".category END,
+            address = CASE WHEN "BusinessPlace"."detailsSetAt" IS NULL THEN EXCLUDED.address
+                           ELSE "BusinessPlace".address END,
             website = EXCLUDED.website, phone = EXCLUDED.phone,
-            latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude,
-            location = EXCLUDED.location, "updatedAt" = now(),
+            latitude = CASE WHEN "BusinessPlace"."detailsSetAt" IS NULL THEN EXCLUDED.latitude
+                            ELSE "BusinessPlace".latitude END,
+            longitude = CASE WHEN "BusinessPlace"."detailsSetAt" IS NULL THEN EXCLUDED.longitude
+                             ELSE "BusinessPlace".longitude END,
+            location = CASE WHEN "BusinessPlace"."detailsSetAt" IS NULL THEN EXCLUDED.location
+                            ELSE "BusinessPlace".location END,
+            "updatedAt" = now(),
             -- D94: a place the community (or an admin) removed stays removed.
             status = CASE WHEN "BusinessPlace".status = 'REMOVED' THEN 'REMOVED'::"PlaceStatus"
                           ELSE 'ACTIVE'::"PlaceStatus" END

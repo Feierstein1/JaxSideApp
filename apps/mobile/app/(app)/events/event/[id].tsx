@@ -36,6 +36,7 @@ import { Button, ErrorState } from '@/ui';
  * D230: an event's page: pictures, what and when, where, who puts it on, the description,
  * every date still to come, Follow (reminders in the bell), Report, and, while it's on and
  * you're there, its chat. D236: the host's link (tickets, info) and "Confirmed by [place]".
+ * D242: flyers shown whole above the photos.
  */
 export default function EventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -95,25 +96,43 @@ export default function EventScreen() {
     );
   }
   const imgW = width - 24;
+  // D242: flyers are shown whole (never cropped), above the photo gallery.
+  const flyers = e.images.filter((i) => i.kind === 'flyer');
+  const photos = e.images.filter((i) => i.kind !== 'flyer');
   return (
     <>
       <ScrollView
         style={{ flex: 1, backgroundColor: DARK.page }}
         contentContainerStyle={{ padding: 12, paddingBottom: 48, gap: SPACE.md }}
       >
-        {e.images.length ? (
+        {flyers.map((img, i) => (
+          <Image
+            key={img.id}
+            source={{ uri: photoUri(img.url) }}
+            accessibilityLabel={flyers.length > 1 ? `Flyer ${i + 1} of ${flyers.length}` : 'Flyer'}
+            style={{
+              width: imgW,
+              aspectRatio: img.width / img.height,
+              borderRadius: RADIUS.lg,
+              backgroundColor: DARK.raised,
+            }}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+          />
+        ))}
+        {photos.length ? (
           <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
-            {e.images.map((img, i) => (
+            {photos.map((img, i) => (
               <Image
                 key={img.id}
                 source={{ uri: photoUri(img.url) }}
-                accessibilityLabel={`Picture ${i + 1} of ${e.images.length}`}
+                accessibilityLabel={`Photo ${i + 1} of ${photos.length}`}
                 style={{
                   width: imgW,
                   height: Math.min(imgW * (img.height / img.width), imgW * 1.1),
                   borderRadius: RADIUS.lg,
                   backgroundColor: DARK.raised,
-                  marginRight: i < e.images.length - 1 ? SPACE.sm : 0,
+                  marginRight: i < photos.length - 1 ? SPACE.sm : 0,
                 }}
                 resizeMode="cover"
                 accessibilityIgnoresInvertColors

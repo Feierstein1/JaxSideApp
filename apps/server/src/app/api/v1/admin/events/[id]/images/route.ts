@@ -12,7 +12,8 @@ import { signedEventImageUrl } from '@/server/media/photos';
 
 /**
  * D230: add a picture to an event (the image bytes as the body). Cleaned like photos: real
- * type checked, re-encoded, all metadata dropped. At most 6 per event. Audited.
+ * type checked, re-encoded, all metadata dropped. At most 6 photos per event; D242: `?kind=flyer`
+ * adds a flyer instead (at most 2, shown whole). Audited.
  */
 export const POST = route<IdParams>(async (req, ctx) => {
   const { admin } = await requireAdmin(req);
@@ -30,7 +31,8 @@ export const POST = route<IdParams>(async (req, ctx) => {
     throw new ApiError(404, 'NOT_FOUND', 'Event not found');
   }
   const body = await readCapped(req, (await getConfig('photos.maxUploadMB')) * 1024 * 1024);
-  const img = await addEventImage(id, body);
-  await audit(admin.id, 'EVENT_IMAGE_ADDED', { type: 'event', id }, { imageId: img.id });
+  const kind = new URL(req.url).searchParams.get('kind') === 'flyer' ? 'flyer' : 'photo';
+  const img = await addEventImage(id, body, kind);
+  await audit(admin.id, 'EVENT_IMAGE_ADDED', { type: 'event', id }, { imageId: img.id, kind });
   return NextResponse.json({ id: img.id, url: signedEventImageUrl(img.id) }, { status: 201 });
 });
