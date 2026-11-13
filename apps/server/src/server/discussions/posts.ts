@@ -253,9 +253,13 @@ export async function listFeed(opts: {
       : Prisma.empty;
   const rows = await db.$queryRaw<PostRow[]>`${base} ${after}
     ORDER BY p."createdAt" DESC, p.id DESC LIMIT ${size + 1}`;
-  return page(rows, size, 'general', opts.viewer.id, (l) =>
+  const result = await page(rows, size, 'general', opts.viewer.id, (l) =>
     encodeCursor({ t: l.createdAt.toISOString(), id: l.id }),
   );
+  if (c) return result;
+  // D242: with the first page, how many posts the feed holds (Home's "n posts").
+  const [count] = await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM (${base}) x`;
+  return { ...result, total: count?.n ?? result.posts.length };
 }
 
 /** D125: a citywide topic's posts, newest or top (no radius; access checked by the caller). */

@@ -85,6 +85,15 @@ async function liftLimits(...keys: string[]) {
 }
 
 describe('general posts and feed (P3.1, P3.1a)', () => {
+  it('D242: the first page says how many posts the feed holds', async () => {
+    await liftLimits('rateLimit.post.perMinute');
+    await post(alice, 'First one here');
+    await post(alice, 'Second one here');
+    expect((await feed(alice)).body.total).toBe(2);
+    // Search narrows the count too.
+    expect((await feed(alice, FIVE_POINTS, { q: 'Second' })).body.total).toBe(1);
+  });
+
   it('creates a post at a coarsened point and returns no coordinates or private data', async () => {
     const r = await post(alice, 'Anyone know a good brunch spot?');
     expect(r.status).toBe(201);
@@ -182,7 +191,12 @@ describe('general posts and feed (P3.1, P3.1a)', () => {
   });
 
   it('an empty area returns an empty page', async () => {
-    expect((await feed(bob)).body).toEqual({ posts: [], nextCursor: null, area: 'Riverside' });
+    expect((await feed(bob)).body).toEqual({
+      posts: [],
+      nextCursor: null,
+      area: 'Riverside',
+      total: 0, // D242
+    });
   });
 
   // D72: "Near …" is about the reader's own spot; posts never carry a neighborhood.

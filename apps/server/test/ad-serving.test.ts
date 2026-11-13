@@ -139,15 +139,16 @@ describe('which ads a reader gets (D206)', () => {
     expect(JSON.stringify(r.body)).not.toContain('owner@'); // never who made it
   });
 
-  it('one ad per business, and never one the phone showed recently', async () => {
+  it('one ad per business, fresh ones before the ones the phone showed recently', async () => {
     const a1 = await ad(owner.id, cafe, { headline: 'One' });
     const a2 = await ad(owner.id, cafe, { headline: 'Two' });
     const got = (await ask(user.token)).body.ads as { id: string }[];
     expect(got).toHaveLength(1);
     const again = (await ask(user.token, { seen: [got[0]!.id] })).body.ads as { id: string }[];
     expect(again.map((a) => a.id)).toEqual([got[0]!.id === a1.id ? a2.id : a1.id]);
-    // Everything in the cooldown: the slot stays empty rather than repeating.
-    expect((await ask(user.token, { seen: [a1.id, a2.id] })).body.ads).toEqual([]);
+    // D240: everything in the cooldown: a recently seen one fills the slot rather than
+    // leaving it empty (still one per business).
+    expect((await ask(user.token, { seen: [a1.id, a2.id] })).body.ads).toHaveLength(1);
   });
 
   it('nothing when the plan ended, the business is suspended, the ad is paused or not started', async () => {
@@ -365,6 +366,28 @@ describe('links in ads (D216)', () => {
 });
 
 describe('variety in one list (D240)', () => {
+  it('fills empty slots with recently seen ads, still never twice in a row', async () => {
+    const c1 = await ad(owner.id, cafe, { headline: 'Cafe' });
+    const b1 = await ad(other.id, bar, { headline: 'Bar' });
+    // Both seen: both still come back (two businesses, two slots).
+    const got = await pickAdsFor({ userId: user.id, point: CAFE }, { kind: 'feed' }, 3, [
+      c1.id,
+      b1.id,
+    ]);
+    expect(got.map((a) => a.headline).sort()).toEqual(['Bar', 'Cafe']);
+    // Already in this list right before: not repeated next to itself.
+    const next = await pickAdsFor(
+      { userId: user.id, point: CAFE },
+      { kind: 'feed' },
+      1,
+      [c1.id, b1.id],
+      new Date(),
+      undefined,
+      [c1.id, b1.id],
+    );
+    expect(next).toEqual([]);
+  });
+
   const pick = (inList: string[], count = 3, rand?: () => number) =>
     pickAdsFor(
       { userId: user.id, point: CAFE },

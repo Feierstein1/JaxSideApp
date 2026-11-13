@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { DARK, type PostTypeFilter } from '@jax/shared';
+import { Text } from '@/text';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
 import { fetchFeed } from '@/discussion/api';
@@ -22,6 +23,8 @@ export default function HomeFeed() {
   const { state } = useAuth();
   const [type, setType] = useState<PostTypeFilter>('all'); // D75
   const [area, setArea] = useState<string | null>(null);
+  /** D242: "n posts" beside the refresh button. */
+  const [total, setTotal] = useState<number | null>(null);
   // D73: reload on the refresh button, or when the app is reopened somewhere new.
   const [reloads, setReloads] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,6 +62,7 @@ export default function HomeFeed() {
       const page = await fetchFeed('new', cursor, q || undefined, type);
       if (!cursor) {
         setArea(page.area ?? null); // D72: refreshed with the first page
+        setTotal(page.total ?? null);
         noteListLoad(); // D77: where this list is from
       }
       return page;
@@ -98,11 +102,28 @@ export default function HomeFeed() {
       {/* D129 / D140: the art deco heading, centered, with the refresh button at the far
           right of the same line (an equal space on the left keeps the title centered). */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -2 }}>
-        <View style={{ width: 30 }} />
-        <View style={{ flex: 1 }}>
-          <SectionTitle center>Near you</SectionTitle>
+        <View style={{ flex: 1 }} />
+        <SectionTitle center>Near you</SectionTitle>
+        {/* D242: how many posts are in the feed, in the accent, beside the refresh button. */}
+        <View
+          style={{
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 6,
+          }}
+        >
+          {total !== null ? (
+            <Text
+              accessibilityLabel={`${total} ${total === 1 ? 'post' : 'posts'} near you`}
+              style={{ fontSize: 13, fontWeight: '700', color: DARK.accent }}
+            >
+              {total} {total === 1 ? 'post' : 'posts'}
+            </Text>
+          ) : null}
+          <RefreshButton size={30} onPress={() => void refresh()} busy={refreshing} />
         </View>
-        <RefreshButton size={30} onPress={() => void refresh()} busy={refreshing} />
       </View>
     </View>
   );

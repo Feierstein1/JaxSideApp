@@ -345,9 +345,10 @@ export async function pickAdsFor(
     favoritePlaces = new Set(favorites.map((f) => f.placeId));
   }
 
-  const eligible = all.filter(
+  const inListSet = new Set(inList);
+  const allowed = all.filter(
     (ad) =>
-      !seenSet.has(ad.id) &&
+      !inListSet.has(ad.id) &&
       !hidden.has(ad.accountId) &&
       !(ad.adultsOnly && !reader.userId) &&
       (onlyAccount === null || ad.accountId === onlyAccount) &&
@@ -355,7 +356,11 @@ export async function pickAdsFor(
       ad.accountId !== lastBusiness &&
       targetsReader(ad, ad.anchor, { point: reader.point, zip }),
   );
-  if (!eligible.length) return [];
+  // Fresh ads first; D240 (owner: "only one ad in 9 posts"): when there aren't enough, the
+  // slots are filled with ads this phone saw recently rather than left empty.
+  const eligible = allowed.filter((ad) => !seenSet.has(ad.id));
+  const recent = allowed.filter((ad) => seenSet.has(ad.id));
+  if (!allowed.length) return [];
 
   // Pacing: today's views per ad; an ad far ahead of the others weighs less.
   const day = new Date(`${localDayHour(now).day}T00:00:00Z`);
@@ -364,21 +369,39 @@ export async function pickAdsFor(
     select: { adId: true, views: true },
   });
   const views = new Map(stats.map((s) => [s.adId, s.views]));
-  const avg = eligible.reduce((n, a) => n + (views.get(a.id) ?? 0), 0) / eligible.length;
-  const pool = eligible.map((ad) => {
-    const isBoosted =
-      liked.has(ad.accountId) || (ad.place !== null && favoritePlaces.has(ad.place.id));
-    const pace = Math.min(4, Math.max(0.25, (avg + 1) / ((views.get(ad.id) ?? 0) + 1)));
-    return {
-      item: ad,
-      weight: pace * (isBoosted ? boost : 1) * ad.tierWeight,
-      boosted: isBoosted,
-      group: ad.accountId,
-      large: ad.large,
-    };
-  });
+  const avg = eligible.length
+    ? eligible.reduce((n, a) => n + (views.get(a.id) ?? 0), 0) / eligible.length
+    : 0;
+  const toPool = (list: LiveAd[]) =>
+    list.map((ad) => {
+      const isBoosted =
+        liked.has(ad.accountId) || (ad.place !== null && favoritePlaces.has(ad.place.id));
+      const pace = Math.min(4, Math.max(0.25, (avg + 1) / ((views.get(ad.id) ?? 0) + 1)));
+      return {
+        item: ad,
+        weight: pace * (isBoosted ? boost : 1) * ad.tierWeight,
+        boosted: isBoosted,
+        group: ad.accountId,
+        large: ad.large,
+      };
+    });
   const maxBoosted = Math.ceil((count * sharePercent) / 100);
-  const picked = weightedPick(pool, count, maxBoosted, rand, Math.max(0, largeLeft));
+  const picked = weightedPick(toPool(eligible), count, maxBoosted, rand, Math.max(0, largeLeft));
+  if (picked.length < count && recent.length) {
+    // The same variety rules: other businesses than the ones just picked, and the large-ad
+    // allowance that's left.
+    const used = new Set(picked.map((a) => a.accountId));
+    const largeUsed = picked.filter((a) => a.large).length;
+    picked.push(
+      ...weightedPick(
+        toPool(recent.filter((ad) => !used.has(ad.accountId))),
+        count - picked.length,
+        count,
+        rand,
+        Math.max(0, largeLeft - largeUsed),
+      ),
+    );
+  }
 
   const mine = reader.userId
     ? await db.adInterest.findMany({

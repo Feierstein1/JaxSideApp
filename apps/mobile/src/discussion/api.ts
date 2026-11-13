@@ -13,6 +13,8 @@ export interface PostPage {
   nextCursor: string | null;
   /** D72: closest named neighborhood (area feed only). */
   area?: string | null;
+  /** D242: how many posts the area feed holds (its first page only). */
+  total?: number;
 }
 
 const base = (kind: DiscussionKind) =>
