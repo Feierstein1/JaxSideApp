@@ -172,14 +172,21 @@ describe('an event at another business’s place (D236)', () => {
     });
     // The event doesn't wait for the answer.
     const asked = await detail(id);
-    expect(asked.body.event).toMatchObject({ venue: 'Riverside Tap', venueConfirmedBy: null });
+    expect(asked.body.event).toMatchObject({
+      venue: 'Riverside Tap',
+      venueConfirmedBy: null,
+      hostedAt: null, // D240: not named as the host before it says yes
+    });
 
     // The website records "Yes".
     await db.event.update({
       where: { id },
       data: { venueStatus: 'CONFIRMED', venueAnsweredAt: new Date() },
     });
-    expect((await detail(id)).body.event.venueConfirmedBy).toBe('Riverside Tap');
+    const confirmed = (await detail(id)).body.event;
+    expect(confirmed.venueConfirmedBy).toBe('Riverside Tap');
+    // D240: then it stands out as "Hosted at [place]", with what the app needs for its icon.
+    expect(confirmed.hostedAt).toEqual({ placeId: bar, name: 'Riverside Tap', category: 'bar' });
   });
 
   it('while the owner says "Not at my place", the app doesn’t name the place', async () => {
@@ -201,6 +208,7 @@ describe('an event at another business’s place (D236)', () => {
     for (const id of [own, ownerless]) {
       expect((await approve(id)).status).toBe(200);
       expect((await db.event.findUniqueOrThrow({ where: { id } })).venueStatus).toBe('NONE');
+      expect((await detail(id)).body.event.hostedAt).toBeNull();
     }
     const r = await call(adminCreatePOST as H, 'POST', {
       headers: admin,
@@ -219,6 +227,14 @@ describe('an event at another business’s place (D236)', () => {
     expect(e.host).toMatchObject({ kind: 'business', name: 'Bold Bean', placeId: cafe });
     expect(e.venue).toBe('Riverside Tap');
     expect((await db.event.findUniqueOrThrow({ where: { id } })).venueStatus).toBe('ASKED');
+    expect(e.hostedAt).toBeNull();
+    // D240: once the other place confirms, it shows as "Hosted at" that place (the business
+    // stays the host); an event at the host's own place never gets one.
+    await db.event.update({
+      where: { id },
+      data: { venueStatus: 'CONFIRMED', venueAnsweredAt: new Date() },
+    });
+    expect((await detail(id)).body.event.hostedAt).toMatchObject({ placeId: bar });
 
     // …or at an address with its own pin.
     const away = await sent(cafeOwner, {

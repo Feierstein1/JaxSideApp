@@ -17,13 +17,18 @@ let layout: AdLayout = {
 };
 export const adLayout = () => layout;
 
-export async function fetchAds(context: AdContext, count: number) {
+/**
+ * `inList`: the ads already in this list, in order (D240: the server keeps one large ad per
+ * list, and a business at most twice and never twice in a row).
+ */
+export async function fetchAds(context: AdContext, count: number, inList: string[] = []) {
   const reading = await getFreshReading();
   const res = await api.post<AdsResponse>('/api/v1/ads', {
     reading,
     context,
     count,
     seen: await recentlyShown(),
+    ...(inList.length ? { inList: inList.slice(-60) } : {}),
   });
   if (res.layout) {
     layout = res.layout;

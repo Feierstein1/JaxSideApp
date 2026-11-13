@@ -8,6 +8,7 @@ import {
   EVENT_SETTINGS,
   timeLabel,
   type EventCard as EventCardView,
+  type EventVenuePlace,
 } from '@jax/shared';
 import { DecoBox } from '@/deco';
 import { photoUri } from '@/discussion/photos';
@@ -43,7 +44,78 @@ export function Tag({
   );
 }
 
-/** Who puts it on: a business (its place's icon and name) or an organizer ("Hosted by"). */
+/**
+ * D240: "Hosted at [place]" for an event held at a business that confirmed it: the place's
+ * icon and name, standing out in teal. With `onPress` (the event page, an ad) it opens the
+ * place's discussion, which itself checks you're close enough.
+ */
+export function HostedAt({ place, onPress }: { place: EventVenuePlace; onPress?: () => void }) {
+  const body = (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACE.sm,
+        paddingVertical: onPress ? SPACE.sm : 4,
+        paddingHorizontal: onPress ? SPACE.md : 6,
+        borderRadius: RADIUS.md,
+        backgroundColor: DARK.tealSoft,
+        borderWidth: 1,
+        borderColor: DARK.accent,
+        alignSelf: onPress ? 'stretch' : 'flex-start',
+      }}
+    >
+      <View
+        style={{
+          width: onPress ? 32 : 22,
+          height: onPress ? 32 : 22,
+          borderRadius: 16,
+          backgroundColor: DARK.teal,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Ionicons
+          name={categoryIcon(place.category)}
+          size={onPress ? 17 : 12}
+          color={DARK.onTeal}
+        />
+      </View>
+      <View style={{ flexShrink: 1, flexGrow: onPress ? 1 : 0 }}>
+        {onPress ? (
+          <Text
+            style={{ fontSize: 11.5, fontWeight: '800', letterSpacing: 0.5, color: DARK.tealText }}
+          >
+            HOSTED AT
+          </Text>
+        ) : null}
+        <Text
+          numberOfLines={1}
+          style={{ fontSize: onPress ? 16 : 13, fontWeight: '800', color: DARK.text }}
+        >
+          {onPress ? place.name : `Hosted at ${place.name}`}
+        </Text>
+      </View>
+      {onPress ? <Ionicons name="chevron-forward" size={18} color={DARK.accent} /> : null}
+    </View>
+  );
+  if (!onPress) return body;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Hosted at ${place.name}. Opens its discussion`}
+      onPress={onPress}
+      style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+    >
+      {body}
+    </Pressable>
+  );
+}
+
+/**
+ * Who puts it on: a business (its place's icon and name) or an organizer ("Hosted by"; D240:
+ * "Organized by" when the event is hosted at a business, which then stands out instead).
+ */
 export function HostLine({ e }: { e: EventCardView }) {
   if (!e.host.name || e.host.kind === 'community') return null;
   const business = e.host.kind === 'business';
@@ -69,7 +141,7 @@ export function HostLine({ e }: { e: EventCardView }) {
         style={[TYPE.caption, { color: DARK.text, fontWeight: '700', flexShrink: 1 }]}
         numberOfLines={1}
       >
-        {business ? e.host.name : `Hosted by ${e.host.name}`}
+        {business ? e.host.name : `${e.hostedAt ? 'Organized' : 'Hosted'} by ${e.host.name}`}
       </Text>
     </View>
   );
@@ -130,7 +202,9 @@ export function EventCard({ e, showDate = false }: { e: EventCardView; showDate?
             {e.title}
           </Text>
           <Text style={[TYPE.caption, { color: DARK.textMuted }]}>{when}</Text>
-          {e.venue ? (
+          {e.hostedAt ? (
+            <HostedAt place={e.hostedAt} />
+          ) : e.venue ? (
             <Text style={[TYPE.caption, { color: DARK.textMuted }]} numberOfLines={1}>
               {e.venue}
             </Text>

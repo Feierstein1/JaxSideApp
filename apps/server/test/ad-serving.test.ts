@@ -56,13 +56,14 @@ async function ad(
     approvedAt: Date;
     linkUrl: string;
     linkLabel: string;
+    template: 'BANNER' | 'POST' | 'FEATURE';
   }> = {},
 ) {
   const a = await db.ad.create({
     data: {
       accountId,
       placeId,
-      template: 'BANNER',
+      template: extra.template ?? 'BANNER',
       headline: extra.headline ?? 'Half-price lattes',
       status: extra.status ?? 'APPROVED',
       zips: extra.zips ?? [],
@@ -360,5 +361,58 @@ describe('links in ads (D216)', () => {
     const plain = await ad(owner.id, cafe);
     const tap = await call(tapPOST as H, 'POST', { token: user.token, id: plain.id, body: {} });
     expect(tap.body.counted).toBe(false); // nothing to count on an ad without a link
+  });
+});
+
+describe('variety in one list (D240)', () => {
+  const pick = (inList: string[], count = 3, rand?: () => number) =>
+    pickAdsFor(
+      { userId: user.id, point: CAFE },
+      { kind: 'feed' },
+      count,
+      [],
+      new Date(),
+      rand,
+      inList,
+    );
+
+  it('one large ad per list: never two in a batch, none once the list has one', async () => {
+    const big1 = await ad(owner.id, cafe, { template: 'FEATURE', headline: 'Big one' });
+    await ad(other.id, bar, { template: 'FEATURE', headline: 'Big two' });
+    for (let i = 0; i < 10; i++) {
+      resetAdCache();
+      const got = await pick([]);
+      expect(got.filter((a) => a.template === 'FEATURE').length).toBeLessThanOrEqual(1);
+    }
+    resetAdCache();
+    expect((await pick([big1.id])).filter((a) => a.template === 'FEATURE')).toEqual([]);
+  });
+
+  it('a business at most twice per list, and never right after itself', async () => {
+    const a1 = await ad(owner.id, cafe, { headline: 'A1' });
+    const a2 = await ad(owner.id, cafe, { headline: 'A2' });
+    await ad(owner.id, cafe, { headline: 'A3' });
+    const b1 = await ad(other.id, bar, { headline: 'B1' });
+    const heads = async (inList: string[]) => (await pick(inList)).map((a) => a.headline);
+    // Right after one of its own: not this business.
+    expect((await heads([a1.id])).every((h) => !h.startsWith('A'))).toBe(true);
+    // Once with another in between: it may come back.
+    expect((await heads([a1.id, b1.id])).some((h) => h.startsWith('A'))).toBe(true);
+    // Twice already: not again.
+    expect((await heads([a1.id, a2.id, b1.id])).every((h) => !h.startsWith('A'))).toBe(true);
+  });
+
+  it('paid tiers weigh more: Premium 3, Standard 2, Free 1', async () => {
+    // A free business's ad first in line, a premium business's second.
+    await db.subscription.updateMany({
+      where: { accountId: other.id },
+      data: { planId: (await db.plan.findUniqueOrThrow({ where: { code: 'FREE' } })).id },
+    });
+    await ad(other.id, bar, { headline: 'Free', approvedAt: new Date(Date.now() - 60_000) });
+    await ad(owner.id, cafe, { headline: 'Premium', approvedAt: new Date() });
+    // Weights 1 and 3: a draw at 30% of the total lands on the second (Premium); with equal
+    // weights the same draw would land on the first.
+    const [first] = await pick([], 1, () => 0.3);
+    expect(first!.headline).toBe('Premium');
   });
 });

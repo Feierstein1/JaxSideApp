@@ -220,6 +220,13 @@ export interface EventHost {
   placeCategory: string | null;
 }
 
+/** D240: a place an event is held at (its icon comes from the category). */
+export interface EventVenuePlace {
+  placeId: string;
+  name: string;
+  category: string;
+}
+
 /** One session of an event, as the lists show it. */
 export interface EventCard {
   id: string;
@@ -242,6 +249,12 @@ export interface EventCard {
    * by …"); null otherwise (and the place isn't named at all while its owner disputes it).
    */
   venueConfirmedBy: string | null;
+  /**
+   * D240: the business the event is held at, once its owner confirmed it (D236) and when it
+   * isn't the event's own host (an organizer's event at a bar): shown as "Hosted at [place]"
+   * with its icon; tapping it opens the place's discussion (if you're close enough).
+   */
+  hostedAt: EventVenuePlace | null;
   neighborhood: string | null;
   zip: string | null;
   setting: EventSetting;

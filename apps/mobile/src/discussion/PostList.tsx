@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } 
 import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import {
-  adSlotPositions,
   DARK,
+  discussionAdSlots,
   type AdCard as Ad,
   type AdContext,
   type PostView,
 } from '@jax/shared';
 import { AdCard } from '@/ads/AdCard';
-import { adLayout, adSeen, fetchAds } from '@/ads/api';
+import { adSeen, fetchAds } from '@/ads/api';
 import { ApiRequestError } from '@/api/client';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Text } from '@/text';
@@ -22,15 +22,12 @@ type Row = { kind: 'post'; post: PostView } | { kind: 'ad'; ad: Ad; after: numbe
 
 /** D206: an ad counts as seen when half of it has been on screen for a second. */
 const AD_VIEWABILITY = { itemVisiblePercentThreshold: 50, minimumViewTime: 1000 };
-/** Ask for enough ads for the densest spacing (guests); extra ones are simply not shown. */
-const DENSEST = 6;
-
-const today = () => new Date().toISOString().slice(0, 10);
 
 /**
  * A paginated list of posts (P3.5, P3.11): one page (30, D112), then a "Load more posts"
  * button for the next; pull down to refresh. Shared by the area feed, place rooms and topics.
- * D206: with `adContext`, ads sit between posts at `adSlotPositions` (the server picks them).
+ * D206: with `adContext`, ads sit between posts (the server picks them). D240: under the 2nd
+ * post, then every 3 posts, and one at the end of a finished list (`discussionAdSlots`).
  */
 export function PostList({
   load,
@@ -71,24 +68,33 @@ export function PostList({
   const req = useRef(0);
   /** D206: post count → the ad that follows that post. */
   const [ads, setAds] = useState<Record<number, Ad>>({});
+  /** D240: the ads already placed, by position (the server needs them for variety). */
+  const placed = useRef<Record<number, string>>({});
   const adContextKey = adContext ? JSON.stringify(adContext) : null;
 
-  /** Fills the ad slots between posts `from` and `to` (a new page, or the first one). */
+  /**
+   * Fills the ad slots between posts `from` and `to` (a new page, or the first one);
+   * `complete` when no more posts will load (only then does the end-of-list ad go in).
+   */
   const placeAds = useCallback(
-    async (from: number, to: number, forRequest: number) => {
+    async (from: number, to: number, forRequest: number, complete: boolean) => {
       if (!adContextKey) return;
-      const seed = `${adContextKey}:${today()}`;
-      const want = adSlotPositions({ from, to, first: adLayout().first, every: DENSEST, seed });
-      if (!want.length) return;
+      const slots = discussionAdSlots({ from, to, complete });
+      if (!slots.length) return;
+      if (from === 0) placed.current = {};
+      const inList = Object.entries(placed.current)
+        .sort(([a], [b]) => Number(a) - Number(b))
+        .map(([, id]) => id);
       try {
         const got = await fetchAds(
           JSON.parse(adContextKey) as AdContext,
-          Math.min(want.length, 10),
+          Math.min(slots.length, 10),
+          inList,
         );
         if (forRequest !== req.current || !got.length) return;
-        // The server's spacing for this person (it may have changed since the last answer).
-        const { first, every } = adLayout();
-        const slots = adSlotPositions({ from, to, first, every, seed });
+        slots.forEach((after, i) => {
+          if (got[i]) placed.current[after] = got[i].id;
+        });
         setAds((prev) => {
           const next = { ...prev };
           slots.forEach((after, i) => {
@@ -120,9 +126,12 @@ export function PostList({
           to = prev.length + added.length;
           return [...prev, ...added];
         });
-        if (!after) setAds({});
+        if (!after) {
+          setAds({});
+          placed.current = {};
+        }
         setCursor(page.nextCursor);
-        void placeAds(from, to, id);
+        void placeAds(from, to, id, page.nextCursor === null);
       } catch (e) {
         if (id !== req.current) return;
         // D77: a failed reload clears the old list, so posts from somewhere else never

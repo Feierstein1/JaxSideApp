@@ -23,7 +23,7 @@ import { DecoBox } from '@/deco';
 import { showAlert } from '@/dialog';
 import { photoUri } from '@/discussion/photos';
 import { eventLinkTapped, fetchEvent, setEventFollow } from '@/events/api';
-import { HostLine, Tag, timeRange } from '@/events/EventCard';
+import { HostedAt, HostLine, Tag, timeRange } from '@/events/EventCard';
 import { EventChatEntry } from '@/events/EventChatEntry';
 import { openOutsideLink } from '@/links';
 import { haptic } from '@/motion';
@@ -170,6 +170,13 @@ export default function EventScreen() {
           />
         ) : null}
 
+        {e.hostedAt ? (
+          <HostedAt
+            place={e.hostedAt}
+            onPress={() => router.push(`/places/${e.hostedAt!.placeId}`)}
+          />
+        ) : null}
+
         <EventChatEntry event={e} />
 
         <DecoBox shape="chamfer" fill={DARK.card} style={{ padding: SPACE.md, gap: SPACE.sm }}>
@@ -182,7 +189,7 @@ export default function EventScreen() {
                 .join('\n')}
             />
           ) : null}
-          {e.venueConfirmedBy ? (
+          {e.venueConfirmedBy && !e.hostedAt ? (
             <Row icon="checkmark-circle-outline" text={`Confirmed by ${e.venueConfirmedBy}`} />
           ) : null}
           {e.neighborhood ? (
@@ -199,6 +206,8 @@ export default function EventScreen() {
             >
               <HostLine e={e} />
             </Pressable>
+          ) : e.host.kind === 'organizer' ? (
+            <HostLine e={e} />
           ) : null}
         </DecoBox>
 

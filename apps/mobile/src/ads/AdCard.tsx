@@ -11,6 +11,7 @@ import { Text } from '@/text';
 import { RADIUS, SPACE } from '@/tokens';
 import { IconButton, openMenu } from '@/ui';
 import { hostOf, openOutsideLink } from '@/links';
+import { HostedAt } from '@/events/EventCard';
 import { adLinkTapped, setAdInterest } from './api';
 
 type Choice = 'INTERESTED' | 'NOT_INTERESTED' | null;
@@ -171,6 +172,13 @@ export function AdCard({ ad }: { ad: Ad }) {
               style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: RADIUS.sm }}
               resizeMode="cover"
               accessibilityIgnoresInvertColors
+            />
+          ) : null}
+          {ad.event?.hostedAt ? (
+            // D240: an event at a business that confirmed it: the business stands out.
+            <HostedAt
+              place={ad.event.hostedAt}
+              onPress={() => router.push(`/places/${ad.event!.hostedAt!.placeId}`)}
             />
           ) : null}
           {ad.event ? (

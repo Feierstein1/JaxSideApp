@@ -151,6 +151,11 @@ function toCard(r: CardRow, now = new Date()): EventCard {
     // D236: while the place's owner disputes it, the place isn't named.
     venue: r.venue_name ?? (r.venue_status === 'DISPUTED' ? null : r.place_name) ?? r.address,
     venueConfirmedBy: r.venue_status === 'CONFIRMED' ? r.place_name : null,
+    // D240: an organizer's (or another business's) event at a business that confirmed it.
+    hostedAt:
+      r.venue_status === 'CONFIRMED' && r.place_id && r.place_name && r.place_id !== r.host_place_id
+        ? { placeId: r.place_id, name: r.place_name, category: r.place_category ?? '' }
+        : null,
     neighborhood: r.neighborhood,
     zip: r.zip,
     setting: settingKey(r.setting),

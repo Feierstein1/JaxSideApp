@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { seedFrom, seeded, type AdTemplateKind } from '../ads';
+import type { EventVenuePlace } from './events';
 import { locationReadingSchema } from './location';
 
 /**
@@ -20,6 +21,12 @@ export type AdContext = z.infer<typeof adContextSchema>;
 export const AD_REQUEST_MAX = 10;
 /** Ads the phone may list as "seen recently" (its cooldown) in one request. */
 export const AD_SEEN_MAX = 200;
+/** D240: ads already placed in one list that a request may name. */
+export const AD_IN_LIST_MAX = 60;
+/** D240: a business's ads in one list (discussion or feed), at most. */
+export const AD_PER_BUSINESS_IN_LIST = 2;
+/** D240: large ads (Feature, or Post with a picture) in one list, at most. */
+export const AD_LARGE_IN_LIST = 1;
 
 export const adSlotsRequestSchema = z.strictObject({
   reading: locationReadingSchema,
@@ -28,6 +35,12 @@ export const adSlotsRequestSchema = z.strictObject({
   count: z.number().int().min(1).max(AD_REQUEST_MAX),
   /** Ads shown on this phone within the cooldown (ads.cooldownHours): never picked again. */
   seen: z.array(z.uuid()).max(AD_SEEN_MAX).default([]),
+  /**
+   * D240: the ads already placed in this list (this discussion or feed), in the order they sit.
+   * The server then keeps one large ad per list, a business at most twice and never twice in a
+   * row. Older apps don't send it (each request is treated as a fresh list).
+   */
+  inList: z.array(z.uuid()).max(AD_IN_LIST_MAX).default([]),
 });
 
 /** One batch of views: an ad counts as seen when half of it was on screen for a second. */
@@ -57,7 +70,14 @@ export interface AdCard {
    * D230: the event it promotes (its next date, Jacksonville time): the card shows when it is
    * and opens the event.
    */
-  event: { id: string; title: string; date: string; startTime: string } | null;
+  event: {
+    id: string;
+    title: string;
+    date: string;
+    startTime: string;
+    /** D240: "Hosted at [place]" once the place confirmed it (see `EventCard.hostedAt`). */
+    hostedAt: EventVenuePlace | null;
+  } | null;
   /** D216: one button (paid plans only); null when the ad has none or the plan doesn't allow it. */
   link: { url: string; label: string } | null;
   /** The reader's own choice on this ad, if any. */
@@ -104,3 +124,30 @@ export function adSlotPositions(opts: {
   }
   return out;
 }
+
+/**
+ * D240 (owner): where ads go in a discussion or feed. The first ad sits under the 2nd post (or
+ * under the only post), then one every 3 posts (after posts 2, 5, 8, 11…), plus one at the end
+ * when at least 2 posts follow the last ad. The end ad is added only once the whole list has
+ * loaded (`complete`), so loading more never moves an ad. Never two ads in a row. Returns the
+ * post counts after which an ad goes, above `from` (slots on earlier pages aren't repeated).
+ *
+ *   posts:  1   2   3   4     5     6     7       8       9       10
+ *   ads:    1   2   2   2,4   2,5   2,5   2,5,7   2,5,8   2,5,8   2,5,8,10
+ */
+export function discussionAdSlots(opts: { from: number; to: number; complete: boolean }) {
+  const n = opts.to;
+  if (n < 1) return [];
+  const out: number[] = [];
+  let last = 0;
+  for (let at = Math.min(2, n); at <= n; at += 3) {
+    out.push(at);
+    last = at;
+  }
+  if (opts.complete && n - last >= 2) out.push(n);
+  return out.filter((at) => at > opts.from);
+}
+
+/** D240: a large ad takes real space in a list: a Feature, or a Post with a picture. */
+export const isLargeAd = (ad: { template: AdTemplateKind; hasImage: boolean }) =>
+  ad.template === 'FEATURE' || (ad.template === 'POST' && ad.hasImage);

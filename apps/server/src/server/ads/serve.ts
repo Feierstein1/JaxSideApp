@@ -1,4 +1,7 @@
 import {
+  AD_LARGE_IN_LIST,
+  AD_PER_BUSINESS_IN_LIST,
+  isLargeAd,
   localDate,
   localTime,
   inSchedule,
@@ -50,9 +53,13 @@ export interface LiveAd {
   cityWide: boolean;
   place: { id: string; name: string } | null;
   /** D230: the event it promotes, if any (only while it has a date to come). */
-  event: { id: string; title: string; date: string; startTime: string } | null;
+  event: AdCard['event'];
   /** Where the ad is "from" for radius targeting: its place, or its event's pin. */
   anchor: { latitude: number; longitude: number };
+  /** D240: a Feature, or a Post with a picture (one per list). */
+  large: boolean;
+  /** D240: the business's tier: Premium 3, Standard 2, Free 1 (its plan's rank). */
+  tierWeight: number;
   /** D216: shown only when the business's current plan allows links (`ads.links`). */
   link: { url: string; label: string } | null;
 }
@@ -79,6 +86,11 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
           latitude: true,
           longitude: true,
           zip: true,
+          // D240: "Hosted at [place]" once the venue's owner confirmed it.
+          venueStatus: true,
+          placeId: true,
+          hostPlaceId: true,
+          place: { select: { id: true, name: true, category: true, status: true } },
           sessions: {
             where: { endsAt: { gt: now } },
             orderBy: { startsAt: 'asc' },
@@ -109,6 +121,8 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
       { ...NO_PLAN_ENTITLEMENTS, ...planEntitlements(s.plan.entitlements) },
     ]),
   );
+  // D240: paid tiers show more often: weight = the plan's rank (Free 1, Standard 2, Premium 3).
+  const ranks = new Map(subs.map((s) => [s.accountId, Math.max(1, Math.min(3, s.plan.rank))]));
   const perAccount = new Map<string, number>();
   const out: LiveAd[] = [];
   for (const r of rows) {
@@ -152,9 +166,24 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
               title: r.event.title,
               date: localDate(next.startsAt),
               startTime: localTime(next.startsAt),
+              hostedAt:
+                r.event.venueStatus === 'CONFIRMED' &&
+                r.event.place?.status === 'ACTIVE' &&
+                r.event.placeId !== r.event.hostPlaceId
+                  ? {
+                      placeId: r.event.place.id,
+                      name: r.event.place.name,
+                      category: r.event.place.category,
+                    }
+                  : null,
             }
           : null,
       anchor: { latitude: anchor.latitude, longitude: anchor.longitude },
+      large: isLargeAd({
+        template: r.template,
+        hasImage: !!(r.mediaId && r.media?.status === 'ACTIVE'),
+      }),
+      tierWeight: ranks.get(r.accountId) ?? 1,
     });
   }
   return out;
@@ -181,6 +210,8 @@ export interface Weighted<T> {
   weight: number;
   boosted: boolean;
   group: string;
+  /** D240: at most `maxLarge` large items in one pick. */
+  large?: boolean;
 }
 
 /**
@@ -192,10 +223,12 @@ export function weightedPick<T>(
   count: number,
   maxBoosted: number,
   rand: () => number = Math.random,
+  maxLarge = Infinity,
 ): T[] {
-  let left = pool.filter((p) => p.weight > 0);
+  let left = pool.filter((p) => p.weight > 0 && !(p.large && maxLarge <= 0));
   const picked: T[] = [];
   let boosted = 0;
+  let large = 0;
   while (picked.length < count && left.length) {
     const total = left.reduce((n, p) => n + p.weight, 0);
     let r = rand() * total;
@@ -204,7 +237,13 @@ export function weightedPick<T>(
     const chosen = left[i]!;
     picked.push(chosen.item);
     if (chosen.boosted) boosted++;
-    left = left.filter((p) => p.group !== chosen.group && !(p.boosted && boosted >= maxBoosted));
+    if (chosen.large) large++;
+    left = left.filter(
+      (p) =>
+        p.group !== chosen.group &&
+        !(p.boosted && boosted >= maxBoosted) &&
+        !(p.large && large >= maxLarge),
+    );
   }
   return picked;
 }
@@ -241,6 +280,8 @@ export async function pickAdsFor(
   seen: string[],
   now = new Date(),
   rand: () => number = Math.random,
+  /** D240: ads already placed in this list, in order (older apps send none). */
+  inList: string[] = [],
 ): Promise<AdCard[]> {
   if (context.kind === 'topic') {
     const t = await db.cityTopic.findUnique({
@@ -261,7 +302,22 @@ export async function pickAdsFor(
   ]);
   const [boost, sharePercent, hideDays, interestDays] = cfg;
   const onlyAccount = context.kind === 'place' ? await placeOwnerWithPlan(context.id, now) : null;
-  const seenSet = new Set(seen);
+  const seenSet = new Set([...seen, ...inList]);
+  // D240: what this list already shows: a business at most twice and never twice in a row,
+  // and one large ad per list.
+  const placed = inList.length
+    ? await db.ad.findMany({
+        where: { id: { in: inList } },
+        select: { id: true, accountId: true, template: true, mediaId: true },
+      })
+    : [];
+  const placedById = new Map(placed.map((a) => [a.id, a]));
+  const perBusiness = new Map<string, number>();
+  for (const a of placed) perBusiness.set(a.accountId, (perBusiness.get(a.accountId) ?? 0) + 1);
+  const lastBusiness = placedById.get(inList[inList.length - 1] ?? '')?.accountId ?? null;
+  const largeLeft =
+    AD_LARGE_IN_LIST -
+    placed.filter((a) => isLargeAd({ template: a.template, hasImage: !!a.mediaId })).length;
 
   let hidden = new Set<string>();
   let liked = new Set<string>();
@@ -295,6 +351,8 @@ export async function pickAdsFor(
       !hidden.has(ad.accountId) &&
       !(ad.adultsOnly && !reader.userId) &&
       (onlyAccount === null || ad.accountId === onlyAccount) &&
+      (perBusiness.get(ad.accountId) ?? 0) < AD_PER_BUSINESS_IN_LIST &&
+      ad.accountId !== lastBusiness &&
       targetsReader(ad, ad.anchor, { point: reader.point, zip }),
   );
   if (!eligible.length) return [];
@@ -313,13 +371,14 @@ export async function pickAdsFor(
     const pace = Math.min(4, Math.max(0.25, (avg + 1) / ((views.get(ad.id) ?? 0) + 1)));
     return {
       item: ad,
-      weight: pace * (isBoosted ? boost : 1),
+      weight: pace * (isBoosted ? boost : 1) * ad.tierWeight,
       boosted: isBoosted,
       group: ad.accountId,
+      large: ad.large,
     };
   });
   const maxBoosted = Math.ceil((count * sharePercent) / 100);
-  const picked = weightedPick(pool, count, maxBoosted, rand);
+  const picked = weightedPick(pool, count, maxBoosted, rand, Math.max(0, largeLeft));
 
   const mine = reader.userId
     ? await db.adInterest.findMany({
