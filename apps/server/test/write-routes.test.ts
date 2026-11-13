@@ -100,6 +100,7 @@ import * as eventFollow from '@/app/api/v1/events/[id]/follow/route';
 import * as eventDay from '@/app/api/v1/events/day/route';
 import * as eventList from '@/app/api/v1/events/list/route';
 import * as eventMonth from '@/app/api/v1/events/month/route';
+import * as eventComingUp from '@/app/api/v1/events/coming-up/route';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
@@ -1016,6 +1017,16 @@ const ROWS: Row[] = [
     route: 'events/list',
     method: 'POST',
     handler: h(eventList, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at) }),
+  },
+  // D241: the "Coming up" strip (accounts only).
+  {
+    route: 'events/coming-up',
+    method: 'POST',
+    handler: h(eventComingUp, 'POST'),
     auth: true,
     id: null,
     location: true,

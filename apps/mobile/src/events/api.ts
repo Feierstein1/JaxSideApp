@@ -1,4 +1,5 @@
 import type {
+  EventCard,
   ChatLine,
   EventChatList,
   EventChatStatus,
@@ -93,3 +94,9 @@ export const eventChat = {
       body,
     }),
 };
+
+/** D241: followed events that start today or tomorrow ("Coming up"). Accounts only. */
+export async function fetchComingUp() {
+  const reading = await getFreshReading();
+  return (await api.post<{ events: EventCard[] }>('/api/v1/events/coming-up', { reading })).events;
+}

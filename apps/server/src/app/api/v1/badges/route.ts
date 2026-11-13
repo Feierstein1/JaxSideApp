@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/server/auth/require-actor';
-import { ensureEventReminders } from '@/server/events/notify';
+import { ensureEventReminders, followedEventsToday } from '@/server/events/notify';
 import { route } from '@/server/http';
 import { unreadChats } from '@/server/social/messages';
 import { notificationLimit } from '@/server/social/limits';
@@ -19,6 +19,10 @@ export const GET = route(async (req) => {
   await notificationLimit(user.id);
   // D230: followed-event reminders are made here (the app checks every 30 s while open).
   await ensureEventReminders(user.id);
-  const [messages, notifications] = await Promise.all([unreadChats(user.id), unreadCount(user.id)]);
-  return NextResponse.json({ messages, notifications });
+  const [messages, notifications, eventsToday] = await Promise.all([
+    unreadChats(user.id),
+    unreadCount(user.id),
+    followedEventsToday(user.id), // D241: the dot on the Events tab
+  ]);
+  return NextResponse.json({ messages, notifications, eventsToday });
 });

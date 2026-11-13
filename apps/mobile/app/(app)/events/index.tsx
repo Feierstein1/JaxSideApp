@@ -1,3 +1,4 @@
+import { ComingUpSection } from '@/events/ComingUp';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -113,6 +114,8 @@ export default function EventsScreen() {
       </View>
       <StepEdge />
       <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 48, gap: SPACE.sm }}>
+        {/* D241: followed events today and tomorrow. */}
+        <ComingUpSection />
         {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
         {view === 'calendar' ? (
           <>

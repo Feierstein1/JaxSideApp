@@ -42,3 +42,21 @@ export async function ensureEventReminders(userId: string) {
               = (now() AT TIME ZONE 'America/New_York')::date + 1)
     ON CONFLICT DO NOTHING`;
 }
+
+/**
+ * D241: how many events this person follows are on today (a session that starts today in
+ * Jacksonville, or is happening now). Drives the quiet dot on the Events tab.
+ */
+export async function followedEventsToday(userId: string) {
+  const [row] = await db.$queryRaw<{ n: number }[]>`
+    SELECT count(DISTINCT s."eventId")::int AS n
+    FROM "EventFollow" f
+    JOIN "EventSession" s ON s."eventId" = f."eventId"
+    JOIN "Event" e ON e.id = s."eventId"
+    WHERE f."userId" = ${userId}::uuid
+      AND e.status = 'APPROVED'
+      AND s."endsAt" > now()
+      AND (s."startsAt" AT TIME ZONE 'America/New_York')::date
+          <= (now() AT TIME ZONE 'America/New_York')::date`;
+  return row?.n ?? 0;
+}

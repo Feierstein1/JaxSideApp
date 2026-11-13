@@ -6,6 +6,7 @@ import { POST as adminDecidePOST } from '@/app/api/v1/admin/events/[id]/decide/r
 import { PATCH as adminEditPATCH } from '@/app/api/v1/admin/events/[id]/route';
 import { POST as adminCreatePOST } from '@/app/api/v1/admin/events/route';
 import { POST as dayPOST } from '@/app/api/v1/events/day/route';
+import { POST as comingUpPOST } from '@/app/api/v1/events/coming-up/route';
 import { DELETE as unfollowDELETE, PUT as followPUT } from '@/app/api/v1/events/[id]/follow/route';
 import { POST as detailPOST } from '@/app/api/v1/events/[id]/route';
 import { POST as listPOST } from '@/app/api/v1/events/list/route';
@@ -633,5 +634,53 @@ describe('event organizers (P18.9)', () => {
     const far = await addEvent({ title: 'Far away' });
     await db.event.update({ where: { id: far }, data: { status: 'IN_REVIEW', ...ST_AUGUSTINE } });
     expect((await decide(far, { action: 'approve' })).body.error.code).toBe('OUTSIDE_SERVICE_AREA');
+  });
+});
+
+describe('coming up (D241)', () => {
+  const comingUp = (token: string, at = DOWNTOWN) =>
+    call(comingUpPOST as H, 'POST', { token, body: { reading: reading(at) } });
+
+  it('lists followed events today and tomorrow, and the badge counts today’s', async () => {
+    const soon = new Date(Date.now() + 30 * 60_000);
+    const later = new Date(soon.getTime() + 90 * 60_000);
+    const today = await addEvent({
+      title: 'Tonight',
+      sessions: [{ date: localDate(soon), start: localTime(soon), end: localTime(later) }],
+    });
+    const tomorrow = await addEvent({
+      title: 'Tomorrow',
+      sessions: [{ date: inDays(1), start: '19:00', end: '21:00' }],
+    });
+    const nextWeek = await addEvent({ title: 'Next week' });
+    const notFollowed = await addEvent({
+      title: 'Not followed',
+      sessions: [{ date: inDays(1), start: '10:00', end: '11:00' }],
+    });
+    for (const id of [today, tomorrow, nextWeek]) {
+      await call(followPUT as H, 'PUT', { token: me.token, id });
+    }
+    const r = await comingUp(me.token);
+    expect(r.status).toBe(200);
+    const titles = r.body.events.map((e: { title: string }) => e.title);
+    // "Tonight" may fall on tomorrow's date near midnight; either way both are listed.
+    expect(titles.sort()).toEqual(['Tomorrow', 'Tonight']);
+    expect(titles).not.toContain('Next week');
+    void notFollowed;
+    const badges = await call(badgesGET as H, 'GET', { token: me.token });
+    expect(badges.body.eventsToday).toBe(localDate(soon) === localDate(new Date()) ? 1 : 0);
+    // Someone who follows nothing: empty, and no dot.
+    expect((await comingUp(other.token)).body.events).toEqual([]);
+    expect((await call(badgesGET as H, 'GET', { token: other.token })).body.eventsToday).toBe(0);
+  });
+
+  it('🔒 accounts only, and only from inside Duval', async () => {
+    const inst = (await call(installPOST as H, 'POST', { body: {} })).body.installationToken;
+    const g = await call(guestsPOST as H, 'POST', {
+      body: {},
+      headers: { [INSTALLATION_HEADER]: inst },
+    });
+    expect((await comingUp(g.body.token)).status).not.toBe(200);
+    expect((await comingUp(me.token, ST_AUGUSTINE)).status).toBe(403);
   });
 });

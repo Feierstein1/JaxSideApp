@@ -4,7 +4,9 @@ import { router, Tabs, useSegments } from 'expo-router';
 import * as Location from 'expo-location';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK } from '@jax/shared';
+import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
+import { useBadge } from '@/social/badges';
 import { ensureGuide } from '@/guides/guide';
 import { LocationGate } from '@/location/LocationGate';
 import { haptic } from '@/motion';
@@ -40,6 +42,38 @@ function tabIcon(name: string) {
     );
   }
   return TabIcon;
+}
+
+/**
+ * D241: the Events tab icon, with a small teal dot when an event you follow is on today (a
+ * quiet reminder; phone notifications aren't on yet). Shares the badge check (every 30 s).
+ */
+const CalendarIcon = tabIcon('calendar');
+function EventsTabIcon(props: { focused: boolean; color: ColorValue }) {
+  const { state } = useAuth();
+  const { isGuest } = useGuest();
+  const today = useBadge('eventsToday', state.status === 'signedIn' && !isGuest);
+  return (
+    <View>
+      <CalendarIcon {...props} />
+      {today ? (
+        <View
+          accessibilityLabel="An event you follow is on today"
+          style={{
+            position: 'absolute',
+            top: 2,
+            right: 10,
+            width: 9,
+            height: 9,
+            borderRadius: 5,
+            backgroundColor: DARK.accent,
+            borderWidth: 1.5,
+            borderColor: DARK.bar,
+          }}
+        />
+      ) : null}
+    </View>
+  );
 }
 
 /**
@@ -144,7 +178,7 @@ export default function AppLayout() {
       {/* D230: Events in Friends' old spot; tapping it always shows the Events page. */}
       <Tabs.Screen
         name="events"
-        options={{ title: 'Events', tabBarIcon: tabIcon('calendar') }}
+        options={{ title: 'Events', tabBarIcon: EventsTabIcon }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
             e.preventDefault();

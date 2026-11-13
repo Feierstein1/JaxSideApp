@@ -10,15 +10,23 @@ import { api } from '@/api';
 export interface Badges {
   messages: number;
   notifications: number;
+  /** D241: followed events on today (a quiet dot on the Events tab). */
+  eventsToday: number;
 }
 const POLL_MS = 30_000;
-let badges: Badges = { messages: 0, notifications: 0 };
+let badges: Badges = { messages: 0, notifications: 0, eventsToday: 0 };
 const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setInterval> | null = null;
 let users = 0;
 
 function set(next: Badges) {
-  if (next.messages === badges.messages && next.notifications === badges.notifications) return;
+  if (
+    next.messages === badges.messages &&
+    next.notifications === badges.notifications &&
+    next.eventsToday === badges.eventsToday
+  ) {
+    return;
+  }
   badges = next;
   listeners.forEach((l) => l());
 }
@@ -26,7 +34,11 @@ function set(next: Badges) {
 export async function refreshBadges() {
   try {
     const r = await api.get<Badges>('/api/v1/badges');
-    set({ messages: r.messages, notifications: r.notifications });
+    set({
+      messages: r.messages,
+      notifications: r.notifications,
+      eventsToday: r.eventsToday ?? 0,
+    });
   } catch {
     // Offline or signed out: keep the last counts.
   }

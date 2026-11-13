@@ -363,3 +363,27 @@ async function eventLink(
   const { entitlements } = await entitlementsFor(e.businessAccountId, now);
   return entitlements['ads.links'] ? { url: e.linkUrl, label: e.linkLabel } : null;
 }
+
+/**
+ * D241: "Coming up": events this person follows that start today or tomorrow (Jacksonville
+ * days) and haven't ended, soonest first (cancelled ones included, marked). For the strip on
+ * Home and the top of the Events tab.
+ */
+export async function eventsComingUp(
+  viewerId: string,
+  at: GeoPoint,
+  now = new Date(),
+): Promise<EventCard[]> {
+  const filters = await filterSql(viewerId, at, { following: true });
+  const today = localDate(now);
+  filters.push(
+    Prisma.sql`s."endsAt" > ${now} AND s."startsAt" < ${localToUtc(addDays(today, 2), '00:00')}`,
+  );
+  const rows = await selectCards(
+    viewerId,
+    at,
+    Prisma.join(filters, ' AND '),
+    Prisma.sql`ORDER BY s."startsAt", s.id LIMIT 10`,
+  );
+  return rows.map((r) => toCard(r, now));
+}

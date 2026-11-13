@@ -46,14 +46,14 @@ beforeEach(async () => {
 
 describe('badges (Q26)', () => {
   it('counts unread chats and bell notices together, for that person only', async () => {
-    expect((await badges(bob)).body).toEqual({ messages: 0, notifications: 0 });
+    expect((await badges(bob)).body).toEqual({ messages: 0, notifications: 0, eventsToday: 0 });
     await call(sendPOST as H, 'POST', {
       token: ann.token,
       body: { reading: reading(), to: 'bob_b', body: 'Hi Bob' },
     });
     await call(requestPOST as H, 'POST', { token: cat.token, body: { username: 'bob_b' } });
-    expect((await badges(bob)).body).toEqual({ messages: 1, notifications: 1 });
-    expect((await badges(ann)).body).toEqual({ messages: 0, notifications: 0 });
+    expect((await badges(bob)).body).toEqual({ messages: 1, notifications: 1, eventsToday: 0 });
+    expect((await badges(ann)).body).toEqual({ messages: 0, notifications: 0, eventsToday: 0 });
   });
 
   // 🔒 Signed-in accounts only.
