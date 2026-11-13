@@ -86,7 +86,13 @@ friction).
       ask for it).
 - [x] Get an EIN (free, irs.gov). **Done 2026-11-06**; CP 575 letter downloaded and kept by
       the owner outside the repo (the number is not recorded here).
-- [ ] Get a D-U-N-S number (free, Dun & Bradstreet). **Requested 2026-11-07** through Apple's
+- [x] **D-U-N-S 150085122, created 2026-11-13** (D&B case 11253733; verified against Sunbiz
+      after the owner sent the Articles, EIN letter and D&B's Business Information Form). D&B
+      record: JAXSIDE LLC, `7901 4th St N #35372, St Petersburg FL 33702`, 904 phone, SIC/NAICS
+      code 73710300 (software development), legal form shown as "Corporation" (not LLC; leave it
+      unless Apple objects, then correct it free through D&B). Apple can see it about 2 business
+      days later (from 2026-11-17).
+- [x] Get a D-U-N-S number (free, Dun & Bradstreet). **Requested 2026-11-07** through Apple's
       lookup tool (no existing match), with the Sunbiz name and suite address. Expect D&B's
       email in about 5 business days, then up to 2 business days before Apple sees it. Do not
       also request one directly at dnb.com (duplicates block Apple enrollment). D&B iResearch

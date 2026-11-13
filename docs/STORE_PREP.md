@@ -5,13 +5,14 @@ Everything the two stores ask for, filled in from what the app actually does. An
 
 ## Accounts and builds
 
-| Item                        | Apple App Store                                                                        | Google Play                                                                                                             |
-| --------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Developer account **(you)** | Apple Developer Program, $99/year (individual, or organization with a D-U-N-S number)  | Play Console, $25 once. New personal accounts must run a **closed test with 12+ testers for 14 days** before production |
-| App name                    | "Jax" (check availability; a longer name like "Jax – Jacksonville Local" helps search) | Same                                                                                                                    |
-| Bundle / package ID         | e.g. `com.yourname.jax` **(you pick; can't change later)**                             | Same ID                                                                                                                 |
-| Builds                      | Expo EAS Build → TestFlight                                                            | Expo EAS Build → internal / closed testing track                                                                        |
-| API address                 | The production server's HTTPS address in `EXPO_PUBLIC_API_URL`                         | Same                                                                                                                    |
+| Item                        | Apple App Store                                                                        | Google Play                                                                                                 |
+| --------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Developer account **(you)** | Apple Developer Program, $99/year, **organization** as JaxSide LLC (D-U-N-S 150085122) | Play Console, $25 once, **organization** as JaxSide LLC (same D-U-N-S; no 12-tester rule for organizations) |
+| App name                    | "JaxSide" (D118); a subtitle like "Jacksonville local" helps search                    | Same                                                                                                        |
+| Bundle / package ID         | `com.jaxside.app` (set; can't change later)                                            | Same ID                                                                                                     |
+| Availability                | **United States only** (stores can't limit by city; the server enforces Duval)         | Same                                                                                                        |
+| Builds                      | Expo EAS Build → TestFlight                                                            | Expo EAS Build → internal / closed testing track                                                            |
+| API address                 | The production server's HTTPS address in `EXPO_PUBLIC_API_URL`                         | Same                                                                                                        |
 
 ## Age rating: 17+ / Mature (the app is 18+ by policy)
 
@@ -72,6 +73,8 @@ Answers based on the code. Nothing is used for tracking or ads, nothing is sold.
 ## Store listing **(you)**
 
 - Short description, full description, keywords (e.g. Jacksonville, Duval, neighborhood, local).
+  **First line of the description and one screenshot say "Jacksonville (Duval County) only"**,
+  so people elsewhere don't download it and leave bad reviews.
 - Screenshots: iPhone 6.7" and 6.5", Android phone; a feature graphic for Play (1024×500).
 - App icon 1024×1024 (Jaguars-colors palette only, no NFL marks; D33).
 - Category: Social Networking.
@@ -83,9 +86,34 @@ Answers based on the code. Nothing is used for tracking or ads, nothing is sold.
 
 ## Before submitting (checklist)
 
-- [ ] Hosting live with HTTPS (Q15), production API address in the build
-- [ ] Support email (done: support@jaxside.com, 2026-11-08) + account-deletion help page
+Company and accounts (details in `docs/LLC_PROCESS.md`):
+
+- [x] JaxSide LLC filed (L26000560458), EIN, D-U-N-S 150085122 (2026-11-13)
+- [x] Business email: `kenny@jaxside.com`, `support@jaxside.com` (2026-11-08)
+- [ ] **jaxside.com live with real content** (production server, D243). Apple rejects
+      placeholder or minimal sites; the D-U-N-S request is done, so this is the next blocker
+- [ ] Apple Account email changed from the personal Yahoo address to `kenny@jaxside.com`
+- [ ] Apple Developer Program, organization ($99/year, **you**); wait at least 2 business days
+      after the D-U-N-S (from 2026-11-17); name, address and phone exactly as on Sunbiz and D&B
+- [ ] Google Play Console, organization ($25 once, **you**)
+
+App and server:
+
+- [ ] Production server live with HTTPS (D243), production API address
+      (`https://api.jaxside.com`) in the store builds
+- [ ] Support email (done: support@jaxside.com, 2026-11-08) + account-deletion help page on the
+      website
+- [ ] SES production access (email to real people; the sandbox only sends to verified addresses)
 - [ ] NCMEC CyberTipline registration (R4)
 - [ ] Reviewer access plan for the location restriction (see above)
-- [ ] Closed test on Play (12+ testers, 14 days) if your Play account is new and personal
+- [ ] On a phone outside Duval, the app shows a clear "JaxSide is for Jacksonville (Duval
+      County)" message, not something that looks like an error
+- [ ] Store availability set to United States only; listing says Jacksonville-only up front
 - [ ] Final read of Terms, Privacy Policy and Guidelines (D52)
+
+Owner verification (not blocking the stores; owners can use "Ask JaxSide" meanwhile):
+
+- [ ] Google Business Profile manager access on an established listing (Q40), then the
+      Business Profile API access request (B6.1)
+- [ ] Google's review of the sign-in screen (needs the privacy policy and terms on jaxside.com),
+      so the public can use Sign in with Google
