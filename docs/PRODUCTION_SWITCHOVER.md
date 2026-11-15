@@ -32,6 +32,10 @@ names stay; only the contents are cleared).
   `deploy/production/secrets/`. Next: the website deploys, then Kenny points `jaxside.com` (A, today
   GoDaddy's parked page) at 34.197.165.101; `www` is already an alias. Steps 3 (fresh app keys), 6
   (wipe) and the rest of the app's switch-over come **last**.
+- **2026-11-15, the website is live:** the website's AI deployed (container healthy, about 180 MB
+  of its 768 MB; the server about 1.1 GB used of 4 GB), then Kenny pointed `jaxside.com` (A) at
+  34.197.165.101 at GoDaddy. Caddy got Let's Encrypt certificates for `jaxside.com` and `www`
+  (`www` → `https://jaxside.com`, `http` → `https`); https://jaxside.com and `/signup` answer.
 - **The wipe must change before it runs:** real businesses can sign up once the website is live, so
   `wipe-for-launch.sql` will remove only the test accounts (the website's business1-3, organizer1-3
   and the test people), not every business account. Don't run it as written.
