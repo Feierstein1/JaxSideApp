@@ -1,5 +1,8 @@
-# D139: HTTPS for the staging API. Caddy gets and renews the certificate itself.
-staging-api.jaxside.com {
+# D139 / D245: HTTPS for the app's API. Caddy gets and renews the certificates itself. One server
+# runs production (D245): api.jaxside.com for the launch builds, staging-api.jaxside.com kept for
+# the test builds already on phones, and the owner website's own block from sites/ (D226).
+
+(api) {
 	encode zstd gzip
 	# Videos are up to 25 MB (video.maxUploadMB); leave a little room.
 	request_body {
@@ -15,3 +18,16 @@ staging-api.jaxside.com {
 	}
 	# No access log: email links carry one-time tokens in their URLs.
 }
+
+staging-api.jaxside.com {
+	import api
+}
+
+# D245: the launch address. Its DNS record must point here before this file is deployed
+# (step 1 of docs/PRODUCTION_SWITCHOVER.md), or Caddy can't get its certificate.
+api.jaxside.com {
+	import api
+}
+
+# D226 / D243: other sites on this server (the owner website copies jaxside.caddy here).
+import sites/*.caddy

@@ -13,12 +13,14 @@ services:
     ports:
       - '127.0.0.1:5432:5432'
     command:
-      # Sized for a 2 GB server shared with the API (docs/PRODUCTION_DATABASE.md).
+      # Sized by the server's .env (docs/PRODUCTION_DATABASE.md): the defaults suit 2 GB shared
+      # with the API; after the 4 GB resize (D245) set PG_SHARED_BUFFERS=768MB and
+      # PG_EFFECTIVE_CACHE=2GB (the owner website shares the server too).
       - postgres
       - -c
-      - shared_buffers=256MB
+      - shared_buffers=${PG_SHARED_BUFFERS:-256MB}
       - -c
-      - effective_cache_size=768MB
+      - effective_cache_size=${PG_EFFECTIVE_CACHE:-768MB}
       - -c
       - work_mem=8MB
       - -c
@@ -72,6 +74,10 @@ services:
       - '443:443/udp'
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # D245: other sites' blocks (the owner website copies jaxside.caddy here), imported by
+      # the Caddyfile. Reload after changing one:
+      #   docker compose -f /opt/jaxside/docker-compose.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+      - ./sites:/etc/caddy/sites:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

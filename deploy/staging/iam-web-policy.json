@@ -1,0 +1,33 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "WebsiteMediaBucket",
+      "Effect": "Allow",
+      "Action": ["s3:GetBucketLocation"],
+      "Resource": ["arn:aws:s3:::jaxside-staging-media"]
+    },
+    {
+      "Sid": "WebsiteMediaObjects",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": [
+        "arn:aws:s3:::jaxside-staging-media/ads/*",
+        "arn:aws:s3:::jaxside-staging-media/events/*",
+        "arn:aws:s3:::jaxside-staging-media/business-pictures/*",
+        "arn:aws:s3:::jaxside-staging-media/photos/*"
+      ]
+    },
+    {
+      "Sid": "SendEmail",
+      "Effect": "Allow",
+      "Action": ["ses:SendRawEmail", "ses:SendEmail"],
+      "Resource": "*",
+      "Condition": {
+        "StringLike": {
+          "ses:FromAddress": "*@jaxside.com"
+        }
+      }
+    }
+  ]
+}

@@ -24,7 +24,7 @@ fi
 
 echo "Deploying $REV…"
 git archive --format=tar HEAD | gzip | $SSH "rm -rf /opt/jaxside/src.new && mkdir -p /opt/jaxside/src.new && tar -xzf - -C /opt/jaxside/src.new && echo $REV > /opt/jaxside/src.new/REVISION"
-scp -i "$KEY" -q deploy/staging/docker-compose.yml deploy/staging/Caddyfile deploy/staging/backup.sh deploy/staging/cron "$HOST:/opt/jaxside/"
+scp -i "$KEY" -q deploy/staging/docker-compose.yml deploy/staging/Caddyfile deploy/staging/backup.sh deploy/staging/cron deploy/staging/website-role.sql "$HOST:/opt/jaxside/"
 if [ "${1:-}" = "--env" ]; then
   scp -i "$KEY" -q deploy/staging/secrets/staging.env "$HOST:/opt/jaxside/.env"
   $SSH "chmod 600 /opt/jaxside/.env"
@@ -44,6 +44,15 @@ docker compose build app
 docker compose up -d postgres
 docker compose run --rm -T app npm run db:deploy </dev/null
 docker compose run --rm -T app npm run db:seed </dev/null
+# D245: the owner website's database login, refreshed after every migration so new tables
+# follow its rules (website-role.sql). Only once WEB_DB_PASSWORD is in .env.
+WEB_PW=$(grep -E '^WEB_DB_PASSWORD=' .env | cut -d= -f2- || true)
+if [ -n "$WEB_PW" ]; then
+  docker compose exec -T -e WEB_PW="$WEB_PW" postgres sh -c 'psql -q -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v web_password="$WEB_PW" -f -' < website-role.sql
+fi
+# D245: Caddy imports sites/*.caddy (the owner website's block); the folder must exist.
+mkdir -p sites
+test -n "$(ls sites/*.caddy 2>/dev/null)" || echo '# Placeholder: Caddy imports sites/*.caddy (D245).' > sites/00-none.caddy
 docker compose up -d
 sudo install -m 644 cron /etc/cron.d/jaxside
 chmod 755 backup.sh
