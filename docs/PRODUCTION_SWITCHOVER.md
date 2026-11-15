@@ -11,6 +11,19 @@ the app + Caddy. SES has **production access** (50,000 emails a day), sending fr
 `noreply@jaxside.com`. Buckets (us-east-1): `jaxside-staging-media`, `-quarantine`, `-backups` (the
 names stay; only the contents are cleared).
 
+## Progress
+
+- **2026-11-15, step 1 done:** `api.jaxside.com` → 34.197.165.101 (GoDaddy DNS; the domain's name
+  servers are GoDaddy's, `ns47` / `ns48.domaincontrol.com`).
+- **2026-11-15, step 2 done:** resized to 4 GB. Backup, containers stopped, snapshot
+  `jaxside-before-4gb-2026-11-15`, new instance **`jaxside-server`** (`medium_3_0`: 4 GB, 2 vCPU,
+  80 GB) from it in us-east-1a with the same key and firewall (80 / 443 open, 22 from Kenny's IP),
+  static IP moved, old `jaxside-staging-server` **stopped** (still billed while it exists: delete it
+  once the new one has run a day or two; the snapshot stays a week as the fallback). New SSH host
+  key accepted (the IP is attached to our instance). Postgres `shared_buffers` 768 MB. Deployed
+  `062d768`: `api.jaxside.com` and `staging-api.jaxside.com` both answer, `/admin` is 404 there,
+  `sites/` is in place. About 10 minutes of downtime.
+
 ## Decisions first (Kenny)
 
 1. **Resize to 4 GB?** Recommended. 2 GB has to hold Postgres, the app, Caddy and the website (capped
