@@ -24,6 +24,18 @@ names stay; only the contents are cleared).
   `062d768`: `api.jaxside.com` and `staging-api.jaxside.com` both answer, `/admin` is 404 there,
   `sites/` is in place. About 10 minutes of downtime.
 
+- **2026-11-15, website first (Kenny: the website before the app's own switch-over):** the
+  website's database login (`WEB_DB_PASSWORD` in `.env`, role `jaxside_web` created and tested),
+  `BUSINESS_SITE_URL=https://jaxside.com` (app restarted), IAM user **`jaxside-web`** with
+  `iam-web-policy.json` (tested: `ads/` write and delete allowed, `users/` refused, SES SMTP login
+  ok), and the website's `deploy.env` / `production.env` written to its git-ignored
+  `deploy/production/secrets/`. Next: the website deploys, then Kenny points `jaxside.com` (A, today
+  GoDaddy's parked page) at 34.197.165.101; `www` is already an alias. Steps 3 (fresh app keys), 6
+  (wipe) and the rest of the app's switch-over come **last**.
+- **The wipe must change before it runs:** real businesses can sign up once the website is live, so
+  `wipe-for-launch.sql` will remove only the test accounts (the website's business1-3, organizer1-3
+  and the test people), not every business account. Don't run it as written.
+
 ## Decisions first (Kenny)
 
 1. **Resize to 4 GB?** Recommended. 2 GB has to hold Postgres, the app, Caddy and the website (capped
