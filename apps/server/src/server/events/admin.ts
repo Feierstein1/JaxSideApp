@@ -33,6 +33,8 @@ import {
  */
 
 export const ADMIN_EVENT_TABS = {
+  // D247: website events go live at once; JaxSide looks at them afterwards (newest first).
+  unchecked: ['APPROVED', 'CANCELLED'],
   waiting: ['SUGGESTED', 'IN_REVIEW'],
   upcoming: ['APPROVED', 'CANCELLED'],
   past: ['APPROVED', 'CANCELLED'],
@@ -47,6 +49,7 @@ export async function adminListEvents(opts: { tab: AdminEventTab; q?: string; pa
     status: { in: [...ADMIN_EVENT_TABS[opts.tab]] },
     ...(opts.tab === 'upcoming' ? { lastEndsAt: { gte: now } } : {}),
     ...(opts.tab === 'past' ? { lastEndsAt: { lt: now } } : {}),
+    ...(opts.tab === 'unchecked' ? { reviewedById: null, businessAccountId: { not: null } } : {}),
     ...(opts.q ? { title: { contains: opts.q, mode: 'insensitive' } } : {}),
   };
   const orderBy: Prisma.EventOrderByWithRelationInput[] =
@@ -157,6 +160,8 @@ export async function adminGetEvent(id: string) {
     decisionReason: e.decisionReason,
     cancelReason: e.cancelReason,
     createdAt: e.createdAt.toISOString(),
+    // D247: null for a live website event nobody at JaxSide has looked at yet.
+    reviewedAt: e.reviewedAt?.toISOString() ?? null,
   };
 }
 
@@ -337,12 +342,38 @@ export async function adminDecideEvent(
       await notifyFollowers(id, 'EVENT_CANCELLED');
       return;
     case 'remove':
-      return move(e, ['SUGGESTED', 'DRAFT', 'IN_REVIEW', 'APPROVED', 'CANCELLED', 'DENIED'], {
+      await move(e, ['SUGGESTED', 'DRAFT', 'IN_REVIEW', 'APPROVED', 'CANCELLED', 'DENIED'], {
         status: 'REMOVED',
         decisionReason: d.reason,
         reviewedById: adminId,
         reviewedAt: now,
       });
+      // D247: the host reads why (the website shows it; sending it again waits for JaxSide).
+      if (e.businessAccountId) {
+        await db.businessNotice.create({
+          data: {
+            accountId: e.businessAccountId,
+            placeId: e.hostPlaceId,
+            kind: 'EVENT_DENIED',
+            title: `JaxSide took your event “${e.title}” down`.slice(0, 120),
+            body: d.reason,
+            link: `/events/${e.id}`,
+            createdAt: now,
+          },
+        });
+      }
+      return;
+    case 'ok': {
+      // D247: looked at, fine (website events go live without approval).
+      const r = await db.event.updateMany({
+        where: { id: e.id, status: { in: ['APPROVED', 'CANCELLED'] }, reviewedById: null },
+        data: { reviewedById: adminId, reviewedAt: now },
+      });
+      if (!r.count) {
+        throw new ApiError(409, 'ALREADY_DECIDED', 'Someone looked at it already, or it changed.');
+      }
+      return;
+    }
     case 'restore':
       return move(e, ['CANCELLED', 'REMOVED'], {
         status: 'APPROVED',

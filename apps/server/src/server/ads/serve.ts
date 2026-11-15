@@ -60,6 +60,8 @@ export interface LiveAd {
   large: boolean;
   /** D240: the business's tier: Premium 3, Standard 2, Free 1 (its plan's rank). */
   tierWeight: number;
+  /** D248: boosted by the business: reaches everyone and weighs `ads.boostWeight` times more. */
+  promoted: boolean;
   /** D216: shown only when the business's current plan allows links (`ads.links`). */
   link: { url: string; label: string } | null;
 }
@@ -121,6 +123,23 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
       { ...NO_PLAN_ENTITLEMENTS, ...planEntitlements(s.plan.entitlements) },
     ]),
   );
+  // D248: live boosts (an ad's own, or its event's) and the Free radius.
+  const [boostRows, nearMeters] = await Promise.all([
+    db.boost.findMany({
+      where: { status: 'ACTIVE', startsAt: { lte: now }, endsAt: { gt: now } },
+      select: { adId: true, eventId: true },
+    }),
+    getConfig('reach.nearMeters'),
+  ]);
+  const boostedEvents = new Set(boostRows.map((b) => b.eventId).filter(Boolean));
+  const boostedAds = new Set(
+    rows
+      .filter(
+        (r) =>
+          boostRows.some((b) => b.adId === r.id) || (r.eventId && boostedEvents.has(r.eventId)),
+      )
+      .map((r) => r.id),
+  );
   // D240: paid tiers show more often: weight = the plan's rank (Free 1, Standard 2, Premium 3).
   const ranks = new Map(subs.map((s) => [s.accountId, Math.max(1, Math.min(3, s.plan.rank))]));
   const perAccount = new Map<string, number>();
@@ -142,6 +161,10 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
     // D236: on a plan whose reach is its own ZIP, an event ad reaches the event's ZIP (set when
     // the event was approved), whatever the ad row says; organizers have no ZIP of their own.
     const ownZipEvent = !!r.event && plan['ads.reach'] === 'OWN_ZIP';
+    // D248: Free reaches about a mile around the place (or the event), whatever the ad row
+    // says; a boost (the business's) reaches everyone in Duval.
+    const boosted = boostedAds.has(r.id);
+    const near = !boosted && plan['ads.reach'] === 'NEAR';
     out.push({
       id: r.id,
       accountId: r.accountId,
@@ -150,9 +173,10 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
       body: r.body,
       mediaId: r.mediaId && r.media?.status === 'ACTIVE' ? r.mediaId : null,
       adultsOnly: r.adultsOnly,
-      zips: ownZipEvent ? (r.event!.zip ? [r.event!.zip] : []) : r.zips,
-      radiusMeters: ownZipEvent ? null : r.radiusMeters,
-      cityWide: ownZipEvent ? false : r.cityWide,
+      zips: boosted || near ? [] : ownZipEvent ? (r.event!.zip ? [r.event!.zip] : []) : r.zips,
+      radiusMeters: boosted ? null : near ? nearMeters : ownZipEvent ? null : r.radiusMeters,
+      cityWide: boosted ? true : near || ownZipEvent ? false : r.cityWide,
+      promoted: boosted,
       // D216: a downgrade hides the button at once (the website also pauses such ads).
       link:
         r.linkUrl && r.linkLabel && plan['ads.links']
@@ -178,7 +202,11 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
                   : null,
             }
           : null,
-      anchor: { latitude: anchor.latitude, longitude: anchor.longitude },
+      // D248: an event ad's "near" is measured from the event, not the business's place.
+      anchor:
+        near && r.event && r.event.latitude !== null
+          ? { latitude: r.event.latitude, longitude: r.event.longitude! }
+          : { latitude: anchor.latitude, longitude: anchor.longitude },
       large: isLargeAd({
         template: r.template,
         hasImage: !!(r.mediaId && r.media?.status === 'ACTIVE'),
@@ -298,9 +326,10 @@ export async function pickAdsFor(
       getConfig('ads.boostedSharePercent'),
       getConfig('ads.notInterestedDays'),
       getConfig('ads.interestedDays'),
+      getConfig('ads.boostWeight'),
     ]),
   ]);
-  const [boost, sharePercent, hideDays, interestDays] = cfg;
+  const [boost, sharePercent, hideDays, interestDays, promotedWeight] = cfg;
   const onlyAccount = context.kind === 'place' ? await placeOwnerWithPlan(context.id, now) : null;
   const seenSet = new Set([...seen, ...inList]);
   // D240: what this list already shows: a business at most twice and never twice in a row,
@@ -379,7 +408,8 @@ export async function pickAdsFor(
       const pace = Math.min(4, Math.max(0.25, (avg + 1) / ((views.get(ad.id) ?? 0) + 1)));
       return {
         item: ad,
-        weight: pace * (isBoosted ? boost : 1) * ad.tierWeight,
+        // D248: a business's Boost weighs `ads.boostWeight` times more.
+        weight: pace * (isBoosted ? boost : 1) * ad.tierWeight * (ad.promoted ? promotedWeight : 1),
         boosted: isBoosted,
         group: ad.accountId,
         large: ad.large,

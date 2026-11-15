@@ -11,11 +11,24 @@ import { z } from 'zod';
 export const PLAN_CODES = ['FREE', 'STANDARD', 'PREMIUM'] as const;
 export type PlanCode = (typeof PLAN_CODES)[number];
 
-/** The free month every new business gets once (one per business and per place). */
+/**
+ * D248: the trial every new account gets once (one per account and per place): Standard for
+ * this many days, then Free forever. (D202 called it the free month.)
+ */
 export const FREE_TIER_DAYS = 30;
+export const TRIAL_DAYS = FREE_TIER_DAYS;
+/** D248: the trial-ending notice and email go out this many days before it ends. */
+export const TRIAL_NOTICE_DAYS = 3;
 
-/** D204: where an ad may show: the place's own ZIP, chosen ZIPs, or the whole city. */
-export const AD_REACH = ['OWN_ZIP', 'ZIPS', 'CITY'] as const;
+/**
+ * D204: where an ad may show: the place's own ZIP, chosen ZIPs, or the whole city. D248:
+ * NEAR = within `reach.nearMeters` (about a mile) of the place, or of the event for an event ad.
+ */
+export const AD_REACH = ['OWN_ZIP', 'ZIPS', 'CITY', 'NEAR'] as const;
+/** D248: who sees an account's events: people near the event (Free) or everyone. */
+export const EVENT_REACH = ['NEAR', 'CITY'] as const;
+/** D248: boost lengths a business can pick (one ad or one event). */
+export const BOOST_DAYS = [3, 7, 14] as const;
 /** D204: which ZIPs Insights covers: the place's own, its own and nearby ones, or all. */
 export const INSIGHTS_REACH = ['OWN_ZIP', 'NEARBY', 'ALL'] as const;
 
@@ -40,10 +53,14 @@ export const PLAN_ENTITLEMENTS = {
   /** D204: ZIPs beside the place's own (for NEARBY). */
   'insights.nearbyZips': z.number().int().min(0).max(30),
   /**
-   * D231: events the account may add while on this plan (organizers and businesses); null = no
-   * limit. Free: 10 in the free month. Standard / Premium: no limit until the owner decides.
+   * D231 / D248: new events the account may add **per calendar month** (Jacksonville), the
+   * website counts them; null = no limit. Free 5, Standard 20, Premium no limit.
    */
   'events.limit': z.number().int().min(0).max(1000).nullable(),
+  /** D248: Free events (and their ads) show only near the event; paid ones everywhere. */
+  'events.reach': z.enum(EVENT_REACH),
+  /** D248: boosts the account may start per calendar month (Free 0, Standard 1, Premium 2). */
+  'boosts.perMonth': z.number().int().min(0).max(31),
 } as const;
 
 export type PlanEntitlementKey = keyof typeof PLAN_ENTITLEMENTS;
@@ -62,8 +79,10 @@ export const NO_PLAN_ENTITLEMENTS: Required<PlanEntitlements> = {
   insights: false,
   'insights.reach': 'OWN_ZIP',
   'insights.nearbyZips': 0,
-  // D231: without a current plan, no new events (like ads); the free month gives 10.
+  // D231: without a current plan, no new events (like ads).
   'events.limit': 0,
+  'events.reach': 'NEAR',
+  'boosts.perMonth': 0,
 };
 
 export const isPlanEntitlementKey = (key: string): key is PlanEntitlementKey =>

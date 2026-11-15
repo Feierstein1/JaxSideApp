@@ -15,12 +15,15 @@ import { pageWindow, toPage } from './paging';
 
 const DAY = 86_400_000;
 
-export const AD_TABS = ['review', 'live', 'past'] as const;
+export const AD_TABS = ['unchecked', 'review', 'live', 'past'] as const;
 export type AdTab = (typeof AD_TABS)[number];
 export const adTab = (raw: unknown): AdTab =>
-  AD_TABS.includes(raw as AdTab) ? (raw as AdTab) : 'review';
+  AD_TABS.includes(raw as AdTab) ? (raw as AdTab) : 'unchecked'; // D247: the main job now
 
-const STATUSES: Record<Exclude<AdTab, 'review'>, ('APPROVED' | 'PAUSED' | 'ENDED')[]> = {
+const STATUSES: Record<
+  Exclude<AdTab, 'review' | 'unchecked'>,
+  ('APPROVED' | 'PAUSED' | 'ENDED')[]
+> = {
   live: ['APPROVED'],
   past: ['PAUSED', 'ENDED'],
 };

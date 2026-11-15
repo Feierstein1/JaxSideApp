@@ -60,7 +60,7 @@ describe('the starter tiers (D202)', () => {
       include: { entitlements: true, prices: true },
     });
     expect(plans.map((p) => [p.code, p.rank, p.durationDays])).toEqual([
-      ['FREE', 1, 30],
+      ['FREE', 1, null], // D248: Free is forever
       ['STANDARD', 2, null],
       ['PREMIUM', 3, null],
     ]);
@@ -78,7 +78,9 @@ describe('the starter tiers (D202)', () => {
       insights: true,
       'insights.reach': 'ALL',
       'insights.nearbyZips': 0,
-      'events.limit': null, // D231
+      'events.limit': null, // D231 / D248
+      'events.reach': 'CITY', // D248
+      'boosts.perMonth': 2, // D248
     });
     expect(planEntitlements(plans[1]!.entitlements)).toMatchObject({
       'ads.live': 3,
@@ -86,6 +88,8 @@ describe('the starter tiers (D202)', () => {
       'ads.maxZips': 3,
       'insights.reach': 'NEARBY',
       'insights.nearbyZips': 4,
+      'events.limit': 20, // D248: a calendar month
+      'boosts.perMonth': 1,
     });
   });
 
@@ -127,15 +131,17 @@ describe('what a business can use (D202)', () => {
     expect(now.plan).toMatchObject({ code: 'FREE', rank: 1 });
     expect(now.entitlements).toEqual({
       'ads.live': 1,
-      'ads.library': 3,
-      'ads.reach': 'OWN_ZIP',
+      'ads.library': 20, // D248
+      'ads.reach': 'NEAR', // D248: about a mile
       'ads.maxZips': 1,
       'ads.maxDays': 7,
       'ads.links': false, // D216: paid plans only
       insights: true,
       'insights.reach': 'OWN_ZIP',
       'insights.nearbyZips': 0,
-      'events.limit': 10, // D231: the free month, 10 events
+      'events.limit': 5, // D248: a calendar month
+      'events.reach': 'NEAR',
+      'boosts.perMonth': 0,
     });
     const later = new Date(Date.now() + (FREE_TIER_DAYS + 1) * DAY);
     expect((await entitlementsFor(owner.id, later)).plan).toBeNull();

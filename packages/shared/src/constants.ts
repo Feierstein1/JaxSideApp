@@ -332,6 +332,12 @@ export const CONFIG_DEFAULTS = {
   'ads.interestBoost': 2,
   /** At most this share (percent) of the ads picked for someone are boosted ones. */
   'ads.boostedSharePercent': 50,
+  /** D248: a boosted ad (the business's Boost) weighs this many times more, and reaches everyone. */
+  'ads.boostWeight': 3,
+  /** D248: "near" for Free plans: ads and events show within this distance (about a mile). */
+  'reach.nearMeters': 1609,
+  /** D248: featured (boosted) events shown at the top of the Events tab. */
+  'events.featuredMax': 3,
   /** "Not interested" hides that business's ads from the person for this many days. */
   'ads.notInterestedDays': 30,
   /** "Interested" boosts that business for this many days. */

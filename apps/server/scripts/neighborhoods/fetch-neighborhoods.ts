@@ -165,6 +165,22 @@ async function main() {
       (_, body: string) => `{ ${body.replace(/\n\s+/g, ' ')} }`,
     ) + '\n',
   );
+  // D247: the same points for @jax/shared (the owner website copies it).
+  writeFileSync(
+    path.join(DATA, '..', '..', '..', '..', 'packages', 'shared', 'src', 'neighborhood-points.ts'),
+    [
+      '// Generated from apps/server/data/neighborhoods/duval-neighborhoods.json by',
+      '// scripts/neighborhoods/fetch-neighborhoods.ts (D247: shared so the owner website can name a',
+      "// website event's neighborhood the same way). Don't edit by hand.",
+      '// Sources: © OpenStreetMap contributors (ODbL 1.0); City of Jacksonville GIS; our own pins.',
+      '',
+      '/** Named neighborhood points in Duval County: [name, latitude, longitude]. */',
+      'export const NEIGHBORHOOD_POINTS: readonly (readonly [string, number, number])[] = [',
+      ...kept.map((k) => `  [${JSON.stringify(k.name)}, ${k.lat}, ${k.lon}],`),
+      '];',
+      '',
+    ].join('\n'),
+  );
   const by = (s: Point['source']) => kept.filter((k) => k.source === s).length;
   console.log(
     `Kept ${kept.length} (local ${by('local')}, osm ${by('osm')}, coj ${by('coj')}); ` +

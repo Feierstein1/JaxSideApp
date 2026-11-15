@@ -1,9 +1,10 @@
-import { FREE_TIER_DAYS, type adminPlaceRequestDecisionSchema } from '@jax/shared';
+import type { adminPlaceRequestDecisionSchema } from '@jax/shared';
 import type { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
 import { db } from '../db';
 import { adminCreatePlace } from '../directory/admin-places';
 import { ApiError } from '../http';
+import { startTrial } from '../plans/lifecycle';
 import { audit } from './audit';
 import { pageWindow, toPage } from './paging';
 
@@ -17,7 +18,6 @@ import { pageWindow, toPage } from './paging';
  * involved (D185): this is only between the business login and JaxSide.
  */
 
-const DAY_MS = 86_400_000;
 const PENDING = 'PENDING' as const;
 
 export async function listPlaceRequests(status: 'PENDING' | 'APPROVED' | 'REJECTED', page = 1) {
@@ -95,29 +95,6 @@ async function nearbyPlaces(latitude: number, longitude: number) {
     WHERE status = 'ACTIVE'
       AND ST_DWithin(location, ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography, 150)
     ORDER BY meters LIMIT 5`;
-}
-
-/** D202: the business's free month, if neither it nor the place has had one (never fails). */
-async function grantFreeMonth(
-  tx: Prisma.TransactionClient,
-  ownerId: string,
-  placeId: string,
-  now: Date,
-) {
-  const free = await tx.plan.findFirst({
-    where: { code: 'FREE', active: true },
-    select: { id: true, durationDays: true },
-  });
-  if (!free) return;
-  const endsAt = new Date(now.getTime() + (free.durationDays ?? FREE_TIER_DAYS) * DAY_MS);
-  // ON CONFLICT: the business or the place already had its free month, or it has a plan.
-  await tx.$executeRaw`
-    INSERT INTO "Subscription"
-      (id, "accountId", "planId", status, source, "startsAt", "endsAt", "freeTierPlaceId",
-       "currentPeriodStart", "currentPeriodEnd", "createdAt")
-    VALUES (gen_random_uuid(), ${ownerId}::uuid, ${free.id}::uuid, 'ACTIVE', 'FREE_TIER',
-       ${now}, ${endsAt}, ${placeId}::uuid, ${now}, ${endsAt}, ${now})
-    ON CONFLICT DO NOTHING`;
 }
 
 export async function decidePlaceRequest(
@@ -233,7 +210,8 @@ export async function decidePlaceRequest(
         createdAt: now,
       },
     });
-    await grantFreeMonth(tx, r.accountId, finalPlaceId, now);
+    // D248: the Standard trial (30 days, once per account and per place), then Free.
+    await startTrial(tx, r.accountId, finalPlaceId, now);
     await tx.businessNotice.create({
       data: {
         accountId: r.accountId,

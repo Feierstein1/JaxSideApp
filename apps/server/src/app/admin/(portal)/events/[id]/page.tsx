@@ -130,6 +130,11 @@ export default async function EventPage({
       <EventDecision
         id={e.id}
         status={e.status}
+        unchecked={
+          !!e.businessAccount &&
+          !e.reviewedAt &&
+          (e.status === 'APPROVED' || e.status === 'CANCELLED')
+        }
         candidates={
           e.status === 'IN_REVIEW' || e.status === 'SUGGESTED' ? await likelyDuplicates(e.id) : []
         }

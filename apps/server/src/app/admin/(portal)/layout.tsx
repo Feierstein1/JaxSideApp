@@ -35,6 +35,7 @@ const NAV: NavGroup[] = [
       { href: '/admin/ads', label: 'Ads' },
       { href: '/admin/organizers', label: 'Event organizers' },
       { href: '/admin/changes', label: 'Change requests' },
+      { href: '/admin/promo-codes', label: 'Promo codes' },
     ],
   },
   {

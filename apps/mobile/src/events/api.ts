@@ -4,6 +4,7 @@ import type {
   EventChatList,
   EventChatStatus,
   EventDay,
+  EventAreas,
   EventDetail,
   EventFilters,
   EventMonth,
@@ -71,7 +72,19 @@ export function eventLinkTapped(id: string) {
 /** The filters' starting point, and how many are on (for the Filters button's badge). */
 export const NO_FILTERS: Filters = { kind: 'all' };
 export const filterCount = (f: Filters) =>
-  [f.nearby, f.kind !== 'all', f.setting, f.freeOnly, f.following].filter(Boolean).length;
+  [
+    f.nearby || f.neighborhood || f.zip,
+    f.kind !== 'all',
+    f.setting,
+    f.freeOnly,
+    f.following,
+  ].filter(Boolean).length;
+
+/** D248: neighborhoods and ZIPs with events to come (the "Where" filter's choices). */
+export async function fetchAreas() {
+  const reading = await getFreshReading();
+  return api.post<EventAreas>('/api/v1/events/areas', { reading });
+}
 
 /** D230: the event's chat. The server checks you're at the event on every call. */
 export const eventChat = {
@@ -96,6 +109,12 @@ export const eventChat = {
 };
 
 /** D241: followed events that start today or tomorrow ("Coming up"). Accounts only. */
+/** D248: boosted events for the Featured section (guests too). */
+export async function fetchFeatured() {
+  const reading = await getFreshReading();
+  return (await api.post<{ events: EventCard[] }>('/api/v1/events/featured', { reading })).events;
+}
+
 export async function fetchComingUp() {
   const reading = await getFreshReading();
   return (await api.post<{ events: EventCard[] }>('/api/v1/events/coming-up', { reading })).events;

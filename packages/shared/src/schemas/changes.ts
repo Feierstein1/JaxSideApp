@@ -56,13 +56,20 @@ export const REVIEW_KINDS = [
   'organizer',
   'placeChange',
   'organizerName',
+  // D247: live without approval; JaxSide looks afterwards (newest first).
+  'liveAd',
+  'liveEvent',
 ] as const;
 export type ReviewKind = (typeof REVIEW_KINDS)[number];
 export const REVIEW_KIND_LABELS: Record<ReviewKind, string> = {
   place: 'Place to verify or add',
-  event: 'Event',
-  ad: 'Ad',
+  event: 'Event sent again',
+  ad: 'Ad sent again',
   organizer: 'Organizer to check',
   placeChange: 'Place details change',
   organizerName: 'Organizer name change',
+  liveAd: 'Live ad, not looked at',
+  liveEvent: 'Live event, not looked at',
 };
+/** D247: the kinds that are already live (listed newest first, apart from what's waiting). */
+export const LIVE_REVIEW_KINDS: readonly ReviewKind[] = ['liveAd', 'liveEvent'];

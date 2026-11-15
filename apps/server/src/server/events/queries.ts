@@ -37,6 +37,28 @@ const TZ = 'America/New_York';
 const VISIBLE = Prisma.sql`e.status IN ('APPROVED', 'CANCELLED') AND e.latitude IS NOT NULL`;
 
 const pinOf = Prisma.sql`ST_SetSRID(ST_MakePoint(e.longitude, e.latitude), 4326)::geography`;
+
+/** D248: the event has a live boost from its host (Featured; seen everywhere in Duval). */
+const BOOSTED = Prisma.sql`EXISTS (SELECT 1 FROM "Boost" b WHERE b."eventId" = e.id
+  AND b.status = 'ACTIVE' AND b."startsAt" <= now() AND b."endsAt" > now())`;
+
+/**
+ * D248: whose events everyone sees. A host on a plan whose `events.reach` is NEAR (Free, or no
+ * plan) is seen only within `reach.nearMeters` of the event, unless it's boosted or the viewer
+ * follows it. JaxSide's own events (no host account) show everywhere.
+ */
+const hostReachesAll = Prisma.sql`COALESCE((
+  SELECT pe.value #>> '{}' FROM "Subscription" sub
+  JOIN "PlanEntitlement" pe ON pe."planId" = sub."planId" AND pe.key = 'events.reach'
+  WHERE sub."accountId" = e."businessAccountId"
+    AND sub.status IN ('TRIALING', 'ACTIVE', 'PAST_DUE') AND sub."startsAt" <= now()
+    AND (sub."endsAt" IS NULL OR sub."endsAt" > now())
+  LIMIT 1), 'NEAR') = 'CITY'`;
+const reachSql = (viewerId: string, at: GeoPoint, nearMeters: number) =>
+  Prisma.sql`(e."businessAccountId" IS NULL OR ${hostReachesAll} OR ${BOOSTED}
+    OR ST_DWithin(${pinOf}, ${pointSql(at)}, ${nearMeters})
+    OR EXISTS (SELECT 1 FROM "EventFollow" rf
+               WHERE rf."eventId" = e.id AND rf."userId" = ${viewerId}::uuid))`;
 const pointSql = (p: GeoPoint) =>
   Prisma.sql`ST_SetSRID(ST_MakePoint(${p.longitude}, ${p.latitude}), 4326)::geography`;
 
@@ -45,6 +67,13 @@ type Filters = Omit<EventFilters, 'kind'> & { kind?: 'all' | 'community' | 'busi
 /** The filters as SQL on `e` (Event) and `p` (its place). */
 async function filterSql(viewerId: string, at: GeoPoint, f: Filters): Promise<Prisma.Sql[]> {
   const out: Prisma.Sql[] = [VISIBLE];
+  // D248: Free accounts' events show near the event, unless the person searched or picked
+  // that event's neighborhood or ZIP ("Where"), which finds every approved event there.
+  if (!f.q && !f.neighborhood && !f.zip) {
+    out.push(reachSql(viewerId, at, await getConfig('reach.nearMeters')));
+  }
+  if (f.neighborhood) out.push(Prisma.sql`e.neighborhood = ${f.neighborhood}`);
+  if (f.zip) out.push(Prisma.sql`e.zip = ${f.zip}`);
   if (f.q) {
     const like = '%' + f.q.replace(/[\\%_]/g, (c) => `\\${c}`) + '%';
     out.push(Prisma.sql`(e.title ILIKE ${like} OR e.description ILIKE ${like}
@@ -96,6 +125,7 @@ type CardRow = {
   image_id: string | null;
   following: boolean;
   status: string;
+  featured: boolean;
   meters: number;
 };
 
@@ -122,6 +152,7 @@ function selectCards(viewerId: string, at: GeoPoint, where: Prisma.Sql, tail: Pr
            EXISTS (SELECT 1 FROM "EventFollow" f
                    WHERE f."eventId" = e.id AND f."userId" = ${viewerId}::uuid) AS following,
            e.status::text AS status,
+           ${BOOSTED} AS featured,
            ST_Distance(${pinOf}, ${pointSql(at)}) AS meters
     FROM "EventSession" s
     JOIN "Event" e ON e.id = s."eventId"
@@ -177,6 +208,7 @@ function toCard(r: CardRow, now = new Date()): EventCard {
     cancelled: r.status === 'CANCELLED',
     happeningNow: r.status === 'APPROVED' && r.starts_at <= now && r.ends_at > now,
     distanceMiles: Math.round((r.meters / METERS_PER_MILE) * 10) / 10,
+    featured: r.featured,
   };
 }
 
@@ -388,4 +420,55 @@ export async function eventsComingUp(
     Prisma.sql`ORDER BY s."startsAt", s.id LIMIT 10`,
   );
   return rows.map((r) => toCard(r, now));
+}
+
+/**
+ * D248: Featured: boosted events with a date to come, for the top of the Events tab (nearest
+ * first, at most `events.featuredMax`). Boosted events are seen everywhere in Duval.
+ */
+export async function eventsFeatured(viewerId: string, at: GeoPoint, now = new Date()) {
+  const [max, filters] = await Promise.all([
+    getConfig('events.featuredMax'),
+    filterSql(viewerId, at, {}),
+  ]);
+  filters.push(BOOSTED, Prisma.sql`e.status = 'APPROVED' AND s."endsAt" > ${now}`);
+  const rows = await selectCards(
+    viewerId,
+    at,
+    Prisma.join(filters, ' AND '),
+    Prisma.sql`ORDER BY meters, s."startsAt"`,
+  );
+  // One card per event (its next session).
+  const seen = new Set<string>();
+  const out: EventCard[] = [];
+  for (const r of rows) {
+    if (seen.has(r.id)) continue;
+    seen.add(r.id);
+    out.push(toCard(r, now));
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+/**
+ * D248: the neighborhoods and ZIPs that have approved events to come (busiest first), for the
+ * "Where" filter's choices.
+ */
+export async function eventAreas(
+  now = new Date(),
+): Promise<{ neighborhoods: string[]; zips: string[] }> {
+  const rows = await db.$queryRaw<{ neighborhood: string | null; zip: string | null; n: number }[]>`
+    SELECT e.neighborhood, e.zip, count(*)::int AS n
+    FROM "Event" e
+    WHERE e.status = 'APPROVED' AND e."lastEndsAt" > ${now}
+    GROUP BY e.neighborhood, e.zip`;
+  const tally = (key: 'neighborhood' | 'zip') => {
+    const m = new Map<string, number>();
+    for (const r of rows) if (r[key]) m.set(r[key]!, (m.get(r[key]!) ?? 0) + r.n);
+    return [...m.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 30)
+      .map(([k]) => k);
+  };
+  return { neighborhoods: tally('neighborhood'), zips: tally('zip') };
 }

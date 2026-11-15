@@ -27,7 +27,7 @@ const CONTACT: PolicySection = {
   heading: 'Contact us',
   body: 'JaxSide is run by JaxSide LLC, a Florida company. Questions about these policies or your account: use Contact us in the app (Account → Contact us) or email support@jaxside.com. Mail: JaxSide LLC, 7901 4th St N #35372, St Petersburg, FL 33702.',
 };
-const UPDATED = '2026-11-11';
+const UPDATED = '2026-11-15';
 
 export const POLICIES: Record<PolicyKey, Policy> = {
   terms: {
@@ -164,7 +164,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       {
         heading: 'Events and event chat',
         // D230
-        body: '• Events are added by businesses and event organizers on JaxSide for Business, and JaxSide checks each one before it goes on the calendar. Report an event that isn’t real, isn’t public or is an ad dressed up as an event.\n• Event chat is for people at the event: what’s on, where things are, lost and found. No meetups with strangers, no selling tickets, and no rumors.\n• Never post an emergency in chat. If someone is hurt or in danger, call 911 first.',
+        body: '• Events are added by businesses and event organizers on JaxSide for Business, and they show on the calendar right away; JaxSide looks at every event and takes down any that break these rules. Report an event that isn’t real, isn’t public or is an ad dressed up as an event.\n• Event chat is for people at the event: what’s on, where things are, lost and found. No meetups with strangers, no selling tickets, and no rumors.\n• Never post an emergency in chat. If someone is hurt or in danger, call 911 first.',
       },
       {
         heading: 'What happens',

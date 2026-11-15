@@ -1,4 +1,4 @@
-import { REVIEW_KINDS, type ReviewKind } from '@jax/shared';
+import { LIVE_REVIEW_KINDS, REVIEW_KINDS, type ReviewKind } from '@jax/shared';
 import { db } from '../db';
 
 /*
@@ -21,85 +21,115 @@ export interface ReviewItem {
 }
 
 async function load(): Promise<ReviewItem[]> {
-  const [places, events, ads, organizers, placeChanges, names] = await Promise.all([
-    db.businessVerificationRequest.findMany({
-      where: { status: 'PENDING' },
-      take: PER_KIND,
-      orderBy: { createdAt: 'asc' },
-      select: {
-        id: true,
-        placeName: true,
-        placeId: true,
-        createdAt: true,
-        account: { select: { email: true } },
-      },
-    }),
-    db.event.findMany({
-      where: { status: { in: ['IN_REVIEW', 'SUGGESTED'] } },
-      take: PER_KIND,
-      orderBy: [{ submittedAt: 'asc' }, { createdAt: 'asc' }],
-      select: {
-        id: true,
-        title: true,
-        hostKind: true,
-        submittedAt: true,
-        createdAt: true,
-        businessAccount: { select: { email: true } },
-      },
-    }),
-    db.ad.findMany({
-      where: { status: 'PENDING_REVIEW' },
-      take: PER_KIND,
-      orderBy: [{ submittedAt: 'asc' }, { createdAt: 'asc' }],
-      select: {
-        id: true,
-        headline: true,
-        submittedAt: true,
-        createdAt: true,
-        eventId: true,
-        place: { select: { name: true } },
-        account: { select: { email: true } },
-      },
-    }),
-    db.eventOrganizer.findMany({
-      where: { status: 'PENDING' },
-      take: PER_KIND,
-      orderBy: { createdAt: 'asc' },
-      select: {
-        accountId: true,
-        name: true,
-        createdAt: true,
-        account: { select: { email: true } },
-      },
-    }),
-    db.placeChangeRequest.findMany({
-      where: { status: 'PENDING' },
-      take: PER_KIND,
-      orderBy: { createdAt: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        category: true,
-        address: true,
-        latitude: true,
-        createdAt: true,
-        place: { select: { name: true } },
-        account: { select: { email: true } },
-      },
-    }),
-    db.organizerNameRequest.findMany({
-      where: { status: 'PENDING' },
-      take: PER_KIND,
-      orderBy: { createdAt: 'asc' },
-      select: {
-        id: true,
-        currentName: true,
-        name: true,
-        createdAt: true,
-        account: { select: { email: true } },
-      },
-    }),
-  ]);
+  const [places, events, ads, organizers, placeChanges, names, liveAds, liveEvents] =
+    await Promise.all([
+      db.businessVerificationRequest.findMany({
+        where: { status: 'PENDING' },
+        take: PER_KIND,
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          placeName: true,
+          placeId: true,
+          createdAt: true,
+          account: { select: { email: true } },
+        },
+      }),
+      db.event.findMany({
+        where: { status: { in: ['IN_REVIEW', 'SUGGESTED'] } },
+        take: PER_KIND,
+        orderBy: [{ submittedAt: 'asc' }, { createdAt: 'asc' }],
+        select: {
+          id: true,
+          title: true,
+          hostKind: true,
+          submittedAt: true,
+          createdAt: true,
+          businessAccount: { select: { email: true } },
+        },
+      }),
+      db.ad.findMany({
+        where: { status: 'PENDING_REVIEW' },
+        take: PER_KIND,
+        orderBy: [{ submittedAt: 'asc' }, { createdAt: 'asc' }],
+        select: {
+          id: true,
+          headline: true,
+          submittedAt: true,
+          createdAt: true,
+          eventId: true,
+          place: { select: { name: true } },
+          account: { select: { email: true } },
+        },
+      }),
+      db.eventOrganizer.findMany({
+        where: { status: 'PENDING' },
+        take: PER_KIND,
+        orderBy: { createdAt: 'asc' },
+        select: {
+          accountId: true,
+          name: true,
+          createdAt: true,
+          account: { select: { email: true } },
+        },
+      }),
+      db.placeChangeRequest.findMany({
+        where: { status: 'PENDING' },
+        take: PER_KIND,
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          address: true,
+          latitude: true,
+          createdAt: true,
+          place: { select: { name: true } },
+          account: { select: { email: true } },
+        },
+      }),
+      db.organizerNameRequest.findMany({
+        where: { status: 'PENDING' },
+        take: PER_KIND,
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          currentName: true,
+          name: true,
+          createdAt: true,
+          account: { select: { email: true } },
+        },
+      }),
+      // D247: live or paused ads nobody has looked at since they last changed.
+      db.$queryRaw<
+        { id: string; headline: string; at: Date; email: string | null; event_id: string | null }[]
+      >`
+      SELECT a.id, a.headline, COALESCE(a."approvedAt", a."updatedAt") AS at, b.email,
+             a."eventId" AS event_id
+      FROM "Ad" a JOIN "BusinessAccount" b ON b.id = a."accountId"
+      WHERE a.status IN ('APPROVED', 'PAUSED')
+        AND NOT EXISTS (SELECT 1 FROM "AdReview" r
+                        WHERE r."adId" = a.id AND r."createdAt" >= a."updatedAt")
+      LIMIT ${PER_KIND}`,
+      // D247: live website events nobody at JaxSide has looked at.
+      db.event.findMany({
+        where: {
+          status: { in: ['APPROVED', 'CANCELLED'] },
+          reviewedById: null,
+          businessAccountId: { not: null },
+        },
+        take: PER_KIND,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          title: true,
+          hostKind: true,
+          submittedAt: true,
+          createdAt: true,
+          businessAccount: { select: { email: true } },
+        },
+      }),
+    ]);
   const what = (c: (typeof placeChanges)[number]) =>
     [
       c.name ? `name → ${c.name}` : null,
@@ -169,6 +199,24 @@ async function load(): Promise<ReviewItem[]> {
       sentAt: n.createdAt.toISOString(),
       href: '/admin/changes',
     })),
+    ...liveAds.map((a) => ({
+      kind: 'liveAd' as const,
+      id: a.id,
+      title: a.headline,
+      detail: a.event_id ? 'Event ad' : null,
+      from: a.email,
+      sentAt: a.at.toISOString(),
+      href: '/admin/ads',
+    })),
+    ...liveEvents.map((e) => ({
+      kind: 'liveEvent' as const,
+      id: e.id,
+      title: e.title,
+      detail: e.hostKind === 'BUSINESS' ? 'Business event' : 'Organizer event',
+      from: e.businessAccount?.email ?? null,
+      sentAt: (e.submittedAt ?? e.createdAt).toISOString(),
+      href: `/admin/events/${e.id}`,
+    })),
   ];
 }
 
@@ -178,8 +226,15 @@ export async function reviewQueue(opts: { kind?: ReviewKind; page?: number } = {
   const counts = Object.fromEntries(
     REVIEW_KINDS.map((k) => [k, all.filter((i) => i.kind === k).length]),
   ) as Record<ReviewKind, number>;
-  const rows = (opts.kind ? all.filter((i) => i.kind === opts.kind) : all).sort(
-    (a, b) => a.sentAt.localeCompare(b.sentAt) || a.id.localeCompare(b.id),
+  // Waiting things oldest first; D247: live things (already showing) newest first, after them.
+  const isLive = (k: ReviewKind) => LIVE_REVIEW_KINDS.includes(k);
+  const rows = (opts.kind ? all.filter((i) => i.kind === opts.kind) : all).sort((a, b) =>
+    isLive(a.kind) !== isLive(b.kind)
+      ? isLive(a.kind)
+        ? 1
+        : -1
+      : (isLive(a.kind) ? b.sentAt.localeCompare(a.sentAt) : a.sentAt.localeCompare(b.sentAt)) ||
+        a.id.localeCompare(b.id),
   );
   const page = Math.max(1, opts.page ?? 1);
   return {

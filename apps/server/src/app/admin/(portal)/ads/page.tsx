@@ -1,4 +1,4 @@
-import { listPendingAds } from '@/server/admin/ad-review';
+import { countUncheckedAds, listPendingAds, listUncheckedAds } from '@/server/admin/ad-review';
 import { AD_RULES } from '@jax/shared';
 import { adOverview, adTab, interestShare, listAdsWithStats } from '@/server/admin/ad-stats';
 import { pageNumber } from '@/server/admin/paging';
@@ -24,9 +24,10 @@ const n = (v: number) => v.toLocaleString('en-US');
 const share = (v: number | null) => (v === null ? '–' : `${Math.round(v * 100)}%`);
 
 /**
- * B3.3 / D206 / D210: ads. "To review": approve each ad before it shows, or turn it down with
- * a reason the business sees. "Live" and "Paused & ended": how each ad is doing (views and
- * Interested / Not interested, from the daily totals; never who saw it).
+ * B3.3 / D206 / D210 / D247: ads. Ads go live without approval (D247). "Live, not looked at":
+ * check each one (OK, or take it down with a reason the business sees). "Sent again": ads sent
+ * back after a take-down wait for you. "Live" and "Paused & ended": how each ad is doing
+ * (views and Interested / Not interested, from the daily totals; never who saw it).
  */
 export default async function AdsPage({
   searchParams,
@@ -37,14 +38,15 @@ export default async function AdsPage({
   const sp = await searchParams;
   const tab = adTab(sp.tab);
   const page = pageNumber(sp.page);
-  const overview = await adOverview();
-  const params = { tab: tab === 'review' ? undefined : tab };
+  const [overview, unchecked] = await Promise.all([adOverview(), countUncheckedAds()]);
+  const params = { tab: tab === 'unchecked' ? undefined : tab };
   const tabs = [
-    { key: 'review', label: `To review (${n(overview.waiting)})` },
+    { key: 'unchecked', label: `Live, not looked at (${n(unchecked)})` },
+    { key: 'review', label: `Sent again (${n(overview.waiting)})` },
     { key: 'live', label: `Live (${n(overview.live)})` },
     { key: 'past', label: 'Paused & ended' },
   ].map((t) => ({
-    href: hrefWith('/admin/ads', {}, { tab: t.key === 'review' ? undefined : t.key }),
+    href: hrefWith('/admin/ads', {}, { tab: t.key === 'unchecked' ? undefined : t.key }),
     label: t.label,
     on: t.key === tab,
   }));
@@ -54,8 +56,9 @@ export default async function AdsPage({
       <h1>Ads</h1>
       <StatGrid min={160}>
         <StatTile label="Live ads" value={n(overview.live)} />
+        <StatTile label="Not looked at yet" value={n(unchecked)} alert={unchecked > 0} />
         <StatTile
-          label="Waiting for review"
+          label="Sent again, waiting"
           value={n(overview.waiting)}
           alert={overview.waiting > 0}
         />
@@ -65,8 +68,8 @@ export default async function AdsPage({
         <StatTile label="Not interested, 30 days" value={n(overview.last30Days.notInterested)} />
       </StatGrid>
       <Tabs items={tabs} />
-      {tab === 'review' ? (
-        <Review page={page} params={params} />
+      {tab === 'review' || tab === 'unchecked' ? (
+        <Review page={page} params={params} live={tab === 'unchecked'} />
       ) : (
         <Results tab={tab} page={page} params={params} />
       )}
@@ -77,18 +80,21 @@ export default async function AdsPage({
 async function Review({
   page,
   params,
+  live,
 }: {
   page: number;
   params: Record<string, string | undefined>;
+  live: boolean;
 }) {
-  const ads = await listPendingAds(page);
+  const ads = live ? await listUncheckedAds(page) : await listPendingAds(page);
   return (
     <>
       <p style={ui.muted}>
-        Every ad is checked before it shows in the app. Approve it, or turn it down and say what
-        needs to change (the business sees your reason).
+        {live
+          ? 'Ads go live as soon as the business makes them live (D247). Look each one over: OK, or take it down and say why (the business sees your reason; sending it again waits for you). Newest first; an ad comes back here when the business changes it.'
+          : 'Ads the business sent again after you took them down. Approve, or turn down and say what needs to change.'}
       </p>
-      {ads.total === 0 ? <p style={ui.muted}>Nothing waiting.</p> : null}
+      {ads.total === 0 ? <p style={ui.muted}>Nothing here.</p> : null}
       <div style={{ display: 'grid', gap: 16 }}>
         {ads.rows.map((a) => (
           <div key={a.id} style={ui.card}>
@@ -137,7 +143,13 @@ async function Review({
               </summary>
               <AdRulesList />
             </details>
-            <AdDecisionForm adId={a.id} updatedAt={a.updatedAt} />
+            {live ? (
+              <p style={ui.muted}>
+                {a.status === 'PAUSED' ? 'Paused' : 'Live'}
+                {a.approvedAt ? ` since ${when(a.approvedAt)}` : ''}
+              </p>
+            ) : null}
+            <AdDecisionForm adId={a.id} updatedAt={a.updatedAt} live={live} />
           </div>
         ))}
       </div>

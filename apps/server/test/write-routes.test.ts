@@ -101,6 +101,8 @@ import * as eventDay from '@/app/api/v1/events/day/route';
 import * as eventList from '@/app/api/v1/events/list/route';
 import * as eventMonth from '@/app/api/v1/events/month/route';
 import * as eventComingUp from '@/app/api/v1/events/coming-up/route';
+import * as eventFeatured from '@/app/api/v1/events/featured/route';
+import * as eventAreas from '@/app/api/v1/events/areas/route';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
@@ -1017,6 +1019,26 @@ const ROWS: Row[] = [
     route: 'events/list',
     method: 'POST',
     handler: h(eventList, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at) }),
+  },
+  // D248: the "Where" filter's neighborhoods and ZIPs.
+  {
+    route: 'events/areas',
+    method: 'POST',
+    handler: h(eventAreas, 'POST'),
+    auth: true,
+    id: null,
+    location: true,
+    body: (at) => ({ reading: r(at) }),
+  },
+  // D248: Featured (boosted) events at the top of the Events tab.
+  {
+    route: 'events/featured',
+    method: 'POST',
+    handler: h(eventFeatured, 'POST'),
     auth: true,
     id: null,
     location: true,

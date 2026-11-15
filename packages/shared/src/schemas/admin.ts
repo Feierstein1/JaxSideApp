@@ -150,7 +150,12 @@ export const screeningTestSchema = z.strictObject({ text: z.string().min(1).max(
  */
 export const adminAdDecisionSchema = z
   .strictObject({
-    decision: z.enum(['approve', 'reject']),
+    /**
+     * approve / reject: an ad sent again after JaxSide took it down (D247). ok / takedown: a
+     * live or paused ad (D247: ads go live without approval): "looked at, fine", or taken
+     * down with a reason the business reads.
+     */
+    decision: z.enum(['approve', 'reject', 'ok', 'takedown']),
     reasonCode: z.enum(AD_DENIAL_CODES).optional(),
     note: z.string().trim().max(300).optional(),
     /** D212 / D213: the ad's last change as the reviewer saw it; a newer change is refused. */
@@ -158,7 +163,7 @@ export const adminAdDecisionSchema = z
     /** D213: also give the business a strike (photo-rules denials only, D191). */
     strike: z.boolean().optional(),
   })
-  .refine((d) => d.decision === 'approve' || d.reasonCode, {
+  .refine((d) => d.decision === 'approve' || d.decision === 'ok' || d.reasonCode, {
     path: ['reasonCode'],
     message: 'Pick a reason',
   })

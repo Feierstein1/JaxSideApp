@@ -7,7 +7,8 @@ import { hrefWith, Pager, Pill, Table, Tabs, td, when, words } from '../admin-ta
 export const dynamic = 'force-dynamic';
 
 const TAB_LABELS: Record<AdminEventTab, string> = {
-  waiting: 'Waiting for review',
+  unchecked: 'Live, not looked at', // D247
+  waiting: 'Sent again',
   upcoming: 'Upcoming',
   past: 'Past',
   closed: 'Denied and removed',
@@ -26,7 +27,7 @@ export default async function EventsPage({
   await requireAdminPage();
   const sp = await searchParams;
   const tab: AdminEventTab =
-    sp.tab && sp.tab in ADMIN_EVENT_TABS ? (sp.tab as AdminEventTab) : 'waiting';
+    sp.tab && sp.tab in ADMIN_EVENT_TABS ? (sp.tab as AdminEventTab) : 'unchecked';
   const q = (sp.q ?? '').trim().slice(0, 60);
   const list = await adminListEvents({ tab, q: q || undefined, page: pageNumber(sp.page) });
   const params = { tab, q };
@@ -34,8 +35,10 @@ export default async function EventsPage({
     <>
       <h1>Events</h1>
       <p style={ui.muted}>
-        Everything on the app’s event calendar. Events you add here show at once; events from
-        businesses and organizers on the business website wait here for review.
+        Everything on the app’s event calendar. Events go live as soon as their host puts them on
+        the calendar (D247), yours too. Look over the website’s under “Live, not looked at” (newest
+        first): open one, then “Looked at, OK” or Remove with a reason the host reads. One you
+        removed or denied waits under “Sent again” if they send it back.
       </p>
       <p>
         <a href="/admin/events/new" style={{ ...ui.button, textDecoration: 'none' }}>

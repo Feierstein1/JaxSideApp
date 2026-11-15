@@ -4,7 +4,7 @@
  */
 export const AD_RULES = {
   intro:
-    'Show what you really sell, and keep it fit for everyone in Jacksonville. JaxSide checks every ad against these rules before it runs.',
+    'Show what you really sell, and keep it fit for everyone in Jacksonville. Ads go live right away; JaxSide looks at every ad and takes down any that break these rules.',
   dos: [
     'Use real photos of your own food, drinks, place and team.',
     'Edit photos the normal way: brightness, cropping, removing a background, small touch-ups.',

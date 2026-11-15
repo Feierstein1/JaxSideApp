@@ -1,10 +1,11 @@
-import { FREE_TIER_DAYS, type PlanCode, type PlanEntitlements } from '@jax/shared';
+import type { PlanCode, PlanEntitlements } from '@jax/shared';
 import { Prisma, type PrismaClient } from '../generated/prisma/client';
 
 /**
  * D202: the starter tiers. Created by the seed when missing (a plan with the same name is
  * adopted and given its code); never overwritten, so the admin's later changes stay. What
- * each tier gives is the owner's list (D204). Prices stay empty until decided (Q28).
+ * each tier gives is the owner's list (D204; D248 for launch). Prices stay empty until decided
+ * (Q28). Free is forever; new accounts start with a 30-day Standard trial (D248).
  */
 export const STARTER_TIERS: {
   code: PlanCode;
@@ -13,23 +14,25 @@ export const STARTER_TIERS: {
   durationDays: number | null;
   entitlements: Required<PlanEntitlements>;
 }[] = [
-  // D204 (owner, 2026-11-05).
+  // D204 (owner, 2026-11-05); D248 (owner, 2026-11-13) for launch.
   {
     code: 'FREE',
     name: 'Free',
     rank: 1,
-    durationDays: FREE_TIER_DAYS,
+    durationDays: null,
     entitlements: {
       'ads.live': 1,
-      'ads.library': 3,
-      'ads.reach': 'OWN_ZIP',
+      'ads.library': 20,
+      'ads.reach': 'NEAR', // D248: about a mile around the place (or the event)
       'ads.maxZips': 1,
       'ads.maxDays': 7,
       'ads.links': false, // D216: paid plans only
       insights: true,
       'insights.reach': 'OWN_ZIP',
       'insights.nearbyZips': 0,
-      'events.limit': 10, // D231
+      'events.limit': 5, // D248: a calendar month
+      'events.reach': 'NEAR', // D248: shown to people near the event
+      'boosts.perMonth': 0,
     },
   },
   {
@@ -47,7 +50,9 @@ export const STARTER_TIERS: {
       insights: true,
       'insights.reach': 'NEARBY',
       'insights.nearbyZips': 4,
-      'events.limit': null, // D231: to be decided
+      'events.limit': 20, // D248: a calendar month
+      'events.reach': 'CITY',
+      'boosts.perMonth': 1,
     },
   },
   {
@@ -65,7 +70,9 @@ export const STARTER_TIERS: {
       insights: true,
       'insights.reach': 'ALL',
       'insights.nearbyZips': 0,
-      'events.limit': null, // D231: to be decided
+      'events.limit': null, // D248: no limit
+      'events.reach': 'CITY',
+      'boosts.perMonth': 2,
     },
   },
 ];

@@ -1,13 +1,13 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { CONFIG_DEFAULTS, DARK } from '@jax/shared';
+import { CONFIG_DEFAULTS, DARK, type EventAreas } from '@jax/shared';
 import { useGuest } from '@/auth/guest';
 import { haptic } from '@/motion';
 import { Text } from '@/text';
 import { SPACE, TYPE } from '@/tokens';
 import { Button, Chip, SearchField, Sheet } from '@/ui';
-import { filterCount, NO_FILTERS, type Filters } from './api';
+import { fetchAreas, filterCount, NO_FILTERS, type Filters } from './api';
 
 /*
  * D230: the Events tab's search and filters. One shared copy, so a day's list (opened from
@@ -48,6 +48,15 @@ export function EventFilterBar() {
   const [q, setQ] = useState(f.q ?? '');
   const { isGuest } = useGuest();
   const on = filterCount(f);
+  // D248: the "Where" choices (loaded when the sheet first opens).
+  const [areas, setAreas] = useState<EventAreas | null>(null);
+  useEffect(() => {
+    if (!open || areas) return;
+    fetchAreas()
+      .then(setAreas)
+      .catch(() => undefined); // the other choices still work
+  }, [open, areas]);
+  const where = { nearby: false, neighborhood: undefined, zip: undefined };
   return (
     <>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.sm }}>
@@ -96,16 +105,42 @@ export function EventFilterBar() {
           <Group title="Where">
             <Chip
               label="All of Duval"
-              active={!f.nearby}
-              onPress={() => setF({ ...f, nearby: false })}
+              active={!f.nearby && !f.neighborhood && !f.zip}
+              onPress={() => setF({ ...f, ...where })}
             />
             <Chip
               label={`Within ${NEARBY} miles`}
               icon="navigate-outline"
               active={!!f.nearby}
-              onPress={() => setF({ ...f, nearby: true })}
+              onPress={() => setF({ ...f, ...where, nearby: true })}
             />
           </Group>
+          {areas?.neighborhoods.length ? (
+            <Group title="Neighborhood">
+              {areas.neighborhoods.map((n) => (
+                <Chip
+                  key={n}
+                  label={n}
+                  active={f.neighborhood === n}
+                  onPress={() =>
+                    setF({ ...f, ...where, neighborhood: f.neighborhood === n ? undefined : n })
+                  }
+                />
+              ))}
+            </Group>
+          ) : null}
+          {areas?.zips.length ? (
+            <Group title="ZIP code">
+              {areas.zips.map((z) => (
+                <Chip
+                  key={z}
+                  label={z}
+                  active={f.zip === z}
+                  onPress={() => setF({ ...f, ...where, zip: f.zip === z ? undefined : z })}
+                />
+              ))}
+            </Group>
+          ) : null}
           <Group title="Who puts it on">
             <Chip
               label="Everyone"

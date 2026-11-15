@@ -25,8 +25,9 @@ export default async function ReviewPage({
     <>
       <h1>Review queue</h1>
       <p style={ui.muted}>
-        Everything waiting for you, oldest sent first. Open one to decide it; it leaves the list
-        once decided.
+        Everything waiting for you, oldest sent first, then (D247) ads and events that are already
+        live but nobody has looked at yet, newest first. Open one to decide it; it leaves the list
+        once done.
       </p>
       <Tabs
         items={[

@@ -498,9 +498,12 @@ export function EventDecision({
   id,
   status,
   candidates = [],
+  unchecked = false,
 }: {
   id: string;
   status: string;
+  /** D247: live from the website and nobody at JaxSide has looked at it yet. */
+  unchecked?: boolean;
   /** D242: events on the calendar that look like this one. */
   candidates?: { id: string; title: string; meters: number | null }[];
 }) {
@@ -538,6 +541,11 @@ export function EventDecision({
         />
       </label>
       <div style={{ ...row, gap: 8 }}>
+        {unchecked ? (
+          <button style={ui.button} disabled={busy} onClick={() => decide('ok')}>
+            Looked at, OK
+          </button>
+        ) : null}
         {waiting || status === 'DENIED' ? (
           <button style={ui.button} disabled={busy} onClick={() => decide('approve')}>
             Approve

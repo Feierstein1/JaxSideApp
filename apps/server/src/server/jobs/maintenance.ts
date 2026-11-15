@@ -13,6 +13,7 @@ import { purgeOldMessageEvidence } from '../social/messages';
 
 import { purgeDeletedAccounts } from '../auth/account';
 import { getConfig } from '../config';
+import { endFinishedEventAds, rollPlans } from '../plans/lifecycle';
 import { db } from '../db';
 import { logger } from '../logger';
 import { deleteInBatches } from './batch';
@@ -53,6 +54,12 @@ export interface MaintenanceReport extends Partial<Omit<RetentionReport, 'notifi
   topicsPurged?: number;
   /** D202: subscriptions past their end date, marked expired. */
   subscriptionsExpired?: number;
+  /** D248: accounts moved to Free, ending notices sent, event ads and boosts ended. */
+  movedToFree?: number;
+  planEndingNotices?: number;
+  eventAdsEnded?: number;
+  boostsEnded?: number;
+  eventsNamed?: number;
   /** D206: ad view marks and old ad choices deleted. */
   adViewMarksDeleted?: number;
   adChoicesDeleted?: number;
@@ -173,13 +180,10 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
     pollsCounted: await finalizeDuePolls(now),
     // D134: topics their creators deleted more than a week ago (posts go via retention).
     topicsPurged: await purgeDeletedTopics(now),
-    // D202: subscriptions whose end date passed (e.g. the free month) are marked expired.
-    subscriptionsExpired: (
-      await db.subscription.updateMany({
-        where: { status: { in: ['TRIALING', 'ACTIVE', 'PAST_DUE'] }, endsAt: { lte: now } },
-        data: { status: 'EXPIRED' },
-      })
-    ).count,
+    // D202 / D248: plans past their end are expired and the account moves to Free; trials and
+    // promos ending soon get their notice and email; finished event ads and boosts end.
+    ...(await rollPlans(now)),
+    ...(await endFinishedEventAds(now)),
     // D206: ad view marks after two days; Interested / Not interested once past both windows.
     ...(await purgeAdMarks(
       now,

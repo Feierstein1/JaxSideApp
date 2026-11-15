@@ -212,6 +212,7 @@ export function EventCard({ e, showDate = false }: { e: EventCardView; showDate?
           <HostLine e={e} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 3 }}>
             {e.cancelled ? <Tag text="Cancelled" tone="alert" /> : null}
+            {e.featured ? <Tag text="Featured" tone="accent" /> : null}
             {e.happeningNow ? <Tag text="Happening now" tone="accent" /> : null}
             <Tag text={e.free ? 'Free' : (e.priceText ?? 'Paid')} />
             <Tag text={EVENT_SETTINGS[e.setting]} />

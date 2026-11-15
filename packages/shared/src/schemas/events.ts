@@ -151,6 +151,15 @@ export const eventFiltersShape = {
   q: z.string().trim().max(60).optional(),
   /** Within `events.nearbyMiles` of you; otherwise all of Duval. */
   nearby: z.boolean().optional(),
+  /**
+   * D248 "Where": one neighborhood or one ZIP. Picking a place (or searching) also shows Free
+   * accounts' events there, which otherwise show only within about a mile of you.
+   */
+  neighborhood: z.string().trim().min(2).max(80).optional(),
+  zip: z
+    .string()
+    .regex(/^\d{5}$/, 'A ZIP code is 5 digits')
+    .optional(),
   kind: z.enum(['all', 'community', 'business']).default('all'),
   setting: z.enum(['indoor', 'outdoor']).optional(),
   freeOnly: z.boolean().optional(),
@@ -158,6 +167,12 @@ export const eventFiltersShape = {
 };
 export const eventFiltersSchema = z.strictObject(eventFiltersShape);
 export type EventFilters = z.input<typeof eventFiltersSchema>;
+
+/** D248: the neighborhoods and ZIPs with events to come, for the "Where" filter. */
+export interface EventAreas {
+  neighborhoods: string[];
+  zips: string[];
+}
 
 /** The calendar: how many events on each day of a month. */
 export const eventMonthSchema = z.strictObject({
@@ -194,6 +209,8 @@ export const adminEventDecisionSchema = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('cancel'), reason: reasonText }),
   z.strictObject({ action: z.literal('remove'), reason: reasonText }),
   z.strictObject({ action: z.literal('restore') }),
+  /** D247: a live event from the website: "looked at, fine" (sets who reviewed it). */
+  z.strictObject({ action: z.literal('ok') }),
   /**
    * D242: "Already on the calendar": the event sent copies one JaxSide already has. Not a
    * denial (no strike); the sender is told it's already listed.
@@ -280,6 +297,8 @@ export interface EventCard {
   happeningNow: boolean;
   /** Miles from the reader, one decimal. */
   distanceMiles: number;
+  /** D248: the host boosted it (shown as Featured, everywhere in Duval). */
+  featured: boolean;
 }
 
 export interface EventMonth {

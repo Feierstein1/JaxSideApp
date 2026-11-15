@@ -11,16 +11,16 @@ const SITE = 'https://jaxside.com';
 
 const STEPS = [
   'Sign up there for a business account. It’s separate from your personal JaxSide account.',
-  'Choose what you are: a place in Jacksonville, an event organizer, or both.',
-  'Create your event: its name, dates and times, where it is (your place, another place on JaxSide or an address) and pictures. Then send it for review.',
-  'JaxSide checks every event. Once it’s approved it shows on this calendar, and you can post updates in its chat and promote it with an ad.',
+  'Choose what you are: a place in Jacksonville, or an event organizer.',
+  'Create your event: its name, dates and times, where it is (your place, another place on JaxSide or an address) and pictures. Then put it on the calendar: it shows right away.',
+  'You can post updates in its chat and promote it with an ad. JaxSide looks at every event and takes down any that break the rules.',
 ];
 
 /**
  * D233: "Want to add an event?". App users don't suggest events; businesses and organizers
  * add them on the JaxSide for Business website (D230 / D232), and JaxSide reviews each event
- * (organizers don't wait for an account approval, D237). This screen explains how and links
- * there.
+ * (organizers don't wait for an account approval, D237; events go live at once, D247). This
+ * screen explains how and links there.
  */
 export default function HostEventScreen() {
   const [signupUrl, setSignupUrl] = useState(`${SITE}/signup`);

@@ -1829,6 +1829,9 @@ model BusinessAccount {
   teamMembers           BusinessTeamMember[]   @relation("TeamOwner")
   teamMembership        BusinessTeamMember[]   @relation("TeamMember")
   teamInvitesSent       BusinessTeamMember[]   @relation("TeamInviter")
+  /// D248: promo codes this account used (one, ever) and boosts it started.
+  promoRedemption       PromoRedemption?
+  boosts                Boost[]
   /// D242: changes to a place's details, or to the organizer name, waiting for JaxSide.
   placeChangeRequests   PlaceChangeRequest[]
   organizerNameRequests OrganizerNameRequest[]
@@ -1976,6 +1979,7 @@ model Plan {
   subscriptions    Subscription[]
   prices           PlanPrice[]
   entitlements     PlanEntitlement[]
+  promoCodes       PromoCode[]
 }
 
 /// D202: monthly only for now; YEAR can be added later.
@@ -2026,9 +2030,11 @@ enum SubscriptionStatus {
 
 /// D202: where a subscription came from.
 enum SubscriptionSource {
-  FREE_TIER // the free month every new business gets once
+  FREE_TIER // D248: the trial every new account gets once (Standard, 30 days; D202's free month)
   COMP // an admin gave it for free (a promo)
   STRIPE // paid (B4.1)
+  FREE_PLAN // D248: Free forever, after a trial, promo or paid plan ends
+  PROMO // D248: from a promo code (PromoRedemption)
 }
 
 /// D168: a business's plan. `comped` = a free promo period an admin granted (no payment).
@@ -2060,8 +2066,11 @@ model Subscription {
   /// The JaxSide admin (User id) who granted a comp; a plain id kept for the record.
   grantedByAdminId     String?            @db.Uuid
   note                 String?            @db.VarChar(300)
+  /// D248: when the "ends in 3 days" notice and email went out (sent once).
+  endingNoticeAt       DateTime?          @db.Timestamptz(3)
   createdAt            DateTime           @default(now()) @db.Timestamptz(3)
   account              BusinessAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  promoRedemption      PromoRedemption?
   plan                 Plan               @relation(fields: [planId], references: [id])
   price                PlanPrice?         @relation(fields: [priceId], references: [id], onDelete: SetNull)
   freeTierPlace        BusinessPlace?     @relation(fields: [freeTierPlaceId], references: [id], onDelete: SetNull)
@@ -2164,6 +2173,7 @@ model Ad {
   reports       Report[]
   viewMarks     AdViewMark[]
   tapMarks      AdTapMark[]
+  boosts        Boost[]
 
   @@index([accountId, status])
   @@index([status, startsAt, endsAt])
@@ -2270,6 +2280,8 @@ enum BusinessNoticeKind {
   EVENT_DENIED // D230: an event the business sent was turned down (the note says why)
   EVENT_AT_YOUR_PLACE // D236: an organizer's approved event names your place; confirm it
   EVENT_DUPLICATE // D242: the event sent is already on the calendar
+  TRIAL_ENDING // D248: the trial (or a promo) ends in 3 days; Free comes next
+  PLAN_DOWNGRADED // D248: now on Free (the website shows it once at sign-in)
   PLACE_CHANGE_APPROVED // D242: the place's new details are live
   PLACE_CHANGE_REJECTED // D242: the change was turned down (the note says why)
   ORGANIZER_NAME_APPROVED // D242
@@ -2657,6 +2669,8 @@ model Event {
   ads               Ad[]
   dailyStats        EventDailyStats[]
   tapMarks          EventTapMark[]
+  /// D248: the host's boosts (Featured).
+  boosts            Boost[]
 
   @@index([status, lastEndsAt])
   @@index([placeId])
@@ -2880,4 +2894,80 @@ model OrganizerNameRequest {
 
   @@unique([accountId], map: "OrganizerNameRequest_one_open", where: raw("status = 'PENDING'"))
   @@index([status, createdAt])
+}
+
+/**
+ * D248: a promo code (businesses only): `days` of `plan`, used at most `maxUses` times in all
+ * (`uses` counts them; CHECK), until `expiresAt`. Stored upper-case.
+ */
+model PromoCode {
+  id          String            @id @default(uuid(7)) @db.Uuid
+  code        String            @unique @db.VarChar(24)
+  planId      String            @db.Uuid
+  days        Int
+  maxUses     Int
+  uses        Int               @default(0)
+  expiresAt   DateTime?         @db.Timestamptz(3)
+  active      Boolean           @default(true)
+  note        String?           @db.VarChar(300)
+  /// The admin (User id) who made it.
+  createdById String?           @db.Uuid
+  createdAt   DateTime          @default(now()) @db.Timestamptz(3)
+  plan        Plan              @relation(fields: [planId], references: [id])
+  redemptions PromoRedemption[]
+
+  @@index([planId])
+}
+
+/// D248: an account used a promo code (one code per account, ever).
+model PromoRedemption {
+  id             String          @id @default(uuid(7)) @db.Uuid
+  codeId         String          @db.Uuid
+  accountId      String          @unique @db.Uuid
+  subscriptionId String          @unique @db.Uuid
+  redeemedAt     DateTime        @default(now()) @db.Timestamptz(3)
+  code           PromoCode       @relation(fields: [codeId], references: [id], onDelete: Restrict)
+  account        BusinessAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  subscription   Subscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([codeId, redeemedAt])
+}
+
+enum BoostStatus {
+  ACTIVE
+  ENDED
+  /// Stopped early (the business, or an admin).
+  CANCELLED
+}
+
+enum BoostSource {
+  PLAN // from the plan's monthly allowance (`boosts.perMonth`)
+  COMP // an admin gave it
+  PAID // bought (later)
+}
+
+/**
+ * D248: a boost of one ad (reaches everyone in Duval, shows more often) or one event
+ * (Featured at the top of the Events tab, seen everywhere) for 3, 7 or 14 days.
+ */
+model Boost {
+  id               String          @id @default(uuid(7)) @db.Uuid
+  accountId        String          @db.Uuid
+  adId             String?         @db.Uuid
+  eventId          String?         @db.Uuid
+  days             Int
+  startsAt         DateTime        @db.Timestamptz(3)
+  endsAt           DateTime        @db.Timestamptz(3)
+  status           BoostStatus     @default(ACTIVE)
+  source           BoostSource     @default(PLAN)
+  grantedByAdminId String?         @db.Uuid
+  createdAt        DateTime        @default(now()) @db.Timestamptz(3)
+  account          BusinessAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  ad               Ad?             @relation(fields: [adId], references: [id], onDelete: Cascade)
+  event            Event?          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, startsAt])
+  @@index([status, endsAt])
+  @@index([adId])
+  @@index([eventId])
 }

@@ -239,3 +239,17 @@ export function accountDeletedEmail(to: string, days: number): OutgoingMail {
     }),
   };
 }
+
+/** D248: a business's trial (or free plan) ends in a few days; Free comes next. */
+export function planEndingEmail(to: string, title: string, body: string): OutgoingMail {
+  const lines = [
+    body,
+    'You can see your plan, and upgrade, on JaxSide for Business under Account → Plan.',
+  ];
+  return {
+    to,
+    subject: title,
+    text: lines.join('\n\n'),
+    html: renderEmail({ preheader: body, heading: title, intro: lines }),
+  };
+}

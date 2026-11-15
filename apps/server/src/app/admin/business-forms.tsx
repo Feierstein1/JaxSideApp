@@ -506,7 +506,16 @@ export function BusinessStrikeForm({ id, step }: { id: string; step: string }) {
  * B3.3 / D206: approve an ad, or turn it down. D211: turning down picks a broad reason, then
  * a detailed one from the ad rules, plus an optional note; the business reads it as shown.
  */
-export function AdDecisionForm({ adId, updatedAt }: { adId: string; updatedAt: string }) {
+export function AdDecisionForm({
+  adId,
+  updatedAt,
+  live = false,
+}: {
+  adId: string;
+  updatedAt: string;
+  /** D247: a live ad: "Looked at, OK" or "Take down" instead of approve / turn down. */
+  live?: boolean;
+}) {
   const [rejecting, setRejecting] = useState(false);
   /** D213: a photo-rules denial can also give the business a strike (D191). */
   const [strike, setStrike] = useState(false);
@@ -535,7 +544,7 @@ export function AdDecisionForm({ adId, updatedAt }: { adId: string; updatedAt: s
     setStrike(false);
   }
 
-  async function decide(decision: 'approve' | 'reject') {
+  async function decide(decision: 'approve' | 'reject' | 'ok' | 'takedown') {
     setBusy(true);
     setError(undefined);
     try {
@@ -543,7 +552,7 @@ export function AdDecisionForm({ adId, updatedAt }: { adId: string; updatedAt: s
         method: 'POST',
         // D213: the version the reviewer saw; the server refuses if the ad changed since.
         body:
-          decision === 'approve'
+          decision === 'approve' || decision === 'ok'
             ? { decision, seenUpdatedAt: updatedAt }
             : {
                 decision,
@@ -579,7 +588,9 @@ export function AdDecisionForm({ adId, updatedAt }: { adId: string; updatedAt: s
       {rejecting ? (
         <div style={{ display: 'grid', gap: 12, maxWidth: 720 }}>
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-            <legend style={{ fontWeight: 650, marginBottom: 8 }}>Why is it turned down?</legend>
+            <legend style={{ fontWeight: 650, marginBottom: 8 }}>
+              {live ? 'Why is it taken down?' : 'Why is it turned down?'}
+            </legend>
             <div
               style={{
                 display: 'grid',
@@ -663,8 +674,12 @@ export function AdDecisionForm({ adId, updatedAt }: { adId: string; updatedAt: s
       <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
         {rejecting ? (
           <>
-            <button style={ui.button} disabled={busy || !ready} onClick={() => decide('reject')}>
-              Send back
+            <button
+              style={live ? ui.buttonDanger : ui.button}
+              disabled={busy || !ready}
+              onClick={() => decide(live ? 'takedown' : 'reject')}
+            >
+              {live ? 'Take it down' : 'Send back'}
             </button>
             <button style={ui.buttonSecondary} disabled={busy} onClick={cancel}>
               Cancel
@@ -672,11 +687,15 @@ export function AdDecisionForm({ adId, updatedAt }: { adId: string; updatedAt: s
           </>
         ) : (
           <>
-            <button style={ui.button} disabled={busy} onClick={() => decide('approve')}>
-              Approve
+            <button
+              style={ui.button}
+              disabled={busy}
+              onClick={() => decide(live ? 'ok' : 'approve')}
+            >
+              {live ? 'Looked at, OK' : 'Approve'}
             </button>
             <button style={ui.buttonSecondary} disabled={busy} onClick={() => setRejecting(true)}>
-              Turn down
+              {live ? 'Take down' : 'Turn down'}
             </button>
           </>
         )}
