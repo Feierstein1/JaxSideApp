@@ -128,6 +128,18 @@ names stay; only the contents are cleared).
   3. Check `aws sesv2 get-email-identity --email-identity jaxside.com` shows
      `MailFromDomainStatus: SUCCESS`, then send a test to a Yahoo and a Gmail address. The app and the
      website both benefit (same identity); jaxside.com's own SPF (Zoho) is untouched.
+- [ ] **App Store / Google Play review mode (Kenny agreed 2026-11-16; blocks store review).**
+  Reviewers are outside Duval, where the app refuses everything. Plan: **review accounts** marked by
+  an admin in the portal (never from the phone), for which the server uses a **fixed Jacksonville
+  point** instead of the phone's location (downtown near Hemming Park, or Riverside / Five Points:
+  Kenny picks), set up ready to use (email confirmed, picture and color, age check done, past the
+  new-account waits). Their content is **sandboxed**: posts, comments, events, chat and ratings by
+  review accounts are seen only by review accounts, with a few sample posts and events there for
+  them. **Kept after launch** (every app update is reviewed again); only the test content is wiped.
+  One account for Apple, one for Google, passwords in Kenny's password manager, given in App Store
+  Connect "App Review Information" and Play Console "App access" with a note explaining the Duval
+  rule. Also confirm before submitting: delete account in the app, the location permission text,
+  report and block, the privacy policy link. About a day of work with tests.
 - [ ] **Delete the old 2 GB instance** `jaxside-staging-server` (stopped, still billed) once the new
   one has run a day or two; delete the snapshot `jaxside-before-4gb-2026-11-15` a week after.
 - [ ] **The app's own switch-over** (steps 3-13 above, apart from what's done): fresh keys, the wipe
