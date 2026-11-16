@@ -147,8 +147,10 @@ function selectCards(viewerId: string, at: GeoPoint, where: Prisma.Sql, tail: Pr
            e.neighborhood, e.zip, e.setting::text AS setting, e.free, e."priceText" AS price_text,
            e."adultsOnly" AS adults_only, e."familyFriendly" AS family_friendly,
            e."hostKind"::text AS host_kind,
+           -- D253: the calendar picture is the owner's first picture of any kind (the first
+           -- flyer by default; "Use as calendar picture" on the website moves one first).
            (SELECT i.id FROM "EventImage" i WHERE i."eventId" = e.id
-             ORDER BY (i.kind = 'FLYER'), i.position, i.id LIMIT 1) AS image_id,
+             ORDER BY i.position, i.id LIMIT 1) AS image_id,
            EXISTS (SELECT 1 FROM "EventFollow" f
                    WHERE f."eventId" = e.id AND f."userId" = ${viewerId}::uuid) AS following,
            e.status::text AS status,
@@ -356,8 +358,8 @@ export async function eventDetail(
     }),
     db.eventImage.findMany({
       where: { eventId: id },
-      // D242: flyers first (the app shows them whole), then photos.
-      orderBy: [{ kind: 'asc' }, { position: 'asc' }, { id: 'asc' }],
+      // D253: in the owner's order (the app picks the first flyer for the top).
+      orderBy: [{ position: 'asc' }, { id: 'asc' }],
     }),
     db.eventFollow.count({ where: { eventId: id } }),
     getConfig('events.followerCountMin'),

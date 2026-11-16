@@ -170,16 +170,21 @@ describe('flyers (D242)', () => {
       },
     });
 
-  it('the app gets flyers first, then photos; the card uses a photo', async () => {
+  it('pictures come in the owner’s order; the card uses the first of any kind (D253)', async () => {
     const id = await event();
-    await picture(id, 'PHOTO', 0);
-    await picture(id, 'FLYER', 0);
+    const photo = await picture(id, 'PHOTO', 1);
+    const flyer = await picture(id, 'FLYER', 0);
     const u = await createTestUser('reader_f', { emailVerifiedAt: new Date() });
     const token = (await createSession(u.id, 'MOBILE')).token;
-    const e = (await call(detailPOST as H, 'POST', { token, id, body: { reading: reading() } }))
-      .body.event;
-    expect(e.images.map((i: { kind: string }) => i.kind)).toEqual(['flyer', 'photo']);
-    expect(e.imageUrl).toContain(e.images[1].id);
+    const read = async () =>
+      (await call(detailPOST as H, 'POST', { token, id, body: { reading: reading() } })).body.event;
+    let e = await read();
+    expect(e.images.map((i: { id: string }) => i.id)).toEqual([flyer.id, photo.id]);
+    expect(e.imageUrl).toContain(flyer.id); // the first flyer by default
+    // "Use as calendar picture" on the website moves a picture first (positions can go negative).
+    await db.eventImage.update({ where: { id: photo.id }, data: { position: -1 } });
+    e = await read();
+    expect(e.imageUrl).toContain(photo.id);
   });
 
   // 🔒 At most 2 flyers and 6 photos, whoever uploads them (the database checks too).

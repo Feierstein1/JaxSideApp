@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
@@ -12,6 +13,7 @@ import {
 } from '@jax/shared';
 import { DecoBox } from '@/deco';
 import { photoUri } from '@/discussion/photos';
+import { PhotoViewer } from '@/discussion/PhotoViewer';
 import { categoryIcon } from '@/places/PlaceHeader';
 import { Text } from '@/text';
 import { RADIUS, SPACE, TYPE } from '@/tokens';
@@ -153,74 +155,97 @@ export function HostLine({ e }: { e: EventCardView }) {
  */
 export function EventCard({ e, showDate = false }: { e: EventCardView; showDate?: boolean }) {
   const when = `${showDate ? `${dateLabel(e.date)} · ` : ''}${timeRange(e)}`;
+  const [viewing, setViewing] = useState(false);
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${e.title}. ${EVENT_CATEGORIES[e.category]}. ${when}${e.venue ? `, ${e.venue}` : ''}${e.cancelled ? '. Cancelled' : ''}${e.happeningNow ? '. Happening now' : ''}`}
-      onPress={() => router.push(`/events/event/${e.id}`)}
-      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-    >
-      <DecoBox
-        shape="chamfer"
-        fill={DARK.card}
-        stroke={e.happeningNow ? DARK.accent : undefined}
-        style={{ padding: SPACE.md, flexDirection: 'row', gap: SPACE.md }}
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${e.title}. ${EVENT_CATEGORIES[e.category]}. ${when}${e.venue ? `, ${e.venue}` : ''}${e.cancelled ? '. Cancelled' : ''}${e.happeningNow ? '. Happening now' : ''}`}
+        onPress={() => router.push(`/events/event/${e.id}`)}
+        style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
       >
-        {e.imageUrl ? (
-          <Image
-            source={{ uri: photoUri(e.imageUrl) }}
-            style={{ width: 72, height: 72, borderRadius: RADIUS.md, backgroundColor: DARK.raised }}
-            accessibilityIgnoresInvertColors
-          />
-        ) : (
-          <View
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: RADIUS.md,
-              backgroundColor: DARK.raised,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Ionicons name="calendar" size={26} color={DARK.accent} />
-          </View>
-        )}
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text style={[TYPE.caption, { color: DARK.accent, fontWeight: '700' }]}>
-            {EVENT_CATEGORIES[e.category]}
-            {e.dayCount > 1 ? ` · Day ${e.dayNumber} of ${e.dayCount}` : ''}
-          </Text>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: '800',
-              textDecorationLine: e.cancelled ? 'line-through' : 'none',
-            }}
-            numberOfLines={2}
-          >
-            {e.title}
-          </Text>
-          <Text style={[TYPE.caption, { color: DARK.textMuted }]}>{when}</Text>
-          {e.hostedAt ? (
-            <HostedAt place={e.hostedAt} />
-          ) : e.venue ? (
-            <Text style={[TYPE.caption, { color: DARK.textMuted }]} numberOfLines={1}>
-              {e.venue}
+        <DecoBox
+          shape="chamfer"
+          fill={DARK.card}
+          stroke={e.happeningNow ? DARK.accent : undefined}
+          style={{ padding: SPACE.md, flexDirection: 'row', gap: SPACE.md }}
+        >
+          {e.imageUrl ? (
+            // D253: the picture opens whole on its own; the rest of the card opens the event.
+            <Pressable
+              accessibilityRole="imagebutton"
+              accessibilityLabel={`${e.title}: picture, tap to see it full screen`}
+              onPress={() => setViewing(true)}
+              hitSlop={4}
+            >
+              <Image
+                source={{ uri: photoUri(e.imageUrl) }}
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: RADIUS.md,
+                  backgroundColor: DARK.raised,
+                }}
+                accessibilityIgnoresInvertColors
+              />
+            </Pressable>
+          ) : (
+            <View
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: RADIUS.md,
+                backgroundColor: DARK.raised,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="calendar" size={26} color={DARK.accent} />
+            </View>
+          )}
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={[TYPE.caption, { color: DARK.accent, fontWeight: '700' }]}>
+              {EVENT_CATEGORIES[e.category]}
+              {e.dayCount > 1 ? ` · Day ${e.dayNumber} of ${e.dayCount}` : ''}
             </Text>
-          ) : null}
-          <HostLine e={e} />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 3 }}>
-            {e.cancelled ? <Tag text="Cancelled" tone="alert" /> : null}
-            {e.featured ? <Tag text="Featured" tone="accent" /> : null}
-            {e.happeningNow ? <Tag text="Happening now" tone="accent" /> : null}
-            <Tag text={e.free ? 'Free' : (e.priceText ?? 'Paid')} />
-            <Tag text={EVENT_SETTINGS[e.setting]} />
-            {e.adultsOnly ? <Tag text="21+" /> : null}
-            {e.following ? <Tag text="Following" /> : null}
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '800',
+                textDecorationLine: e.cancelled ? 'line-through' : 'none',
+              }}
+              numberOfLines={2}
+            >
+              {e.title}
+            </Text>
+            <Text style={[TYPE.caption, { color: DARK.textMuted }]}>{when}</Text>
+            {e.hostedAt ? (
+              <HostedAt place={e.hostedAt} />
+            ) : e.venue ? (
+              <Text style={[TYPE.caption, { color: DARK.textMuted }]} numberOfLines={1}>
+                {e.venue}
+              </Text>
+            ) : null}
+            <HostLine e={e} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 3 }}>
+              {e.cancelled ? <Tag text="Cancelled" tone="alert" /> : null}
+              {e.featured ? <Tag text="Featured" tone="accent" /> : null}
+              {e.happeningNow ? <Tag text="Happening now" tone="accent" /> : null}
+              <Tag text={e.free ? 'Free' : (e.priceText ?? 'Paid')} />
+              <Tag text={EVENT_SETTINGS[e.setting]} />
+              {e.adultsOnly ? <Tag text="21+" /> : null}
+              {e.following ? <Tag text="Following" /> : null}
+            </View>
           </View>
-        </View>
-      </DecoBox>
-    </Pressable>
+        </DecoBox>
+      </Pressable>
+      {e.imageUrl ? (
+        <PhotoViewer
+          photos={[{ id: e.id, url: e.imageUrl, width: 1, height: 1 }]}
+          start={viewing ? 0 : null}
+          onClose={() => setViewing(false)}
+        />
+      ) : null}
+    </>
   );
 }

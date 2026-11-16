@@ -22,6 +22,7 @@ import { useGuest } from '@/auth/guest';
 import { DecoBox } from '@/deco';
 import { showAlert } from '@/dialog';
 import { photoUri } from '@/discussion/photos';
+import { PhotoViewer } from '@/discussion/PhotoViewer';
 import { eventLinkTapped, fetchEvent, setEventFollow } from '@/events/api';
 import { HostedAt, HostLine, Tag, timeRange } from '@/events/EventCard';
 import { EventChatEntry } from '@/events/EventChatEntry';
@@ -36,7 +37,8 @@ import { Button, ErrorState } from '@/ui';
  * D230: an event's page: pictures, what and when, where, who puts it on, the description,
  * every date still to come, Follow (reminders in the bell), Report, and, while it's on and
  * you're there, its chat. D236: the host's link (tickets, info) and "Confirmed by [place]".
- * D242: flyers shown whole above the photos.
+ * D253: the first flyer whole on top ("See all flyers"), photos small below the details ("See
+ * more images"); every picture opens full screen.
  */
 export default function EventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,6 +46,8 @@ export default function EventScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<ReportTarget>();
+  /** D253: the full-screen window (flyers, photos or the top picture), or null. */
+  const [viewer, setViewer] = useState<{ list: EventDetail['images']; start: number } | null>(null);
   const { isGuest, promptAccount } = useGuest();
   const { width } = useWindowDimensions();
 
@@ -96,49 +100,53 @@ export default function EventScreen() {
     );
   }
   const imgW = width - 24;
-  // D242: flyers are shown whole (never cropped), above the photo gallery.
+  // D253: pictures come in the owner's order. On top, the first flyer whole (no flyer: the
+  // calendar picture, which then isn't repeated among the photos); photos below the details.
   const flyers = e.images.filter((i) => i.kind === 'flyer');
-  const photos = e.images.filter((i) => i.kind !== 'flyer');
+  const top = flyers[0] ?? e.images[0] ?? null;
+  const topIsFlyer = !!flyers[0];
+  const photos = e.images.filter((i) => i.kind !== 'flyer' && i.id !== top?.id);
+  const thumb = Math.floor((imgW - 2 * SPACE.sm) / 3);
   return (
     <>
       <ScrollView
         style={{ flex: 1, backgroundColor: DARK.page }}
         contentContainerStyle={{ padding: 12, paddingBottom: 48, gap: SPACE.md }}
       >
-        {flyers.map((img, i) => (
-          <Image
-            key={img.id}
-            source={{ uri: photoUri(img.url) }}
-            accessibilityLabel={flyers.length > 1 ? `Flyer ${i + 1} of ${flyers.length}` : 'Flyer'}
-            style={{
-              width: imgW,
-              aspectRatio: img.width / img.height,
-              borderRadius: RADIUS.lg,
-              backgroundColor: DARK.raised,
-            }}
-            resizeMode="contain"
-            accessibilityIgnoresInvertColors
-          />
-        ))}
-        {photos.length ? (
-          <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
-            {photos.map((img, i) => (
+        {/* D253: the first flyer, whole (no flyer: the calendar picture). Tap to see it big. */}
+        {top ? (
+          <View style={{ gap: SPACE.xs }}>
+            <Pressable
+              accessibilityRole="imagebutton"
+              accessibilityLabel={
+                topIsFlyer
+                  ? 'Flyer, tap to see it full screen'
+                  : 'Picture, tap to see it full screen'
+              }
+              onPress={() => setViewer({ list: topIsFlyer ? flyers : [top], start: 0 })}
+            >
               <Image
-                key={img.id}
-                source={{ uri: photoUri(img.url) }}
-                accessibilityLabel={`Photo ${i + 1} of ${photos.length}`}
+                source={{ uri: photoUri(top.url) }}
                 style={{
                   width: imgW,
-                  height: Math.min(imgW * (img.height / img.width), imgW * 1.1),
+                  aspectRatio: top.width / top.height,
                   borderRadius: RADIUS.lg,
                   backgroundColor: DARK.raised,
-                  marginRight: i < photos.length - 1 ? SPACE.sm : 0,
                 }}
-                resizeMode="cover"
+                resizeMode="contain"
                 accessibilityIgnoresInvertColors
               />
-            ))}
-          </ScrollView>
+            </Pressable>
+            {flyers.length > 1 ? (
+              <Button
+                variant="link"
+                icon="images-outline"
+                title={`See all flyers (${flyers.length})`}
+                onPress={() => setViewer({ list: flyers, start: 0 })}
+                style={{ alignSelf: 'center', marginTop: 0 }}
+              />
+            ) : null}
+          </View>
         ) : null}
 
         <View style={{ gap: 6 }}>
@@ -232,6 +240,43 @@ export default function EventScreen() {
 
         <Text style={TYPE.body}>{e.description}</Text>
 
+        {/* D253: photos below the details: up to 3 small squares, the rest in a window. */}
+        {photos.length ? (
+          <View style={{ gap: SPACE.xs }}>
+            <View style={{ flexDirection: 'row', gap: SPACE.sm }}>
+              {photos.slice(0, 3).map((img, i) => (
+                <Pressable
+                  key={img.id}
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel={`Photo ${i + 1} of ${photos.length}, tap to see it full screen`}
+                  onPress={() => setViewer({ list: photos, start: i })}
+                >
+                  <Image
+                    source={{ uri: photoUri(img.url) }}
+                    style={{
+                      width: thumb,
+                      height: thumb,
+                      borderRadius: RADIUS.md,
+                      backgroundColor: DARK.raised,
+                    }}
+                    resizeMode="cover"
+                    accessibilityIgnoresInvertColors
+                  />
+                </Pressable>
+              ))}
+            </View>
+            {photos.length > 3 ? (
+              <Button
+                variant="link"
+                icon="images-outline"
+                title={`See more images (${photos.length})`}
+                onPress={() => setViewer({ list: photos, start: 0 })}
+                style={{ alignSelf: 'flex-start', marginTop: 0 }}
+              />
+            ) : null}
+          </View>
+        ) : null}
+
         {e.sessions.length > 1 ? (
           <View style={{ gap: SPACE.xs }}>
             <Text accessibilityRole="header" style={[TYPE.label, { color: DARK.textMuted }]}>
@@ -255,6 +300,11 @@ export default function EventScreen() {
         )}
       </ScrollView>
       <ReportSheet target={report} onClose={() => setReport(undefined)} />
+      <PhotoViewer
+        photos={viewer?.list ?? []}
+        start={viewer ? viewer.start : null}
+        onClose={() => setViewer(null)}
+      />
     </>
   );
 }
