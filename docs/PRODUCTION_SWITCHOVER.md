@@ -113,6 +113,26 @@ names stay; only the contents are cleared).
 13. **Phones:** the launch builds use `https://api.jaxside.com` (EAS production environment); the
     test builds on phones keep working through `staging-api.jaxside.com` until they're retired.
 
+## Before launch (open)
+
+- [ ] **Custom MAIL FROM for email (Kenny: later, before launch; 2026-11-16).** Mail from
+  `noreply@jaxside.com` already passes DKIM and DMARC, but SPF is checked against amazonses.com
+  (jaxside.com's SPF lists only Zoho), which Yahoo and Gmail weigh for a new domain (the first
+  welcome email likely went to spam). Free:
+  1. Kenny adds two records at GoDaddy (DNS for jaxside.com):
+     - `MX` · name `mail` · value `feedback-smtp.us-east-1.amazonses.com` · priority `10`
+     - `TXT` · name `mail` · value `v=spf1 include:amazonses.com ~all`
+  2. Claude turns it on in SES (safe before DNS: it falls back to amazonses.com until the records
+     resolve):
+     `aws sesv2 put-email-identity-mail-from-attributes --email-identity jaxside.com --mail-from-domain mail.jaxside.com --behavior-on-mx-failure USE_DEFAULT_VALUE`
+  3. Check `aws sesv2 get-email-identity --email-identity jaxside.com` shows
+     `MailFromDomainStatus: SUCCESS`, then send a test to a Yahoo and a Gmail address. The app and the
+     website both benefit (same identity); jaxside.com's own SPF (Zoho) is untouched.
+- [ ] **Delete the old 2 GB instance** `jaxside-staging-server` (stopped, still billed) once the new
+  one has run a day or two; delete the snapshot `jaxside-before-4gb-2026-11-15` a week after.
+- [ ] **The app's own switch-over** (steps 3-13 above, apart from what's done): fresh keys, the wipe
+  (when Kenny says), Kenny's admin account again, phones on `api.jaxside.com`.
+
 ## Afterwards
 
 - Backups keep running nightly (`cron`), now of real data: keep the keys' copy safe and separate.
