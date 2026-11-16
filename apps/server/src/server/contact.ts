@@ -1,11 +1,12 @@
 import type { z } from 'zod';
-import type { contactSchema } from '@jax/shared';
+import type { ContactDecision, contactSchema } from '@jax/shared';
 import type { Actor } from './auth/require-actor';
 import { decryptUserEmail } from './crypto/field-encryption';
 import { db } from './db';
 import { getEnv } from './env';
 import { ApiError } from './http';
 import { sendSafely } from './mail/mailer';
+import { contactAnswerEmail } from './mail/templates';
 import { pageWindow, toPage } from './admin/paging';
 
 /**
@@ -48,7 +49,7 @@ export async function createContactMessage(actor: Actor, input: ContactInput) {
 
 /** Contact messages (open ones oldest first), 20 a page (D210). */
 export async function listContactMessages(opts: {
-  status: 'OPEN' | 'RESOLVED';
+  status: 'OPEN' | 'NEEDS_INFO' | 'RESOLVED';
   category?: 'SUPPORT' | 'GENERAL';
   page?: number;
 }) {
@@ -89,6 +90,7 @@ export async function listContactMessages(opts: {
     createdAt: m.createdAt,
     resolvedAt: m.resolvedAt,
     resolvedBy: m.resolvedBy?.username ?? null,
+    adminNote: m.adminNote,
     from: m.user
       ? { id: m.user.id, username: m.user.username, status: m.user.status }
       : m.businessAccount
@@ -132,12 +134,52 @@ export async function contactReplyEmail(id: string): Promise<string | null> {
   }
 }
 
-export async function setContactResolved(id: string, adminId: string, resolved: boolean) {
+/**
+ * D251: answer a ticket. "Resolved" (optional note) or "Need more details" (a note saying
+ * what's needed) emails the sender in the branded look, when they can be emailed: a business
+ * ticket always (its reply address or the login's email), a person only if they turned on
+ * replies, a guest never. "Reopen" puts it back in Open without an email. Returns whether an
+ * email went out.
+ */
+export async function answerContact(id: string, adminId: string, decision: ContactDecision) {
+  const now = new Date();
+  const note = decision.action === 'reopen' ? null : decision.note?.trim() || null;
   const res = await db.contactMessage.updateMany({
     where: { id },
-    data: resolved
-      ? { status: 'RESOLVED', resolvedAt: new Date(), resolvedById: adminId }
-      : { status: 'OPEN', resolvedAt: null, resolvedById: null },
+    data:
+      decision.action === 'reopen'
+        ? { status: 'OPEN', resolvedAt: null, resolvedById: null }
+        : {
+            status: decision.action === 'resolve' ? 'RESOLVED' : 'NEEDS_INFO',
+            resolvedAt: now,
+            resolvedById: adminId,
+            adminNote: note,
+          },
   });
   if (res.count !== 1) throw new ApiError(404, 'NOT_FOUND', 'Not found');
+  if (decision.action === 'reopen') return { emailed: false };
+  const to = await contactReplyEmail(id);
+  if (!to) return { emailed: false };
+  const m = await db.contactMessage.findUniqueOrThrow({
+    where: { id },
+    select: { subject: true, businessAccountId: true },
+  });
+  const env = getEnv();
+  const business = !!m.businessAccountId;
+  await sendSafely(
+    contactAnswerEmail({
+      to,
+      kind: decision.action === 'resolve' ? 'resolved' : 'needs_info',
+      subject: m.subject,
+      note,
+      business,
+      businessContactUrl:
+        business && env.BUSINESS_SITE_URL
+          ? new URL('/contact', env.BUSINESS_SITE_URL).toString()
+          : null,
+      replyTo: env.SUPPORT_INBOX ?? null,
+    }),
+    'contact-answer',
+  );
+  return { emailed: true };
 }

@@ -8,8 +8,11 @@ import { Pager, Pill, when } from '../admin-table';
 export const dynamic = 'force-dynamic';
 
 const CATEGORY = { SUPPORT: 'Support ticket', GENERAL: 'General' } as const;
+/** D251: Open, waiting on the sender ("Need more details"), or answered. */
+const STATUS = { OPEN: 'Open', NEEDS_INFO: 'Needs details', RESOLVED: 'Resolved' } as const;
+const ANSWERED = { NEEDS_INFO: 'asked for details', RESOLVED: 'resolved' } as const;
 
-/** D90: Contact us messages, oldest open first. Filter by status and category. */
+/** D90: Contact us messages, oldest open first. Filter by status and category (D251: three). */
 export default async function MessagesPage({
   searchParams,
 }: {
@@ -17,7 +20,8 @@ export default async function MessagesPage({
 }) {
   await requireAdminPage();
   const q = await searchParams;
-  const status = q.status === 'RESOLVED' ? 'RESOLVED' : 'OPEN';
+  const status =
+    q.status === 'RESOLVED' || q.status === 'NEEDS_INFO' ? q.status : ('OPEN' as const);
   const category = q.category === 'SUPPORT' || q.category === 'GENERAL' ? q.category : undefined;
   const list = await listContactMessages({ status, category, page: pageNumber(q.page) });
   const messages = list.rows;
@@ -26,9 +30,9 @@ export default async function MessagesPage({
     <>
       <h1>Messages</h1>
       <nav style={{ display: 'flex', gap: 14, marginBottom: 8 }}>
-        {(['OPEN', 'RESOLVED'] as const).map((s) => (
+        {(['OPEN', 'NEEDS_INFO', 'RESOLVED'] as const).map((s) => (
           <a key={s} href={link(s, category)} style={{ fontWeight: s === status ? 800 : 400 }}>
-            {s === 'OPEN' ? 'Open' : 'Resolved'}
+            {STATUS[s]}
           </a>
         ))}
         <span style={ui.muted}>|</span>
@@ -64,12 +68,22 @@ export default async function MessagesPage({
                 <a href={`/admin/users/${m.from.id}`}>@{m.from.username}</a>
               )}{' '}
               · {when(m.createdAt.toISOString())}
-              {m.resolvedAt
-                ? ` · resolved ${when(m.resolvedAt.toISOString())}${m.resolvedBy ? ` by @${m.resolvedBy}` : ''}`
+              {m.resolvedAt && m.status !== 'OPEN'
+                ? ` · ${ANSWERED[m.status]} ${when(m.resolvedAt.toISOString())}${m.resolvedBy ? ` by @${m.resolvedBy}` : ''}`
                 : ''}
             </p>
             <p style={{ whiteSpace: 'pre-wrap' }}>{m.body}</p>
-            <ContactActions id={m.id} resolved={m.status === 'RESOLVED'} canReply={m.canReply} />
+            {m.adminNote && m.status !== 'OPEN' ? (
+              <p style={{ ...ui.muted, whiteSpace: 'pre-wrap' }}>
+                <strong>Our note:</strong> {m.adminNote}
+              </p>
+            ) : null}
+            <ContactActions
+              id={m.id}
+              status={m.status}
+              canReply={m.canReply}
+              business={typeof m.from !== 'string' && 'business' in m.from}
+            />
           </div>
         ))}
       </div>

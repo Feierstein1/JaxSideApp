@@ -153,4 +153,25 @@ export const contactSchema = z.strictObject({
   /** May a moderator see your account email to reply? Off unless you turn it on. */
   allowReply: z.boolean().default(false),
 });
-export const contactResolveSchema = z.strictObject({ resolved: z.boolean() });
+/** D251: the note an admin sends with an answer (plain text; the email escapes it). */
+const contactNote = z
+  .string()
+  .trim()
+  .max(1000, 'Keep it under 1000 characters')
+  // eslint-disable-next-line no-control-regex
+  .refine((v) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(v), 'Invalid characters');
+
+/**
+ * D251: answering a Contact ticket. "Resolved" (an optional note) or "Need more details" (a
+ * note saying what's needed); either emails the sender when they can be emailed. "Reopen"
+ * puts it back in Open without an email.
+ */
+export const contactDecisionSchema = z.discriminatedUnion('action', [
+  z.strictObject({ action: z.literal('resolve'), note: contactNote.optional() }),
+  z.strictObject({
+    action: z.literal('needs_info'),
+    note: contactNote.pipe(z.string().min(3, 'Say what you need from them')),
+  }),
+  z.strictObject({ action: z.literal('reopen') }),
+]);
+export type ContactDecision = z.infer<typeof contactDecisionSchema>;

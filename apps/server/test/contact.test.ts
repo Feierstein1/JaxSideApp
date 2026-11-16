@@ -10,8 +10,10 @@ import { invalidateConfigCache } from '@/server/config';
 import { listContactMessages } from '@/server/contact';
 import { db } from '@/server/db';
 import { INSTALLATION_HEADER } from '@/server/installations';
+import { setMailer } from '@/server/mail/mailer';
 import { adminHeaders } from './admin-helpers';
 import { relaxBurstLimits, resetDb } from './db-helpers';
+import { captureMailer } from './http-helpers';
 import { callRoute as call, type AnyHandler as H } from './route-call';
 import { createTestUser } from './user-factory';
 
@@ -20,6 +22,7 @@ import { createTestUser } from './user-factory';
 let ann: string;
 let annId: string;
 let admin: Record<string, string>;
+let mail: ReturnType<typeof captureMailer>;
 
 const ticket = {
   category: 'SUPPORT',
@@ -33,6 +36,8 @@ beforeEach(async () => {
   await resetDb();
   await relaxBurstLimits();
   invalidateConfigCache();
+  mail = captureMailer();
+  setMailer(mail.mailer);
   const a = await createTestUser('ann_c', {
     email: 'ann.private@example.test',
     emailVerifiedAt: new Date(),
@@ -98,7 +103,7 @@ describe('Contact us (D90)', () => {
     const r = await call(resolvePOST as H, 'POST', {
       headers: admin,
       params: { id: support.id },
-      body: { resolved: true },
+      body: { action: 'resolve' },
     });
     expect(r.status).toBe(200);
     expect((await listContactMessages({ status: 'OPEN' })).rows).toHaveLength(1);
@@ -107,7 +112,7 @@ describe('Contact us (D90)', () => {
     await call(resolvePOST as H, 'POST', {
       headers: admin,
       params: { id: support.id },
-      body: { resolved: false },
+      body: { action: 'reopen' },
     });
     expect((await listContactMessages({ status: 'OPEN' })).rows).toHaveLength(2);
   });
@@ -162,6 +167,91 @@ describe('Contact us (D90)', () => {
           },
         }),
       ).rejects.toThrow();
+    });
+  });
+
+  // D251: answering a ticket emails the sender (when they can be emailed).
+  describe('answers by email (D251)', () => {
+    const answer = (id: string, body: object) =>
+      call(resolvePOST as H, 'POST', { headers: admin, params: { id }, body });
+    const answers = () =>
+      mail.sent.filter((m) => /^(Resolved|More details needed): /.test(m.subject));
+    async function businessTicket(email: string | null, replyEmail?: string) {
+      const a = await db.businessAccount.create({
+        data: { email, username: email ? null : 'sam.bb', passwordHash: 'x' },
+      });
+      return db.contactMessage.create({
+        data: {
+          businessAccountId: a.id,
+          category: 'SUPPORT',
+          subject: 'Ad help',
+          body: 'How do I…',
+          replyEmail,
+        },
+      });
+    }
+
+    it('Resolved emails the business, with the note and the FOR BUSINESS look', async () => {
+      const t = await businessTicket('owner@boldbean.com');
+      const r = await answer(t.id, { action: 'resolve', note: 'Your ad is live now.' });
+      expect(r.body).toEqual({ ok: true, emailed: true });
+      const [m] = answers();
+      expect(m).toMatchObject({ to: 'owner@boldbean.com', subject: 'Resolved: Ad help' });
+      expect(m!.text).toContain('Your ad is live now.');
+      expect(m!.html).toContain('FOR BUSINESS');
+      expect(await db.contactMessage.findUniqueOrThrow({ where: { id: t.id } })).toMatchObject({
+        status: 'RESOLVED',
+        adminNote: 'Your ad is live now.',
+      });
+      expect(
+        await db.adminAuditLog.count({ where: { action: 'CONTACT_RESOLVED', targetId: t.id } }),
+      ).toBe(1);
+    });
+
+    it('Need more details needs a note, goes to a staff login’s reply address, and has its own list', async () => {
+      const t = await businessTicket(null, 'sam@example.test');
+      expect((await answer(t.id, { action: 'needs_info' })).status).toBe(400);
+      expect((await answer(t.id, { action: 'needs_info', note: ' ' })).status).toBe(400);
+      expect(answers()).toHaveLength(0);
+      await answer(t.id, { action: 'needs_info', note: 'Which ad do you mean?' });
+      expect(answers()[0]).toMatchObject({
+        to: 'sam@example.test',
+        subject: 'More details needed: Ad help',
+      });
+      expect(answers()[0]!.text).toContain('Which ad do you mean?');
+      expect((await listContactMessages({ status: 'OPEN' })).rows).toHaveLength(0);
+      expect((await listContactMessages({ status: 'NEEDS_INFO' })).rows[0]).toMatchObject({
+        id: t.id,
+        adminNote: 'Which ad do you mean?',
+      });
+      // Back to Open sends nothing.
+      await answer(t.id, { action: 'reopen' });
+      expect(answers()).toHaveLength(1);
+      expect((await listContactMessages({ status: 'OPEN' })).rows).toHaveLength(1);
+    });
+
+    // 🔒 A person is emailed only if they turned on replies; a guest never.
+    it('people only with replies on; guests never', async () => {
+      await send(ann, { ...ticket, allowReply: true });
+      await send(ann, { ...ticket, subject: 'No reply please' });
+      const [yes, no] = await db.contactMessage.findMany({ orderBy: { createdAt: 'asc' } });
+      expect((await answer(yes!.id, { action: 'resolve' })).body.emailed).toBe(true);
+      expect(answers()[0]).toMatchObject({ to: 'ann.private@example.test' });
+      expect(answers()[0]!.html).not.toContain('FOR BUSINESS');
+      expect((await answer(no!.id, { action: 'needs_info', note: 'Which phone?' })).body).toEqual({
+        ok: true,
+        emailed: false,
+      });
+      expect(answers()).toHaveLength(1);
+    });
+
+    // 🔒 The note is text, never markup, and unexpected fields are refused.
+    it('escapes the note in the email; strict body', async () => {
+      const t = await businessTicket('owner@boldbean.com');
+      expect((await answer(t.id, { action: 'resolve', status: 'OPEN' })).status).toBe(400);
+      await answer(t.id, { action: 'resolve', note: '<a href="x">click</a>' });
+      expect(answers()[0]!.html).not.toContain('<a href="x">');
+      expect(answers()[0]!.html).toContain('&lt;a href=');
     });
   });
 });

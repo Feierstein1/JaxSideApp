@@ -338,7 +338,7 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | POST | `/api/v1/admin/cases/:type/:id` | admin (cookie + CSRF) |  | P5.14: decide the case (remove, approve, dismiss, escalate), optionally with a strike. |
 | POST | `/api/v1/admin/chat/rooms/:id` | admin (cookie + CSRF) |  | D218: switch a chat room on or off, or give it a name. Audited. |
 | POST | `/api/v1/admin/chat/users/:id/unmute` | admin (cookie + CSRF) |  | D218: lift a person's area-chat mute early. Audited. |
-| POST | `/api/v1/admin/contact/:id` | admin (cookie + CSRF) |  | D90: mark a Contact us message resolved (or open again). |
+| POST | `/api/v1/admin/contact/:id` | admin (cookie + CSRF) |  | D90 / D251: answer a Contact us message. Body `{ action: 'resolve', note? }`, `{ action: 'needs_info', note }` (3-1000 characters) or `{ action: 'reopen' }`. Resolved / Need more details email the sender when they can be emailed (a business ticket: its reply address or the login's email; a person: only with replies on; a guest: never), Reply-To support. Returns `{ ok, emailed }`. |
 | GET | `/api/v1/admin/contact/:id/reply-email` | admin (cookie + CSRF) |  | D90: the sender's account email, only if they allowed replies on this message. Every viewing is written to the audit log. |
 | POST | `/api/v1/admin/events` | admin (cookie + CSRF) |  | D230: an admin adds an event (approved at once; the pin must be inside Duval). Audited. |
 | PATCH | `/api/v1/admin/events/:id` | admin (cookie + CSRF) |  | D230: change an event (followers of an approved one are told if its dates or place change). |

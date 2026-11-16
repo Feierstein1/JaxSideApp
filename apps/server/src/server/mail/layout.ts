@@ -23,6 +23,8 @@ export interface EmailBody {
   button?: { label: string; url: string; note?: string };
   /** Smaller paragraphs at the end (e.g. "If this wasn't you…"). */
   footnotes?: string[];
+  /** D251: a small line under the logo (e.g. "FOR BUSINESS", like the website's emails). */
+  label?: string;
 }
 
 /** Every value from outside (place names, links) goes through this. */
@@ -72,6 +74,7 @@ export function renderEmail(body: EmailBody): string {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
 <tr><td style="background:${COLORS.surfaceInverse};border-radius:16px 16px 0 0;padding:20px 28px;">
 <img src="cid:${EMAIL_LOGO.cid}" width="${EMAIL_LOGO.width}" height="${EMAIL_LOGO.height}" alt="JaxSide" style="display:block;border:0;color:${COLORS.onSurfaceInverse};font-family:${FONT};font-size:24px;font-weight:800;">
+${body.label ? `<div style="margin-top:6px;font-family:${FONT};font-size:13px;font-weight:700;letter-spacing:1px;color:${COLORS.onSurfaceInverse};">${escapeHtml(body.label)}</div>` : ''}
 </td></tr>
 <tr><td style="background:${COLORS.background};border:1px solid ${COLORS.cardBorder};border-top:0;border-radius:0 0 16px 16px;padding:28px 28px 12px;">
 <h1 style="margin:0 0 16px;font-family:${FONT};font-size:22px;line-height:1.3;color:${COLORS.text};">${escapeHtml(body.heading)}</h1>

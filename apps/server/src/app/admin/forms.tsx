@@ -635,25 +635,34 @@ export function AppealDecision({ appealId }: { appealId: string }) {
  * D90: a Contact us message: resolve / reopen, and (only if the person allowed it) show
  * their account email to reply. Showing it is audited.
  */
+/**
+ * D90 / D251: answer a Contact message. "Resolved" (optional note) or "Need more details" (a
+ * note saying what's needed) emails the sender when they can be emailed; "Open again" doesn't.
+ */
 export function ContactActions({
   id,
-  resolved,
+  status,
   canReply,
+  business,
 }: {
   id: string;
-  resolved: boolean;
+  status: 'OPEN' | 'NEEDS_INFO' | 'RESOLVED';
   canReply: boolean;
+  business: boolean;
 }) {
   const [email, setEmail] = useState<string | null>();
+  const [note, setNote] = useState('');
   const { busy, error, done, run } = useSubmit();
-  const setResolved = (value: boolean) =>
+  const answer = (action: 'resolve' | 'needs_info' | 'reopen') =>
     run(async () => {
-      await adminFetch(`/api/v1/admin/contact/${id}`, {
+      const r = await adminFetch<{ emailed: boolean }>(`/api/v1/admin/contact/${id}`, {
         method: 'POST',
-        body: { resolved: value },
+        body: action === 'reopen' ? { action } : { action, note: note.trim() || undefined },
       });
-      setTimeout(() => window.location.reload(), 500);
-      return value ? 'Marked resolved.' : 'Opened again.';
+      setTimeout(() => window.location.reload(), 800);
+      if (action === 'reopen') return 'Opened again.';
+      const what = action === 'resolve' ? 'Marked resolved' : 'Asked for more details';
+      return r.emailed ? `${what} and emailed the sender.` : `${what}. No email (no address).`;
     });
   const showEmail = () =>
     run(async () => {
@@ -663,6 +672,7 @@ export function ContactActions({
       setEmail(r.email);
       return r.email ? 'Shown (this is logged).' : 'No address available.';
     });
+  const who = business ? 'the business' : 'the sender';
   return (
     <div>
       {canReply ? (
@@ -676,11 +686,44 @@ export function ContactActions({
           </button>
         )
       ) : (
-        <p style={{ color: COLORS.textMuted }}>The sender didn’t ask for a reply by email.</p>
-      )}{' '}
-      <button style={ui.button} disabled={busy} onClick={() => setResolved(!resolved)}>
-        {resolved ? 'Open again' : 'Mark resolved'}
-      </button>
+        <p style={{ color: COLORS.textMuted }}>
+          The sender didn’t ask for a reply by email, so answering here sends no email.
+        </p>
+      )}
+      {status === 'RESOLVED' ? (
+        <button style={ui.buttonSecondary} disabled={busy} onClick={() => answer('reopen')}>
+          Open again
+        </button>
+      ) : (
+        <>
+          <label style={ui.label}>
+            Note to {who} (optional for Resolved; needed for Need more details)
+            <textarea
+              style={textarea}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={1000}
+            />
+          </label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button style={ui.button} disabled={busy} onClick={() => answer('resolve')}>
+              Resolved{canReply ? ' (email them)' : ''}
+            </button>
+            <button
+              style={ui.buttonSecondary}
+              disabled={busy || note.trim().length < 3}
+              onClick={() => answer('needs_info')}
+            >
+              Need more details{canReply ? ' (email them)' : ''}
+            </button>
+            {status === 'NEEDS_INFO' ? (
+              <button style={ui.buttonSecondary} disabled={busy} onClick={() => answer('reopen')}>
+                Back to Open
+              </button>
+            ) : null}
+          </div>
+        </>
+      )}
       {error ? (
         <p role="alert" style={ui.error}>
           {error}

@@ -1114,6 +1114,8 @@ enum ContactCategory {
 
 enum ContactStatus {
   OPEN
+  /// D251: JaxSide asked the sender for more details (emailed with `adminNote`).
+  NEEDS_INFO
   RESOLVED
 }
 
@@ -1134,6 +1136,8 @@ model ContactMessage {
   createdAt         DateTime         @default(now()) @db.Timestamptz(3)
   resolvedAt        DateTime?        @db.Timestamptz(3)
   resolvedById      String?          @db.Uuid
+  /// D251: the note JaxSide sent with its last answer ("Resolved" or "Need more details").
+  adminNote         String?          @db.VarChar(1000)
   user              User?            @relation("ContactFrom", fields: [userId], references: [id], onDelete: Cascade)
   guestSession      GuestSession?    @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
   businessAccount   BusinessAccount? @relation(fields: [businessAccountId], references: [id], onDelete: SetNull)

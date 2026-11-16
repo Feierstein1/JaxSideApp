@@ -253,3 +253,55 @@ export function planEndingEmail(to: string, title: string, body: string): Outgoi
     html: renderEmail({ preheader: body, heading: title, intro: lines }),
   };
 }
+
+/**
+ * D251: JaxSide's answer to a Contact ticket. "Resolved" (with an optional note) or "Need more
+ * details" (the note says what's needed). A business ticket carries the website's "FOR
+ * BUSINESS" label and a link back to its Contact page; replies to this email reach support.
+ */
+export function contactAnswerEmail(input: {
+  to: string;
+  kind: 'resolved' | 'needs_info';
+  subject: string;
+  note: string | null;
+  /** The website's Contact page, for a business ticket (null for the app's own tickets). */
+  businessContactUrl: string | null;
+  business: boolean;
+  /** Support's inbox: replies go there (without one, the email doesn't invite a reply). */
+  replyTo: string | null;
+}): OutgoingMail {
+  const resolved = input.kind === 'resolved';
+  const heading = resolved ? 'Your message is resolved' : 'We need a few more details';
+  const intro = [
+    resolved
+      ? `We've looked into your message "${input.subject}" and marked it resolved.`
+      : `Thanks for your message "${input.subject}". To help you, we need a little more from you:`,
+    ...(input.note ? [input.note] : []),
+    resolved
+      ? 'If something still isn’t right, send us a new message and we’ll take another look.'
+      : input.replyTo
+        ? input.business
+          ? 'Reply to this email, or send the details from the Contact page.'
+          : 'Reply to this email with the details.'
+        : input.business
+          ? 'Send the details from the Contact page.'
+          : 'Send the details in a new message from Contact us in the app.',
+  ];
+  const button = input.businessContactUrl
+    ? { label: 'Go to Contact', url: input.businessContactUrl }
+    : undefined;
+  return {
+    to: input.to,
+    ...(input.replyTo ? { replyTo: input.replyTo } : {}),
+    subject: resolved ? `Resolved: ${input.subject}` : `More details needed: ${input.subject}`,
+    text: [...intro, ...(button ? [button.url] : []), '— JaxSide support'].join('\n\n'),
+    html: renderEmail({
+      preheader: resolved ? 'Your message is resolved.' : 'We need a few more details from you.',
+      heading,
+      intro,
+      button,
+      footnotes: ['— JaxSide support'],
+      label: input.business ? 'FOR BUSINESS' : undefined,
+    }),
+  };
+}

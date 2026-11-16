@@ -9,6 +9,8 @@ export interface OutgoingMail {
   text: string;
   /** P15.3: the branded version (layout.ts); mail apps show it instead of `text`. */
   html?: string;
+  /** D251: where a reply goes (support's inbox), when it isn't the sender address. */
+  replyTo?: string;
 }
 
 export interface Mailer {
