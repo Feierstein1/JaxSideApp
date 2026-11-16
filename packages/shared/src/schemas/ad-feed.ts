@@ -62,6 +62,9 @@ export interface AdCard {
   body: string | null;
   /** A signed link (relative) to the ad's image or GIF, if it has one. */
   imageUrl: string | null;
+  /** The picture's size in pixels, so the phone shows it whole (null if unknown). */
+  imageWidth: number | null;
+  imageHeight: number | null;
   /** Q30: alcohol deals show "21+". */
   adultsOnly: boolean;
   /** The place it promotes; null for an event organizer's ad (D230). */

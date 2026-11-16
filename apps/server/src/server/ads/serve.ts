@@ -47,6 +47,9 @@ export interface LiveAd {
   headline: string;
   body: string | null;
   mediaId: string | null;
+  /** The picture's size, so the phone shows it whole. */
+  mediaWidth: number | null;
+  mediaHeight: number | null;
   adultsOnly: boolean;
   zips: string[];
   radiusMeters: number | null;
@@ -104,7 +107,7 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
       account: {
         select: { revokedAt: true, suspendedAt: true, suspendedUntil: true },
       },
-      media: { select: { status: true } },
+      media: { select: { status: true, width: true, height: true } },
     },
   });
   const accountIds = [...new Set(rows.map((r) => r.accountId))];
@@ -172,6 +175,8 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
       headline: r.headline,
       body: r.body,
       mediaId: r.mediaId && r.media?.status === 'ACTIVE' ? r.mediaId : null,
+      mediaWidth: r.media?.width ?? null,
+      mediaHeight: r.media?.height ?? null,
       adultsOnly: r.adultsOnly,
       zips: boosted || near ? [] : ownZipEvent ? (r.event!.zip ? [r.event!.zip] : []) : r.zips,
       radiusMeters: boosted ? null : near ? nearMeters : ownZipEvent ? null : r.radiusMeters,
@@ -446,6 +451,8 @@ export async function pickAdsFor(
     headline: ad.headline,
     body: ad.body,
     imageUrl: ad.mediaId ? signedAdImageUrl(ad.mediaId, now) : null,
+    imageWidth: ad.mediaId ? ad.mediaWidth : null,
+    imageHeight: ad.mediaId ? ad.mediaHeight : null,
     adultsOnly: ad.adultsOnly,
     place: ad.place,
     event: ad.event,

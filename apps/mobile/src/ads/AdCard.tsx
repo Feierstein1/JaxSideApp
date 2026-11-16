@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { DARK, dateLabel, timeLabel, type AdCard as Ad, type ReportTarget } from '@jax/shared';
 import { useGuest } from '@/auth/guest';
 import { photoUri } from '@/discussion/photos';
+import { PhotoViewer } from '@/discussion/PhotoViewer';
 import { haptic } from '@/motion';
 import { ReportSheet } from '@/report/ReportSheet';
 import { Text } from '@/text';
@@ -28,6 +29,7 @@ export function AdCard({ ad }: { ad: Ad }) {
   const [choice, setChoice] = useState<Choice>(ad.myChoice);
   const [busy, setBusy] = useState(false);
   const [reporting, setReporting] = useState<ReportTarget>();
+  const [viewing, setViewing] = useState(false);
 
   /** D216: the link opens the phone's browser, only after saying where it goes. */
   function openLink(link: { url: string; label: string }) {
@@ -95,6 +97,29 @@ export function AdCard({ ad }: { ad: Ad }) {
 
   const image = ad.imageUrl ? { uri: photoUri(ad.imageUrl) } : null;
   const banner = ad.template === 'BANNER';
+  // Owner: the whole picture always shows (made smaller if need be, never cropped), at its own
+  // shape; very tall flyers are held to twice as tall as wide and shown whole inside that.
+  const ratio =
+    ad.imageWidth && ad.imageHeight
+      ? Math.min(2, Math.max(0.5, ad.imageWidth / ad.imageHeight))
+      : ad.template === 'FEATURE'
+        ? 16 / 9
+        : 4 / 3;
+  /** Tap the picture to see it full screen, like other pictures in the app. */
+  const picture = (style: object) => (
+    <Pressable
+      accessibilityRole="imagebutton"
+      accessibilityLabel={`${ad.headline}: picture, tap to see it full screen`}
+      onPress={() => setViewing(true)}
+    >
+      <Image
+        source={image!}
+        style={[{ backgroundColor: DARK.raised }, style]}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
+    </Pressable>
+  );
   // D230: an organizer's event ad has no place; it's sponsored by the event.
   const sponsor = ad.place?.name ?? ad.event?.title ?? '';
   return (
@@ -111,14 +136,7 @@ export function AdCard({ ad }: { ad: Ad }) {
           overflow: 'hidden',
         }}
       >
-        {image && ad.template === 'FEATURE' ? (
-          <Image
-            source={image}
-            style={{ width: '100%', aspectRatio: 16 / 9 }}
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
-          />
-        ) : null}
+        {image && ad.template === 'FEATURE' ? picture({ width: '100%', aspectRatio: ratio }) : null}
         <View style={{ padding: SPACE.md, gap: 6 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={{ color: DARK.textMuted, fontSize: 12, fontWeight: '700' }}>
@@ -157,23 +175,11 @@ export function AdCard({ ad }: { ad: Ad }) {
               </Text>
               {ad.body ? <Text style={{ color: DARK.text }}>{ad.body}</Text> : null}
             </View>
-            {image && banner ? (
-              <Image
-                source={image}
-                style={{ width: 72, height: 72, borderRadius: RADIUS.sm }}
-                resizeMode="cover"
-                accessibilityIgnoresInvertColors
-              />
-            ) : null}
+            {image && banner ? picture({ width: 72, height: 72, borderRadius: RADIUS.sm }) : null}
           </View>
-          {image && ad.template === 'POST' ? (
-            <Image
-              source={image}
-              style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: RADIUS.sm }}
-              resizeMode="cover"
-              accessibilityIgnoresInvertColors
-            />
-          ) : null}
+          {image && ad.template === 'POST'
+            ? picture({ width: '100%', aspectRatio: ratio, borderRadius: RADIUS.sm })
+            : null}
           {ad.event?.hostedAt ? (
             // D240: an event at a business that confirmed it: the business stands out.
             <HostedAt
@@ -249,6 +255,20 @@ export function AdCard({ ad }: { ad: Ad }) {
           )}
         </View>
       </View>
+      {ad.imageUrl ? (
+        <PhotoViewer
+          photos={[
+            {
+              id: ad.id,
+              url: ad.imageUrl,
+              width: ad.imageWidth ?? 1,
+              height: ad.imageHeight ?? 1,
+            },
+          ]}
+          start={viewing ? 0 : null}
+          onClose={() => setViewing(false)}
+        />
+      ) : null}
       <ReportSheet target={reporting} onClose={() => setReporting(undefined)} />
     </>
   );
