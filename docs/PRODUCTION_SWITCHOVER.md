@@ -36,9 +36,14 @@ names stay; only the contents are cleared).
   of its 768 MB; the server about 1.1 GB used of 4 GB), then Kenny pointed `jaxside.com` (A) at
   34.197.165.101 at GoDaddy. Caddy got Let's Encrypt certificates for `jaxside.com` and `www`
   (`www` → `https://jaxside.com`, `http` → `https`); https://jaxside.com and `/signup` answer.
-- **The wipe must change before it runs:** real businesses can sign up once the website is live, so
-  `wipe-for-launch.sql` will remove only the test accounts (the website's business1-3, organizer1-3
-  and the test people), not every business account. Don't run it as written.
+- **2026-11-16, Kenny's wipe answers (decision 2 settled):** keep all 6 community places (5 Points
+  Liquor Lounge, Aldi, Five Guys, Flamingo Coffee, Messa, SNAP Fitness); removed places stay removed;
+  **every business and organizer account made so far goes** (all were tests, including places Kenny
+  claimed to test), with their Owner access, ads, events, posts and tickets, and all app test users.
+  That is exactly what `wipe-for-launch.sql` does as written (it never changes a place's status, so
+  removed places stay removed, and map imports keep them removed), so it stays as is. **Kenny says
+  when**, after testing; anything real made before then would go too, so nobody real signs up until
+  the wipe (jaxside.com stays hidden from search engines until the apps launch).
 
 ## Decisions first (Kenny)
 
