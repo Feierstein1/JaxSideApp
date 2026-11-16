@@ -291,6 +291,8 @@ export interface EventCard {
   host: EventHost;
   /** The first picture (a signed link that works for an hour), if any. */
   imageUrl: string | null;
+  /** D253: whether that picture is a flyer (the card shows a flyer down its whole left side). */
+  imageKind: EventImageKind | null;
   following: boolean;
   cancelled: boolean;
   /** Started and not yet over. */

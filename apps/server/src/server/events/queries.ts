@@ -123,6 +123,7 @@ type CardRow = {
   family_friendly: boolean;
   host_kind: 'COMMUNITY' | 'BUSINESS' | 'ORGANIZER';
   image_id: string | null;
+  image_kind: 'FLYER' | 'PHOTO' | null;
   following: boolean;
   status: string;
   featured: boolean;
@@ -151,6 +152,8 @@ function selectCards(viewerId: string, at: GeoPoint, where: Prisma.Sql, tail: Pr
            -- flyer by default; "Use as calendar picture" on the website moves one first).
            (SELECT i.id FROM "EventImage" i WHERE i."eventId" = e.id
              ORDER BY i.position, i.id LIMIT 1) AS image_id,
+           (SELECT i.kind::text FROM "EventImage" i WHERE i."eventId" = e.id
+             ORDER BY i.position, i.id LIMIT 1) AS image_kind,
            EXISTS (SELECT 1 FROM "EventFollow" f
                    WHERE f."eventId" = e.id AND f."userId" = ${viewerId}::uuid) AS following,
            e.status::text AS status,
@@ -206,6 +209,7 @@ function toCard(r: CardRow, now = new Date()): EventCard {
       placeCategory: host === 'business' ? r.host_place_category : null,
     },
     imageUrl: r.image_id ? signedEventImageUrl(r.image_id, now) : null,
+    imageKind: r.image_kind === 'FLYER' ? 'flyer' : r.image_kind === 'PHOTO' ? 'photo' : null,
     following: r.following,
     cancelled: r.status === 'CANCELLED',
     happeningNow: r.status === 'APPROVED' && r.starts_at <= now && r.ends_at > now,

@@ -156,6 +156,7 @@ export function HostLine({ e }: { e: EventCardView }) {
 export function EventCard({ e, showDate = false }: { e: EventCardView; showDate?: boolean }) {
   const when = `${showDate ? `${dateLabel(e.date)} · ` : ''}${timeRange(e)}`;
   const [viewing, setViewing] = useState(false);
+  const flyer = e.imageKind === 'flyer';
   return (
     <>
       <Pressable
@@ -170,6 +171,7 @@ export function EventCard({ e, showDate = false }: { e: EventCardView; showDate?
           stroke={e.happeningNow ? DARK.accent : undefined}
           style={{ padding: SPACE.md, flexDirection: 'row', gap: SPACE.md }}
         >
+          {/* D253 (owner): a flyer runs down the card's whole left side; a photo stays a square. */}
           {e.imageUrl ? (
             // D253: the picture opens whole on its own; the rest of the card opens the event.
             <Pressable
@@ -177,15 +179,27 @@ export function EventCard({ e, showDate = false }: { e: EventCardView; showDate?
               accessibilityLabel={`${e.title}: picture, tap to see it full screen`}
               onPress={() => setViewing(true)}
               hitSlop={4}
+              style={flyer ? { alignSelf: 'stretch' } : undefined}
             >
               <Image
                 source={{ uri: photoUri(e.imageUrl) }}
-                style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: RADIUS.md,
-                  backgroundColor: DARK.raised,
-                }}
+                style={
+                  flyer
+                    ? {
+                        width: 84,
+                        flex: 1,
+                        minHeight: 112,
+                        borderRadius: RADIUS.md,
+                        backgroundColor: DARK.raised,
+                      }
+                    : {
+                        width: 72,
+                        height: 72,
+                        borderRadius: RADIUS.md,
+                        backgroundColor: DARK.raised,
+                      }
+                }
+                resizeMode="cover"
                 accessibilityIgnoresInvertColors
               />
             </Pressable>

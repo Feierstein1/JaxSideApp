@@ -102,22 +102,27 @@ export default function HomeFeed() {
       {/* D129 / D140: the art deco heading, centered, with the refresh button at the far
           right of the same line (an equal space on the left keeps the title centered). */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -2 }}>
-        <View style={{ flex: 1 }} />
-        <SectionTitle center>Near you</SectionTitle>
-        {/* D242: how many posts are in the feed, in the accent, beside the refresh button. */}
-        <View
-          style={{
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: 6,
-          }}
-        >
+        <View style={{ width: 30 }} />
+        <View style={{ flex: 1 }}>
+          <SectionTitle center>Near you</SectionTitle>
+        </View>
+        <View style={{ width: 30 }}>
+          {/* D242: how many posts are in the feed, just left of the refresh button; placed on
+              its own so it never moves the centered title (the layout from before D242). */}
           {total !== null ? (
             <Text
               accessibilityLabel={`${total} ${total === 1 ? 'post' : 'posts'} near you`}
-              style={{ fontSize: 13, fontWeight: '700', color: DARK.accent }}
+              numberOfLines={1}
+              style={{
+                position: 'absolute',
+                right: 36,
+                top: 6,
+                width: 96,
+                textAlign: 'right',
+                fontSize: 13,
+                fontWeight: '700',
+                color: DARK.accent,
+              }}
             >
               {total} {total === 1 ? 'post' : 'posts'}
             </Text>
