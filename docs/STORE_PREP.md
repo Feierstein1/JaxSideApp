@@ -55,6 +55,9 @@ the person, **not** tracking, not shared with advertisers (they get totals only)
 | Precise location                                             | Yes                                          | Yes                   | App functionality (local content), fraud prevention | Only while using the app; exact readings deleted after 30 days; posts store ~100 m |
 | Coarse location                                              | Yes                                          | Yes                   | App functionality                                   | Post location (rounded)                                                            |
 | Photos                                                       | Yes (optional)                               | Yes                   | App functionality (posts, profile photo)            | Metadata removed before storing                                                    |
+| Videos                                                       | Yes (optional)                               | Yes                   | App functionality (video posts)                     | Recorded or picked by the person; cleaned like photos                              |
+| Audio (voice recordings)                                     | Yes (optional)                               | Yes                   | App functionality (voice posts)                     | Only when the person records a voice post                                          |
+| App interactions (ad Interested / Not interested, favorites) | Yes                                          | Yes                   | App functionality, developer's advertising          | Choices kept 30 days; advertisers get totals only                                  |
 | Other user content (posts, comments, bio)                    | Yes                                          | Yes                   | App functionality                                   |                                                                                    |
 | User ID                                                      | Yes                                          | Yes                   | App functionality, security                         |                                                                                    |
 | Device ID                                                    | Yes                                          | Yes                   | Fraud prevention (ban evasion)                      | A random installation ID made by the server, not a hardware ID                     |
@@ -63,16 +66,47 @@ the person, **not** tracking, not shared with advertisers (they get totals only)
 
 - **Encrypted in transit:** yes (HTTPS). **Can users request deletion:** yes, in the app.
 - **Tracking (Apple ATT):** none, so no tracking prompt.
-- Privacy Policy URL: the server's `/legal/privacy` page (public once hosted).
+- Privacy Policy URL: `https://jaxside.com/app/privacy` (same text as the app; also
+  `https://api.jaxside.com/legal/privacy`). Account deletion URL: `https://jaxside.com/delete-account`.
+- **Google "Ads" declaration: Yes, the app contains ads.** Google counts the app's own ads (direct
+  and house ads), not just ad networks. The store shows "Contains ads".
 
 ## Permission wording (already in `app.json`)
 
-- **Location (when in use only):** "Jax uses your location while you use the app to confirm you
-  are in Jacksonville and show what is nearby. Your exact location is never shown to other
+- **Location (when in use only):** "JaxSide uses your location while you use the app to confirm
+  you are in Jacksonville and show what is nearby. Your exact location is never shown to other
   people." No background location (blocked in config).
-- **Photo library:** "Jax lets you add photos from your library to posts and your profile.
-  Photos are cleaned of location and camera details before they're shared." Camera and
-  microphone are not requested.
+- **Photo library:** "JaxSide lets you add photos from your library to posts and your profile.
+  Photos are cleaned of location and camera details before they're shared."
+- **Camera:** "JaxSide uses the camera only when you record a video for a post."
+- **Microphone:** "JaxSide uses the microphone only when you record a voice post or a video for a
+  post." All are asked for only when the person uses that feature.
+
+## Google Play agreements (read 2026-11-17)
+
+Developer Distribution Agreement and Play Console Terms of Service, as they apply to JaxSide:
+
+- **Who signs:** the account holder must be 18+ and able to bind JaxSide LLC (Kenny, owner / AMBR).
+  The account owner is Kenny's personal Gmail; add kenny@jaxside.com as an admin user.
+- **Privacy (DDA 4.8):** a legally adequate privacy notice, data used only for what users
+  allowed, kept securely and only as long as needed: covered by the Privacy Policy and Data
+  Retention policy. Keep them in step with the app (`packages/shared/src/policies.ts`).
+- **Permissions (4.2):** disclose them accurately (above, and in the Data safety form).
+- **Contact info (4.7):** keep the public email, phone and address valid and current.
+- **Free stays free (3.7):** the app launches free and must stay free; anything paid would be a
+  separate version or in-app purchase.
+- **Payments:** business plans are bought on jaxside.com for advertising, not as digital goods
+  inside the phone app, and the app sells nothing. Check Google's **Payments policy** before the
+  app ever sells something to app users (that would need Google Play billing).
+- **Product policies (4.1):** the Developer Program Policies apply: user-generated content
+  (moderation, report, block: built), User Data and Data safety, account deletion, location
+  permissions (when in use only), ads (no ads disguised as content: ads are labeled Sponsored),
+  target audience 18+.
+- **Google can remove the app or end the account (8.3, 10.3)** for policy breaks or loss of good
+  standing; it may also end the account on a change of control of the LLC (16.7).
+- **Legal terms to know:** JaxSide indemnifies Google for claims from its app (14.1); California
+  law and Santa Clara County courts (16.8). Not legal advice; a lawyer read is worth it before
+  any paid features.
 
 ## Store listing **(you)**
 
