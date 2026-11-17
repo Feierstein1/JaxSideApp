@@ -43,7 +43,7 @@ function useComingUp(reloadKey?: string) {
  * notifications aren't on yet). One line under the chat bar; tapping it opens the event (or
  * the Events tab when there are several). Nothing shows when there's nothing coming up.
  */
-/** D247: reminders the person closed with the X; back after the app is reopened. */
+/** D258: reminders the person closed with the X; back after the app is reopened. */
 const dismissed = new Set<string>();
 
 export function ComingUpBar({ reloadKey }: { reloadKey?: string }) {
@@ -56,7 +56,7 @@ export function ComingUpBar({ reloadKey }: { reloadKey?: string }) {
   const more = live.length - 1;
   return (
     <View
-      // D247: a little room below the chat bar.
+      // D258: a little room below the chat bar.
       style={{
         flexDirection: 'row',
         alignItems: 'center',
