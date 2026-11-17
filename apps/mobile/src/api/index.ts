@@ -15,10 +15,19 @@ export function onUnauthorized(listener: () => void): () => void {
   return () => unauthorizedListeners.delete(listener);
 }
 
+const maintenanceListeners = new Set<(message: string) => void>();
+
+/** D246: the server says it is switched off for maintenance. */
+export function onMaintenance(listener: (message: string) => void): () => void {
+  maintenanceListeners.add(listener);
+  return () => maintenanceListeners.delete(listener);
+}
+
 export const api = createApiClient({
   baseUrl: API_BASE_URL,
   tokenStore: secureTokenStore,
   onUnauthorized: () => unauthorizedListeners.forEach((fn) => fn()),
+  onMaintenance: (message) => maintenanceListeners.forEach((fn) => fn(message)),
   getInstallationToken: () => installationStore.get(),
 });
 

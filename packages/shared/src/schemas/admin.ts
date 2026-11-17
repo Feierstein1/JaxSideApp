@@ -101,6 +101,13 @@ export const topicApprovalSchema = z.strictObject({
   reason: reasonText,
 });
 
+/** D246: the emergency maintenance switch. Switching on signs everyone out of the app. */
+export const maintenanceSchema = z.strictObject({
+  enabled: z.boolean(),
+  message: z.string().trim().max(200).optional(),
+  reason: reasonText,
+});
+
 /** P5.7: deciding an appeal. The note is shown to the person. */
 export const appealDecisionSchema = z.strictObject({
   accept: z.boolean(),

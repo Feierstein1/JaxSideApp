@@ -163,6 +163,7 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
 | GET | `/api/v1/health` | public |  |  |
+| GET | `/api/v1/maintenance` | public |  | D246: `{ on, text, message }`; the app asks while its maintenance screen shows. While on, every other app route answers `503 MAINTENANCE`. |
 
 ## installations
 
@@ -385,6 +386,7 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | PATCH | `/api/v1/admin/topics/:id` | admin (cookie + CSRF) |  | D125: change a topic's wording, pin, start or end. |
 | POST | `/api/v1/admin/topics/:id/decide` | admin (cookie + CSRF) |  | D125: approve or reject a suggestion; close or reopen a topic. |
 | POST | `/api/v1/admin/topics/approval` | admin (cookie + CSRF) |  | D222: make topics need admin approval, or let them appear at once. Audited. |
+| POST | `/api/v1/admin/maintenance` | admin (cookie + CSRF) |  | D246: emergency switch on or off (`enabled`, `reason`, optional `message`). On signs every app session out. Audited. |
 | GET | `/api/v1/admin/users` | admin (cookie + CSRF) |  | P5.14: find people by any part of the username; filter by strikes, banned, suspended. |
 | GET | `/api/v1/admin/users/:id` | admin (cookie + CSRF) |  | P5.14: a person's record: status, history, recent content (never their email). |
 | POST | `/api/v1/admin/users/:id/actions` | admin (cookie + CSRF) |  | P5.6 / P5.14: strike, suspend, ban, lift, note, or cancel a strike. |

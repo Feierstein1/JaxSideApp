@@ -17,6 +17,7 @@ import { VerifyEmailGate } from '@/auth/VerifyEmailGate';
 import { DialogHost } from '@/dialog';
 import { GuideHost } from '@/guides/guide';
 import { LoadingEmblem } from '@/brand/Emblem';
+import { MaintenanceGate } from '@/maintenance/MaintenanceGate';
 
 /** D79: navigation colors match the dark theme, so no white flashes between screens. */
 const NAV_THEME = {
@@ -92,6 +93,8 @@ export default function RootLayout() {
           <DialogHost />
           {/* D104: first-time guides. */}
           <GuideHost />
+          {/* D246: in front of everything while the server is switched off. */}
+          <MaintenanceGate />
         </AuthProvider>
       ) : (
         <View style={{ flex: 1, backgroundColor: DARK.bar }} />

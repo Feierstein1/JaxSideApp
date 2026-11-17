@@ -28,6 +28,8 @@ export interface ApiClientOptions {
   fetchFn?: FetchFn;
   /** Called when the server rejects the session, so the app can return to sign-in. */
   onUnauthorized?: () => void;
+  /** D246: the server is switched off for maintenance; `message` is what to show. */
+  onMaintenance?: (message: string) => void;
   /** P2.7: the installation token, sent on every request once the app has one. */
   getInstallationToken?: () => Promise<string | null>;
 }
@@ -67,6 +69,9 @@ export function createApiClient(opts: ApiClientOptions) {
       }
       const err = (json as { error?: { code?: string; message?: string; details?: unknown } })
         ?.error;
+      if (res.status === 503 && err?.code === 'MAINTENANCE') {
+        opts.onMaintenance?.(err.message ?? '');
+      }
       throw new ApiRequestError(
         res.status,
         err?.code ?? 'HTTP_ERROR',

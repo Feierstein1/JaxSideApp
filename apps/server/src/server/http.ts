@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { logger } from './logger';
+import { exemptFromMaintenance, getMaintenance, MAINTENANCE_TEXT } from './maintenance';
 
 /** Error a route can throw to return a specific, client-safe response. */
 export class ApiError extends Error {
@@ -30,6 +31,14 @@ type Handler<C> = (req: Request, ctx: C) => Promise<Response>;
 export function route<C = unknown>(handler: Handler<C>): Handler<C> {
   return async (req, ctx) => {
     try {
+      // D246: the emergency switch. Everything but the admin portal's API, the health check
+      // and the status line is refused while it is on (this also blocks signing in).
+      if (!exemptFromMaintenance(new URL(req.url).pathname)) {
+        const maintenance = await getMaintenance();
+        if (maintenance.on) {
+          throw new ApiError(503, 'MAINTENANCE', maintenance.message ?? MAINTENANCE_TEXT);
+        }
+      }
       return await handler(req, ctx);
     } catch (err) {
       if (err instanceof ApiError) {

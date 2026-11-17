@@ -2975,3 +2975,15 @@ model Boost {
   @@index([adId])
   @@index([eventId])
 }
+
+/// D246: the emergency switch. One row (id 1). While `enabled`, every phone-app request is
+/// refused with 503 MAINTENANCE (the admin portal keeps working), and every app session was
+/// signed out when it was switched on.
+model MaintenanceMode {
+  id        Int       @id @default(1)
+  enabled   Boolean   @default(false)
+  /// Optional extra line the admin wants people to read.
+  message   String?   @db.VarChar(200)
+  enabledAt DateTime? @db.Timestamptz(3)
+  changedAt DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+}

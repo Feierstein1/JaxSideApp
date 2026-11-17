@@ -78,6 +78,18 @@ describe('api client', () => {
     expect(onUnauthorized).toHaveBeenCalledOnce();
   });
 
+  it('tells the app when the server is in maintenance (D246)', async () => {
+    const onMaintenance = vi.fn();
+    const fetchFn = vi.fn(async () =>
+      jsonResponse(503, { error: { code: 'MAINTENANCE', message: 'Back by 3 PM.' } }),
+    );
+    const store = memoryStore('keep');
+    const api = createApiClient({ baseUrl: 'http://x', tokenStore: store, fetchFn, onMaintenance });
+    await expect(api.get('/me')).rejects.toMatchObject({ status: 503, code: 'MAINTENANCE' });
+    expect(onMaintenance).toHaveBeenCalledWith('Back by 3 PM.');
+    expect(store.value).toBe('keep'); // not a sign-out; the server already ended the session
+  });
+
   it('reports network failures as NETWORK errors', async () => {
     const fetchFn = vi.fn(async () => {
       throw new TypeError('Network request failed');

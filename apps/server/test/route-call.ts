@@ -13,12 +13,14 @@ export async function callRoute(
     headers?: Record<string, string>;
     /** Query string, e.g. `{ q: 'ali' }`. */
     query?: Record<string, string>;
+    /** The URL path, for routes that look at it (D246: the maintenance switch). */
+    path?: string;
   } = {},
 ) {
   const headers: Record<string, string> = { ...opts.headers };
   if (opts.token) headers.authorization = `Bearer ${opts.token}`;
   if (opts.body !== undefined) headers['content-type'] = 'application/json';
-  const url = new URL('http://localhost/x');
+  const url = new URL(`http://localhost${opts.path ?? '/x'}`);
   for (const [k, v] of Object.entries(opts.query ?? {})) url.searchParams.set(k, v);
   const req = new Request(url, {
     method,
