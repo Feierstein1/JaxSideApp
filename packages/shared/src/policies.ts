@@ -27,7 +27,7 @@ const CONTACT: PolicySection = {
   heading: 'Contact us',
   body: 'JaxSide is run by JaxSide LLC, a Florida company. Questions about these policies or your account: use Contact us in the app (Account → Contact us) or email support@jaxside.com. Mail: JaxSide LLC, 7901 4th St N #35372, St Petersburg, FL 33702.',
 };
-const UPDATED = '2026-11-15';
+const UPDATED = '2026-11-17';
 
 export const POLICIES: Record<PolicyKey, Policy> = {
   terms: {
@@ -99,12 +99,28 @@ export const POLICIES: Record<PolicyKey, Policy> = {
         body: 'Messages between friends are stored encrypted on our servers. They are not end-to-end encrypted, so that reports can be checked: moderators see a private message only if someone in the chat reports it, and then they see that message and the 10 around it. That copy is kept with the report for one year. Unsending a message removes it for both of you; deleting your account deletes every message you sent.',
       },
       {
-        heading: 'Business owners',
-        body: 'If you verify that you own a business, we use the business email address you give only once, to send a code (we keep just its domain); a website link or a phone call to the business’s listed number may be checked by our team. In a dispute we may ask for proof of ownership (for example ID or a Florida business record) outside the app; those documents are deleted once the question is settled. Your Owner tag shows only on your posts in that business’s discussion.',
+        // D185 / D224 / D238: business accounts live on JaxSide for Business, never linked to yours.
+        heading: 'Businesses and organizers',
+        body: 'Businesses and event organizers use separate accounts on JaxSide for Business (jaxside.com), covered by its own terms and privacy policy. Your JaxSide account is never linked to a business account, and becoming a business or organizer doesn’t use anything from your personal account. In a place’s discussion, its verified owner and their team post as “The Owner”. Businesses see your username and what you post in their place’s discussion, like anyone else; for everything else (ads, events, insights) they see only totals, never who.',
       },
       {
         heading: 'Area statistics',
         body: 'When you open JaxSide, we count that someone used the app in your ZIP code that day, and in which part of the day (morning, afternoon, evening or night), to see which parts of Jacksonville are busy. We also count activity in place discussions. Only totals are kept. Your exact location and your account are never part of them: a coded entry that can’t be traced back to you is kept for the rest of the month so you count once, then deleted, and the code’s key is destroyed. Small groups (fewer than 10 people) are never shown. You can turn this off in Account → Settings.',
+      },
+      {
+        // D204 / D206 / D216 / D240
+        heading: 'Ads',
+        body: 'JaxSide shows ads from Jacksonville businesses and event organizers in feeds and discussions. Which ads you see depends on where you are at that moment (your phone’s current location is checked against the ad’s area and not saved), places you’ve favorited, and your Interested / Not interested choices, which are kept for 30 days and then deleted. A view or a tap on an ad’s link is counted once a day under a code that can’t be traced back to you, deleted after two days. Advertisers get totals only (views, taps, Interested and Not interested), never who you are. We don’t use ad networks, don’t track you across other apps or websites, and don’t give advertisers your personal information. Guests never see ads for adults (21+).',
+      },
+      {
+        // D218 / Q45
+        heading: 'Area chat',
+        body: 'Area chat is a short-lived chat room for each part of Jacksonville. While you have the app open, we note which room’s area you’re in for up to an hour, so a room opens only when enough people are around; others see only an approximate count, never who. Like posting, sending a line checks your current location. Chat lines are deleted after 24 hours unless someone reports them, and rule breaks (such as links or repeats) are counted for 24 hours to decide warnings and mutes.',
+      },
+      {
+        // D188
+        heading: 'Giveaways',
+        body: 'For giveaways, we note each day you use the app (the date only, nothing about what you did), so the days can count as entries. Those notes are deleted after about 13 months. If you win, we tell you in the app; the prize goes to the email on your account only if you accept it, and only your username is shared if someone asks who won.',
       },
       {
         heading: 'Events and event chat',
@@ -116,7 +132,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       },
       {
         heading: 'Sharing',
-        body: 'We don’t sell your personal information or show ads. We may share or sell area statistics and poll results (totals such as how many people used JaxSide in a ZIP code, how active a place’s discussion is, or how a poll came out) to Jacksonville businesses and organizations; they never include who you are, your account, your posts or your location, and groups under 10 people are never included. Otherwise we share information only when the law requires it, for example a valid legal request or a mandatory report of child sexual abuse material.',
+        body: 'We don’t sell your personal information or share it with advertisers (see Ads above). We may share or sell area statistics and poll results (totals such as how many people used JaxSide in a ZIP code, how active a place’s discussion is, or how a poll came out) to Jacksonville businesses and organizations; they never include who you are, your account, your posts or your location, and groups under 10 people are never included. Otherwise we share information only when the law requires it, for example a valid legal request or a mandatory report of child sexual abuse material.',
       },
       {
         heading: 'Your choices',
@@ -214,7 +230,12 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       {
         heading: 'Events and chat',
         // D218 / D230
-        body: 'Area chat and event chat lines are deleted after 24 hours; a line copied into a report is kept with the report for a year. Your “Yes, I’m here” for an event is deleted 24 hours after the event; only totals are kept. Event pages stay open for 30 days after the event ends. Who follows an event is never shown to anyone.',
+        body: 'Area chat and event chat lines are deleted after 24 hours; a line copied into a report is kept with the report for a year. The note of which chat area you’re in is deleted after an hour, and chat rule breaks after 24 hours. Your “Yes, I’m here” for an event is deleted 24 hours after the event; only totals are kept. Event pages stay open for 30 days after the event ends. Who follows an event is never shown to anyone.',
+      },
+      {
+        // D206 / D216 / D188
+        heading: 'Ads and giveaways',
+        body: 'Your Interested / Not interested choices on ads are deleted after 30 days, and the coded marks that count ad views and taps after two days; advertisers keep only daily totals. The dates you used the app, kept for giveaway entries, are deleted after about 13 months.',
       },
       {
         heading: 'Devices and support',

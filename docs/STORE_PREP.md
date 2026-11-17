@@ -43,7 +43,11 @@ same steps **(add before submitting)**.
 
 ## Privacy: Apple "nutrition label" and Google "Data safety" form
 
-Answers based on the code. Nothing is used for tracking or ads, nothing is sold.
+Answers based on the code. Nothing is used for tracking and nothing is sold. **Ads (D240) are
+JaxSide's own**, picked on the server from the current location (not saved), favorited places and
+Interested / Not interested choices (kept 30 days): declare that app activity as used for
+"Developer's advertising or marketing" (Apple) / "Advertising or marketing" (Google), linked to
+the person, **not** tracking, not shared with advertisers (they get totals only).
 
 | Data type                                                    | Collected?                                   | Linked to the person? | Why                                                 | Notes                                                                              |
 | ------------------------------------------------------------ | -------------------------------------------- | --------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
