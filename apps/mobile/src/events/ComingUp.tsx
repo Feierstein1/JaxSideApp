@@ -43,40 +43,68 @@ function useComingUp(reloadKey?: string) {
  * notifications aren't on yet). One line under the chat bar; tapping it opens the event (or
  * the Events tab when there are several). Nothing shows when there's nothing coming up.
  */
+/** D247: reminders the person closed with the X; back after the app is reopened. */
+const dismissed = new Set<string>();
+
 export function ComingUpBar({ reloadKey }: { reloadKey?: string }) {
   const events = useComingUp(reloadKey);
-  const live = events.filter((e) => !e.cancelled);
+  const [, setClosed] = useState(0);
+  const live = events.filter((e) => !e.cancelled && !dismissed.has(e.sessionId));
   if (!live.length) return null;
   const first = live[0]!;
   const today = localDate(new Date());
   const more = live.length - 1;
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Coming up: ${first.title}, ${whenLabel(first, today)}${more ? `, and ${more} more` : ''}`}
-      onPress={() =>
-        live.length === 1 ? router.push(`/events/event/${first.id}`) : router.push('/events')
-      }
-      style={({ pressed }) => ({
+    <View
+      // D247: a little room below the chat bar.
+      style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: SPACE.sm,
-        paddingHorizontal: SPACE.md,
-        paddingVertical: 8,
+        marginTop: SPACE.sm,
         backgroundColor: DARK.tealSoft,
         borderBottomWidth: 1,
         borderBottomColor: DARK.hairline,
-        opacity: pressed ? 0.8 : 1,
-      })}
+      }}
     >
-      <Ionicons name="calendar" size={16} color={DARK.accent} />
-      <Text numberOfLines={1} style={{ flex: 1, fontSize: 13.5 }}>
-        <Text style={{ fontWeight: '800', color: DARK.tealText }}>{whenLabel(first, today)}: </Text>
-        <Text style={{ fontWeight: '700' }}>{first.title}</Text>
-        {more ? <Text style={{ color: DARK.textMuted }}>{`  +${more} more`}</Text> : null}
-      </Text>
-      <Ionicons name="chevron-forward" size={16} color={DARK.textMuted} />
-    </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Dismiss this reminder"
+        hitSlop={6}
+        onPress={() => {
+          live.forEach((e) => dismissed.add(e.sessionId));
+          setClosed((n) => n + 1);
+        }}
+        style={{ paddingLeft: SPACE.md, paddingRight: 4, paddingVertical: 10 }}
+      >
+        <Ionicons name="close" size={18} color={DARK.textMuted} />
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Coming up: ${first.title}, ${whenLabel(first, today)}${more ? `, and ${more} more` : ''}`}
+        onPress={() =>
+          live.length === 1 ? router.push(`/events/event/${first.id}`) : router.push('/events')
+        }
+        style={({ pressed }) => ({
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: SPACE.sm,
+          paddingRight: SPACE.md,
+          paddingVertical: 10,
+          opacity: pressed ? 0.8 : 1,
+        })}
+      >
+        <Ionicons name="calendar" size={16} color={DARK.accent} />
+        <Text numberOfLines={1} style={{ flex: 1, fontSize: 13.5 }}>
+          <Text style={{ fontWeight: '800', color: DARK.tealText }}>
+            {whenLabel(first, today)}:{' '}
+          </Text>
+          <Text style={{ fontWeight: '700' }}>{first.title}</Text>
+          {more ? <Text style={{ color: DARK.textMuted }}>{`  +${more} more`}</Text> : null}
+        </Text>
+        <Ionicons name="chevron-forward" size={16} color={DARK.textMuted} />
+      </Pressable>
+    </View>
   );
 }
 

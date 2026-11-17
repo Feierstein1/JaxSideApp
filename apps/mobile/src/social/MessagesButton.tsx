@@ -33,8 +33,9 @@ export function MessagesButton() {
         <View
           style={{
             position: 'absolute',
-            top: -4,
-            right: 0,
+            // D247: bottom left, so the top of the screen can't cut the number off.
+            bottom: -4,
+            left: 0,
             minWidth: 18,
             height: 18,
             borderRadius: 9,

@@ -44,8 +44,9 @@ export function Bell() {
         <View
           style={{
             position: 'absolute',
-            top: -5,
-            right: -6,
+            // D247: bottom left, so the top of the screen can't cut the number off.
+            bottom: -5,
+            left: -6,
             minWidth: 19,
             height: 19,
             borderRadius: 10,
