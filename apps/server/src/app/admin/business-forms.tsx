@@ -52,7 +52,11 @@ export function BusinessActions({
     }
   }
 
-  if (status === 'REVOKED') return <p style={ui.muted}>Revoked: nothing more can be done.</p>;
+  if (status === 'REVOKED') {
+    return (
+      <p style={ui.muted}>{kind === 'owner' ? 'Closed' : 'Revoked'}: nothing more can be done.</p>
+    );
+  }
   const whole = kind === 'owner' ? ' and every staff login it made' : '';
   return (
     <div>
@@ -120,11 +124,13 @@ export function BusinessActions({
           onClick={() =>
             act(
               'revoke',
-              `Permanently revoke this account${whole}? They lose every place. This can’t be undone.`,
+              kind === 'owner'
+                ? 'Close this business account? Every login on its team is signed out for good, its plan ends, its ads end, its events come off the calendar and its boosts stop. Places stay (someone else can verify them); its posts stay without a name. This can’t be undone.'
+                : `Permanently revoke this login${whole}? They lose every place. This can’t be undone.`,
             )
           }
         >
-          Revoke permanently
+          {kind === 'owner' ? 'Close business account' : 'Revoke permanently'}
         </button>
       </div>
       {error ? (

@@ -1796,6 +1796,10 @@ model BusinessAccount {
   /// D242 (D238): what an owner account is, chosen at sign-up: a business (with a place) or an
   /// event organizer. Null for team logins, and for owner accounts not set yet.
   kind               BusinessAccountKind?
+  /// D261: when this login agreed to the JaxSide for Business Terms, and which version (set by
+  /// the website at sign-up; null for accounts made before). Both or neither (CHECK).
+  termsAcceptedAt    DateTime?            @db.Timestamptz(3)
+  termsVersion       String?              @db.VarChar(20)
 
   createdBy            BusinessAccount?              @relation("BusinessEmployees", fields: [createdById], references: [id], onDelete: SetNull)
   employees            BusinessAccount[]             @relation("BusinessEmployees")

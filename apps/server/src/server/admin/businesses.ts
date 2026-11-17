@@ -381,6 +381,7 @@ export async function actOnBusiness(
   now = new Date(),
 ): Promise<{ temporaryPassword: string | null }> {
   let password: string | null = null;
+  let closed: Awaited<ReturnType<typeof closeBusiness>> | null = null;
   await db.$transaction(async (tx) => {
     const { account, ids } = await scope(tx, id);
     if (account.revokedAt) throw new ApiError(409, 'REVOKED', 'This account was revoked.');
@@ -427,6 +428,31 @@ export async function actOnBusiness(
           data: { revokedAt: now },
         });
         await endSessions();
+        // D261: their posts stay, but without a name after "The Owner".
+        await tx.businessPlaceAccess.updateMany({
+          where: { accountId: { in: ids }, staffName: { not: null } },
+          data: { staffName: null },
+        });
+        await tx.businessTeamMember.updateMany({
+          where: {
+            OR: [
+              { memberAccountId: { in: ids } },
+              ...(account.createdById ? [] : [{ ownerAccountId: account.id }]),
+            ],
+          },
+          data: { displayName: null },
+        });
+        await tx.businessTeamMember.updateMany({
+          where: {
+            revokedAt: null,
+            OR: [
+              { memberAccountId: { in: ids } },
+              ...(account.createdById ? [] : [{ ownerAccountId: account.id }]),
+            ],
+          },
+          data: { revokedAt: now, inviteTokenHash: null, inviteExpiresAt: null },
+        });
+        if (!account.createdById) closed = await closeBusiness(tx, account.id, note, now);
         break;
       case 'reset-password':
         password = temporaryPassword();
@@ -453,11 +479,63 @@ export async function actOnBusiness(
       adminId,
       `BUSINESS_${action.toUpperCase().replace('-', '_')}`,
       { type: 'business-account', id: account.id },
-      { logins: ids.length, ...(note ? { note } : {}) },
+      { logins: ids.length, ...(closed ?? {}), ...(note ? { note } : {}) },
       tx,
     );
   });
   return { temporaryPassword: password };
+}
+
+/**
+ * D261: revoking an owner closes the business. Its plan ends (recorded as a cancellation, so
+ * the daily job never moves it to Free), its ads end, its events come off the calendar, its
+ * boosts stop, and its open requests are cancelled. Places stay (another owner can verify),
+ * and posts, reports, support tickets and strikes stay per the Data Retention policy.
+ */
+async function closeBusiness(
+  tx: Prisma.TransactionClient,
+  accountId: string,
+  note: string | undefined,
+  now: Date,
+) {
+  const reason = note ? `Account closed: ${note}`.slice(0, 300) : 'Account closed';
+  const plans = await tx.subscription.updateMany({
+    where: { accountId, status: { in: ['TRIALING', 'ACTIVE', 'PAST_DUE'] } },
+    data: { status: 'CANCELLED', endsAt: now, cancelledAt: now, cancelReason: reason },
+  });
+  const ads = await tx.ad.updateMany({
+    where: { accountId, status: { in: ['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PAUSED'] } },
+    data: { status: 'ENDED' },
+  });
+  const events = await tx.event.updateMany({
+    where: {
+      businessAccountId: accountId,
+      status: { in: ['DRAFT', 'IN_REVIEW', 'APPROVED', 'CANCELLED'] },
+    },
+    data: { status: 'REMOVED' },
+  });
+  const boosts = await tx.boost.updateMany({
+    where: { accountId, status: 'ACTIVE' },
+    data: { status: 'CANCELLED' },
+  });
+  const open = { accountId, status: 'PENDING' as const };
+  const requests =
+    (
+      await tx.businessVerificationRequest.updateMany({
+        where: open,
+        data: { status: 'CANCELLED' },
+      })
+    ).count +
+    (await tx.placeChangeRequest.updateMany({ where: open, data: { status: 'CANCELLED' } })).count +
+    (await tx.organizerNameRequest.updateMany({ where: open, data: { status: 'CANCELLED' } }))
+      .count;
+  return {
+    plansEnded: plans.count,
+    adsEnded: ads.count,
+    eventsRemoved: events.count,
+    boostsStopped: boosts.count,
+    requestsCancelled: requests,
+  };
 }
 
 /**
