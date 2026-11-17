@@ -11,6 +11,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   DARK,
+  fitLines,
   dateLabel,
   EVENT_CATEGORIES,
   EVENT_SETTINGS,
@@ -124,15 +125,26 @@ export default function EventScreen() {
                   : 'Picture, tap to see it full screen'
               }
               onPress={() => setViewer({ list: topIsFlyer ? flyers : [top], start: 0 })}
+              style={{ alignSelf: 'center' }}
             >
               <Image
                 source={{ uri: photoUri(top.url) }}
-                style={{
-                  width: imgW,
-                  aspectRatio: top.width / top.height,
-                  borderRadius: RADIUS.lg,
-                  backgroundColor: DARK.raised,
-                }}
+                style={
+                  topIsFlyer
+                    ? {
+                        width: imgW,
+                        aspectRatio: top.width / top.height,
+                        borderRadius: RADIUS.lg,
+                        backgroundColor: DARK.raised,
+                      }
+                    : // No flyer: the calendar picture at its own shape, smaller (about 220 tall).
+                      {
+                        width: Math.min(imgW, 220 * (top.width / top.height)),
+                        aspectRatio: top.width / top.height,
+                        borderRadius: RADIUS.lg,
+                        backgroundColor: DARK.raised,
+                      }
+                }
                 resizeMode="contain"
                 accessibilityIgnoresInvertColors
               />
@@ -238,12 +250,20 @@ export default function EventScreen() {
           ) : null}
         </DecoBox>
 
-        <Text style={TYPE.body}>{e.description}</Text>
+        {/* D262 (hub): at most 5 lines; older text past that is folded onto the fifth. */}
+        <Text style={TYPE.body}>{fitLines(e.description)}</Text>
 
         {/* D253: photos below the details: up to 3 small squares, the rest in a window. */}
         {photos.length ? (
           <View style={{ gap: SPACE.xs }}>
-            <View style={{ flexDirection: 'row', gap: SPACE.sm }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                gap: SPACE.sm,
+                // A single photo sits in the middle (owner).
+                justifyContent: photos.length === 1 ? 'center' : 'flex-start',
+              }}
+            >
               {photos.slice(0, 3).map((img, i) => (
                 <Pressable
                   key={img.id}

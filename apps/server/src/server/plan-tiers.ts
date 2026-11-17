@@ -33,6 +33,7 @@ export const STARTER_TIERS: {
       'events.limit': 5, // D248: a calendar month
       'events.reach': 'NEAR', // D248: shown to people near the event
       'boosts.perMonth': 0,
+      'storage.maxMB': 250, // D263 (hub)
     },
   },
   {
@@ -53,6 +54,7 @@ export const STARTER_TIERS: {
       'events.limit': 20, // D248: a calendar month
       'events.reach': 'CITY',
       'boosts.perMonth': 1,
+      'storage.maxMB': 1024, // D263 (hub)
     },
   },
   {
@@ -73,6 +75,7 @@ export const STARTER_TIERS: {
       'events.limit': null, // D248: no limit
       'events.reach': 'CITY',
       'boosts.perMonth': 2,
+      'storage.maxMB': 2048, // D263 (hub)
     },
   },
 ];

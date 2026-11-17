@@ -81,6 +81,7 @@ describe('the starter tiers (D202)', () => {
       'events.limit': null, // D231 / D248
       'events.reach': 'CITY', // D248
       'boosts.perMonth': 2, // D248
+      'storage.maxMB': 2048, // D263 (hub)
     });
     expect(planEntitlements(plans[1]!.entitlements)).toMatchObject({
       'ads.live': 3,
@@ -142,6 +143,7 @@ describe('what a business can use (D202)', () => {
       'events.limit': 5, // D248: a calendar month
       'events.reach': 'NEAR',
       'boosts.perMonth': 0,
+      'storage.maxMB': 250, // D263 (hub)
     });
     const later = new Date(Date.now() + (FREE_TIER_DAYS + 1) * DAY);
     expect((await entitlementsFor(owner.id, later)).plan).toBeNull();

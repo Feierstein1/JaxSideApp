@@ -61,6 +61,11 @@ export const PLAN_ENTITLEMENTS = {
   'events.reach': z.enum(EVENT_REACH),
   /** D248: boosts the account may start per calendar month (Free 0, Standard 1, Premium 2). */
   'boosts.perMonth': z.number().int().min(0).max(31),
+  /**
+   * D263 (hub): stored pictures a business may keep, in MB: its events' pictures plus its own
+   * AdMedia (ACTIVE). Free 250, Standard 1024, Premium 2048. The website refuses uploads past it.
+   */
+  'storage.maxMB': z.number().int().min(0).max(100_000),
 } as const;
 
 export type PlanEntitlementKey = keyof typeof PLAN_ENTITLEMENTS;
@@ -83,6 +88,7 @@ export const NO_PLAN_ENTITLEMENTS: Required<PlanEntitlements> = {
   'events.limit': 0,
   'events.reach': 'NEAR',
   'boosts.perMonth': 0,
+  'storage.maxMB': 0,
 };
 
 export const isPlanEntitlementKey = (key: string): key is PlanEntitlementKey =>

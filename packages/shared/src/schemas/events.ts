@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { isValidDate, MONTH_RE, TIME_RE, type SessionInput } from '../event-time';
 import type { ChatLine } from './chat';
 import { locationReadingSchema } from './location';
+import { MAX_TYPED_LINES, typedLines } from '../text-lines';
 
 /*
  * D230: events and the event calendar. An event has one or more sessions (a date, a start and
@@ -87,7 +88,10 @@ const sessionsSchema = z
 export const eventInputSchema = z
   .strictObject({
     title: text(3, EVENT_TITLE_MAX),
-    description: text(1, EVENT_DESCRIPTION_MAX),
+    description: text(1, EVENT_DESCRIPTION_MAX).refine(
+      (t) => typedLines(t) <= MAX_TYPED_LINES,
+      `At most ${MAX_TYPED_LINES} lines`,
+    ),
     category: z.enum(categoryKeys),
     hostKind: z.enum(EVENT_HOST_KINDS).default('community'),
     setting: z.enum(settingKeys),

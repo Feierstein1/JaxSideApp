@@ -2,7 +2,14 @@ import { useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { DARK, dateLabel, timeLabel, type AdCard as Ad, type ReportTarget } from '@jax/shared';
+import {
+  DARK,
+  dateLabel,
+  fitLines,
+  timeLabel,
+  type AdCard as Ad,
+  type ReportTarget,
+} from '@jax/shared';
 import { useGuest } from '@/auth/guest';
 import { photoUri } from '@/discussion/photos';
 import { PhotoViewer } from '@/discussion/PhotoViewer';
@@ -173,7 +180,8 @@ export function AdCard({ ad }: { ad: Ad }) {
               <Text style={{ fontSize: 17, fontWeight: '800', letterSpacing: -0.2 }}>
                 {ad.headline}
               </Text>
-              {ad.body ? <Text style={{ color: DARK.text }}>{ad.body}</Text> : null}
+              {/* D262 (hub): at most 5 lines; older text past that is folded onto the fifth. */}
+              {ad.body ? <Text style={{ color: DARK.text }}>{fitLines(ad.body)}</Text> : null}
             </View>
             {image && banner ? picture({ width: 72, height: 72, borderRadius: RADIUS.sm }) : null}
           </View>

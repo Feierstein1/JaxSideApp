@@ -1813,6 +1813,10 @@ model BusinessAccount {
   adsCreated           Ad[]                          @relation("AdCreator")
   media                AdMedia[]                     @relation("MediaOwner")
   avatarMedia          AdMedia?                      @relation("BusinessAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
+  /// D263 (hub): the picture new events start with, as their flyer. Owner level (team logins use
+  /// their owner's); a copy the business owns, so deleting the event it came from never loses it.
+  defaultEventMediaId  String?                       @db.Uuid
+  defaultEventMedia    AdMedia?                      @relation("BusinessDefaultEvent", fields: [defaultEventMediaId], references: [id], onDelete: SetNull)
   /// D191: strikes and notes on this login.
   modActions           ModerationAction[]
   /// D195: pictures and videos this login uploaded for its places' posts.
@@ -1845,6 +1849,7 @@ model BusinessAccount {
   organizerNameRequests OrganizerNameRequest[]
 
   @@index([createdById])
+  @@index([defaultEventMediaId])
 }
 
 /**
@@ -2110,22 +2115,24 @@ enum AdStatus {
 
 /// Ad image or GIF uploaded by a business account (Photo needs a personal uploader).
 model AdMedia {
-  id            String           @id @default(uuid(7)) @db.Uuid
-  accountId     String           @db.Uuid
-  storageKey    String?          @unique @db.VarChar(200)
-  quarantineKey String?          @unique @db.VarChar(200)
-  status        PhotoStatus      @default(PENDING_UPLOAD)
-  mimeType      String?          @db.VarChar(40)
-  width         Int?
-  height        Int?
-  bytes         Int?
-  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
-  processedAt   DateTime?        @db.Timestamptz(3)
-  removedAt     DateTime?        @db.Timestamptz(3)
-  account       BusinessAccount  @relation("MediaOwner", fields: [accountId], references: [id], onDelete: Cascade)
-  ads           Ad[]
+  id             String            @id @default(uuid(7)) @db.Uuid
+  accountId      String            @db.Uuid
+  storageKey     String?           @unique @db.VarChar(200)
+  quarantineKey  String?           @unique @db.VarChar(200)
+  status         PhotoStatus       @default(PENDING_UPLOAD)
+  mimeType       String?           @db.VarChar(40)
+  width          Int?
+  height         Int?
+  bytes          Int?
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  processedAt    DateTime?         @db.Timestamptz(3)
+  removedAt      DateTime?         @db.Timestamptz(3)
+  account        BusinessAccount   @relation("MediaOwner", fields: [accountId], references: [id], onDelete: Cascade)
+  ads            Ad[]
   /// D189: the login using this image as its profile picture.
-  avatarOf      BusinessAccount? @relation("BusinessAvatar")
+  avatarOf       BusinessAccount?  @relation("BusinessAvatar")
+  /// D263 (hub): the business using it as its default event picture.
+  defaultEventOf BusinessAccount[] @relation("BusinessDefaultEvent")
 
   @@index([accountId, createdAt])
   @@index([status, createdAt])

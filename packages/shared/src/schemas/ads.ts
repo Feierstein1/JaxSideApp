@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AD_LIVE_MAX, AD_TEMPLATES, checkAdText, type AdTemplateKind } from '../ads';
+import { MAX_TYPED_LINES, typedLines } from '../text-lines';
 
 /**
  * B3.2: what the ad editor sends. A draft may be unfinished (it's saved as the owner
@@ -25,7 +26,13 @@ export const adDraftSchema = z
     eventId: z.uuid().optional(),
     template: z.enum(['BANNER', 'POST', 'FEATURE']),
     headline: z.string().trim().max(MAX_HEADLINE),
-    body: z.string().trim().max(MAX_BODY).nullable().default(null),
+    body: z
+      .string()
+      .trim()
+      .max(MAX_BODY)
+      .refine((t) => typedLines(t) <= MAX_TYPED_LINES, `At most ${MAX_TYPED_LINES} lines`)
+      .nullable()
+      .default(null),
     mediaId: z.uuid().nullable().default(null),
     /** Q30: an alcohol deal (the app adds a "21+" line). */
     adultsOnly: z.boolean().default(false),

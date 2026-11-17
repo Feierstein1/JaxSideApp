@@ -7,6 +7,7 @@ import { evaluateAchievements } from '../achievements';
 import { finalizeDuePolls } from '../polls';
 import { purgeDeletedTopics } from '../topics';
 import { expirePlaceChanges, purgeRemovedPlacePosts } from '../directory/place-changes';
+import { purgeUnusedAdMedia } from '../ads/media-cleanup';
 import { purgeUnusedPhotos } from '../media/photos';
 import { purgeExpiredCounters } from '../rate-limit';
 import { purgeOldMessageEvidence } from '../social/messages';
@@ -42,6 +43,8 @@ export interface MaintenanceReport extends Partial<Omit<RetentionReport, 'notifi
   suspensionsEnded: number;
   achievementsAwarded: number;
   unusedPhotosDeleted: number;
+  /** D263 (hub): business pictures nobody uses, deleted with their files. */
+  unusedAdMediaDeleted?: number;
   notificationsDeleted?: number;
   placeChangesExpired?: number;
   removedPlacePostsDeleted?: number;
@@ -165,6 +168,8 @@ async function maintain(now: Date): Promise<MaintenanceReport> {
     }),
     // P6.2: uploads never attached to a post or profile within a day.
     unusedPhotosDeleted: await purgeUnusedPhotos(now),
+    // D263 (hub): business pictures no ad, profile or default event picture uses.
+    unusedAdMediaDeleted: await purgeUnusedAdMedia(now),
     // D107 (P13.7): notifications, deleted/removed content, unsent messages, removed media,
     // location flags, old installations, resolved tickets. Never while a report is open.
     ...(await runRetention(now)),
