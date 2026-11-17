@@ -102,7 +102,8 @@ App and server:
 - [ ] Production server live with HTTPS (D243), production API address
       (`https://api.jaxside.com`) in the store builds
 - [ ] Support email (done: support@jaxside.com, 2026-11-08) + account-deletion help page on the
-      website
+      website (`https://jaxside.com/delete-account`, requested 2026-11-16 with the app policies
+      on jaxside.com and separate business terms)
 - [ ] SES production access (email to real people; the sandbox only sends to verified addresses)
 - [ ] NCMEC CyberTipline registration (R4)
 - [ ] Reviewer access plan for the location restriction (see above)
