@@ -5,7 +5,7 @@ import { POST as tapPOST } from '@/app/api/v1/ads/[id]/tap/route';
 import { POST as viewsPOST } from '@/app/api/v1/ads/views/route';
 import { POST as guestsPOST } from '@/app/api/v1/guests/route';
 import { POST as installPOST } from '@/app/api/v1/installations/route';
-import { pickAdsFor, resetAdCache, weightedPick, zipAt } from '@/server/ads/serve';
+import { pickAdsFor, resetAdCache, statsDay, weightedPick, zipAt } from '@/server/ads/serve';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
 import { db } from '@/server/db';
@@ -437,5 +437,63 @@ describe('variety in one list (D240)', () => {
     // weights the same draw would land on the first.
     const [first] = await pick([], 1, () => 0.3);
     expect(first!.headline).toBe('Premium');
+  });
+});
+
+describe('fair rotation by area, paid first slot (D260)', () => {
+  const pick = (inList: string[] = [], count = 1, rand?: () => number) =>
+    pickAdsFor(
+      { userId: user.id, point: CAFE },
+      { kind: 'feed' },
+      count,
+      [],
+      new Date(),
+      rand,
+      inList,
+    );
+  const today = () => statsDay(new Date());
+
+  it('the first ad of a list is a paid one, even when chance favors a free one', async () => {
+    await db.subscription.updateMany({
+      where: { accountId: owner.id },
+      data: { planId: (await db.plan.findUniqueOrThrow({ where: { code: 'FREE' } })).id },
+    });
+    await ad(owner.id, cafe, { headline: 'Free', approvedAt: new Date(Date.now() - 60_000) });
+    const paid = await ad(other.id, bar, { headline: 'Premium', approvedAt: new Date() });
+    for (const r of [0, 0.2, 0.5, 0.9]) {
+      resetAdCache();
+      expect((await pick([], 1, () => r))[0]!.headline).toBe('Premium');
+    }
+    // Later slots in the same list are weighted as usual (the free one can win).
+    resetAdCache();
+    const later = await pick([paid.id], 1, () => 0);
+    expect(later.map((a) => a.headline)).toEqual(['Free']);
+  });
+
+  it('an ad served less in the reader’s ZIP gets more chances; other ZIPs don’t count', async () => {
+    const busy = await ad(owner.id, cafe, {
+      headline: 'Busy here',
+      approvedAt: new Date(Date.now() - 60_000),
+    });
+    await ad(other.id, bar, { headline: 'Quiet here', approvedAt: new Date() });
+    await db.adServeStats.create({
+      data: { adId: busy.id, day: today(), zip: cafeZip, serves: 100 },
+    });
+    // Equal tiers: a draw at 30% would land on the first ad ("Busy here") without pacing.
+    expect((await pick([], 1, () => 0.3))[0]!.headline).toBe('Quiet here');
+    // The same serves in another ZIP don't hold it back here.
+    await db.adServeStats.updateMany({ where: { adId: busy.id }, data: { zip: '00000' } });
+    resetAdCache();
+    expect((await pick([], 1, () => 0.3))[0]!.headline).toBe('Busy here');
+  });
+
+  it('counts every ad handed out, by day and ZIP', async () => {
+    const a = await ad(owner.id, cafe, { headline: 'Counted' });
+    await pick();
+    await pick();
+    const row = await db.adServeStats.findUniqueOrThrow({
+      where: { adId_day_zip: { adId: a.id, day: today(), zip: cafeZip } },
+    });
+    expect(row.serves).toBe(2);
   });
 });

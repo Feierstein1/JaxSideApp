@@ -30,10 +30,13 @@ import { localDayHour } from '../stats/area-visits';
  * 2. For this reader: reach (city-wide, or a ZIP containing them, or a radius; D204), the
  *    screen (topics can be ad-free; a place with a plan shows only its own ads, D167), not
  *    marked Not interested by them, not in the phone's cooldown list, 21+ never for guests.
- * 3. Picked by weighted chance, one per business: even pacing (an ad with many views today
- *    weighs less), ×`ads.interestBoost` for places they favorited or businesses they marked
- *    Interested, with boosted ads at most `ads.boostedSharePercent` of the picks so new
- *    businesses still reach them. Slots are left empty rather than repeating an ad.
+ * 3. Picked by weighted chance, one per business: D260 even pacing by area (an ad served less
+ *    in the reader's ZIP, per day it has been live, gets up to 4× the chance; one served a lot
+ *    there down to ¼×), × the plan tier (D240), × a Boost (D248), ×`ads.interestBoost` for
+ *    places they favorited or businesses they marked Interested (at most
+ *    `ads.boostedSharePercent` of the picks). D260: the first ad of a list goes to a paid
+ *    (Standard / Premium) or boosted ad whenever one reaches the reader. D242: slots left over
+ *    are filled with ads the phone saw recently. Every pick is counted in `AdServeStats`.
  */
 
 const CACHE_MS = 60_000;
@@ -63,6 +66,8 @@ export interface LiveAd {
   large: boolean;
   /** D240: the business's tier: Premium 3, Standard 2, Free 1 (its plan's rank). */
   tierWeight: number;
+  /** D260: when it went live (approved, or its start date if later), for its serve rate. */
+  liveSince: Date;
   /** D248: boosted by the business: reaches everyone and weighs `ads.boostWeight` times more. */
   promoted: boolean;
   /** D216: shown only when the business's current plan allows links (`ads.links`). */
@@ -217,6 +222,9 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
         hasImage: !!(r.mediaId && r.media?.status === 'ACTIVE'),
       }),
       tierWeight: ranks.get(r.accountId) ?? 1,
+      liveSince: new Date(
+        Math.max((r.approvedAt ?? r.createdAt).getTime(), r.startsAt?.getTime() ?? 0),
+      ),
     });
   }
   return out;
@@ -396,21 +404,24 @@ export async function pickAdsFor(
   const recent = allowed.filter((ad) => seenSet.has(ad.id));
   if (!allowed.length) return [];
 
-  // Pacing: today's views per ad; an ad far ahead of the others weighs less.
+  // D260: pacing by area over each ad's whole run: how often it was served in the reader's
+  // ZIP per day it has been live. Ads behind the others there catch up; ads ahead ease off.
   const day = new Date(`${localDayHour(now).day}T00:00:00Z`);
-  const stats = await db.adDailyStats.findMany({
-    where: { day, adId: { in: eligible.map((a) => a.id) } },
-    select: { adId: true, views: true },
+  const zipKey = zip ?? '';
+  const served = await db.adServeStats.groupBy({
+    by: ['adId'],
+    where: { zip: zipKey, adId: { in: allowed.map((a) => a.id) } },
+    _sum: { serves: true },
   });
-  const views = new Map(stats.map((s) => [s.adId, s.views]));
-  const avg = eligible.length
-    ? eligible.reduce((n, a) => n + (views.get(a.id) ?? 0), 0) / eligible.length
-    : 0;
+  const servedBy = new Map(served.map((r) => [r.adId, r._sum.serves ?? 0]));
+  const rate = (ad: LiveAd) =>
+    (servedBy.get(ad.id) ?? 0) / Math.max(1, (now.getTime() - ad.liveSince.getTime()) / DAY_MS);
+  const avg = allowed.reduce((n, a) => n + rate(a), 0) / allowed.length;
   const toPool = (list: LiveAd[]) =>
     list.map((ad) => {
       const isBoosted =
         liked.has(ad.accountId) || (ad.place !== null && favoritePlaces.has(ad.place.id));
-      const pace = Math.min(4, Math.max(0.25, (avg + 1) / ((views.get(ad.id) ?? 0) + 1)));
+      const pace = Math.min(4, Math.max(0.25, (avg + 1) / (rate(ad) + 1)));
       return {
         item: ad,
         // D248: a business's Boost weighs `ads.boostWeight` times more.
@@ -421,7 +432,33 @@ export async function pickAdsFor(
       };
     });
   const maxBoosted = Math.ceil((count * sharePercent) / 100);
-  const picked = weightedPick(toPool(eligible), count, maxBoosted, rand, Math.max(0, largeLeft));
+  // D260: the first ad of a list (nothing placed yet) is a paid or boosted one when any
+  // reaches this reader: a fresh one if there is, else one seen recently.
+  const isPaid = (ad: LiveAd) => ad.tierWeight >= 2 || ad.promoted;
+  const first: LiveAd[] = [];
+  if (!inList.length) {
+    const paidFresh = eligible.filter(isPaid);
+    first.push(
+      ...weightedPick(
+        toPool(paidFresh.length ? paidFresh : recent.filter(isPaid)),
+        1,
+        1,
+        rand,
+        Math.max(0, largeLeft),
+      ),
+    );
+  }
+  const firstBusiness = new Set(first.map((a) => a.accountId));
+  const picked = [
+    ...first,
+    ...weightedPick(
+      toPool(eligible.filter((ad) => !firstBusiness.has(ad.accountId))),
+      count - first.length,
+      maxBoosted,
+      rand,
+      Math.max(0, largeLeft - first.filter((a) => a.large).length),
+    ),
+  ];
   if (picked.length < count && recent.length) {
     // The same variety rules: other businesses than the ones just picked, and the large-ad
     // allowance that's left.
@@ -436,6 +473,14 @@ export async function pickAdsFor(
         Math.max(0, largeLeft - largeUsed),
       ),
     );
+  }
+
+  // D260: count what was handed out, by day and the reader's ZIP (counts only).
+  if (picked.length) {
+    await db.$executeRaw`
+      INSERT INTO "AdServeStats" ("adId", day, zip, serves)
+      VALUES ${Prisma.join(picked.map((a) => Prisma.sql`(${a.id}::uuid, ${day}::date, ${zipKey}, 1)`))}
+      ON CONFLICT ("adId", day, zip) DO UPDATE SET serves = "AdServeStats".serves + 1`;
   }
 
   const mine = reader.userId

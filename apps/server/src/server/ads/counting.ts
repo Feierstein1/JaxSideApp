@@ -112,6 +112,10 @@ export async function purgeAdMarks(now: Date, keepChoicesDays: number) {
   const viewMarks = await db.adViewMark.deleteMany({ where: { day: { lt: cutoff } } });
   await db.adTapMark.deleteMany({ where: { day: { lt: cutoff } } }); // D216
   await db.eventTapMark.deleteMany({ where: { day: { lt: cutoff } } }); // D236
+  // D260: serve counts drive pacing over an ad's run; a year is plenty.
+  await db.adServeStats.deleteMany({
+    where: { day: { lt: new Date(statsDay(now).getTime() - 365 * 86_400_000) } },
+  });
   const choices = await db.adInterest.deleteMany({
     where: { updatedAt: { lt: new Date(now.getTime() - keepChoicesDays * 86_400_000) } },
   });

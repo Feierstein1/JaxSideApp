@@ -2176,6 +2176,8 @@ model Ad {
   /// D209.
   reports       Report[]
   viewMarks     AdViewMark[]
+  /// D260: times the ad was served, by ZIP and day (pacing by area).
+  serveStats    AdServeStats[]
   tapMarks      AdTapMark[]
   boosts        Boost[]
 
@@ -2986,4 +2988,20 @@ model MaintenanceMode {
   message   String?   @db.VarChar(200)
   enabledAt DateTime? @db.Timestamptz(3)
   changedAt DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+}
+
+/**
+ * D260: how many times the server handed out an ad, per Jacksonville day and the reader's ZIP
+ * ('' when outside every ZIP). Counts only, no person. Picking gives ads served less in the
+ * reader's ZIP (per day they've been live) more chances, so ads cycle evenly area by area.
+ */
+model AdServeStats {
+  adId   String   @db.Uuid
+  day    DateTime @db.Date
+  zip    String   @db.VarChar(5)
+  serves Int      @default(0)
+  ad     Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@id([adId, day, zip])
+  @@index([zip, adId])
 }
