@@ -101,7 +101,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
       {
         // D185 / D224 / D238: business accounts live on JaxSide for Business, never linked to yours.
         heading: 'Businesses and organizers',
-        body: 'Businesses and event organizers use separate accounts on JaxSide for Business (jaxside.com), covered by its own terms and privacy policy. Your JaxSide account is never linked to a business account, and becoming a business or organizer doesn’t use anything from your personal account. In a place’s discussion, its verified owner and their team post as “The Owner”. Businesses see your username and what you post in their place’s discussion, like anyone else; for everything else (ads, events, insights) they see only totals, never who.',
+        body: 'Businesses and event organizers use separate accounts on JaxSide for Business, covered by its own terms and privacy policy (jaxside.com/business/privacy). Your JaxSide account is never linked to a business account, and becoming a business or organizer doesn’t use anything from your personal account. In a place’s discussion, its verified owner and their team post as “The Owner”. Businesses see your username and what you post in their place’s discussion, like anyone else; for everything else (ads, events, insights) they see only totals, never who.',
       },
       {
         heading: 'Area statistics',
