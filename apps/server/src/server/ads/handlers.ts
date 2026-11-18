@@ -19,7 +19,7 @@ import { enforce } from '../rate-limit';
 import { topicAnchor } from '../topics';
 import { parseBody } from '../validate';
 import { recordAdTap, recordAdViews, setAdInterest } from './counting';
-import { pickAdsFor } from './serve';
+import { pickAdsFor, placeOwnerWithPlan } from './serve';
 
 /**
  * D206 / B3.4: the phone's ad endpoints. Same order as every route (CLAUDE.md): auth guard →
@@ -61,6 +61,8 @@ export async function adsForScreen(req: Request) {
   } else {
     at = await assertLocationEligible(who, input.reading, 'general.read');
   }
+  // D265: a business's own place page shows all of its ads (the phone asks for `extra` ones at the end).
+  const showcase = ctx.kind === 'place' && !!(await placeOwnerWithPlan(ctx.id, new Date()));
   const [ads, first, every, cooldownHours] = await Promise.all([
     pickAdsFor(
       { userId: actor.kind === 'user' ? actor.user.id : null, point: at },
@@ -70,13 +72,14 @@ export async function adsForScreen(req: Request) {
       undefined,
       undefined,
       input.inList,
+      input.extra,
     ),
     getConfig('ads.firstSlot'),
     getConfig(actor.kind === 'user' ? 'ads.every' : 'ads.everyGuest'),
     getConfig('ads.cooldownHours'),
   ]);
   // The admin's spacing and cooldown, so the phone follows them without an app update.
-  return NextResponse.json({ ads, layout: { first, every, cooldownHours } });
+  return NextResponse.json({ ads, layout: { first, every, cooldownHours }, showcase });
 }
 
 /** POST /ads/views: a batch of ads the phone showed (half on screen for a second). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adSlotPositions, adSlotsRequestSchema, discussionAdSlots, isLargeAd } from './ad-feed';
+import { adSlotPositions, adSlotsRequestSchema, discussionAdSlots } from './ad-feed';
 
 // D206: ads sit between posts at even, slightly varied gaps, continued across pages.
 
@@ -82,12 +82,5 @@ describe('D240 ad spacing in a discussion', () => {
     expect(slots(30, false)).toEqual([2, 5, 8, 11, 14, 17, 20, 23, 26, 29]);
     expect(discussionAdSlots({ from: 30, to: 34, complete: true })).toEqual([32, 34]);
     expect(discussionAdSlots({ from: 30, to: 31, complete: true })).toEqual([31]);
-  });
-
-  it('counts Feature ads and Post ads with a picture as large', () => {
-    expect(isLargeAd({ template: 'FEATURE', hasImage: true })).toBe(true);
-    expect(isLargeAd({ template: 'POST', hasImage: true })).toBe(true);
-    expect(isLargeAd({ template: 'POST', hasImage: false })).toBe(false);
-    expect(isLargeAd({ template: 'BANNER', hasImage: true })).toBe(false);
   });
 });

@@ -1,7 +1,5 @@
 import {
-  AD_LARGE_IN_LIST,
   AD_PER_BUSINESS_IN_LIST,
-  isLargeAd,
   localDate,
   localTime,
   inSchedule,
@@ -10,7 +8,6 @@ import {
   targetsReader,
   type AdCard,
   type AdContext,
-  type AdTemplateKind,
 } from '@jax/shared';
 import { Prisma } from '@/generated/prisma/client';
 import { getConfig } from '../config';
@@ -27,8 +24,10 @@ import { localDayHour } from '../stats/area-visits';
  *    (`inSchedule`), the place active, the business not revoked or suspended, and its
  *    current plan allowing ads; at most `ads.live` per business (its oldest approved first,
  *    since the website pauses the newest on a downgrade).
+
  * 2. For this reader: reach (city-wide, or a ZIP containing them, or a radius; D204), the
- *    screen (topics can be ad-free; a place with a plan shows only its own ads, D167), not
+ *    screen (topics can be ad-free; D265: a place with a plan shows ALL of its own ads and no
+ *    one else's, D167; no reach, cooldown or variety limits there), not
  *    marked Not interested by them, not in the phone's cooldown list, 21+ never for guests.
  * 3. Picked by weighted chance, one per business: D260 even pacing by area (an ad served less
  *    in the reader's ZIP, per day it has been live, gets up to 4× the chance; one served a lot
@@ -46,7 +45,6 @@ const DAY_MS = 86_400_000;
 export interface LiveAd {
   id: string;
   accountId: string;
-  template: AdTemplateKind;
   headline: string;
   body: string | null;
   mediaId: string | null;
@@ -62,8 +60,6 @@ export interface LiveAd {
   event: AdCard['event'];
   /** Where the ad is "from" for radius targeting: its place, or its event's pin. */
   anchor: { latitude: number; longitude: number };
-  /** D240: a Feature, or a Post with a picture (one per list). */
-  large: boolean;
   /** D240: the business's tier: Premium 3, Standard 2, Free 1 (its plan's rank). */
   tierWeight: number;
   /** D260: when it went live (approved, or its start date if later), for its serve rate. */
@@ -176,7 +172,6 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
     out.push({
       id: r.id,
       accountId: r.accountId,
-      template: r.template,
       headline: r.headline,
       body: r.body,
       mediaId: r.mediaId && r.media?.status === 'ACTIVE' ? r.mediaId : null,
@@ -217,10 +212,6 @@ async function loadLiveAds(now: Date): Promise<LiveAd[]> {
         near && r.event && r.event.latitude !== null
           ? { latitude: r.event.latitude, longitude: r.event.longitude! }
           : { latitude: anchor.latitude, longitude: anchor.longitude },
-      large: isLargeAd({
-        template: r.template,
-        hasImage: !!(r.mediaId && r.media?.status === 'ACTIVE'),
-      }),
       tierWeight: ranks.get(r.accountId) ?? 1,
       liveSince: new Date(
         Math.max((r.approvedAt ?? r.createdAt).getTime(), r.startsAt?.getTime() ?? 0),
@@ -251,8 +242,6 @@ export interface Weighted<T> {
   weight: number;
   boosted: boolean;
   group: string;
-  /** D240: at most `maxLarge` large items in one pick. */
-  large?: boolean;
 }
 
 /**
@@ -264,12 +253,10 @@ export function weightedPick<T>(
   count: number,
   maxBoosted: number,
   rand: () => number = Math.random,
-  maxLarge = Infinity,
 ): T[] {
-  let left = pool.filter((p) => p.weight > 0 && !(p.large && maxLarge <= 0));
+  let left = pool.filter((p) => p.weight > 0);
   const picked: T[] = [];
   let boosted = 0;
-  let large = 0;
   while (picked.length < count && left.length) {
     const total = left.reduce((n, p) => n + p.weight, 0);
     let r = rand() * total;
@@ -278,13 +265,7 @@ export function weightedPick<T>(
     const chosen = left[i]!;
     picked.push(chosen.item);
     if (chosen.boosted) boosted++;
-    if (chosen.large) large++;
-    left = left.filter(
-      (p) =>
-        p.group !== chosen.group &&
-        !(p.boosted && boosted >= maxBoosted) &&
-        !(p.large && large >= maxLarge),
-    );
+    left = left.filter((p) => p.group !== chosen.group && !(p.boosted && boosted >= maxBoosted));
   }
   return picked;
 }
@@ -296,7 +277,7 @@ export interface AdReader {
 }
 
 /** D167: on a place's page, a business with a current plan shows only its own ads. */
-async function placeOwnerWithPlan(placeId: string, now: Date) {
+export async function placeOwnerWithPlan(placeId: string, now: Date) {
   const access = await db.businessPlaceAccess.findFirst({
     where: { placeId, role: 'OWNER', revokedAt: null },
     select: { accountId: true },
@@ -323,6 +304,8 @@ export async function pickAdsFor(
   rand: () => number = Math.random,
   /** D240: ads already placed in this list, in order (older apps send none). */
   inList: string[] = [],
+  /** D265: extra ads for the end of a business's own place page (see `showcase`). */
+  extra = 0,
 ): Promise<AdCard[]> {
   if (context.kind === 'topic') {
     const t = await db.cityTopic.findUnique({
@@ -345,21 +328,17 @@ export async function pickAdsFor(
   const [boost, sharePercent, hideDays, interestDays, promotedWeight] = cfg;
   const onlyAccount = context.kind === 'place' ? await placeOwnerWithPlan(context.id, now) : null;
   const seenSet = new Set([...seen, ...inList]);
-  // D240: what this list already shows: a business at most twice and never twice in a row,
-  // and one large ad per list.
+  // D240: what this list already shows: a business at most twice and never twice in a row.
   const placed = inList.length
     ? await db.ad.findMany({
         where: { id: { in: inList } },
-        select: { id: true, accountId: true, template: true, mediaId: true },
+        select: { id: true, accountId: true },
       })
     : [];
   const placedById = new Map(placed.map((a) => [a.id, a]));
   const perBusiness = new Map<string, number>();
   for (const a of placed) perBusiness.set(a.accountId, (perBusiness.get(a.accountId) ?? 0) + 1);
   const lastBusiness = placedById.get(inList[inList.length - 1] ?? '')?.accountId ?? null;
-  const largeLeft =
-    AD_LARGE_IN_LIST -
-    placed.filter((a) => isLargeAd({ template: a.template, hasImage: !!a.mediaId })).length;
 
   let hidden = new Set<string>();
   let liked = new Set<string>();
@@ -388,6 +367,22 @@ export async function pickAdsFor(
   }
 
   const inListSet = new Set(inList);
+  // D265 (owner): on the page of a place whose business has a current plan, show ALL of that
+  // business's live ads (the page is theirs): whatever their kind, however many (the plan's
+  // live limit already applies), oldest first, without the per-list variety limits, the
+  // phone's cooldown or area targeting (the reader is standing at the place). Still left out:
+  // a business the reader marked Not interested, 21+ ads for guests, and ads already in the list.
+  if (onlyAccount) {
+    const own = all.filter(
+      (ad) =>
+        ad.accountId === onlyAccount &&
+        !hidden.has(ad.accountId) &&
+        !(ad.adultsOnly && !reader.userId) &&
+        !inListSet.has(ad.id),
+    );
+    return handOut(reader, own.slice(0, count + extra), now, zip ?? '');
+  }
+  if (count <= 0) return []; // only a business's own page has anything to show with no slots
   const allowed = all.filter(
     (ad) =>
       !inListSet.has(ad.id) &&
@@ -406,7 +401,6 @@ export async function pickAdsFor(
 
   // D260: pacing by area over each ad's whole run: how often it was served in the reader's
   // ZIP per day it has been live. Ads behind the others there catch up; ads ahead ease off.
-  const day = new Date(`${localDayHour(now).day}T00:00:00Z`);
   const zipKey = zip ?? '';
   const served = await db.adServeStats.groupBy({
     by: ['adId'],
@@ -428,7 +422,6 @@ export async function pickAdsFor(
         weight: pace * (isBoosted ? boost : 1) * ad.tierWeight * (ad.promoted ? promotedWeight : 1),
         boosted: isBoosted,
         group: ad.accountId,
-        large: ad.large,
       };
     });
   const maxBoosted = Math.ceil((count * sharePercent) / 100);
@@ -439,13 +432,7 @@ export async function pickAdsFor(
   if (!inList.length) {
     const paidFresh = eligible.filter(isPaid);
     first.push(
-      ...weightedPick(
-        toPool(paidFresh.length ? paidFresh : recent.filter(isPaid)),
-        1,
-        1,
-        rand,
-        Math.max(0, largeLeft),
-      ),
+      ...weightedPick(toPool(paidFresh.length ? paidFresh : recent.filter(isPaid)), 1, 1, rand),
     );
   }
   const firstBusiness = new Set(first.map((a) => a.accountId));
@@ -456,26 +443,35 @@ export async function pickAdsFor(
       count - first.length,
       maxBoosted,
       rand,
-      Math.max(0, largeLeft - first.filter((a) => a.large).length),
     ),
   ];
   if (picked.length < count && recent.length) {
-    // The same variety rules: other businesses than the ones just picked, and the large-ad
-    // allowance that's left.
+    // The same variety rules: other businesses than the ones just picked.
     const used = new Set(picked.map((a) => a.accountId));
-    const largeUsed = picked.filter((a) => a.large).length;
     picked.push(
       ...weightedPick(
         toPool(recent.filter((ad) => !used.has(ad.accountId))),
         count - picked.length,
         count,
         rand,
-        Math.max(0, largeLeft - largeUsed),
       ),
     );
   }
 
-  // D260: count what was handed out, by day and the reader's ZIP (counts only).
+  return handOut(reader, picked, now, zipKey);
+}
+
+/**
+ * Counts what is handed out (D260) and shapes the ads for the phone.
+ */
+async function handOut(
+  reader: AdReader,
+  picked: LiveAd[],
+  now: Date,
+  zipKey: string,
+): Promise<AdCard[]> {
+  const day = new Date(`${localDayHour(now).day}T00:00:00Z`);
+  // D260: by day and the reader's ZIP (counts only).
   if (picked.length) {
     await db.$executeRaw`
       INSERT INTO "AdServeStats" ("adId", day, zip, serves)
@@ -492,7 +488,6 @@ export async function pickAdsFor(
   const myChoice = new Map(mine.map((m) => [m.adId, m.choice]));
   return picked.map((ad) => ({
     id: ad.id,
-    template: ad.template,
     headline: ad.headline,
     body: ad.body,
     imageUrl: ad.mediaId ? signedAdImageUrl(ad.mediaId, now) : null,

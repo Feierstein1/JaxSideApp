@@ -171,7 +171,9 @@ export function EventCard({ e, showDate = false }: { e: EventCardView; showDate?
           stroke={e.happeningNow ? DARK.accent : undefined}
           style={{ padding: SPACE.md, flexDirection: 'row', gap: SPACE.md }}
         >
-          {/* D253 (owner): a flyer runs down the card's whole left side; a photo stays a square. */}
+          {/* D265 (owner): the one picture is always shown whole (never cropped, dark around it). A
+              flyer runs down the card's whole left side; a square or wide photo is a neat square,
+              centered beside the details. */}
           {e.imageUrl ? (
             // D253: the picture opens whole on its own; the rest of the card opens the event.
             <Pressable
@@ -179,27 +181,27 @@ export function EventCard({ e, showDate = false }: { e: EventCardView; showDate?
               accessibilityLabel={`${e.title}: picture, tap to see it full screen`}
               onPress={() => setViewing(true)}
               hitSlop={4}
-              style={flyer ? { alignSelf: 'stretch' } : undefined}
+              style={flyer ? { alignSelf: 'stretch' } : { alignSelf: 'center' }}
             >
               <Image
                 source={{ uri: photoUri(e.imageUrl) }}
                 style={
                   flyer
                     ? {
-                        width: 84,
+                        width: 96,
                         flex: 1,
-                        minHeight: 112,
+                        minHeight: 120,
                         borderRadius: RADIUS.md,
                         backgroundColor: DARK.raised,
                       }
                     : {
-                        width: 72,
-                        height: 72,
+                        width: 84,
+                        height: 84,
                         borderRadius: RADIUS.md,
                         backgroundColor: DARK.raised,
                       }
                 }
-                resizeMode="cover"
+                resizeMode="contain"
                 accessibilityIgnoresInvertColors
               />
             </Pressable>
@@ -255,7 +257,9 @@ export function EventCard({ e, showDate = false }: { e: EventCardView; showDate?
       </Pressable>
       {e.imageUrl ? (
         <PhotoViewer
-          photos={[{ id: e.id, url: e.imageUrl, width: 1, height: 1 }]}
+          photos={[
+            { id: e.id, url: e.imageUrl, width: e.imageWidth ?? 1, height: e.imageHeight ?? 1 },
+          ]}
           start={viewing ? 0 : null}
           onClose={() => setViewing(false)}
         />

@@ -53,6 +53,13 @@ export const EVENT_IMAGES_MAX = 6;
 export const EVENT_FLYERS_MAX = 2;
 export const EVENT_IMAGE_KINDS = ['flyer', 'photo'] as const;
 export type EventImageKind = (typeof EVENT_IMAGE_KINDS)[number];
+
+/**
+ * D265: an event has one picture, whatever it was saved as. It is a flyer when it is clearly taller
+ * than wide (the card runs it down its left side), otherwise a photo (a neat centered square).
+ */
+export const pictureKind = (width: number, height: number): EventImageKind =>
+  width > 0 && height / width >= 1.2 ? 'flyer' : 'photo';
 /** The event area for its chat: a circle around the pin. */
 export const EVENT_CHAT_RADIUS = { min: 50, default: 150, max: 1600 } as const;
 /** A session may last at most a day (longer events are several sessions). */
@@ -295,8 +302,11 @@ export interface EventCard {
   host: EventHost;
   /** The first picture (a signed link that works for an hour), if any. */
   imageUrl: string | null;
-  /** D253: whether that picture is a flyer (the card shows a flyer down its whole left side). */
+  /** D265: whether that picture is a flyer or a photo, by its shape (see `pictureKind`). */
   imageKind: EventImageKind | null;
+  /** The picture's size in pixels, so it is shown whole (null when there is no picture). */
+  imageWidth: number | null;
+  imageHeight: number | null;
   following: boolean;
   cancelled: boolean;
   /** Started and not yet over. */

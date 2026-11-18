@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { seedFrom, seeded, type AdTemplateKind } from '../ads';
+import { seedFrom, seeded } from '../ads';
 import type { EventVenuePlace } from './events';
 import { locationReadingSchema } from './location';
 
@@ -25,20 +25,23 @@ export const AD_SEEN_MAX = 200;
 export const AD_IN_LIST_MAX = 60;
 /** D240: a business's ads in one list (discussion or feed), at most. */
 export const AD_PER_BUSINESS_IN_LIST = 2;
-/** D240: large ads (Feature, or Post with a picture) in one list, at most. */
-export const AD_LARGE_IN_LIST = 1;
 
 export const adSlotsRequestSchema = z.strictObject({
   reading: locationReadingSchema,
   context: adContextSchema,
   /** How many slots the phone wants to fill (the slots on the page it is showing). */
-  count: z.number().int().min(1).max(AD_REQUEST_MAX),
+  count: z.number().int().min(0).max(AD_REQUEST_MAX),
+  /**
+   * D265: extra ads for the end of a place's list, asked for once the whole list has loaded.
+   * Honored only on the page of a place whose business has a current plan, where all of its
+   * ads are shown; ignored everywhere else.
+   */
+  extra: z.number().int().min(0).max(AD_REQUEST_MAX).default(0),
   /** Ads shown on this phone within the cooldown (ads.cooldownHours): never picked again. */
   seen: z.array(z.uuid()).max(AD_SEEN_MAX).default([]),
   /**
    * D240: the ads already placed in this list (this discussion or feed), in the order they sit.
-   * The server then keeps one large ad per list, a business at most twice and never twice in a
-   * row. Older apps don't send it (each request is treated as a fresh list).
+   * The server then keeps a business at most twice and never twice in a row. Older apps don't send it (each request is treated as a fresh list).
    */
   inList: z.array(z.uuid()).max(AD_IN_LIST_MAX).default([]),
 });
@@ -57,7 +60,6 @@ export const adInterestSchema = z.strictObject({
 /** An ad as the phone shows it. Never says who at the business made it. */
 export interface AdCard {
   id: string;
-  template: AdTemplateKind;
   headline: string;
   body: string | null;
   /** A signed link (relative) to the ad's image or GIF, if it has one. */
@@ -96,6 +98,8 @@ export interface AdLayout {
 
 export interface AdsResponse {
   ads: AdCard[];
+  /** D265: this is a business's own place page and `ads` are all of its ads (see `extra`). */
+  showcase?: boolean;
   layout: AdLayout;
 }
 
@@ -150,7 +154,3 @@ export function discussionAdSlots(opts: { from: number; to: number; complete: bo
   if (opts.complete && n - last >= 2) out.push(n);
   return out.filter((at) => at > opts.from);
 }
-
-/** D240: a large ad takes real space in a list: a Feature, or a Post with a picture. */
-export const isLargeAd = (ad: { template: AdTemplateKind; hasImage: boolean }) =>
-  ad.template === 'FEATURE' || (ad.template === 'POST' && ad.hasImage);

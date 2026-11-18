@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
 import {
   DARK,
   dateLabel,
@@ -27,8 +26,8 @@ type Choice = 'INTERESTED' | 'NOT_INTERESTED' | null;
 
 /**
  * D206 / B3.6: an ad between posts. Always labelled "Sponsored" with the place's name, so it
- * can't pass for a post. The template sets the picture: a small one beside the text (banner),
- * one under the text (post-style), or a large one on top (feature). Signed-in people can mark
+ * can't pass for a post. D265: one layout for every ad: the picture (if it has one, a flyer or a
+ * square) on top, shown whole, then the text. Signed-in people can mark
  * it Interested (more from that business) or Not interested (hides the business's ads for a
  * while); either folds the card into a one-line note with Undo. Guests just see it.
  */
@@ -104,15 +103,13 @@ export function AdCard({ ad }: { ad: Ad }) {
   }
 
   const image = ad.imageUrl ? { uri: photoUri(ad.imageUrl) } : null;
-  const banner = ad.template === 'BANNER';
   // Owner: the whole picture always shows (made smaller if need be, never cropped), at its own
-  // shape; very tall flyers are held to twice as tall as wide and shown whole inside that.
+  // shape. D265: a tall flyer is held to 4:5 (dark around it) so one ad never fills the screen;
+  // tap it to see the whole flyer full screen.
   const ratio =
     ad.imageWidth && ad.imageHeight
-      ? Math.min(2, Math.max(0.5, ad.imageWidth / ad.imageHeight))
-      : ad.template === 'FEATURE'
-        ? 16 / 9
-        : 4 / 3;
+      ? Math.min(2, Math.max(0.8, ad.imageWidth / ad.imageHeight))
+      : 1;
   /** Tap the picture to see it full screen, like other pictures in the app. */
   const picture = (style: object) => (
     <Pressable
@@ -144,7 +141,7 @@ export function AdCard({ ad }: { ad: Ad }) {
           overflow: 'hidden',
         }}
       >
-        {image && ad.template === 'FEATURE' ? picture({ width: '100%', aspectRatio: ratio }) : null}
+        {image ? picture({ width: '100%', aspectRatio: ratio }) : null}
         <View style={{ padding: SPACE.md, gap: 6 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={{ color: DARK.textMuted, fontSize: 12, fontWeight: '700' }}>
@@ -184,11 +181,7 @@ export function AdCard({ ad }: { ad: Ad }) {
               {/* D262 (hub): at most 5 lines; older text past that is folded onto the fifth. */}
               {ad.body ? <Text style={{ color: DARK.text }}>{fitLines(ad.body)}</Text> : null}
             </View>
-            {image && banner ? picture({ width: 72, height: 72, borderRadius: RADIUS.sm }) : null}
           </View>
-          {image && ad.template === 'POST'
-            ? picture({ width: '100%', aspectRatio: ratio, borderRadius: RADIUS.sm })
-            : null}
           {ad.event?.hostedAt ? (
             // D240: an event at a business that confirmed it: the business stands out.
             <HostedAt

@@ -134,7 +134,8 @@ describe('which ads a reader gets (D206)', () => {
     const r = await ask(user.token);
     expect(r.status).toBe(200);
     expect(r.body.ads.map((a: { id: string }) => a.id).sort()).toEqual([city.id, here.id].sort());
-    expect(r.body.ads[0]).toMatchObject({ template: 'BANNER', myChoice: null });
+    expect(r.body.ads[0]).toMatchObject({ myChoice: null });
+    expect(r.body.ads[0].template).toBeUndefined(); // D265: one layout, nothing to choose
     expect(r.body.layout).toEqual({ first: 4, every: 8, cooldownHours: 3 });
     expect(JSON.stringify(r.body)).not.toContain('owner@'); // never who made it
   });
@@ -399,16 +400,10 @@ describe('variety in one list (D240)', () => {
       inList,
     );
 
-  it('one large ad per list: never two in a batch, none once the list has one', async () => {
-    const big1 = await ad(owner.id, cafe, { template: 'FEATURE', headline: 'Big one' });
+  it('pictures are not limited: several big ads can share a list (D265)', async () => {
+    await ad(owner.id, cafe, { template: 'FEATURE', headline: 'Big one' });
     await ad(other.id, bar, { template: 'FEATURE', headline: 'Big two' });
-    for (let i = 0; i < 10; i++) {
-      resetAdCache();
-      const got = await pick([]);
-      expect(got.filter((a) => a.template === 'FEATURE').length).toBeLessThanOrEqual(1);
-    }
-    resetAdCache();
-    expect((await pick([big1.id])).filter((a) => a.template === 'FEATURE')).toEqual([]);
+    expect((await pick([])).map((a) => a.headline).sort()).toEqual(['Big one', 'Big two']);
   });
 
   it('a business at most twice per list, and never right after itself', async () => {
@@ -495,5 +490,84 @@ describe('fair rotation by area, paid first slot (D260)', () => {
       where: { adId_day_zip: { adId: a.id, day: today(), zip: cafeZip } },
     });
     expect(row.serves).toBe(2);
+  });
+});
+
+describe("a business's own place page shows all of its ads (D265)", () => {
+  const atCafe = (token: string, body: object = {}) =>
+    ask(token, { context: { kind: 'place', id: cafe }, count: 2, extra: 3, ...body });
+  const heads = (r: { body: { ads: { headline: string }[] } }) => r.body.ads.map((a) => a.headline);
+
+  async function fourAds() {
+    const t = Date.now();
+    await ad(owner.id, cafe, {
+      headline: 'One',
+      template: 'BANNER',
+      approvedAt: new Date(t - 4000),
+    });
+    await ad(owner.id, cafe, { headline: 'Two', template: 'POST', approvedAt: new Date(t - 3000) });
+    await ad(owner.id, cafe, {
+      headline: 'Three',
+      template: 'FEATURE',
+      approvedAt: new Date(t - 2000),
+    });
+    await ad(owner.id, cafe, { headline: 'Four', approvedAt: new Date(t - 1000) });
+    await ad(other.id, bar, { headline: 'Rival' });
+  }
+
+  it('returns every ad of that business, whatever its kind, and no other business', async () => {
+    await fourAds();
+    const r = await atCafe(user.token);
+    expect(heads(r)).toEqual(['One', 'Two', 'Three', 'Four']);
+    expect(r.body.showcase).toBe(true);
+  });
+
+  it('asks for no more than the slots until the list is complete (extra 0)', async () => {
+    await fourAds();
+    expect(heads(await atCafe(user.token, { extra: 0, count: 2 }))).toEqual(['One', 'Two']);
+  });
+
+  it('ignores the per-list limits, the cooldown and ZIP targeting', async () => {
+    const one = await ad(owner.id, cafe, {
+      headline: 'One',
+      approvedAt: new Date(Date.now() - 3000),
+    });
+    const two = await ad(owner.id, cafe, {
+      headline: 'Two',
+      approvedAt: new Date(Date.now() - 2000),
+    });
+    await ad(owner.id, cafe, {
+      headline: 'Three',
+      zips: ['00000'],
+      approvedAt: new Date(Date.now() - 1000),
+    });
+    // Two already in this list and all of them just seen: the third still comes (no "twice" cap).
+    const r = await atCafe(user.token, { seen: [one.id, two.id], inList: [one.id, two.id] });
+    expect(heads(r)).toEqual(['Three']);
+    const fresh = await atCafe(user.token, { seen: [one.id, two.id] });
+    expect(heads(fresh)).toEqual(['One', 'Two', 'Three']);
+  });
+
+  it('still honors Not interested, and keeps 21+ ads from guests', async () => {
+    const a = await ad(owner.id, cafe, { headline: 'One' });
+    await call(interestPOST as H, 'POST', {
+      token: user.token,
+      id: a.id,
+      body: { choice: 'NOT_INTERESTED' },
+    });
+    expect((await atCafe(user.token)).body.ads).toEqual([]);
+  });
+
+  it('is for the own page only: elsewhere extra is ignored and nothing is flagged', async () => {
+    await fourAds();
+    const feed = await ask(user.token, { count: 1, extra: 3 });
+    expect(feed.body.ads.length).toBeLessThanOrEqual(1);
+    expect(feed.body.showcase).toBe(false);
+    // A place whose business has no plan gets the usual mix, not a showcase.
+    await db.subscription.deleteMany({ where: { accountId: other.id } });
+    resetAdCache();
+    const bare = await ask(user.token, { context: { kind: 'place', id: bar }, count: 1, extra: 3 });
+    expect(bare.body.showcase).toBe(false);
+    expect(bare.body.ads.length).toBeLessThanOrEqual(1);
   });
 });

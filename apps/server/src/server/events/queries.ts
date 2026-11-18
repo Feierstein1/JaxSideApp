@@ -7,6 +7,7 @@ import {
   localToUtc,
   METERS_PER_MILE,
   milesToMeters,
+  pictureKind,
   type EventCard,
   type EventCategory,
   type EventDay,
@@ -124,6 +125,8 @@ type CardRow = {
   host_kind: 'COMMUNITY' | 'BUSINESS' | 'ORGANIZER';
   image_id: string | null;
   image_kind: 'FLYER' | 'PHOTO' | null;
+  image_width: number | null;
+  image_height: number | null;
   following: boolean;
   status: string;
   featured: boolean;
@@ -154,6 +157,10 @@ function selectCards(viewerId: string, at: GeoPoint, where: Prisma.Sql, tail: Pr
              ORDER BY i.position, i.id LIMIT 1) AS image_id,
            (SELECT i.kind::text FROM "EventImage" i WHERE i."eventId" = e.id
              ORDER BY i.position, i.id LIMIT 1) AS image_kind,
+           (SELECT i.width FROM "EventImage" i WHERE i."eventId" = e.id
+             ORDER BY i.position, i.id LIMIT 1) AS image_width,
+           (SELECT i.height FROM "EventImage" i WHERE i."eventId" = e.id
+             ORDER BY i.position, i.id LIMIT 1) AS image_height,
            EXISTS (SELECT 1 FROM "EventFollow" f
                    WHERE f."eventId" = e.id AND f."userId" = ${viewerId}::uuid) AS following,
            e.status::text AS status,
@@ -209,7 +216,16 @@ function toCard(r: CardRow, now = new Date()): EventCard {
       placeCategory: host === 'business' ? r.host_place_category : null,
     },
     imageUrl: r.image_id ? signedEventImageUrl(r.image_id, now) : null,
-    imageKind: r.image_kind === 'FLYER' ? 'flyer' : r.image_kind === 'PHOTO' ? 'photo' : null,
+    // D265: one picture per event; flyer or photo by its shape (the website saves them all as FLYER).
+    imageKind: !r.image_id
+      ? null
+      : r.image_width && r.image_height
+        ? pictureKind(r.image_width, r.image_height)
+        : r.image_kind === 'PHOTO'
+          ? 'photo'
+          : 'flyer',
+    imageWidth: r.image_id ? (r.image_width ?? null) : null,
+    imageHeight: r.image_id ? (r.image_height ?? null) : null,
     following: r.following,
     cancelled: r.status === 'CANCELLED',
     happeningNow: r.status === 'APPROVED' && r.starts_at <= now && r.ends_at > now,
@@ -362,8 +378,9 @@ export async function eventDetail(
     }),
     db.eventImage.findMany({
       where: { eventId: id },
-      // D253: in the owner's order (the app picks the first flyer for the top).
+      // D264 / D265: one picture per event; older events may still have more: the first only.
       orderBy: [{ position: 'asc' }, { id: 'asc' }],
+      take: 1,
     }),
     db.eventFollow.count({ where: { eventId: id } }),
     getConfig('events.followerCountMin'),
@@ -384,7 +401,7 @@ export async function eventDetail(
     })),
     images: images.map((i) => ({
       id: i.id,
-      kind: i.kind === 'FLYER' ? ('flyer' as const) : ('photo' as const),
+      kind: pictureKind(i.width, i.height),
       url: signedEventImageUrl(i.id, now),
       width: i.width,
       height: i.height,

@@ -179,12 +179,42 @@ describe('flyers (D242)', () => {
     const read = async () =>
       (await call(detailPOST as H, 'POST', { token, id, body: { reading: reading() } })).body.event;
     let e = await read();
-    expect(e.images.map((i: { id: string }) => i.id)).toEqual([flyer.id, photo.id]);
+    // D265: one picture per event; an older event with more shows only the first.
+    expect(e.images.map((i: { id: string }) => i.id)).toEqual([flyer.id]);
     expect(e.imageUrl).toContain(flyer.id); // the first flyer by default
     // "Use as calendar picture" on the website moves a picture first (positions can go negative).
     await db.eventImage.update({ where: { id: photo.id }, data: { position: -1 } });
     e = await read();
     expect(e.imageUrl).toContain(photo.id);
+  });
+
+  it('tells a flyer from a photo by its shape, and gives the card the size (D265)', async () => {
+    const make = (n: number, width: number, height: number) =>
+      db.eventImage.create({
+        data: {
+          eventId: ids[n]!,
+          kind: 'FLYER', // the website saves every picture as FLYER now
+          storageKey: `events/shape-${n}-${ids[n]}.jpg`,
+          mimeType: 'image/jpeg',
+          width,
+          height,
+          bytes: 1000,
+          position: 0,
+        },
+      });
+    const ids = [await event(), await event(), await event()];
+    await make(0, 1080, 1350); // tall: a flyer
+    await make(1, 1000, 1000); // square: a photo
+    await make(2, 1600, 900); // wide: a photo
+    const u = await createTestUser('reader_shape', { emailVerifiedAt: new Date() });
+    const token = (await createSession(u.id, 'MOBILE')).token;
+    const read = async (id: string) =>
+      (await call(detailPOST as H, 'POST', { token, id, body: { reading: reading() } })).body.event;
+    const [a, b, c] = await Promise.all(ids.map(read));
+    expect([a.imageKind, b.imageKind, c.imageKind]).toEqual(['flyer', 'photo', 'photo']);
+    expect(a).toMatchObject({ imageWidth: 1080, imageHeight: 1350 });
+    expect(a.images[0]).toMatchObject({ kind: 'flyer', width: 1080, height: 1350 });
+    expect(b.images[0].kind).toBe('photo');
   });
 
   // 🔒 At most 2 flyers and 6 photos, whoever uploads them (the database checks too).

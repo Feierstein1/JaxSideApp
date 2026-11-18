@@ -21,12 +21,19 @@ export const adLayout = () => layout;
  * `inList`: the ads already in this list, in order (D240: the server keeps one large ad per
  * list, and a business at most twice and never twice in a row).
  */
-export async function fetchAds(context: AdContext, count: number, inList: string[] = []) {
+export async function fetchAds(
+  context: AdContext,
+  count: number,
+  inList: string[] = [],
+  /** D265: extra ads for the end of a business's own place page (the server decides). */
+  extra = 0,
+) {
   const reading = await getFreshReading();
   const res = await api.post<AdsResponse>('/api/v1/ads', {
     reading,
     context,
     count,
+    ...(extra ? { extra } : {}),
     seen: await recentlyShown(),
     ...(inList.length ? { inList: inList.slice(-60) } : {}),
   });
@@ -34,7 +41,7 @@ export async function fetchAds(context: AdContext, count: number, inList: string
     layout = res.layout;
     setCooldownHours(res.layout.cooldownHours);
   }
-  return res.ads;
+  return { ads: res.ads, showcase: res.showcase === true };
 }
 
 /** D216: the link button was used (after "You're leaving JaxSide"); never bothers anyone. */

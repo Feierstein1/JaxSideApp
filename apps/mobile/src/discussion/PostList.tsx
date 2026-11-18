@@ -70,6 +70,8 @@ export function PostList({
   const [ads, setAds] = useState<Record<number, Ad>>({});
   /** D240: the ads already placed, by position (the server needs them for variety). */
   const placed = useRef<Record<number, string>>({});
+  /** D265: a business's remaining ads at the end of its own place page (all of them are shown). */
+  const [tail, setTail] = useState<Ad[]>([]);
   const adContextKey = adContext ? JSON.stringify(adContext) : null;
 
   /**
@@ -79,19 +81,24 @@ export function PostList({
   const placeAds = useCallback(
     async (from: number, to: number, forRequest: number, complete: boolean) => {
       if (!adContextKey) return;
+      const context = JSON.parse(adContextKey) as AdContext;
       const slots = discussionAdSlots({ from, to, complete });
-      if (!slots.length) return;
+      // D265: once a place's list is complete, ask for the business's ads that had no slot.
+      const wantTail = complete && context.kind === 'place';
+      if (!slots.length && !wantTail) return;
       if (from === 0) placed.current = {};
       const inList = Object.entries(placed.current)
         .sort(([a], [b]) => Number(a) - Number(b))
         .map(([, id]) => id);
       try {
-        const got = await fetchAds(
-          JSON.parse(adContextKey) as AdContext,
+        const { ads: got, showcase } = await fetchAds(
+          context,
           Math.min(slots.length, 10),
           inList,
+          wantTail ? 5 : 0,
         );
         if (forRequest !== req.current || !got.length) return;
+        if (showcase && got.length > slots.length) setTail(got.slice(slots.length));
         slots.forEach((after, i) => {
           if (got[i]) placed.current[after] = got[i].id;
         });
@@ -128,6 +135,7 @@ export function PostList({
         });
         if (!after) {
           setAds({});
+          setTail([]);
           placed.current = {};
         }
         setCursor(page.nextCursor);
@@ -155,8 +163,10 @@ export function PostList({
       const ad = ads[i + 1];
       if (ad) out.push({ kind: 'ad', ad, after: i + 1 });
     });
+    // D265: the rest of a business's ads, one after another below its posts.
+    tail.forEach((ad, i) => out.push({ kind: 'ad', ad, after: -(i + 1) }));
     return out;
-  }, [posts, ads]);
+  }, [posts, ads, tail]);
 
   // FlatList needs the same callback for its whole life.
   const viewabilityPairs = useRef([
@@ -187,6 +197,19 @@ export function PostList({
     }, [fetchPage]),
   );
 
+  const empty = (
+    <EmptyState
+      icon={emptyIcon}
+      title={emptyTitle}
+      body={emptyBody}
+      action={
+        emptyAction
+          ? { label: emptyAction.label, onPress: emptyAction.onPress, icon: 'add' }
+          : undefined
+      }
+    />
+  );
+
   return (
     <>
       <FlatList
@@ -208,6 +231,7 @@ export function PostList({
         ListHeaderComponent={
           <>
             {header}
+            {posts.length === 0 && tail.length > 0 && state === 'idle' && !error ? empty : null}
             {error ? (
               <ErrorState message={error} onRetry={() => void fetchPage('loading')} />
             ) : null}
@@ -215,16 +239,7 @@ export function PostList({
         }
         ListEmptyComponent={
           state === 'idle' && !error ? (
-            <EmptyState
-              icon={emptyIcon}
-              title={emptyTitle}
-              body={emptyBody}
-              action={
-                emptyAction
-                  ? { label: emptyAction.label, onPress: emptyAction.onPress, icon: 'add' }
-                  : undefined
-              }
-            />
+            empty
           ) : state === 'loading' ? (
             // D78: placeholders shaped like posts instead of a spinner.
             <View>
