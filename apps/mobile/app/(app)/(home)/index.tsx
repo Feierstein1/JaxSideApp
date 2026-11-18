@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { LayoutAnimation, Pressable, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { useCallback, useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { router } from 'expo-router';
 import { DARK, type PostTypeFilter } from '@jax/shared';
 import { Text } from '@/text';
@@ -58,34 +57,6 @@ export default function HomeFeed() {
     const t = setTimeout(() => setQ(typed.trim().length >= 2 ? typed.trim() : ''), 400);
     return () => clearTimeout(t);
   }, [typed]);
-  // D267: the poll, search, tabs, Chat and reminders fold away as you scroll down the feed, so
-  // the posts get the screen. They come back at the top, on the handle, or on a quick flick up.
-  const [folded, setFolded] = useState(false);
-  const scroll = useRef({ y: 0, t: 0 });
-  const searching = typed.trim().length > 0;
-  const setFold = useCallback((next: boolean) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setFolded(next);
-  }, []);
-  const onScrollY = useCallback(
-    (y: number) => {
-      const now = Date.now();
-      const { y: lastY, t: lastT } = scroll.current;
-      scroll.current = { y, t: now };
-      const dt = now - lastT;
-      const speed = dt > 0 && dt < 200 ? (y - lastY) / dt : 0; // px per ms; negative = up
-      if (y < 24) {
-        if (folded) setFold(false);
-      } else if (!folded && y > 140 && speed > 0.15 && !searching) {
-        setFold(true);
-      } else if (folded && speed < -1.4) {
-        setFold(false); // only a quick flick up brings it back
-      }
-    },
-    [folded, searching, setFold],
-  );
-  const hidden = folded && !searching;
-
   const load = useCallback(
     async (cursor?: string) => {
       // D140: Home is always newest first (no Latest / Top switch).
@@ -127,41 +98,46 @@ export default function HomeFeed() {
   // D78 / D79: notices and the NEAR YOU line sit at the top of the list and scroll away with
   // it, so the feed gets the screen; where you are, search and the type tabs stay put.
   const listHeader = (
-    <View style={{ paddingHorizontal: 12, paddingTop: 0, paddingBottom: 2, gap: 6 }}>
-      {guest?.expiringSoon ? (
-        <Banner icon="time-outline" style={{ marginBottom: 0 }}>
-          {`Your guest session ends in ${guest.daysLeft} ${guest.daysLeft === 1 ? 'day' : 'days'} unless you use JaxSide before then.`}
-        </Banner>
-      ) : null}
-      {/* D129 / D140: the art deco heading, centered, with the refresh button at the far
+    <View style={{ paddingTop: 0, paddingBottom: 2, gap: 6 }}>
+      {/* D267: Chat and the Coming up reminders scroll away with the feed (the top block stays). */}
+      <ChatBar reloadKey={String(reloads)} />
+      {q ? null : <ComingUpBar reloadKey={String(reloads)} />}
+      <View style={{ paddingHorizontal: 12, gap: 6 }}>
+        {guest?.expiringSoon ? (
+          <Banner icon="time-outline" style={{ marginBottom: 0 }}>
+            {`Your guest session ends in ${guest.daysLeft} ${guest.daysLeft === 1 ? 'day' : 'days'} unless you use JaxSide before then.`}
+          </Banner>
+        ) : null}
+        {/* D129 / D140: the art deco heading, centered, with the refresh button at the far
           right of the same line (an equal space on the left keeps the title centered). */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -2 }}>
-        <View style={{ width: 30 }} />
-        <View style={{ flex: 1 }}>
-          <SectionTitle center>Near you</SectionTitle>
-        </View>
-        <View style={{ width: 30 }}>
-          {/* D242: how many posts are in the feed, just left of the refresh button; placed on
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -2 }}>
+          <View style={{ width: 30 }} />
+          <View style={{ flex: 1 }}>
+            <SectionTitle center>Near you</SectionTitle>
+          </View>
+          <View style={{ width: 30 }}>
+            {/* D242: how many posts are in the feed, just left of the refresh button; placed on
               its own so it never moves the centered title (the layout from before D242). */}
-          {total !== null ? (
-            <Text
-              accessibilityLabel={`${total} ${total === 1 ? 'post' : 'posts'} near you`}
-              numberOfLines={1}
-              style={{
-                position: 'absolute',
-                right: 36,
-                top: 6,
-                width: 96,
-                textAlign: 'right',
-                fontSize: 13,
-                fontWeight: '700',
-                color: DARK.accent,
-              }}
-            >
-              {total} {total === 1 ? 'post' : 'posts'}
-            </Text>
-          ) : null}
-          <RefreshButton size={30} onPress={() => void refresh()} busy={refreshing} />
+            {total !== null ? (
+              <Text
+                accessibilityLabel={`${total} ${total === 1 ? 'post' : 'posts'} near you`}
+                numberOfLines={1}
+                style={{
+                  position: 'absolute',
+                  right: 36,
+                  top: 6,
+                  width: 96,
+                  textAlign: 'right',
+                  fontSize: 13,
+                  fontWeight: '700',
+                  color: DARK.accent,
+                }}
+              >
+                {total} {total === 1 ? 'post' : 'posts'}
+              </Text>
+            ) : null}
+            <RefreshButton size={30} onPress={() => void refresh()} busy={refreshing} />
+          </View>
         </View>
       </View>
     </View>
@@ -174,44 +150,20 @@ export default function HomeFeed() {
       {/* D132: tighter spacing so the posts start higher. */}
       <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, paddingTop: 4, gap: 5 }}>
         {/* D126: the poll, or once answered Citywide topics (hidden while searching). */}
-        {q || hidden ? null : <HomeSlot reloadKey={String(reloads)} />}
+        {q ? null : <HomeSlot reloadKey={String(reloads)} />}
         <AreaStrip area={area} label="Your area" />
-        {hidden ? null : (
-          <>
-            <SearchField
-              label="Search posts"
-              placeholder="Search posts or @username"
-              value={typed}
-              onChangeText={setTyped}
-              maxLength={50}
-              compact
-            />
-            <PostTypeTabs value={type} onChange={setType} />
-          </>
-        )}
+        <SearchField
+          label="Search posts"
+          placeholder="Search posts or @username"
+          value={typed}
+          onChangeText={setTyped}
+          maxLength={50}
+          compact
+        />
+        <PostTypeTabs value={type} onChange={setType} />
       </View>
       {/* D127: the icon's stepped edge. */}
       <StepEdge />
-      {/* D267: the handle that folds the section above and the two bars below. */}
-      {searching ? null : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={hidden ? 'Show search and reminders' : 'Hide search and reminders'}
-          onPress={() => setFold(!folded)}
-          hitSlop={6}
-          style={{ alignItems: 'center', paddingVertical: 2, backgroundColor: DARK.page }}
-        >
-          <Ionicons name={hidden ? 'chevron-down' : 'chevron-up'} size={18} color={DARK.accent} />
-        </Pressable>
-      )}
-      {hidden ? null : (
-        <>
-          {/* D218: JaxSide Chat, only where it is open. */}
-          <ChatBar reloadKey={String(reloads)} />
-          {/* D241: followed events today or tomorrow (a quiet reminder; no phone notifications). */}
-          {q ? null : <ComingUpBar reloadKey={String(reloads)} />}
-        </>
-      )}
       <PostList
         load={load}
         reloadKey={`${reloads}:${q}:${type}`}
@@ -219,7 +171,6 @@ export default function HomeFeed() {
         // D206: ads between posts (not in search results).
         adContext={q ? undefined : { kind: 'feed' }}
         header={listHeader}
-        onScrollY={onScrollY}
         emptyIcon={q ? 'search-outline' : type === 'voice' ? 'mic-outline' : 'chatbubbles-outline'}
         emptyTitle={
           q
