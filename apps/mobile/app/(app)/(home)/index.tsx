@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { LayoutAnimation, Pressable, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { DARK, type PostTypeFilter } from '@jax/shared';
 import { Text } from '@/text';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
+import { markBootReady } from '@/boot';
 import { fetchFeed } from '@/discussion/api';
 import { AreaStrip } from '@/location/AreaLabel';
 import { ChatBar } from '@/chat/ChatBar';
@@ -56,16 +58,48 @@ export default function HomeFeed() {
     const t = setTimeout(() => setQ(typed.trim().length >= 2 ? typed.trim() : ''), 400);
     return () => clearTimeout(t);
   }, [typed]);
+  // D267: the poll, search, tabs, Chat and reminders fold away as you scroll down the feed, so
+  // the posts get the screen. They come back at the top, on the handle, or on a quick flick up.
+  const [folded, setFolded] = useState(false);
+  const scroll = useRef({ y: 0, t: 0 });
+  const searching = typed.trim().length > 0;
+  const setFold = useCallback((next: boolean) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setFolded(next);
+  }, []);
+  const onScrollY = useCallback(
+    (y: number) => {
+      const now = Date.now();
+      const { y: lastY, t: lastT } = scroll.current;
+      scroll.current = { y, t: now };
+      const dt = now - lastT;
+      const speed = dt > 0 && dt < 200 ? (y - lastY) / dt : 0; // px per ms; negative = up
+      if (y < 24) {
+        if (folded) setFold(false);
+      } else if (!folded && y > 140 && speed > 0.15 && !searching) {
+        setFold(true);
+      } else if (folded && speed < -1.4) {
+        setFold(false); // only a quick flick up brings it back
+      }
+    },
+    [folded, searching, setFold],
+  );
+  const hidden = folded && !searching;
+
   const load = useCallback(
     async (cursor?: string) => {
       // D140: Home is always newest first (no Latest / Top switch).
-      const page = await fetchFeed('new', cursor, q || undefined, type);
-      if (!cursor) {
-        setArea(page.area ?? null); // D72: refreshed with the first page
-        setTotal(page.total ?? null);
-        noteListLoad(); // D77: where this list is from
+      try {
+        const page = await fetchFeed('new', cursor, q || undefined, type);
+        if (!cursor) {
+          setArea(page.area ?? null); // D72: refreshed with the first page
+          setTotal(page.total ?? null);
+          noteListLoad(); // D77: where this list is from
+        }
+        return page;
+      } finally {
+        markBootReady(); // D267: the loading screen can go (a failure shows in the list)
       }
-      return page;
     },
     [q, type],
   );
@@ -140,24 +174,44 @@ export default function HomeFeed() {
       {/* D132: tighter spacing so the posts start higher. */}
       <View style={{ backgroundColor: DARK.bar, paddingHorizontal: 12, paddingTop: 4, gap: 5 }}>
         {/* D126: the poll, or once answered Citywide topics (hidden while searching). */}
-        {q ? null : <HomeSlot reloadKey={String(reloads)} />}
+        {q || hidden ? null : <HomeSlot reloadKey={String(reloads)} />}
         <AreaStrip area={area} label="Your area" />
-        <SearchField
-          label="Search posts"
-          placeholder="Search posts or @username"
-          value={typed}
-          onChangeText={setTyped}
-          maxLength={50}
-          compact
-        />
-        <PostTypeTabs value={type} onChange={setType} />
+        {hidden ? null : (
+          <>
+            <SearchField
+              label="Search posts"
+              placeholder="Search posts or @username"
+              value={typed}
+              onChangeText={setTyped}
+              maxLength={50}
+              compact
+            />
+            <PostTypeTabs value={type} onChange={setType} />
+          </>
+        )}
       </View>
       {/* D127: the icon's stepped edge. */}
       <StepEdge />
-      {/* D218: JaxSide Chat, only where it is open. */}
-      <ChatBar reloadKey={String(reloads)} />
-      {/* D241: followed events today or tomorrow (a quiet reminder; no phone notifications). */}
-      {q ? null : <ComingUpBar reloadKey={String(reloads)} />}
+      {/* D267: the handle that folds the section above and the two bars below. */}
+      {searching ? null : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={hidden ? 'Show search and reminders' : 'Hide search and reminders'}
+          onPress={() => setFold(!folded)}
+          hitSlop={6}
+          style={{ alignItems: 'center', paddingVertical: 2, backgroundColor: DARK.page }}
+        >
+          <Ionicons name={hidden ? 'chevron-down' : 'chevron-up'} size={18} color={DARK.accent} />
+        </Pressable>
+      )}
+      {hidden ? null : (
+        <>
+          {/* D218: JaxSide Chat, only where it is open. */}
+          <ChatBar reloadKey={String(reloads)} />
+          {/* D241: followed events today or tomorrow (a quiet reminder; no phone notifications). */}
+          {q ? null : <ComingUpBar reloadKey={String(reloads)} />}
+        </>
+      )}
       <PostList
         load={load}
         reloadKey={`${reloads}:${q}:${type}`}
@@ -165,6 +219,7 @@ export default function HomeFeed() {
         // D206: ads between posts (not in search results).
         adContext={q ? undefined : { kind: 'feed' }}
         header={listHeader}
+        onScrollY={onScrollY}
         emptyIcon={q ? 'search-outline' : type === 'voice' ? 'mic-outline' : 'chatbubbles-outline'}
         emptyTitle={
           q

@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
+import { markBootReady } from '@/boot';
 import { useBadge } from '@/social/badges';
 import { ensureGuide } from '@/guides/guide';
 import { LocationGate } from '@/location/LocationGate';
@@ -105,6 +106,12 @@ export default function AppLayout() {
   useEffect(() => {
     if (isGuest && granted) void ensureGuide('guestWelcome');
   }, [isGuest, granted]);
+
+  // D267: with no location permission Home never loads, so the loading screen can't wait on it.
+  const noPermission = !!permission && !permission.granted;
+  useEffect(() => {
+    if (noPermission) markBootReady();
+  }, [noPermission]);
 
   if (!permission) {
     return (

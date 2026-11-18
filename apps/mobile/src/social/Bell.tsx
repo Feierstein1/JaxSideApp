@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
-import { Text } from '@/text';
 import { useUnreadCount } from './unread';
 
 /**
@@ -41,28 +40,21 @@ export function Bell() {
         color={count ? DARK.accent : DARK.text}
       />
       {count ? (
+        // D267: a plain red dot inside the button (a number hanging off the corner got clipped
+        // by the header). The count is in the accessibility label and on the Notifications page.
         <View
           style={{
             position: 'absolute',
-            // D258: bottom left, so the top of the screen can't cut the number off.
-            bottom: -5,
-            left: -6,
-            minWidth: 19,
-            height: 19,
-            borderRadius: 10,
-            paddingHorizontal: 4,
+            top: 3,
+            right: 3,
+            width: 11,
+            height: 11,
+            borderRadius: 6,
             backgroundColor: DARK.error,
-            borderWidth: 2,
-            borderColor: DARK.bar,
-            alignItems: 'center',
-            justifyContent: 'center',
+            borderWidth: 1.5,
+            borderColor: DARK.raised,
           }}
-        >
-          {/* Black on the light red badge (9:1). */}
-          <Text style={{ color: DARK.onAccent, fontSize: 10.5, fontWeight: '800' }}>
-            {count > 99 ? '99+' : count}
-          </Text>
-        </View>
+        />
       ) : null}
     </Pressable>
   );

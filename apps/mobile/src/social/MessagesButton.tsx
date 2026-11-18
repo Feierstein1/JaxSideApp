@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { DARK } from '@jax/shared';
 import { useAuth } from '@/auth/AuthContext';
-import { Text } from '@/text';
 import { useUnreadMessages } from './messages-unread';
 
 /** D98: the Messages button in the top bar, next to the bell, with an unread badge. */
@@ -30,25 +29,20 @@ export function MessagesButton() {
         color={DARK.accent}
       />
       {count ? (
+        // D267: a plain red dot on the icon's corner (a number was clipped by the header).
         <View
           style={{
             position: 'absolute',
-            // D258: bottom left, so the top of the screen can't cut the number off.
-            bottom: -4,
-            left: 0,
-            minWidth: 18,
-            height: 18,
-            borderRadius: 9,
-            paddingHorizontal: 4,
+            top: -2,
+            right: 3,
+            width: 11,
+            height: 11,
+            borderRadius: 6,
             backgroundColor: DARK.error,
-            alignItems: 'center',
-            justifyContent: 'center',
+            borderWidth: 1.5,
+            borderColor: DARK.bar,
           }}
-        >
-          <Text style={{ color: DARK.text, fontSize: 11, fontWeight: '800' }}>
-            {count > 99 ? '99+' : count}
-          </Text>
-        </View>
+        />
       ) : null}
     </Pressable>
   );

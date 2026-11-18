@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
@@ -18,6 +19,8 @@ import { DialogHost } from '@/dialog';
 import { GuideHost } from '@/guides/guide';
 import { LoadingEmblem } from '@/brand/Emblem';
 import { MaintenanceGate } from '@/maintenance/MaintenanceGate';
+import { BOOT_TIMEOUT_MS, resetBoot, retryBoot, useBoot } from '@/boot';
+import { ErrorState } from '@/ui';
 
 /** D79: navigation colors match the dark theme, so no white flashes between screens. */
 const NAV_THEME = {
@@ -52,10 +55,46 @@ function Loading() {
 
 function RootStack() {
   const { state } = useAuth();
-  if (state.status === 'loading') return <Loading />;
+  const { ready, attempt } = useBoot();
+  const [timedOut, setTimedOut] = useState(false);
   const signedIn = state.status === 'signedIn' || state.status === 'guest';
+  // D267: signed out, the next sign-in waits for its first screen again.
+  useEffect(() => {
+    if (state.status === 'signedOut') resetBoot();
+  }, [state.status]);
+  // D267: waiting too long for the first screen is an error, not an endless animation.
+  const waiting = signedIn && !ready;
+  useEffect(() => {
+    setTimedOut(false);
+    if (!waiting) return;
+    const t = setTimeout(() => setTimedOut(true), BOOT_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [waiting, attempt]);
+  if (state.status === 'loading') return <Loading />;
   return (
-    <Stack screenOptions={{ contentStyle: { backgroundColor: DARK.page } }}>
+    <>
+      {renderStack(signedIn, attempt)}
+      {waiting ? (
+        <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}>
+          {timedOut ? (
+            <View style={{ flex: 1, backgroundColor: DARK.page, justifyContent: 'center' }}>
+              <ErrorState
+                message="JaxSide is taking too long to load. Check your connection and try again."
+                onRetry={retryBoot}
+              />
+            </View>
+          ) : (
+            <Loading />
+          )}
+        </View>
+      ) : null}
+    </>
+  );
+}
+
+function renderStack(signedIn: boolean, attempt: number) {
+  return (
+    <Stack key={attempt} screenOptions={{ contentStyle: { backgroundColor: DARK.page } }}>
       {/* D137: expo-router 58 redirects a blocked route to the navigator's first open group,
           and (auth) has no index of its own, so a signed-out start landed on "/" (Unmatched
           Route). Send signed-out people to sign-in explicitly. */}
