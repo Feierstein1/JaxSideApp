@@ -20,6 +20,7 @@ import { RADIUS, SPACE } from '@/tokens';
 import { IconButton, openMenu } from '@/ui';
 import { hostOf, openOutsideLink } from '@/links';
 import { HostedAt } from '@/events/EventCard';
+import { openEvent, openPlace } from '@/events/open';
 import { adLinkTapped, setAdInterest } from './api';
 
 type Choice = 'INTERESTED' | 'NOT_INTERESTED' | null;
@@ -192,7 +193,7 @@ export function AdCard({ ad }: { ad: Ad }) {
             // D240: an event at a business that confirmed it: the business stands out.
             <HostedAt
               place={ad.event.hostedAt}
-              onPress={() => router.push(`/places/${ad.event!.hostedAt!.placeId}`)}
+              onPress={() => openPlace(ad.event!.hostedAt!.placeId)}
             />
           ) : null}
           {ad.event ? (
@@ -200,7 +201,7 @@ export function AdCard({ ad }: { ad: Ad }) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`See event: ${ad.event.title}, ${dateLabel(ad.event.date)} at ${timeLabel(ad.event.startTime)}`}
-              onPress={() => router.push(`/events/event/${ad.event!.id}`)}
+              onPress={() => openEvent(ad.event!.id)}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',

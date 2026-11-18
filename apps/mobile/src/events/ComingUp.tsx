@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
@@ -10,6 +10,7 @@ import { SPACE, TYPE } from '@/tokens';
 import { SectionTitle } from '@/ui';
 import { fetchComingUp } from './api';
 import { EventCard } from './EventCard';
+import { openEvent } from './open';
 
 /** "Today at 7:00 PM" / "Tomorrow at 7:00 PM" / "Happening now". */
 function whenLabel(e: EventCardView, today: string) {
@@ -23,11 +24,15 @@ function useComingUp(reloadKey?: string) {
   const { isGuest } = useGuest();
   const signedIn = state.status === 'signedIn' && !isGuest;
   const [events, setEvents] = useState<EventCardView[]>([]);
+  const lastKey = useRef(reloadKey);
   useFocusEffect(
     useCallback(() => {
       if (!signedIn) return;
       let live = true;
-      fetchComingUp()
+      // D259: kept a couple of minutes between visits; Home's pull-to-refresh asks again.
+      const force = lastKey.current !== reloadKey;
+      lastKey.current = reloadKey;
+      fetchComingUp(force)
         .then((list) => live && setEvents(list))
         .catch(() => undefined); // quiet: it's only a reminder
       return () => {
@@ -81,9 +86,7 @@ export function ComingUpBar({ reloadKey }: { reloadKey?: string }) {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Coming up: ${first.title}, ${whenLabel(first, today)}${more ? `, and ${more} more` : ''}`}
-        onPress={() =>
-          live.length === 1 ? router.push(`/events/event/${first.id}`) : router.push('/events')
-        }
+        onPress={() => (live.length === 1 ? openEvent(first.id) : router.navigate('/events'))}
         style={({ pressed }) => ({
           flex: 1,
           flexDirection: 'row',

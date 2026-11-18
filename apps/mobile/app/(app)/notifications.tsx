@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { DARK, dateLabel, profileColor, timeLabel, type NotificationView } from '@jax/shared';
 import { ApiRequestError } from '@/api/client';
+import { openEvent } from '@/events/open';
 import { timeAgo } from '@/format';
 import { haptic } from '@/motion';
 import { social } from '@/social/api';
@@ -167,7 +168,7 @@ function EventRow({ n }: { n: NotificationView }) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${line}. ${timeAgo(n.createdAt)}. Opens the event.`}
-      onPress={() => router.push(`/events/event/${n.event!.id}`)}
+      onPress={() => openEvent(n.event!.id)}
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',

@@ -11,6 +11,7 @@ import {
 } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
+import { favoritesChanged } from '@/account/lists';
 import { useAuth } from '@/auth/AuthContext';
 import { fetchRoom } from '@/discussion/api';
 import { stopMedia } from '@/discussion/media-focus';
@@ -132,6 +133,7 @@ export default function PlaceScreen() {
       const path = `/api/v1/places/${place.id}/favorite`;
       if (place.isFavorite) await api.delete(path);
       else await api.put(path, {});
+      favoritesChanged(); // D259: the saved-places lists load again
       setPlace({
         ...place,
         isFavorite: !place.isFavorite,

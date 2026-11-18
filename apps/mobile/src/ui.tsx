@@ -81,7 +81,18 @@ export const headerOptions = {
   // D76 / D119: messages and the notification bell (plus the GUEST pill for guests).
   // D230: friends moved here from the bottom bar.
   headerRight: () => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+    // D258: room above and below the icons (and to the left) so the count badges that hang off
+    // their bottom-left corners aren't clipped by this row's edge.
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingTop: 8,
+        paddingBottom: 12,
+        paddingLeft: 8,
+      }}
+    >
       <FriendsButton />
       <MessagesButton />
       <Bell />

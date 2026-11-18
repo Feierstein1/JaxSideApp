@@ -5,6 +5,8 @@ import { router } from 'expo-router';
 import { profileColor, type PostView, type PublicProfile, DARK } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
+import { blocksChanged } from '@/account/lists';
+import { invalidate } from '@/cache';
 import { useGuest } from '@/auth/guest';
 import { deletePost, markFeedsDirty } from '@/discussion/api';
 import { EditPostSheet } from '@/discussion/EditPostSheet';
@@ -132,6 +134,8 @@ export function ProfileScreen({
       const path = `/api/v1/users/${encodeURIComponent(username)}/block`;
       if (blocked) await api.put(path);
       else await api.delete(path);
+      blocksChanged(); // D259
+      invalidate('friends:'); // blocking can end a friendship
       await load();
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t save.');

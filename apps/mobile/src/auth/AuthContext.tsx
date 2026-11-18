@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api, ensureInstallation, onUnauthorized } from '@/api';
+import { clearCache } from '@/cache';
 import type { GuestStatus, LoginResponse, MeUser, SessionResponse } from '@/api/types';
 import { secureTokenStore } from './secure-token-store';
 
@@ -48,6 +49,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ status: 'signedOut' });
     }
   }, []);
+
+  // D259: the kept lists belong to one person; empty them whenever who is signed in changes.
+  const who = state.status === 'signedIn' ? state.user.id : state.status;
+  useEffect(() => clearCache(), [who]);
 
   useEffect(() => {
     void refresh();

@@ -16,6 +16,7 @@ import {
 } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
+import { fetchFavorites, type Favorite } from '@/account/lists';
 import { useAuth } from '@/auth/AuthContext';
 import { EmailCodeCard } from '@/auth/EmailCodeCard';
 import { sendScreened } from '@/discussion/screening';
@@ -43,12 +44,6 @@ import {
   styles,
   switchColors,
 } from '@/ui';
-
-interface Favorite {
-  id: string;
-  name: string;
-  category: string;
-}
 
 /** D223: how many favorites the Account page lists before "See All Favorited Places". */
 const FAVORITES_SHOWN = 3;
@@ -396,7 +391,7 @@ function Settings() {
 
   const loadFavorites = useCallback(async () => {
     try {
-      setFavorites((await api.get<{ favorites: Favorite[] }>('/api/v1/me/favorites')).favorites);
+      setFavorites(await fetchFavorites());
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t load favorites.');
     }

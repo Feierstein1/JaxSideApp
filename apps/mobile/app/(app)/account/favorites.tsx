@@ -2,17 +2,11 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { categoryColor, DARK } from '@jax/shared';
-import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
+import { fetchFavorites, type Favorite } from '@/account/lists';
 import { categoryLabel } from '@/format';
 import { categoryIcon } from '@/places/PlaceHeader';
 import { EmptyState, ErrorState, ListGroup, ListRow, PageTitle, Screen } from '@/ui';
-
-interface Favorite {
-  id: string;
-  name: string;
-  category: string;
-}
 
 /** D223: every place you have saved, newest first, in one scrolling list. */
 export default function AllFavorites() {
@@ -22,7 +16,7 @@ export default function AllFavorites() {
   const load = useCallback(async () => {
     setError(undefined);
     try {
-      setFavorites((await api.get<{ favorites: Favorite[] }>('/api/v1/me/favorites')).favorites);
+      setFavorites(await fetchFavorites());
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t load favorites.');
     }

@@ -4,6 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import { DARK } from '@jax/shared';
 import { api } from '@/api';
 import { ApiRequestError } from '@/api/client';
+import { blocksChanged, fetchBlocks, type Block } from '@/account/lists';
 import {
   Button,
   EmptyState,
@@ -15,11 +16,6 @@ import {
   Screen,
 } from '@/ui';
 
-interface Block {
-  username: string;
-  blockedAt: string;
-}
-
 /** P4.11: people you've blocked, with Unblock. */
 export default function BlockedUsers() {
   const [blocks, setBlocks] = useState<Block[]>();
@@ -27,7 +23,7 @@ export default function BlockedUsers() {
 
   const load = useCallback(async () => {
     try {
-      setBlocks((await api.get<{ blocks: Block[] }>('/api/v1/me/blocks')).blocks);
+      setBlocks(await fetchBlocks());
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t load.');
     }
@@ -41,6 +37,7 @@ export default function BlockedUsers() {
   async function unblock(username: string) {
     try {
       await api.delete(`/api/v1/users/${encodeURIComponent(username)}/block`);
+      blocksChanged();
       await load();
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : 'Couldn’t unblock.');

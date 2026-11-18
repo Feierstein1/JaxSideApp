@@ -1,3 +1,4 @@
+import { cached, invalidate, MINUTE } from '@/cache';
 import type {
   EventCard,
   ChatLine,
@@ -33,23 +34,46 @@ function active(f: Filters) {
   };
 }
 
-export async function fetchMonth(month: string, f: Filters) {
-  const reading = await getFreshReading();
-  return api.post<EventMonth>('/api/v1/events/month', { reading, month, ...active(f) });
+/** D259: the event lists are kept a couple of minutes (see `@/cache`); following one clears them. */
+const EVENTS_TTL = 2 * MINUTE;
+
+export function fetchMonth(month: string, f: Filters, force = false) {
+  return cached(
+    `events:month:${month}:${JSON.stringify(active(f))}`,
+    EVENTS_TTL,
+    async () => {
+      const reading = await getFreshReading();
+      return api.post<EventMonth>('/api/v1/events/month', { reading, month, ...active(f) });
+    },
+    force,
+  );
 }
 
-export async function fetchDay(date: string, f: Filters) {
-  const reading = await getFreshReading();
-  return api.post<EventDay>('/api/v1/events/day', { reading, date, ...active(f) });
+export function fetchDay(date: string, f: Filters, force = false) {
+  return cached(
+    `events:day:${date}:${JSON.stringify(active(f))}`,
+    EVENTS_TTL,
+    async () => {
+      const reading = await getFreshReading();
+      return api.post<EventDay>('/api/v1/events/day', { reading, date, ...active(f) });
+    },
+    force,
+  );
 }
 
-export async function fetchList(f: Filters, cursor?: string) {
-  const reading = await getFreshReading();
-  return api.post<EventPage>('/api/v1/events/list', {
-    reading,
-    ...active(f),
-    ...(cursor ? { cursor } : {}),
-  });
+export function fetchList(f: Filters, cursor?: string, force = false) {
+  const load = async () => {
+    const reading = await getFreshReading();
+    return api.post<EventPage>('/api/v1/events/list', {
+      reading,
+      ...active(f),
+      ...(cursor ? { cursor } : {}),
+    });
+  };
+  // Only the first page is kept; "Load more" always asks.
+  return cursor
+    ? load()
+    : cached(`events:list:${JSON.stringify(active(f))}`, EVENTS_TTL, load, force);
 }
 
 export async function fetchEvent(id: string) {
@@ -58,11 +82,12 @@ export async function fetchEvent(id: string) {
 }
 
 export const setEventFollow = (id: string, follow: boolean) =>
-  follow
+  (follow
     ? api.put<{ following: boolean; followerCount: number | null }>(`/api/v1/events/${id}/follow`)
     : api.delete<{ following: boolean; followerCount: number | null }>(
         `/api/v1/events/${id}/follow`,
-      );
+      )
+  ).finally(() => invalidate('events:')); // follow changes Coming up, the Following filter, counts
 
 /** D236: the event's link button was used (after "You're leaving JaxSide"). */
 export function eventLinkTapped(id: string) {
@@ -110,12 +135,28 @@ export const eventChat = {
 
 /** D241: followed events that start today or tomorrow ("Coming up"). Accounts only. */
 /** D248: boosted events for the Featured section (guests too). */
-export async function fetchFeatured() {
-  const reading = await getFreshReading();
-  return (await api.post<{ events: EventCard[] }>('/api/v1/events/featured', { reading })).events;
+export function fetchFeatured(force = false) {
+  return cached(
+    'events:featured',
+    5 * MINUTE,
+    async () => {
+      const reading = await getFreshReading();
+      return (await api.post<{ events: EventCard[] }>('/api/v1/events/featured', { reading }))
+        .events;
+    },
+    force,
+  );
 }
 
-export async function fetchComingUp() {
-  const reading = await getFreshReading();
-  return (await api.post<{ events: EventCard[] }>('/api/v1/events/coming-up', { reading })).events;
+export function fetchComingUp(force = false) {
+  return cached(
+    'events:comingUp',
+    EVENTS_TTL,
+    async () => {
+      const reading = await getFreshReading();
+      return (await api.post<{ events: EventCard[] }>('/api/v1/events/coming-up', { reading }))
+        .events;
+    },
+    force,
+  );
 }
