@@ -149,7 +149,13 @@ App and server:
       on jaxside.com and separate business terms)
 - [ ] SES production access (email to real people; the sandbox only sends to verified addresses)
 - [ ] NCMEC CyberTipline registration (R4)
-- [ ] Reviewer access plan for the location restriction (see above)
+- [ ] **Review mode built** (`docs/PRODUCTION_SWITCHOVER.md`): review accounts use a fixed
+      **Riverside / Five Points** location (owner's pick, 2026-11-19), are ready to use, and their
+      content is seen only by review accounts
+- [ ] **Before submitting:** Zoho aliases `review-google@jaxside.com` and
+      `review-apple@jaxside.com`; account `review_google` created with the password already in
+      Play Console "Sign in details" (saved in git-ignored `deploy/staging/secrets/test-accounts.txt`)
+      and flagged as a review account; same for Apple later
 - [ ] On a phone outside Duval, the app shows a clear "JaxSide is for Jacksonville (Duval
       County)" message, not something that looks like an error
 - [ ] Store availability set to United States only; listing says Jacksonville-only up front
