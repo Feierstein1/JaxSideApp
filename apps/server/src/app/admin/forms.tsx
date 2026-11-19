@@ -703,6 +703,210 @@ export function AppealDecision({ appealId }: { appealId: string }) {
  * their account email to reply. Showing it is audited.
  */
 /**
+ * Admin → Topics → one topic: moderate one post where it sits. Remove it (the same decision
+ * as the reports queue: reason, internal note, optionally tell the author) and/or act on the
+ * author (strike = the next step of the ladder, suspend for some hours, or ban), in one go.
+ */
+export function TopicPostActions({
+  postId,
+  status,
+  author,
+}: {
+  postId: string;
+  status: string;
+  author: {
+    id: string;
+    username: string;
+    status: string;
+    admin: boolean;
+    /** e.g. "warning", "1 day suspension", "ban"; null when they can't get one. */
+    step: string | null;
+  };
+}) {
+  const [reason, setReason] = useState('');
+  const [note, setNote] = useState('');
+  const [remove, setRemove] = useState(status !== 'REMOVED');
+  const [notify, setNotify] = useState(false);
+  const [sanction, setSanction] = useState<'none' | 'strike' | 'suspend' | 'ban'>('none');
+  const [hours, setHours] = useState('24');
+  const { busy, error, done, run } = useSubmit();
+  const canSanction = !author.admin && author.status !== 'BANNED' && author.status !== 'DELETED';
+  const removed = status === 'REMOVED';
+  const held = status === 'HELD_FOR_REVIEW';
+  const text = { reason: reason.trim() || undefined, internalNote: note.trim() || undefined };
+
+  const decide = (decision: 'remove' | 'approve') =>
+    adminFetch(`/api/v1/admin/cases/general/${postId}`, {
+      method: 'POST',
+      body: {
+        decision,
+        reason: reason.trim(),
+        internalNote: text.internalNote,
+        notifyAuthor: (decision === 'remove' && notify) || undefined,
+      },
+    });
+
+  const apply = () =>
+    run(async () => {
+      const doRemove = remove && !removed;
+      if (!doRemove && sanction === 'none') return 'Pick something to do first.';
+      if (
+        sanction === 'ban' &&
+        !confirm(`Permanently ban @${author.username} and the phones they used?`)
+      )
+        return 'Cancelled.';
+      if (
+        sanction === 'strike' &&
+        author.step &&
+        author.step !== 'warning' &&
+        !confirm(`This is their next strike: a ${author.step}. Continue?`)
+      )
+        return 'Cancelled.';
+      const steps: string[] = [];
+      if (doRemove) {
+        await decide('remove');
+        steps.push(notify ? 'Post removed; the author was told.' : 'Post removed.');
+      }
+      if (sanction !== 'none') {
+        await adminFetch(`/api/v1/admin/users/${author.id}/actions`, {
+          method: 'POST',
+          body:
+            sanction === 'suspend'
+              ? { action: 'suspend', hours: Number(hours), ...text }
+              : { action: sanction, ...text },
+        });
+        steps.push(
+          sanction === 'strike'
+            ? `@${author.username} got a strike (${author.step ?? 'next step'}).`
+            : sanction === 'suspend'
+              ? `@${author.username} is suspended for ${hours} h.`
+              : `@${author.username} is banned.`,
+        );
+      }
+      setTimeout(() => window.location.reload(), 900);
+      return steps.join(' ');
+    });
+
+  const restore = () =>
+    run(async () => {
+      await decide('approve');
+      setTimeout(() => window.location.reload(), 600);
+      return held ? 'Published.' : 'Restored.';
+    });
+
+  const choices = [
+    ['none', 'No action on the account'],
+    ['strike', `Strike: their next step is a ${author.step ?? 'strike'}`],
+    ['suspend', 'Suspend for'],
+    ['ban', 'Ban (permanent)'],
+  ] as const;
+
+  return (
+    <details style={{ marginTop: 8 }}>
+      <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Moderate</summary>
+      <div style={{ marginTop: 10 }}>
+        <label style={ui.label}>
+          Reason (optional; shown to the author with a strike, suspension, ban or removal notice)
+          <textarea
+            style={textarea}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={1000}
+          />
+        </label>
+        <label style={ui.label}>
+          Internal note (optional, admins only)
+          <textarea
+            style={textarea}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={2000}
+          />
+        </label>
+        {!removed ? (
+          <>
+            <label style={{ display: 'block', margin: '4px 0 8px' }}>
+              <input
+                type="checkbox"
+                checked={remove}
+                onChange={(e) => setRemove(e.target.checked)}
+              />{' '}
+              Remove this post
+            </label>
+            {remove ? (
+              <label style={{ display: 'block', margin: '0 0 12px 22px' }}>
+                <input
+                  type="checkbox"
+                  checked={notify}
+                  onChange={(e) => setNotify(e.target.checked)}
+                />{' '}
+                Tell the author it was removed, with the reason
+              </label>
+            ) : null}
+          </>
+        ) : null}
+        {canSanction ? (
+          <fieldset style={{ border: 0, padding: 0, margin: '0 0 12px' }}>
+            <legend style={{ fontWeight: 700, marginBottom: 6 }}>@{author.username}</legend>
+            {choices.map(([value, label]) => (
+              <label key={value} style={{ display: 'block', margin: '0 0 6px' }}>
+                <input
+                  type="radio"
+                  name={`sanction-${postId}`}
+                  checked={sanction === value}
+                  onChange={() => setSanction(value)}
+                />{' '}
+                {label}
+                {value === 'suspend' ? (
+                  <>
+                    {' '}
+                    <input
+                      style={{ ...ui.input, display: 'inline', width: 70, margin: 0 }}
+                      value={hours}
+                      onChange={(e) => setHours(e.target.value)}
+                      onFocus={() => setSanction('suspend')}
+                      inputMode="numeric"
+                      aria-label="Hours"
+                    />{' '}
+                    hours
+                  </>
+                ) : null}
+              </label>
+            ))}
+          </fieldset>
+        ) : (
+          <p style={ui.muted}>
+            {author.admin
+              ? 'Admin accounts can’t be sanctioned from the portal.'
+              : `@${author.username} is ${author.status.toLowerCase()}.`}
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            style={remove && !removed ? ui.buttonDanger : ui.button}
+            disabled={busy}
+            onClick={apply}
+          >
+            Apply
+          </button>
+          {removed || held ? (
+            <button style={ui.buttonSecondary} disabled={busy} onClick={restore}>
+              {held ? 'Approve (publish)' : 'Restore post'}
+            </button>
+          ) : null}
+        </div>
+        {error ? (
+          <p role="alert" style={ui.error}>
+            {error}
+          </p>
+        ) : null}
+        {done ? <p role="status">{done}</p> : null}
+      </div>
+    </details>
+  );
+}
+
+/**
  * D90 / D251: answer a Contact message. "Resolved" (optional note) or "Need more details" (a
  * note saying what's needed) emails the sender when they can be emailed; "Open again" doesn't.
  */

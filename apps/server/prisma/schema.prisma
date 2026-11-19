@@ -1052,6 +1052,9 @@ enum NotificationType {
   EVENT_SOON
   EVENT_CHANGED
   EVENT_CANCELLED
+  /// D269: a topic you made or suggested was approved or turned down (from JaxSide).
+  TOPIC_APPROVED
+  TOPIC_REJECTED
 }
 
 model Notification {
@@ -1087,12 +1090,16 @@ model Notification {
   event          Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
   eventSessionId String?       @db.Uuid
   eventSession   EventSession? @relation(fields: [eventSessionId], references: [id], onDelete: Cascade)
+  /// D269: TOPIC_* notices: the topic.
+  topicId String?    @db.Uuid
+  topic   CityTopic? @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   @@unique([userId, eventSessionId, type], map: "Notification_event_once", where: raw("\"eventSessionId\" IS NOT NULL"))
   @@index([userId, createdAt])
   // P13.1: the unread bell count; createdAt for the purge
   @@index([userId], where: raw("\"readAt\" IS NULL"))
   @@index([createdAt])
+  @@index([topicId], where: raw("\"topicId\" IS NOT NULL"))
   // P13.1: foreign-key indexes (deletes of the parent row would otherwise read the whole table)
   @@index([actorId])
   @@index([actorBusinessId], where: raw("\"actorBusinessId\" IS NOT NULL"))
@@ -1712,6 +1719,7 @@ model CityTopic {
   createdBy      User?                                  @relation("TopicCreator", fields: [createdById], references: [id], onDelete: SetNull)
   posts          GeneralPost[]
   follows        TopicFollow[]
+  notifications  Notification[]
   reports        Report[]
 
   @@index([location], type: Gist)

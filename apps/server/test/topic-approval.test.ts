@@ -8,6 +8,7 @@ import { db } from '@/server/db';
 import { readBoundaryFile } from '@/server/location/boundary-file';
 import { importServiceArea } from '@/server/location/service-area';
 import { invalidateScreeningCache } from '@/server/moderation/screening';
+import { listNotifications, unreadCount } from '@/server/social/notifications';
 import { decideTopic, mySuggestions } from '@/server/topics';
 import { adminHeaders } from './admin-helpers';
 import { relaxBurstLimits, resetDb } from './db-helpers';
@@ -155,5 +156,45 @@ describe('the admin switch', () => {
     });
     expect(r.status).toBeGreaterThanOrEqual(401);
     expect((await create(me, 'city', 'Still waits')).status).toBe(202);
+  });
+});
+
+describe('the person is told when their topic is decided (D269)', () => {
+  const topicIdOf = async (title: string) =>
+    (await db.cityTopic.findFirstOrThrow({ where: { title } })).id;
+
+  it('approval puts a TOPIC_APPROVED notice in their bell, and only theirs', async () => {
+    await create(me, 'city', 'Weekend farmers markets');
+    const id = await topicIdOf('Weekend farmers markets');
+    await decideTopic(id, { action: 'approve', title: 'Weekend farmers markets in Jax' });
+    const mine = await listNotifications(me.id);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({
+      type: 'TOPIC_APPROVED',
+      actor: null,
+      topic: { id, title: 'Weekend farmers markets in Jax', reason: null },
+      read: false,
+    });
+    expect(await unreadCount(me.id)).toBe(1);
+    expect(await listNotifications(other.id)).toHaveLength(0);
+  });
+
+  it('a rejection carries the reason', async () => {
+    await create(me, 'city', 'Rate my neighbors');
+    const id = await topicIdOf('Rate my neighbors');
+    await decideTopic(id, { action: 'reject', reason: 'Targets private people' });
+    const [n] = await listNotifications(me.id);
+    expect(n).toMatchObject({
+      type: 'TOPIC_REJECTED',
+      topic: { id, title: 'Rate my neighbors', reason: 'Targets private people' },
+    });
+  });
+
+  it('deciding twice does not notify twice', async () => {
+    await create(me, 'city', 'Dog park meetups');
+    const id = await topicIdOf('Dog park meetups');
+    await decideTopic(id, { action: 'approve' });
+    await expect(decideTopic(id, { action: 'reject', reason: 'x' })).rejects.toThrow();
+    expect(await listNotifications(me.id)).toHaveLength(1);
   });
 });

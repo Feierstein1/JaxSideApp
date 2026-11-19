@@ -169,11 +169,16 @@ export default async function TopicsPage({
               {t.scope === 'local' ? 'Near me (local)' : 'City'} · {TOPIC_CATEGORIES[t.category]}
               {t.createdBy ? ` · by @${t.createdBy}` : ''}
               {t.pinned ? ' · Pinned' : ''} · starts {when(t.opensAt)}
-              {t.closesAt ? ` · ends ${when(t.closesAt)}` : ''} · {t.posts}{' '}
-              {t.posts === 1 ? 'post' : 'posts'}
+              {t.closesAt ? ` · ends ${when(t.closesAt)}` : ''} ·{' '}
+              <a href={`/admin/topics/${t.id}`}>
+                {t.posts} {t.posts === 1 ? 'post' : 'posts'}
+              </a>
               {t.suggestedBy ? ` · suggested by @${t.suggestedBy.username}` : ''}
             </p>
-            <h3 style={{ margin: '0 0 6px' }}>{t.title}</h3>
+            <h3 style={{ margin: '0 0 6px' }}>
+              {/* Open the topic to read its posts and moderate them. */}
+              <a href={`/admin/topics/${t.id}`}>{t.title}</a>
+            </h3>
             {t.description ? <p style={ui.muted}>{t.description}</p> : null}
             <TopicStatusButton id={t.id} open={t.open} />
           </div>

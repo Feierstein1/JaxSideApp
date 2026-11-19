@@ -205,7 +205,7 @@ export async function reportsAgainstUser(userId: string, page = 1) {
 }
 
 /** What "Strike" or "Notify" would do next on the ladder (D9), or null if banned. */
-async function nextStrikeStep(userId: string, status: string) {
+export async function nextStrikeStep(userId: string, status: string) {
   if (status === 'BANNED' || status === 'DELETED') return null;
   const [strikes, first, second, banAt] = await Promise.all([
     activeStrikes(userId),

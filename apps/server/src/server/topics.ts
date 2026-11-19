@@ -571,6 +571,18 @@ export async function decideTopic(
           : { status: 'REJECTED', decidedAt: now, decisionReason: d.reason },
     });
     if (claimed.count !== 1) throw new ApiError(409, 'ALREADY_DECIDED', 'Already decided');
+    // D269: tell the person who made it (in the bell; the reason is read from the topic).
+    const author = t.createdById ?? t.suggestedById;
+    if (author) {
+      await db.notification.create({
+        data: {
+          userId: author,
+          type: d.action === 'approve' ? 'TOPIC_APPROVED' : 'TOPIC_REJECTED',
+          topicId: id,
+          createdAt: now,
+        },
+      });
+    }
     return;
   }
   if (t.status !== 'ACTIVE' && t.status !== 'CLOSED') {

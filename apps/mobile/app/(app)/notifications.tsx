@@ -204,6 +204,61 @@ function EventRow({ n }: { n: NotificationView }) {
   );
 }
 
+/**
+ * D269: a topic you made or suggested was approved (opens it) or turned down (opens My
+ * suggestions, which has the reason).
+ */
+function TopicRow({ n }: { n: NotificationView }) {
+  const t = n.topic!;
+  const ok = n.type === 'TOPIC_APPROVED';
+  const line = ok
+    ? `Your topic “${t.title}” was approved`
+    : `Your topic “${t.title}” wasn’t approved`;
+  const sub = ok
+    ? timeAgo(n.createdAt)
+    : `${t.reason ? `${t.reason} · ` : ''}${timeAgo(n.createdAt)}`;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${line}. ${sub}. Opens ${ok ? 'the topic' : 'your suggestions'}.`}
+      onPress={() => router.push(ok ? `/citywide/topic/${t.id}` : '/account/suggestions')}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACE.md,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        minHeight: 64,
+        opacity: pressed ? 0.8 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: ok ? DARK.accent : DARK.errorSoft,
+        }}
+      >
+        <Ionicons
+          name={ok ? 'checkmark-circle' : 'close-circle'}
+          size={22}
+          color={ok ? DARK.onAccent : DARK.error}
+        />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontWeight: n.read ? '600' : '800' }}>{line}</Text>
+        <Text style={[TYPE.caption, { color: DARK.textMuted }]} numberOfLines={3}>
+          {sub}
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={DARK.textMuted} />
+    </Pressable>
+  );
+}
+
 /** D205: what a strike or removal notice says. */
 function moderationLine(n: NotificationView): string {
   const m = n.moderation!;
@@ -307,7 +362,8 @@ export default function Notifications() {
   const rest =
     items?.filter(
       (n) =>
-        (n.actor || n.actorIsOwner || n.giveaway || n.moderation || n.event) && !n.pendingRequestId,
+        (n.actor || n.actorIsOwner || n.giveaway || n.moderation || n.event || n.topic) &&
+        !n.pendingRequestId,
     ) ?? [];
   const isActivity = (n: NotificationView) => n.target !== null;
 
@@ -370,6 +426,8 @@ export default function Notifications() {
               {rest.map((n) =>
                 n.event ? (
                   <EventRow key={n.id} n={n} />
+                ) : n.topic ? (
+                  <TopicRow key={n.id} n={n} />
                 ) : n.giveaway ? (
                   <GiveawayRow key={n.id} n={n} />
                 ) : n.moderation ? (

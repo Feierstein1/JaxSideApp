@@ -53,7 +53,9 @@ export interface NotificationView {
     | 'EVENT_TOMORROW'
     | 'EVENT_SOON'
     | 'EVENT_CHANGED'
-    | 'EVENT_CANCELLED';
+    | 'EVENT_CANCELLED'
+    | 'TOPIC_APPROVED'
+    | 'TOPIC_REJECTED';
   actor: FriendUser | null;
   /** FRIEND_REQUEST still waiting: its request ID, so it can be answered from the bell. */
   pendingRequestId: string | null;
@@ -85,6 +87,8 @@ export interface NotificationView {
    * when the session starts (Jacksonville date and time).
    */
   event?: { id: string; title: string; date: string | null; startTime: string | null } | null;
+  /** D269: TOPIC_* (from JaxSide, so `actor` is null): the topic and, if turned down, why. */
+  topic?: { id: string; title: string; reason: string | null } | null;
   createdAt: string;
   read: boolean;
 }

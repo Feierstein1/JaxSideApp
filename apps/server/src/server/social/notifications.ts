@@ -46,6 +46,8 @@ const FROM_LIVE_ACTOR = {
     { actorBusinessId: { not: null }, actorBusiness: { revokedAt: null } },
     { giveawayWinnerId: { not: null } },
     { moderationActionId: { not: null }, moderationAction: { voidedAt: null } },
+    // D269: topic decisions (from JaxSide, no actor).
+    { topicId: { not: null } },
     // D230: event notices, while the event can still be seen.
     {
       eventId: { not: null },
@@ -251,6 +253,7 @@ export async function listNotifications(userId: string): Promise<NotificationVie
       },
       giveawayWinner: { select: { id: true, giveaway: { select: { title: true } } } },
       event: { select: { id: true, title: true } },
+      topic: { select: { id: true, title: true, decisionReason: true } },
       eventSession: { select: { startsAt: true } },
       // Only what the person may see: never the internal note or who decided.
       moderationAction: {
@@ -310,6 +313,13 @@ export async function listNotifications(userId: string): Promise<NotificationVie
           title: r.event.title,
           date: r.eventSession ? localDate(r.eventSession.startsAt) : null,
           startTime: r.eventSession ? localTime(r.eventSession.startsAt) : null,
+        }
+      : null,
+    topic: r.topic
+      ? {
+          id: r.topic.id,
+          title: r.topic.title,
+          reason: r.type === 'TOPIC_REJECTED' ? r.topic.decisionReason : null,
         }
       : null,
     createdAt: r.createdAt.toISOString(),
