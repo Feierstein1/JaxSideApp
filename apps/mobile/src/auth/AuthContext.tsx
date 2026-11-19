@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react';
 import { api, ensureInstallation, onUnauthorized } from '@/api';
 import { clearCache } from '@/cache';
+import { setReviewLocation } from '@/location/device';
 import type { GuestStatus, LoginResponse, MeUser, SessionResponse } from '@/api/types';
 import { secureTokenStore } from './secure-token-store';
 
@@ -53,6 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // D259: the kept lists belong to one person; empty them whenever who is signed in changes.
   const who = state.status === 'signedIn' ? state.user.id : state.status;
   useEffect(() => clearCache(), [who]);
+  // D268: a store review account reads its location as Five Points (map and lists match the server).
+  const reviewer = state.status === 'signedIn' && state.user.reviewAccount === true;
+  useEffect(() => setReviewLocation(reviewer), [reviewer]);
 
   useEffect(() => {
     void refresh();

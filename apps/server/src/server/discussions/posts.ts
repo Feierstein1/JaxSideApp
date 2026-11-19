@@ -20,6 +20,7 @@ import { db } from '../db';
 import { ApiError } from '../http';
 import type { GeoPoint } from '../location/eligibility';
 import { nearestNeighborhood } from '../location/neighborhood';
+import { hideReviewContent } from '../review';
 import { decodeCursor, encodeCursor } from './cursor';
 
 /**
@@ -131,12 +132,16 @@ function toView(r: PostRow, kind: DiscussionKind, viewerId: string): PostView {
 const point = (p: GeoPoint) =>
   Prisma.sql`ST_SetSRID(ST_MakePoint(${p.longitude}, ${p.latitude}), 4326)::geography`;
 
-/** Hides content between users who blocked each other, in either direction (P3.9). */
+/**
+ * Hides content between users who blocked each other, in either direction (P3.9), and (D268)
+ * what store review accounts wrote from everyone else.
+ */
 function notBlocked(viewerId: string, authorColumn: Prisma.Sql) {
   return Prisma.sql`AND NOT EXISTS (
     SELECT 1 FROM "UserBlock" b
     WHERE (b."blockerId" = ${viewerId}::uuid AND b."blockedId" = ${authorColumn})
-       OR (b."blockerId" = ${authorColumn} AND b."blockedId" = ${viewerId}::uuid))`;
+       OR (b."blockerId" = ${authorColumn} AND b."blockedId" = ${viewerId}::uuid))
+    ${hideReviewContent(viewerId, authorColumn)}`;
 }
 
 function selectPosts(kind: DiscussionKind, viewerId: string, from?: GeoPoint) {

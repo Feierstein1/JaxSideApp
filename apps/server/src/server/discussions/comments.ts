@@ -5,6 +5,7 @@ import { getConfig } from '../config';
 import { signedBusinessPictureUrl, signedPhotoUrl } from '../media/photos';
 import { db } from '../db';
 import { ApiError } from '../http';
+import { hideReviewContent } from '../review';
 import { TABLE } from './posts';
 
 /** P3.3: threaded comments, depth-limited, on either post type. */
@@ -142,6 +143,7 @@ export async function listComments(kind: DiscussionKind, postId: string, viewer:
       SELECT 1 FROM "UserBlock" b
       WHERE (b."blockerId" = ${viewerId}::uuid AND b."blockedId" = t."authorUserId")
          OR (b."blockerId" = t."authorUserId" AND b."blockedId" = ${viewerId}::uuid))
+      ${hideReviewContent(viewerId, Prisma.sql`t."authorUserId"`)} -- D268
     ORDER BY t.path
     LIMIT ${max}`;
   return rows.map((r) => toView(r, viewer));

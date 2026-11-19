@@ -149,11 +149,11 @@ App and server:
       on jaxside.com and separate business terms)
 - [ ] SES production access (email to real people; the sandbox only sends to verified addresses)
 - [ ] NCMEC CyberTipline registration (R4)
-- [~] **Review mode built** (`docs/PRODUCTION_SWITCHOVER.md`, D268): **part 1 done
-  2026-11-19**: review accounts use a fixed **Riverside / Five Points** location (owner's
-  pick), are ready to use, skip the new-account waits, and the outside-Duval message offers a
-  review sign-in; admin switch on the user page. **Part 2 to do:** their content seen only by
-  review accounts, and phone distances / map from the review point
+- [x] **Review mode built** (`docs/PRODUCTION_SWITCHOVER.md`, D268, 2026-11-19): review
+      accounts use a fixed **Riverside / Five Points** location (owner's pick), are ready to use,
+      skip the new-account waits, and the outside-Duval message offers a review sign-in; admin
+      switch on the user page. What they write is seen only by review accounts; the phone shows
+      them at Five Points. **Not on the server yet:** deploy (backup first) before submitting
 - [ ] **Before submitting:** Zoho aliases `review-google@jaxside.com` and
       `review-apple@jaxside.com`; account `review_google` created with the password already in
       Play Console "Sign in details" (saved in git-ignored `deploy/staging/secrets/test-accounts.txt`)

@@ -16,6 +16,8 @@ export interface MeUser {
   hidePostsFromFriends: boolean;
   /** D116: left out of the anonymous area statistics. */
   areaStatsOptOut: boolean;
+  /** D268: a store review account (the server places it at Five Points). */
+  reviewAccount?: true;
 }
 
 export interface LoginResponse {

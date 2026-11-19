@@ -21,6 +21,7 @@ import { ApiError } from './http';
 import type { GeoPoint } from './location/eligibility';
 import { holdFor, holdReport, screenText } from './moderation/screening';
 import { pageWindow, toPage } from './admin/paging';
+import { hideReviewContent } from './review';
 
 /**
  * Topics (D125, D133). A topic is an area for posts: posts in it are general posts with
@@ -120,6 +121,7 @@ function selectTopics(viewerId: string, where: Prisma.Sql, tail: Prisma.Sql = Pr
              WHERE u.id = t."createdById" AND u.status = 'ACTIVE') AS creator_name
     FROM "CityTopic" t
     WHERE ${where}
+      ${hideReviewContent(viewerId, Prisma.sql`t."createdById"`)} -- D268
     ${tail}`;
 }
 

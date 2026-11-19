@@ -80,7 +80,8 @@ export async function listChat(
     where: {
       roomId: room.id,
       expiresAt: { gt: now },
-      author: { status: 'ACTIVE' },
+      // D268: a review account's lines are seen only by review accounts.
+      author: { status: 'ACTIVE', ...(user.reviewAccount ? {} : { reviewAccount: false }) },
       ...(input.after ? { createdAt: { gt: new Date(input.after) } } : {}),
     },
     orderBy: { createdAt: 'asc' },

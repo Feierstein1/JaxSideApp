@@ -180,7 +180,8 @@ export async function listEventChat(
       expiresAt: { gt: now },
       ...(input.after ? { createdAt: { gt: new Date(input.after) } } : {}),
       OR: [
-        { author: { status: 'ACTIVE' } },
+        // D268: a review account's lines are seen only by review accounts.
+        { author: { status: 'ACTIVE', ...(user.reviewAccount ? {} : { reviewAccount: false }) } },
         {
           businessAccountId: { not: null },
           businessAccount: { revokedAt: null, suspendedAt: null },

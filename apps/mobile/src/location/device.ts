@@ -1,19 +1,29 @@
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import * as Location from 'expo-location';
-import type { LocationReading } from '@jax/shared';
+import { REVIEW_POINT, type LocationReading } from '@jax/shared';
 import { hasMoved } from './moved';
 import { toReading } from './reading';
 
 /** Reuse a reading for this long (the server accepts up to 60 s), so typing a search isn't slow. */
 const REUSE_MS = 30_000;
 let last: LocationReading | undefined;
+/** D268: signed in as a store review account (set by AuthContext). */
+let reviewLocation = false;
+export function setReviewLocation(on: boolean) {
+  reviewLocation = on;
+  last = undefined;
+}
 
 /**
  * A recent GPS reading for a location-restricted request. Permission must already be
  * granted; no prompt is shown here. Pass `fresh` for actions that must use a brand-new fix.
  */
 export async function getFreshReading(opts: { fresh?: boolean } = {}): Promise<LocationReading> {
+  // D268: a store review account is at Five Points, as the server treats it (map, lists).
+  if (reviewLocation) {
+    return { ...REVIEW_POINT, accuracyMeters: 10, timestamp: Date.now() };
+  }
   if (!opts.fresh && last && Date.now() - last.timestamp < REUSE_MS) return last;
   const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
   last = toReading(loc);
@@ -73,6 +83,7 @@ async function startWatch() {
         distanceInterval: 25,
       },
       (loc) => {
+        if (reviewLocation) return; // D268: a review account never "moves" from Five Points
         const r = toReading(loc);
         if (movedFrom(r)) announceMove(r);
       },

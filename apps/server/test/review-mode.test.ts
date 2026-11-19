@@ -4,6 +4,11 @@ import { POST as actionPOST } from '@/app/api/v1/admin/users/[id]/actions/route'
 import { POST as reviewModePOST } from '@/app/api/v1/admin/review-mode/route';
 import { POST as statusPOST } from '@/app/api/v1/location/status/route';
 import { POST as postsPOST } from '@/app/api/v1/posts/route';
+import { POST as feedPOST } from '@/app/api/v1/feed/route';
+import { POST as postDetailPOST } from '@/app/api/v1/posts/[id]/route';
+import { POST as commentPOST } from '@/app/api/v1/posts/[id]/comments/route';
+import { POST as requestPOST } from '@/app/api/v1/friends/requests/route';
+import { POST as profilePOST } from '@/app/api/v1/users/[username]/route';
 import { pastAccountWait } from '@/server/account-age';
 import { createSession } from '@/server/auth/sessions';
 import { invalidateConfigCache } from '@/server/config';
@@ -167,5 +172,96 @@ describe('review mode (D268)', () => {
     // An admin account can't be marked.
     const boss = await db.user.findFirstOrThrow({ where: { role: 'ADMIN' } });
     expect((await setReviewAccount(boss.id, true)).status).toBe(409);
+  });
+});
+
+describe('review accounts’ content stays among review accounts (D268 part 2)', () => {
+  let apple: { id: string; token: string };
+  const here = () => reading(REVIEW_POINT);
+  const post = (token: string, body: string) =>
+    call(postsPOST as H, 'POST', { token, body: { reading: reading(SAN_FRANCISCO), body } });
+  const feedBodies = async (token: string) =>
+    (await call(feedPOST as H, 'POST', { token, body: { reading: here() } })).body.posts.map(
+      (p: { body: string }) => p.body,
+    );
+
+  beforeEach(async () => {
+    apple = await account('review_apple');
+    await setReviewAccount(reviewer.id, true);
+    await setReviewAccount(apple.id, true);
+  });
+
+  it('a review account’s posts show only to review accounts, even on the same corner', async () => {
+    await call(postsPOST as H, 'POST', {
+      token: local.token,
+      body: { reading: here(), body: 'Real post at Five Points' },
+    });
+    const test = (await post(reviewer.token, 'Review test post')).body.post.id as string;
+
+    expect(await feedBodies(local.token)).toEqual(['Real post at Five Points']);
+    expect(await feedBodies(apple.token)).toEqual(['Review test post', 'Real post at Five Points']);
+    const hidden = await call(postDetailPOST as H, 'POST', {
+      token: local.token,
+      id: test,
+      body: { reading: here() },
+    });
+    expect(hidden.status).toBe(404);
+  });
+
+  it('a review account’s comment on a real post is hidden and sends no notification', async () => {
+    const real = (
+      await call(postsPOST as H, 'POST', {
+        token: local.token,
+        body: { reading: here(), body: 'Anyone know a good coffee spot?' },
+      })
+    ).body.post.id as string;
+    const c = await call(commentPOST as H, 'POST', {
+      token: reviewer.token,
+      id: real,
+      body: { reading: reading(SAN_FRANCISCO), body: 'Testing a comment' },
+    });
+    expect(c.status, JSON.stringify(c.body)).toBe(201);
+    const seen = (token: string) =>
+      call(postDetailPOST as H, 'POST', { token, id: real, body: { reading: here() } }).then((r) =>
+        r.body.comments.map((x: { body: string }) => x.body),
+      );
+    expect(await seen(local.token)).toEqual([]);
+    expect(await seen(apple.token)).toEqual(['Testing a comment']);
+    expect(await db.notification.count({ where: { userId: local.id } })).toBe(0);
+  });
+
+  it('🔒 review accounts and real people can’t friend each other or see each other’s profile', async () => {
+    const asked = await call(requestPOST as H, 'POST', {
+      token: reviewer.token,
+      body: { username: 'local_rv' },
+    });
+    expect(asked.status).toBe(404);
+    const back = await call(requestPOST as H, 'POST', {
+      token: local.token,
+      body: { username: 'review_google' },
+    });
+    expect(back.status).toBe(404);
+    expect(await db.friendship.count()).toBe(0);
+    // Two review accounts can (so reviewers can try friends and messages).
+    expect(
+      (
+        await call(requestPOST as H, 'POST', {
+          token: reviewer.token,
+          body: { username: 'review_apple' },
+        })
+      ).status,
+    ).toBe(200);
+
+    const profile = (token: string, username: string) =>
+      call(profilePOST as H, 'POST', { token, params: { username }, body: { reading: here() } });
+    expect((await profile(local.token, 'review_google')).status).toBe(404);
+    expect((await profile(apple.token, 'review_google')).status).toBe(200);
+    expect((await profile(reviewer.token, 'local_rv')).status).toBe(200);
+  });
+
+  it('content stays hidden even with review mode off', async () => {
+    await post(reviewer.token, 'Review test post');
+    await setMode(false);
+    expect(await feedBodies(local.token)).toEqual([]);
   });
 });

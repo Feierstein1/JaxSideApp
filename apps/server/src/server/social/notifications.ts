@@ -12,6 +12,7 @@ import { db } from '../db';
 import { nearestNeighborhood } from '../location/neighborhood';
 import { logger } from '../logger';
 import { signedPhotoUrl } from '../media/photos';
+import { reviewSeparatedFrom } from '../review';
 
 /**
  * D76: the in-app bell. Rows are small (type + who caused it) and indexed by recipient,
@@ -82,7 +83,10 @@ async function blockedWith(authorId: string, userIds: string[]) {
     },
     select: { blockerId: true, blockedId: true },
   });
-  return new Set(rows.map((r) => (r.blockerId === authorId ? r.blockedId : r.blockerId)));
+  const blocked = new Set(rows.map((r) => (r.blockerId === authorId ? r.blockedId : r.blockerId)));
+  // D268: review accounts and real people never hear from each other.
+  for (const id of await reviewSeparatedFrom(authorId, userIds)) blocked.add(id);
+  return blocked;
 }
 
 /** Active accounts named with @ in the text (the first MENTION_NOTIFY_MAX names only). */

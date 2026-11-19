@@ -12,6 +12,7 @@ import { db } from '../db';
 import { ApiError } from '../http';
 import { nearestNeighborhood } from '../location/neighborhood';
 import { signedPhotoUrl } from '../media/photos';
+import { reviewSeparated } from '../review';
 import { notify } from './notifications';
 
 /**
@@ -84,6 +85,7 @@ export async function sendFriendRequest(me: string, username: string) {
   if (target.id === me) throw new ApiError(400, 'CANNOT_FRIEND_SELF', 'That’s you!');
   const blocks = await blockedEitherWay(me, target.id);
   if (blocks.byThem) throw NOT_FOUND(); // like their profile: no hint they blocked you
+  if (await reviewSeparated(me, target.id)) throw NOT_FOUND(); // D268: reviewers stay apart
   if (blocks.byMe) {
     throw new ApiError(409, 'BLOCKED', 'Unblock them first to send a friend request.');
   }

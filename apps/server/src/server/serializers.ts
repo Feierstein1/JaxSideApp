@@ -12,6 +12,8 @@ interface UserLike {
   createdAt: Date;
   email?: string;
   emailVerifiedAt?: Date | null;
+  /** D268: a store review account. */
+  reviewAccount?: boolean;
   /** D108: bio, photo and account color. */
   profile?: { bio: string | null; avatarPhotoId: string | null; color?: string } | null;
   /** D108: private preferences (no row = defaults). */
@@ -55,6 +57,8 @@ export interface MeUser extends PublicUser {
   hidePostsFromFriends: boolean;
   /** D116: left out of the anonymous area statistics. */
   areaStatsOptOut: boolean;
+  /** D268: only sent (true) for a store review account: the phone shows Five Points. */
+  reviewAccount?: true;
 }
 
 export function toMe(u: UserLike & { email: string; emailVerifiedAt: Date | null }): MeUser {
@@ -65,6 +69,7 @@ export function toMe(u: UserLike & { email: string; emailVerifiedAt: Date | null
     radiusMiles: u.settings?.generalRadiusMiles ?? null,
     hidePostsFromFriends: u.settings?.hidePostsFromFriends ?? false,
     areaStatsOptOut: u.settings?.areaStatsOptOut ?? false,
+    ...(u.reviewAccount ? { reviewAccount: true as const } : {}),
   };
 }
 

@@ -65,7 +65,11 @@ export async function notePresence(userId: string, at: GeoPoint, now = new Date(
 /** People seen in the room in the last 10 minutes. */
 export function countPresent(roomId: string, now = new Date()) {
   return db.chatPresence.count({
-    where: { roomId, lastSeenAt: { gte: new Date(now.getTime() - PRESENT_WITHIN_MS) } },
+    where: {
+      roomId,
+      lastSeenAt: { gte: new Date(now.getTime() - PRESENT_WITHIN_MS) },
+      user: { reviewAccount: false }, // D268: a reviewer never opens a real room
+    },
   });
 }
 
