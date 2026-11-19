@@ -299,7 +299,7 @@ export async function setTopicApprovalRequired(required: boolean) {
  * down new accounts made to advertise). Admins aren't limited.
  */
 export async function assertTopicAllowance(
-  user: Pick<User, 'id' | 'role' | 'staffBadge' | 'createdAt'>,
+  user: Pick<User, 'id' | 'role' | 'staffBadge' | 'reviewAccount' | 'createdAt'>,
   scope: 'city' | 'local',
   now = new Date(),
 ) {

@@ -348,7 +348,19 @@ export const CONFIG_DEFAULTS = {
   'rateLimit.adInterest.perMinute': 30,
   /** D216: link taps. */
   'rateLimit.adTaps.perMinute': 30,
+  /**
+   * D268: App Store / Google Play review mode. 1 = accounts marked as review accounts in the
+   * admin portal are placed at REVIEW_POINT wherever the phone is, and the "outside Duval"
+   * message offers a review sign-in; 0 = off (they're treated like anyone else).
+   */
+  'review.enabled': 1,
 } as const;
+
+/**
+ * D268: where review accounts "are" while review mode is on: Five Points, Riverside (the owner's
+ * pick, 2026-11-19). Inside Duval; the server swaps it in for the phone's reading.
+ */
+export const REVIEW_POINT = { latitude: 30.311, longitude: -81.6823 } as const;
 
 export type ConfigKey = keyof typeof CONFIG_DEFAULTS;
 

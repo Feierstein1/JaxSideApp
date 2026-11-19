@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 import { ApiError } from './http';
+import { withReviewReading } from './review';
 
 const MAX_BODY_BYTES = 16 * 1024;
 
@@ -31,5 +32,7 @@ export async function parseBody<S extends z.ZodType>(req: Request, schema: S): P
       })),
     );
   }
-  return result.data;
+  // D268: a review account's reading becomes the review point (after sign-in, which every
+  // location route does before reading the body).
+  return withReviewReading(req, result.data);
 }

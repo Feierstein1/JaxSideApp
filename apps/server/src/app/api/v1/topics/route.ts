@@ -5,7 +5,7 @@ import { NO_USER } from '@/server/discussions/comments';
 import { route } from '@/server/http';
 import { assertLocationEligible, coarsenPoint } from '@/server/location/eligibility';
 import { enforce } from '@/server/rate-limit';
-import { skipsAccountWaits } from '@/server/account-age';
+import { isStaff } from '@/server/account-age';
 import { assertTopicAllowance, createUserTopic, getTopic, listTopics } from '@/server/topics';
 import { parseBody } from '@/server/validate';
 
@@ -33,7 +33,7 @@ export const POST = route(async (req) => {
   // D143 / D147 (after the location check, per the route order): account age, one a month.
   await assertTopicAllowance(user, input.scope);
   const { id, held, pending } = await createUserTopic(user.id, input, coarsenPoint(at), {
-    staff: skipsAccountWaits(user),
+    staff: isStaff(user), // D268: not review accounts (their topics still wait)
   });
   if (pending) {
     // D222: waiting for an admin; told in the same way as a held topic (202).

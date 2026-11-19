@@ -1,6 +1,7 @@
 import type { User } from '@/generated/prisma/client';
 import { recordActiveDay } from '../active-days';
 import { ApiError } from '../http';
+import { markReviewRequest } from '../review';
 import { assertGuestUsable, findGuest, touchGuest, type LiveGuest } from './guests';
 import { findLiveSession, revokeSession, touchSession } from './sessions';
 import { assertAccountUsable } from './standing';
@@ -53,7 +54,10 @@ async function liveGuest(token: string, now: Date): Promise<LiveGuest | null> {
 export async function requireUser(req: Request, opts: RequireUserOptions = {}, now = new Date()) {
   const token = bearer(req);
   const found = await userFromToken(token, opts, now);
-  if (found) return found;
+  if (found) {
+    if (found.user.reviewAccount) markReviewRequest(req); // D268
+    return found;
+  }
   if (await liveGuest(token, now)) {
     throw new ApiError(403, 'GUEST_NOT_ALLOWED', 'Create a free account to do this.');
   }
@@ -73,7 +77,10 @@ export async function requireActor(
 ): Promise<Actor> {
   const token = bearer(req);
   const found = await userFromToken(token, opts, now);
-  if (found) return { kind: 'user', user: found.user };
+  if (found) {
+    if (found.user.reviewAccount) markReviewRequest(req); // D268
+    return { kind: 'user', user: found.user };
+  }
   const guest = await liveGuest(token, now);
   if (!guest) throw new ApiError(401, 'UNAUTHENTICATED', 'Please sign in');
   await touchGuest(guest, now);

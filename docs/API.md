@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the route files by `npm run docs:api -w @jax/server`; don't edit by hand.
-206 endpoints.
+213 endpoints.
 
 - **Who:** `public` (no session), `user` (app session: `Authorization: Bearer <token>`),
   `user (confirmed email)`, `user or guest` (guests are view-only, D54), `admin` (portal cookie;
@@ -72,8 +72,10 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | PUT | `/api/v1/events/:id/follow` | user |  | D230: follow an event (Followed events; bell reminders before it starts). Accounts only. |
 | DELETE | `/api/v1/events/:id/follow` | user |  | D230: stop following an event. |
 | POST | `/api/v1/events/:id/tap` | user or guest |  | D236: a tap on an event's link button (counted once per person per event per day). |
+| POST | `/api/v1/events/areas` | user or guest | yes | D248: neighborhoods and ZIPs with events to come, for the Events tab's "Where" filter. |
 | POST | `/api/v1/events/coming-up` | user | yes | D241: events you follow that start today or tomorrow (the "Coming up" strip). Accounts only (guests can't follow); a read, so it needs a verified in-Duval location (D16). |
 | POST | `/api/v1/events/day` | user or guest | yes | D230: one day's events, grouped by neighborhood (the nearest first), then by start time. |
+| POST | `/api/v1/events/featured` | user or guest | yes | D248: Featured: events their hosts boosted, for the top of the Events tab (guests too). A read, so it needs a verified in-Duval location (D16). |
 | GET | `/api/v1/events/host-info` | user or guest |  | D233: the app's "Post an event" screen. App users don't suggest events: hosts add them on the JaxSide for Business website (D230 / D232). This only says where its sign-up page is (null until the website is public). |
 | POST | `/api/v1/events/list` | user or guest | yes | D230: the list view: events that haven't ended, soonest first, 20 at a time. |
 | POST | `/api/v1/events/month` | user or guest | yes | D230: the calendar: how many events on each day of a month, with the tab's filters. |
@@ -90,6 +92,12 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | DELETE | `/api/v1/friends/requests/:id` | user |  | D76: withdraw a request you sent. |
 | POST | `/api/v1/friends/requests/:id/accept` | user |  | D76: accept a friend request sent to you. Only the person asked can answer it. |
 | POST | `/api/v1/friends/requests/:id/decline` | user |  | D76: decline a friend request sent to you. Only the person asked can answer it. |
+
+## maintenance
+
+| Method | Path | Who | Location | What it does |
+| --- | --- | --- | --- | --- |
+| GET | `/api/v1/maintenance` | public |  | D246: public. The app asks while its maintenance screen is showing, to know when it's over. |
 
 ## map
 
@@ -163,7 +171,6 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | Method | Path | Who | Location | What it does |
 | --- | --- | --- | --- | --- |
 | GET | `/api/v1/health` | public |  |  |
-| GET | `/api/v1/maintenance` | public |  | D246: `{ on, text, message }`; the app asks while its maintenance screen shows. While on, every other app route answers `503 MAINTENANCE`. |
 
 ## installations
 
@@ -339,13 +346,13 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | POST | `/api/v1/admin/cases/:type/:id` | admin (cookie + CSRF) |  | P5.14: decide the case (remove, approve, dismiss, escalate), optionally with a strike. |
 | POST | `/api/v1/admin/chat/rooms/:id` | admin (cookie + CSRF) |  | D218: switch a chat room on or off, or give it a name. Audited. |
 | POST | `/api/v1/admin/chat/users/:id/unmute` | admin (cookie + CSRF) |  | D218: lift a person's area-chat mute early. Audited. |
-| POST | `/api/v1/admin/contact/:id` | admin (cookie + CSRF) |  | D90 / D251: answer a Contact us message. Body `{ action: 'resolve', note? }`, `{ action: 'needs_info', note }` (3-1000 characters) or `{ action: 'reopen' }`. Resolved / Need more details email the sender when they can be emailed (a business ticket: its reply address or the login's email; a person: only with replies on; a guest: never), Reply-To support. Returns `{ ok, emailed }`. |
+| POST | `/api/v1/admin/contact/:id` | admin (cookie + CSRF) |  | D90 / D251: answer a Contact us message: "Resolved" or "Need more details" (each emails the sender when they can be emailed), or open it again. |
 | GET | `/api/v1/admin/contact/:id/reply-email` | admin (cookie + CSRF) |  | D90: the sender's account email, only if they allowed replies on this message. Every viewing is written to the audit log. |
 | POST | `/api/v1/admin/events` | admin (cookie + CSRF) |  | D230: an admin adds an event (approved at once; the pin must be inside Duval). Audited. |
 | PATCH | `/api/v1/admin/events/:id` | admin (cookie + CSRF) |  | D230: change an event (followers of an approved one are told if its dates or place change). |
 | POST | `/api/v1/admin/events/:id/copy` | admin (cookie + CSRF) |  | D230: Duplicate (years 0) or Repeat yearly (years 1). The copy waits for review. Audited. |
 | POST | `/api/v1/admin/events/:id/decide` | admin (cookie + CSRF) |  | D230: approve, deny, cancel, remove or restore an event. Audited. |
-| POST | `/api/v1/admin/events/:id/images` | admin (cookie + CSRF) |  | D230: add a picture to an event (the image bytes as the body). Cleaned like photos: real type checked, re-encoded, all metadata dropped. At most 6 photos per event; D239: `?kind=flyer` adds a flyer instead (at most 2, shown whole). Audited. |
+| POST | `/api/v1/admin/events/:id/images` | admin (cookie + CSRF) |  | D230: add a picture to an event (the image bytes as the body). Cleaned like photos: real type checked, re-encoded, all metadata dropped. At most 6 photos per event; D242: `?kind=flyer` adds a flyer instead (at most 2, shown whole). Audited. |
 | GET | `/api/v1/admin/events/:id/images/:imageId` | admin (cookie + CSRF) |  | D230: an event's picture for the admin pages (any status, so waiting events can be checked). |
 | DELETE | `/api/v1/admin/events/:id/images/:imageId` | admin (cookie + CSRF) |  | D230: take a picture off an event (deleted from storage too). Audited. |
 | POST | `/api/v1/admin/events/geocode` | admin (cookie + CSRF) |  | D230: find a pin for an address (US Census geocoder, D224). `match` is null if not found. |
@@ -358,10 +365,11 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | POST | `/api/v1/admin/login` | public |  | P5.11 step 1: password. Returns a short-lived challenge (and 2FA setup the first time). |
 | POST | `/api/v1/admin/login/verify` | public |  | P5.11 step 2: authenticator code. Starts the admin session (cookies). |
 | POST | `/api/v1/admin/logout` | admin (cookie + CSRF) |  | P5.11: end the admin session. |
-| POST | `/api/v1/admin/organizer-names/:id` | admin (cookie + CSRF) |  | D239: approve or turn down a organizer name change (a note is needed to turn it down). Audited. |
+| POST | `/api/v1/admin/maintenance` | admin (cookie + CSRF) |  | D246: the emergency switch. On: the app shows "JaxSide is currently having maintenance done" and everyone is signed out; off: people sign in again. Audited. |
+| POST | `/api/v1/admin/organizer-names/:id` | admin (cookie + CSRF) |  | D242: approve or turn down a organizer name change (a note is needed to turn it down). Audited. |
 | POST | `/api/v1/admin/organizers/:id` | admin (cookie + CSRF) |  | D230: approve, reject or revoke an event organizer (the business account's ID). Audited. |
 | GET | `/api/v1/admin/photos/:id` | admin (cookie + CSRF) |  | P6.5: moderators can see a reported photo, including after it's removed. |
-| POST | `/api/v1/admin/place-changes/:id` | admin (cookie + CSRF) |  | D239: approve or turn down a place change (a note is needed to turn it down). Audited. |
+| POST | `/api/v1/admin/place-changes/:id` | admin (cookie + CSRF) |  | D242: approve or turn down a place change (a note is needed to turn it down). Audited. |
 | POST | `/api/v1/admin/place-requests/:id` | admin (cookie + CSRF) |  | D224 (B6.4): approve or turn down a request from the owner website. Audited. |
 | POST | `/api/v1/admin/places` | admin (cookie + CSRF) |  | D146: add a place now (inside Duval), without a suggestion or votes. Audited. |
 | POST | `/api/v1/admin/places/:id/ratings` | admin (cookie + CSRF) |  | D144: lock or unlock voting on a place, or clear all its votes (abuse). Audited. |
@@ -374,7 +382,10 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | DELETE | `/api/v1/admin/polls/:id` | admin (cookie + CSRF) |  | D123: delete a poll before it opens. |
 | POST | `/api/v1/admin/polls/:id/end` | admin (cookie + CSRF) |  | D123: end an open poll now; it's counted right away. |
 | POST | `/api/v1/admin/polls/:id/feature` | admin (cookie + CSRF) |  | D150: make a poll the Poll of the week (Home shows it first), or stop. Audited. |
+| POST | `/api/v1/admin/promo-codes` | admin (cookie + CSRF) |  | D248: make a promo code (a plan for some days, a use cap, an optional end). Audited. |
+| PATCH | `/api/v1/admin/promo-codes/:id` | admin (cookie + CSRF) |  | D248: turn a promo code off (no new uses) or back on. Audited. |
 | POST | `/api/v1/admin/removals/:id` | admin (cookie + CSRF) |  | D94: overrule the community: keep (or restore) the place, or take it down now. |
+| POST | `/api/v1/admin/review-mode` | admin (cookie + CSRF) |  | D268: turn App Store / Google Play review mode on or off for everyone. Audited. |
 | POST | `/api/v1/admin/screening` | admin (cookie + CSRF) |  | P15.9: add a screening term. The term itself isn't copied into the audit log. |
 | PATCH | `/api/v1/admin/screening/:id` | admin (cookie + CSRF) |  | P15.9: turn a screening term on or off, or change what it does. |
 | POST | `/api/v1/admin/screening/test` | admin (cookie + CSRF) |  | P15.9: try a sentence against the rules (nothing is saved). |
@@ -386,7 +397,6 @@ Generated from the route files by `npm run docs:api -w @jax/server`; don't edit 
 | PATCH | `/api/v1/admin/topics/:id` | admin (cookie + CSRF) |  | D125: change a topic's wording, pin, start or end. |
 | POST | `/api/v1/admin/topics/:id/decide` | admin (cookie + CSRF) |  | D125: approve or reject a suggestion; close or reopen a topic. |
 | POST | `/api/v1/admin/topics/approval` | admin (cookie + CSRF) |  | D222: make topics need admin approval, or let them appear at once. Audited. |
-| POST | `/api/v1/admin/maintenance` | admin (cookie + CSRF) |  | D246: emergency switch on or off (`enabled`, `reason`, optional `message`). On signs every app session out. Audited. |
 | GET | `/api/v1/admin/users` | admin (cookie + CSRF) |  | P5.14: find people by any part of the username; filter by strikes, banned, suspended. |
 | GET | `/api/v1/admin/users/:id` | admin (cookie + CSRF) |  | P5.14: a person's record: status, history, recent content (never their email). |
 | POST | `/api/v1/admin/users/:id/actions` | admin (cookie + CSRF) |  | P5.6 / P5.14: strike, suspend, ban, lift, note, or cancel a strike. |

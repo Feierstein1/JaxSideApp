@@ -1,8 +1,15 @@
 import { COLORS } from '@jax/shared';
 import { uuidParam } from '@/server/admin/params';
 import { getUserRecord } from '@/server/admin/users';
+import { reviewModeOn as reviewModeIsOn } from '@/server/review';
 import { ui } from '../../../admin-ui';
-import { NotifyForReport, StaffBadge, UserActions, VoidStrike } from '../../../forms';
+import {
+  NotifyForReport,
+  ReviewAccount,
+  StaffBadge,
+  UserActions,
+  VoidStrike,
+} from '../../../forms';
 import { requireAdminPage } from '../../../require-admin-page';
 import { Pager, Pill, Table, td, when, words } from '../../admin-table';
 import { pageNumber, toPage } from '@/server/admin/paging';
@@ -51,6 +58,7 @@ export default async function UserPage(ctx: {
     ...u.recentComments.map((c) => ({ ...c, kind: 'Comment' })),
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const step = u.role === 'ADMIN' ? null : stepLabel(u.nextStrike);
+  const reviewModeOn = await reviewModeIsOn(); // D268
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <a href="/admin/users">← Users</a>
@@ -88,6 +96,7 @@ export default async function UserPage(ctx: {
             {u.suspendedUntil ? `until ${when(u.suspendedUntil)} · ` : ''}
             {u.role === 'ADMIN' ? <Pill>admin</Pill> : null}
             {u.staffBadge ? <Pill>ADMIN badge</Pill> : null}
+            {u.reviewAccount ? <Pill>review account</Pill> : null}
             {u.legalHold ? <Pill tone="alert">legal hold</Pill> : null}
             joined {when(u.joinedAt)} · email {u.emailVerified ? 'confirmed' : 'not confirmed'}
           </p>
@@ -106,6 +115,9 @@ export default async function UserPage(ctx: {
 
       {u.role !== 'ADMIN' ? <UserActions userId={u.id} status={u.status} /> : null}
       <StaffBadge userId={u.id} on={u.staffBadge} />
+      {u.role !== 'ADMIN' ? (
+        <ReviewAccount userId={u.id} on={u.reviewAccount} modeOn={reviewModeOn} />
+      ) : null}
 
       <h2 style={{ marginBottom: 0 }}>Reports about them</h2>
       {u.history.reportsAgainst === 0 ? (

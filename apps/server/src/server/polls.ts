@@ -216,6 +216,7 @@ async function voterReady(userId: string | null, now: Date): Promise<boolean> {
         createdAt: true,
         role: true,
         staffBadge: true,
+        reviewAccount: true,
       },
     }),
     getConfig('polls.voterMinAccountDays'),
@@ -289,7 +290,7 @@ export async function getPoll(id: string, userId: string | null, now = new Date(
 
 /** Confirmed accounts a few days old (the route already checked the email). */
 export async function pollVoterAllowed(
-  user: Pick<User, 'createdAt' | 'role' | 'staffBadge'>,
+  user: Pick<User, 'createdAt' | 'role' | 'staffBadge' | 'reviewAccount'>,
   now = new Date(),
 ) {
   const days = await getConfig('polls.voterMinAccountDays');

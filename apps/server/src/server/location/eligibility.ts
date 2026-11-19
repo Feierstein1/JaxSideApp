@@ -203,7 +203,14 @@ async function check(
 
   // 6. Inside the service area (Duval County, D15).
   if (!(await isInServiceArea(db, reading.latitude, reading.longitude))) {
-    throw deny('LOCATION_OUTSIDE_AREA', 'JaxSide is only available inside Duval County.');
+    // D268: while review mode is on, the phone offers "Testing JaxSide? Sign in with a review
+    // account" under this message. Signing in is still a normal password sign-in; only an
+    // account an admin marked as a review account is placed in Jacksonville.
+    throw deny(
+      'LOCATION_OUTSIDE_AREA',
+      'JaxSide is only available inside Duval County.',
+      (await getConfig('review.enabled')) === 1 ? { reviewSignIn: true } : undefined,
+    );
   }
 
   // 7. Within the radius of the post or place.

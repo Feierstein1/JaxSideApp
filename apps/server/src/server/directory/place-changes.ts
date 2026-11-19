@@ -23,7 +23,7 @@ const DAY_MS = 86_400_000;
 const at = (p: { latitude: number; longitude: number }) => ({ lat: p.latitude, lon: p.longitude });
 
 export async function voterAllowed(
-  user: Pick<User, 'createdAt' | 'role' | 'staffBadge'>,
+  user: Pick<User, 'createdAt' | 'role' | 'staffBadge' | 'reviewAccount'>,
   now = new Date(),
 ) {
   const days = await getConfig('places.voterMinAccountDays');
@@ -41,7 +41,7 @@ export async function voterAllowed(
  * voted on and didn't ask for yourself (D100: your request already counts as your vote).
  */
 export async function listNearbyChanges(
-  user: Pick<User, 'id' | 'createdAt' | 'role' | 'staffBadge'>,
+  user: Pick<User, 'id' | 'createdAt' | 'role' | 'staffBadge' | 'reviewAccount'>,
   here: GeoPoint,
 ): Promise<PlaceChange[]> {
   // D162: nothing to show an account that can't vote yet (staff never wait).

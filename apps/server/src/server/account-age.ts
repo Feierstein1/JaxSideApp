@@ -7,12 +7,15 @@ const DAY_MS = 86_400_000;
  * new-account waiting period: voting on places and polls, rating places, starting topics and
  * chats. Both are set only by an admin, never by the account itself.
  */
-export const skipsAccountWaits = (u: Pick<User, 'role' | 'staffBadge'>) =>
-  u.role === 'ADMIN' || u.staffBadge;
+export const isStaff = (u: Pick<User, 'role' | 'staffBadge'>) => u.role === 'ADMIN' || u.staffBadge;
 
-/** Is this account past a `days`-long new-account wait (or staff)? */
+/** D268: review accounts skip the waits too (a reviewer has minutes, not days). */
+export const skipsAccountWaits = (u: Pick<User, 'role' | 'staffBadge' | 'reviewAccount'>) =>
+  isStaff(u) || u.reviewAccount;
+
+/** Is this account past a `days`-long new-account wait (or staff / review)? */
 export function pastAccountWait(
-  u: Pick<User, 'role' | 'staffBadge' | 'createdAt'>,
+  u: Pick<User, 'role' | 'staffBadge' | 'reviewAccount' | 'createdAt'>,
   days: number,
   now = new Date(),
 ) {

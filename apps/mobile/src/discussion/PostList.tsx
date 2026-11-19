@@ -14,6 +14,7 @@ import { ApiRequestError } from '@/api/client';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Text } from '@/text';
 import { Button, EmptyState, ErrorState, type IconName } from '@/ui';
+import { offersReviewSignIn, ReviewSignIn } from '@/location/ReviewSignIn';
 import { takeFeedsDirty, type PostPage } from './api';
 import { stopMediaNotIn } from './media-focus';
 import { PostCard, PostSkeleton } from './PostCard';
@@ -65,6 +66,8 @@ export function PostList({
   const [cursor, setCursor] = useState<string | null>(null);
   const [state, setState] = useState<'loading' | 'refreshing' | 'more' | 'idle'>('loading');
   const [error, setError] = useState<string>();
+  /** D268: outside Duval while store review mode is on: offer the review sign-in. */
+  const [reviewSignIn, setReviewSignIn] = useState(false);
   const req = useRef(0);
   /** D206: post count → the ad that follows that post. */
   const [ads, setAds] = useState<Record<number, Ad>>({});
@@ -121,6 +124,7 @@ export function PostList({
       const id = ++req.current;
       setState(mode);
       setError(undefined);
+      setReviewSignIn(false);
       try {
         const page = await load(after);
         if (id !== req.current) return;
@@ -149,6 +153,7 @@ export function PostList({
           setCursor(null);
         }
         setError(e instanceof ApiRequestError ? e.message : 'Couldn’t get your location.');
+        setReviewSignIn(offersReviewSignIn(e));
       } finally {
         if (id === req.current) setState('idle');
       }
@@ -235,6 +240,7 @@ export function PostList({
             {error ? (
               <ErrorState message={error} onRetry={() => void fetchPage('loading')} />
             ) : null}
+            {error && reviewSignIn ? <ReviewSignIn /> : null}
           </>
         }
         ListEmptyComponent={

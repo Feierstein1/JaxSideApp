@@ -340,6 +340,73 @@ export function StaffBadge({ userId, on }: { userId: string; on: boolean }) {
   );
 }
 
+/**
+ * D268: an App Store / Google Play review account, and review mode for everyone. While review
+ * mode is on, review accounts are placed at Five Points whatever their phone says, skip the
+ * new-account waits, and the "outside Duval" message offers them a sign-in.
+ */
+export function ReviewAccount({
+  userId,
+  on,
+  modeOn,
+}: {
+  userId: string;
+  on: boolean;
+  modeOn: boolean;
+}) {
+  const [reason, setReason] = useState('');
+  const { busy, error, done, run } = useSubmit();
+  const toggleAccount = () =>
+    run(async () => {
+      await adminFetch(`/api/v1/admin/users/${userId}/actions`, {
+        method: 'POST',
+        body: { action: 'reviewAccount', on: !on, reason },
+      });
+      setTimeout(() => window.location.reload(), 600);
+      return on ? 'No longer a review account.' : 'Now a review account (email confirmed).';
+    });
+  const toggleMode = () =>
+    run(async () => {
+      await adminFetch('/api/v1/admin/review-mode', {
+        method: 'POST',
+        body: { on: !modeOn, reason },
+      });
+      setTimeout(() => window.location.reload(), 600);
+      return modeOn ? 'Review mode is off.' : 'Review mode is on.';
+    });
+  return (
+    <div style={ui.card}>
+      <h2 style={{ marginTop: 0 }}>Store review account</h2>
+      <p style={ui.muted}>
+        {on
+          ? 'This is a review account for Apple or Google.'
+          : 'For the account you give Apple or Google in the store review form.'}{' '}
+        While review mode is on, it is placed at Five Points (Riverside) wherever the phone is, and
+        skips the new-account waits. Review mode is <strong>{modeOn ? 'on' : 'off'}</strong> for
+        everyone.
+      </p>
+      <label style={ui.label}>
+        Reason (kept in the audit log)
+        <input style={ui.input} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </label>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button style={on ? ui.buttonSecondary : ui.button} disabled={busy} onClick={toggleAccount}>
+          {on ? 'Remove review account' : 'Make review account'}
+        </button>
+        <button style={ui.buttonSecondary} disabled={busy} onClick={toggleMode}>
+          {modeOn ? 'Turn review mode off' : 'Turn review mode on'}
+        </button>
+      </div>
+      {error ? (
+        <p role="alert" style={ui.error}>
+          {error}
+        </p>
+      ) : null}
+      {done ? <p role="status">{done}</p> : null}
+    </div>
+  );
+}
+
 /** D144: lock or unlock voting on a place, or clear its votes (asks for a reason). */
 export function PlaceRatingControls({ placeId, locked }: { placeId: string; locked: boolean }) {
   const { busy, error, done, run } = useSubmit();

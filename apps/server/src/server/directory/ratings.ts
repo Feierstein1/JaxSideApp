@@ -13,7 +13,7 @@ import { pageWindow, toPage } from '../admin/paging';
  * so two votes at once can't miscount. Owners can't vote on their own place.
  */
 export async function ratePlace(
-  user: Pick<User, 'id' | 'createdAt' | 'role' | 'staffBadge'>,
+  user: Pick<User, 'id' | 'createdAt' | 'role' | 'staffBadge' | 'reviewAccount'>,
   placeId: string,
   value: -1 | 0 | 1,
   now = new Date(),

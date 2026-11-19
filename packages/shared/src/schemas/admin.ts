@@ -87,7 +87,15 @@ export const userActionSchema = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('void'), strikeId: z.uuid(), reason: reasonText }),
   /** D141: show or hide the ADMIN badge (no admin access; that's the promote command). */
   z.strictObject({ action: z.literal('staffBadge'), on: z.boolean(), reason: reasonText }),
+  /** D268: mark or unmark an App Store / Google Play review account. */
+  z.strictObject({ action: z.literal('reviewAccount'), on: z.boolean(), reason: reasonText }),
 ]);
+
+/** D268: turn App Store / Google Play review mode on or off for everyone. */
+export const reviewModeSchema = z.strictObject({
+  on: z.boolean(),
+  reason: reasonText,
+});
 
 /** D144: an admin locks or unlocks voting on a place, or clears its votes (abuse). */
 export const placeRatingsAdminSchema = z.strictObject({

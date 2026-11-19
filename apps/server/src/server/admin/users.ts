@@ -252,6 +252,7 @@ export async function getUserRecord(
     username: u.username,
     role: u.role,
     staffBadge: u.staffBadge,
+    reviewAccount: u.reviewAccount,
     status: u.status,
     suspendedUntil: u.suspendedUntil?.toISOString() ?? null,
     emailVerified: !!u.emailVerifiedAt,
@@ -339,6 +340,27 @@ export async function userAction(
       await db.user.update({ where: { id: userId }, data: { staffBadge: input.on } });
       break;
     }
+    case 'reviewAccount': {
+      // D268: a store review account. Turning it on also confirms the email, so a reviewer
+      // can use everything at once (the age check was passed at sign-up). Never an admin.
+      const target = await db.user.findUnique({
+        where: { id: userId },
+        select: { status: true, role: true, emailVerifiedAt: true },
+      });
+      if (!target || target.status === 'DELETED')
+        throw new ApiError(404, 'NOT_FOUND', 'User not found');
+      if (input.on && target.role === 'ADMIN') {
+        throw new ApiError(409, 'ADMIN_ACCOUNT', 'An admin account can’t be a review account.');
+      }
+      await db.user.update({
+        where: { id: userId },
+        data: {
+          reviewAccount: input.on,
+          ...(input.on && !target.emailVerifiedAt ? { emailVerifiedAt: new Date() } : {}),
+        },
+      });
+      break;
+    }
     case 'void': {
       const strike = await db.moderationAction.findUnique({ where: { id: input.strikeId } });
       if (!strike || strike.targetUserId !== userId)
@@ -355,7 +377,9 @@ export async function userAction(
       reason,
       ...(input.action === 'suspend' ? { hours: input.hours } : {}),
       ...(input.action === 'strike' && input.reportId ? { reportId: input.reportId } : {}),
-      ...(input.action === 'staffBadge' ? { on: input.on } : {}),
+      ...(input.action === 'staffBadge' || input.action === 'reviewAccount'
+        ? { on: input.on }
+        : {}),
     },
   );
   return result;
