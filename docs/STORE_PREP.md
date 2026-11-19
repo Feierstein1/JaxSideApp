@@ -130,10 +130,15 @@ Company and accounts (details in `docs/LLC_PROCESS.md`):
 - [x] Business email: `kenny@jaxside.com`, `support@jaxside.com` (2026-11-08)
 - [ ] **jaxside.com live with real content** (production server, D243). Apple rejects
       placeholder or minimal sites; the D-U-N-S request is done, so this is the next blocker
-- [ ] Apple Account email changed from the personal Yahoo address to `kenny@jaxside.com`
-- [ ] Apple Developer Program, organization ($99/year, **you**); wait at least 2 business days
-      after the D-U-N-S (from 2026-11-17); name, address and phone exactly as on Sunbiz and D&B
-- [ ] Google Play Console, organization ($25 once, **you**)
+- [x] Apple Account on `kenny@jaxside.com` (2026-11-18, made with Apple Support's help after
+      sign-up kept failing; the old Yahoo account is abandoned)
+- [ ] Apple Developer Program, organization ($99/year, **you**): **submitted 2026-11-19,
+      enrollment ID UJ7U66A486**, waiting for Apple to verify signing authority (may phone the
+      904 cell); then pay
+- [x] Google Play Console, organization ($25 once): account `JaxSide LLC`, ID
+      5262362696067233378, owner kenfeier@gmail.com; identity, website (Search Console TXT on
+      jaxside.com), trader status and both phones verified (2026-11-19). Public phone is a Google
+      Voice number; public email support@jaxside.com. Next: Create app
 
 App and server:
 
