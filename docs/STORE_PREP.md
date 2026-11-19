@@ -122,6 +122,32 @@ Developer Distribution Agreement and Play Console Terms of Service, as they appl
   Options: a review-only account flagged to skip the boundary (needs a small server feature), or
   a screen recording. Apple reviewers are usually outside Florida, so plan for this.
 
+## Submission day (Google first, Apple once enrolled)
+
+Ready as of 2026-11-19; the owner plans Google for the week of 2026-11-23. Passwords for both
+review accounts are in the git-ignored `deploy/staging/secrets/test-accounts.txt` (also keep them
+in a password manager). Review mode (D268) is built.
+
+1. **Deploy** the latest commit to the server (back up the database first; check no other
+   session is mid-deploy). Review mode needs to be live before anyone reviews.
+2. **Create both review accounts** in the JaxSide app (sign up as usual, from inside Duval):
+   - `review_google`, email `review-google@jaxside.com`
+   - `review_apple`, email `review-apple@jaxside.com`
+     Use the passwords from the secrets file. The Zoho aliases already exist (2026-11-19).
+3. **Flag them:** admin portal → Users → each account → "Store review account" →
+   **Make review account** (this also confirms the email). Check the card says review mode is
+   **on**.
+4. **Check it works:** sign in as `review_google` on a phone with mock / far-away location, or
+   ask Claude to run the check; the feed should be Five Points, and a test post should not show
+   to a normal account.
+5. **Google Play:** Sign in details are already filled in (username `review_google`, password,
+   the note about Jacksonville). Build the Android app bundle (`eas build --platform android
+--profile production`), upload it (Testing → Internal testing first, then Production when
+   ready), and send for review.
+6. **Apple (after enrollment is approved and the $99 paid):** in App Store Connect → the app →
+   App Review Information: username `review_apple`, its password, and the same note about
+   Jacksonville. Build with `eas build --platform ios --profile production` and submit.
+
 ## Before submitting (checklist)
 
 Company and accounts (details in `docs/LLC_PROCESS.md`):
