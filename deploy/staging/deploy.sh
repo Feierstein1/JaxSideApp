@@ -57,9 +57,11 @@ docker compose up -d
 sudo install -m 644 cron /etc/cron.d/jaxside
 chmod 755 backup.sh
 docker image prune -f >/dev/null
-# Each build leaves cache behind (36 GB had piled up by 2026-11-05). Keep the last week's
-# so back-to-back deploys stay quick; never fail a deploy over cleanup.
-docker builder prune -a -f --filter until=168h >/dev/null || true
+# Each build leaves cache behind (36 GB had piled up by 2026-11-05, 40 GB by 2026-11-20 even with
+# a 7-day rule, as there are several deploys a day). Keep only the newest 3 GB, enough for the next
+# build to reuse the unchanged layers. A failure is shown (it used to be hidden, and old cache
+# stayed for months), but never fails the deploy.
+docker builder prune -a -f --keep-storage 3GB >/dev/null || echo 'WARNING: build cache cleanup failed' >&2
 for i in $(seq 1 30); do
   if docker compose exec -T app node -e "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" </dev/null; then
     echo "Healthy: $(cat src/REVISION)"; exit 0
