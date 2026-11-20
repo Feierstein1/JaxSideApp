@@ -2,7 +2,7 @@ import { endFriendship, friendshipState } from './social/friends';
 import { normalizeUsername, type PublicProfile } from '@jax/shared';
 import { medalsFor } from './achievements';
 import type { User } from '@/generated/prisma/client';
-import { decryptUserEmail } from './crypto/field-encryption';
+import { userEmailOrNull } from './crypto/field-encryption';
 import { signedPhotoUrl } from './media/photos';
 import { db } from './db';
 import { ApiError } from './http';
@@ -19,7 +19,7 @@ export async function meView(user: User): Promise<MeUser> {
     db.profile.findUnique({ where: { userId: user.id } }),
     db.userSettings.findUnique({ where: { userId: user.id } }),
   ]);
-  return toMe({ ...user, profile, settings, email: decryptUserEmail(user) });
+  return toMe({ ...user, profile, settings, email: userEmailOrNull(user) ?? '' }); // D273: none → empty
 }
 
 /** D108: your radius preference (null = the default), for the feed and Places. */

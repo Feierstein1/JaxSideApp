@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { AD_DENIAL_CODES, PHOTO_DENIAL_CODES } from '../ad-denials';
 import { AD_LIVE_MAX } from '../ads';
-import { loginRequestSchema } from './auth';
+import { emailSchema, loginRequestSchema, passwordSchema, usernameSchema } from './auth';
 
 /** P5.11: admin sign-in step 1 is the normal credential check. */
 export const adminLoginSchema = loginRequestSchema;
@@ -243,3 +243,19 @@ export const adminCompSchema = z
 export const adminEndSubscriptionSchema = z.strictObject({
   note: z.string().trim().max(300).optional(),
 });
+
+/**
+ * D273: an admin adds an account in the portal (store reviewers, staff, test accounts). The
+ * email is optional; the account is confirmed at once. The admin confirms the person is 18+
+ * and agrees to the Terms. Never an admin account (that stays the promote command).
+ */
+export const adminCreateUserSchema = z.strictObject({
+  username: usernameSchema,
+  /** Empty means no email. */
+  email: z.union([z.literal(''), emailSchema]).optional(),
+  password: passwordSchema,
+  confirmAdultAndTerms: z.literal(true, 'Confirm they’re 18 or older and agree to the Terms'),
+  /** D268: make it a store review account straight away. */
+  reviewAccount: z.boolean().default(false),
+});
+export type AdminCreateUserRequest = z.input<typeof adminCreateUserSchema>;

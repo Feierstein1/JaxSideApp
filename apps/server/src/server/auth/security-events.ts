@@ -1,4 +1,4 @@
-import { decryptUserEmail } from '../crypto/field-encryption';
+import { userEmailOrNull } from '../crypto/field-encryption';
 import { db } from '../db';
 import { logger } from '../logger';
 import { sendSafely } from '../mail/mailer';
@@ -37,7 +37,8 @@ async function alertAccountOwner(userId: string, now: Date) {
     select: { id: true, status: true, emailVerifiedAt: true, dekWrapped: true, emailEnc: true },
   });
   if (!user || user.status === 'DELETED' || !user.emailVerifiedAt) return;
-  await sendSafely(loginAlertEmail(decryptUserEmail(user)), 'login-alert');
+  const email = userEmailOrNull(user); // D273: an account may have no email
+  if (email) await sendSafely(loginAlertEmail(email), 'login-alert');
 }
 
 /** D180: how many sign-in bursts were blocked in the last day (the dashboard tile). */

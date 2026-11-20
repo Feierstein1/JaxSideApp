@@ -703,6 +703,122 @@ export function AppealDecision({ appealId }: { appealId: string }) {
  * their account email to reply. Showing it is audited.
  */
 /**
+ * D273: add an account (store reviewers, staff, test accounts). Username and password follow
+ * sign-up's rules; the email is optional; the account is confirmed at once.
+ */
+export function AddUserForm() {
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
+  const [review, setReview] = useState(false);
+  const [created, setCreated] = useState<{ id: string; username: string } | null>(null);
+  const { busy, error, done, run } = useSubmit();
+  const submit = () =>
+    run(async () => {
+      const r = await adminFetch<{ user: { id: string; username: string } }>(
+        '/api/v1/admin/users',
+        {
+          method: 'POST',
+          body: {
+            username: username.trim(),
+            email: email.trim(),
+            password,
+            confirmAdultAndTerms: confirmed,
+            reviewAccount: review,
+          },
+        },
+      );
+      setCreated(r.user);
+      setUsername('');
+      setEmail('');
+      setPassword('');
+      setConfirmed(false);
+      setReview(false);
+      return `Created @${r.user.username}.`;
+    });
+  return (
+    <details style={{ ...ui.card, padding: 16, marginBottom: 18 }}>
+      <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Add user</summary>
+      <div style={{ marginTop: 12, maxWidth: 520 }}>
+        <p style={{ ...ui.muted, marginTop: 0 }}>
+          For store reviewers, staff and test accounts. The account is confirmed at once and can
+          sign in with its username. It’s never an admin account.
+        </p>
+        <label style={ui.label}>
+          Username
+          <input
+            style={ui.input}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            maxLength={20}
+            autoComplete="off"
+          />
+        </label>
+        <label style={ui.label}>
+          Email (optional)
+          <input
+            style={ui.input}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            maxLength={254}
+            autoComplete="off"
+          />
+        </label>
+        {!email.trim() ? (
+          <p style={{ ...ui.muted, marginTop: -6, fontSize: 13 }}>
+            Without an email they can’t reset the password themselves or get sign-in alerts; they
+            can add one later in the app.
+          </p>
+        ) : null}
+        <label style={ui.label}>
+          Password (at least 10 characters, as at sign-up)
+          <input
+            style={ui.input}
+            type="text"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            maxLength={128}
+            autoComplete="new-password"
+          />
+        </label>
+        <label style={{ display: 'block', margin: '4px 0 8px' }}>
+          <input
+            type="checkbox"
+            checked={confirmed}
+            onChange={(e) => setConfirmed(e.target.checked)}
+          />{' '}
+          This person is 18 or older and agrees to the Terms
+        </label>
+        <label style={{ display: 'block', margin: '0 0 12px' }}>
+          <input type="checkbox" checked={review} onChange={(e) => setReview(e.target.checked)} />{' '}
+          Store review account (Apple / Google reviewers; placed at Five Points while review mode is
+          on)
+        </label>
+        <button
+          style={ui.button}
+          disabled={busy || !username.trim() || !password || !confirmed}
+          onClick={submit}
+        >
+          Create account
+        </button>
+        {error ? (
+          <p role="alert" style={ui.error}>
+            {error}
+          </p>
+        ) : null}
+        {done ? (
+          <p role="status">
+            {done} {created ? <a href={`/admin/users/${created.id}`}>Open their page →</a> : null}
+          </p>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
+/**
  * Admin → Topics → one topic: moderate one post where it sits. Remove it (the same decision
  * as the reports queue: reason, internal note, optionally tell the author) and/or act on the
  * author (strike = the next step of the ladder, suspend for some hours, or ban), in one go.

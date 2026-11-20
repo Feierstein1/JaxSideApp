@@ -8,7 +8,7 @@ import { normalizeUsername } from '@jax/shared';
 import type { Prisma, User } from '@/generated/prisma/client';
 import { getConfig } from '../config';
 import {
-  decryptUserEmail,
+  userEmailOrNull,
   emailIndex,
   encryptField,
   unwrapUserKey,
@@ -149,7 +149,7 @@ export async function startEmailChange(
   if (index === user.emailIndex) {
     throw new ApiError(400, 'SAME_EMAIL', 'That is already your email address');
   }
-  const oldEmail = decryptUserEmail(user);
+  const oldEmail = userEmailOrNull(user); // D273: none when an admin added it without one
   const taken = await db.user.findUnique({ where: { emailIndex: index }, select: { id: true } });
   if (taken) {
     await sendSafely(emailChangeTakenEmail(newEmail), 'email-change-taken');
@@ -165,7 +165,9 @@ export async function startEmailChange(
     encryptField(user.id, 'newEmail', dek, newEmail),
   );
   await sendSafely(emailChangeCodeEmail(newEmail, code), 'email-change-code');
-  await sendSafely(emailChangeNoticeEmail(oldEmail, 'requested'), 'email-change-notice');
+  if (oldEmail) {
+    await sendSafely(emailChangeNoticeEmail(oldEmail, 'requested'), 'email-change-notice');
+  }
   return EMAIL_CHANGE_STARTED;
 }
 
@@ -177,7 +179,7 @@ export async function confirmEmailChange(user: User, code: string, ctx: RequestC
     throw new ApiError(400, 'INVALID_CODE', 'That code is incorrect or has expired.');
   const dek = unwrapUserKey(user.id, user.dekWrapped!);
   const newEmail = decryptField(user.id, 'newEmail', dek, token.newEmailEnc);
-  const oldEmail = decryptUserEmail(user);
+  const oldEmail = userEmailOrNull(user); // D273: none when an admin added it without one
   try {
     await db.user.update({
       where: { id: user.id },
@@ -194,7 +196,9 @@ export async function confirmEmailChange(user: User, code: string, ctx: RequestC
     }
     throw err;
   }
-  await sendSafely(emailChangeNoticeEmail(oldEmail, 'completed'), 'email-change-completed');
+  if (oldEmail) {
+    await sendSafely(emailChangeNoticeEmail(oldEmail, 'completed'), 'email-change-completed');
+  }
   return { status: 'email_changed' as const };
 }
 
@@ -209,7 +213,7 @@ export async function confirmEmailChange(user: User, code: string, ctx: RequestC
 export async function deleteAccount(user: User, password: string, now = new Date()) {
   await assertPassword(user, password, now);
   const days = await getConfig('retention.deletedAccountDays');
-  const email = decryptUserEmail(user);
+  const email = userEmailOrNull(user);
   await db.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: user.id },
@@ -228,7 +232,7 @@ export async function deleteAccount(user: User, password: string, now = new Date
     });
   });
   await revokeAllSessions(user.id, now);
-  await sendSafely(accountDeletedEmail(email, days), 'account-deleted');
+  if (email) await sendSafely(accountDeletedEmail(email, days), 'account-deleted');
 }
 
 /**

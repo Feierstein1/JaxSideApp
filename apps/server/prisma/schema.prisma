@@ -158,7 +158,7 @@ model User {
   /// `review.enabled` is on, the server uses REVIEW_POINT instead of the phone's location for
   /// it, and it skips the new-account waits.
   reviewAccount      Boolean       @default(false)
-  /// D272: added by an admin in the portal (confirmed at once; may have no email).
+  /// D273: added by an admin in the portal (confirmed at once; may have no email).
   adminCreated       Boolean       @default(false)
   status             AccountStatus @default(ACTIVE)
   suspendedUntil     DateTime?     @db.Timestamptz(3)

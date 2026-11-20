@@ -130,13 +130,15 @@ in a password manager). Review mode (D268) is built.
 
 1. **Deploy** the latest commit to the server (back up the database first; check no other
    session is mid-deploy). Review mode needs to be live before anyone reviews.
-2. **Create both review accounts** in the JaxSide app (sign up as usual, from inside Duval):
+2. **Create both review accounts** in the admin portal (D273): Users → **Add user**, tick
+   "This person is 18 or older…" and **Store review account**:
    - `review_google`, email `review-google@jaxside.com`
    - `review_apple`, email `review-apple@jaxside.com`
-     Use the passwords from the secrets file. The Zoho aliases already exist (2026-11-19).
-3. **Flag them:** admin portal → Users → each account → "Store review account" →
-   **Make review account** (this also confirms the email). Check the card says review mode is
-   **on**.
+     Use the passwords from the secrets file. The Zoho aliases already exist (2026-11-19). The
+     accounts are confirmed at once. (Signing up in the app from inside Duval, then "Make review
+     account" on the user page, still works too.)
+3. **Check the flag:** open each account's page; the "Store review account" card should say
+   review mode is **on**.
 4. **Check it works:** sign in as `review_google` on a phone with mock / far-away location, or
    ask Claude to run the check; the feed should be Five Points, and a test post should not show
    to a normal account.

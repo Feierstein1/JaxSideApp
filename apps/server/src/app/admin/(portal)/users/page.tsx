@@ -1,6 +1,7 @@
 import { COLORS } from '@jax/shared';
 import { listUsers, parseUserQuery, signupCounts, type UserFilter } from '@/server/admin/users';
 import { ui } from '../../admin-ui';
+import { AddUserForm } from '../../forms';
 import { requireAdminPage } from '../../require-admin-page';
 import { Pill, StatGrid, StatTile, Table, td, when, words } from '../admin-table';
 
@@ -45,6 +46,8 @@ export default async function UsersPage({
   return (
     <>
       <h1>Users</h1>
+      {/* D273: add store reviewers, staff and test accounts. */}
+      <AddUserForm />
       <StatGrid min={170}>
         {SIGNUPS.map((s) => (
           <StatTile key={s.key} label={s.label} value={signups[s.key]} />

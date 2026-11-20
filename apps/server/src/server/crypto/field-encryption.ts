@@ -125,6 +125,18 @@ export function decryptUserEmail(u: {
   return decryptField(u.id, 'email', dek, u.emailEnc);
 }
 
+/**
+ * D273: the email, or null when the account has none (added by an admin without one) or it
+ * was shredded. Use this wherever a missing email just means "don't send".
+ */
+export function userEmailOrNull(u: {
+  id: string;
+  dekWrapped: Uint8Array | null;
+  emailEnc: Uint8Array | null;
+}): string | null {
+  return u.dekWrapped && u.emailEnc ? decryptUserEmail(u) : null;
+}
+
 // ───────────────────────── Blind index ─────────────────────────
 
 /** Keyed hash of a normalized (trimmed, lowercased) email, for lookup and uniqueness. */
