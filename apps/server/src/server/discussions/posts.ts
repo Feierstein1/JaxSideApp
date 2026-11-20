@@ -10,6 +10,7 @@ import {
   milesToMeters,
   type DiscussionKind,
   type FeedSort,
+  type HomeSort,
   type MedalBadge,
   type PostTypeFilter,
   type PostView,
@@ -223,11 +224,14 @@ async function feedRadiusMeters(pref: number | null): Promise<number> {
   return milesToMeters(Math.min(max, Math.max(min, pref ?? def)));
 }
 
-/** P3.1 general feed around the viewer's verified location; "new" or "top" (P3.6). */
+/**
+ * P3.1 general feed around the viewer's verified location. D270: newest, oldest, most
+ * up-voted, most down-voted or most comments (the last three over the recent window).
+ */
 export async function listFeed(opts: {
   viewer: { id: string; generalRadiusMiles: number | null };
   at: GeoPoint;
-  sort: FeedSort;
+  sort: HomeSort;
   cursor?: string;
   q?: string;
   type?: PostTypeFilter;
@@ -244,26 +248,45 @@ export async function listFeed(opts: {
       ${notBlocked(opts.viewer.id, Prisma.sql`p."authorId"`)} ${searchFilter(opts.q)}
       ${typeFilter('general', opts.type)}`;
 
-  if (opts.sort === 'top') {
+  const windowed = opts.sort === 'top' || opts.sort === 'down' || opts.sort === 'comments';
+  const scoped = windowed
+    ? Prisma.sql`${base} AND p."createdAt" > now() - make_interval(days => ${topDays}::int)`
+    : base;
+  let result;
+  if (windowed) {
     const offset = c && 'o' in c ? c.o : 0;
-    const rows = await db.$queryRaw<PostRow[]>`${base}
-      AND p."createdAt" > now() - make_interval(days => ${topDays}::int)
-      ORDER BY p.score DESC, p."createdAt" DESC, p.id DESC
+    const order =
+      opts.sort === 'top'
+        ? Prisma.sql`p.score DESC`
+        : opts.sort === 'down'
+          ? Prisma.sql`p."downCount" DESC`
+          : Prisma.sql`p."commentCount" DESC`;
+    const rows = await db.$queryRaw<PostRow[]>`${scoped}
+      ORDER BY ${order}, p."createdAt" DESC, p.id DESC
       LIMIT ${size + 1} OFFSET ${offset}`;
-    return page(rows, size, 'general', opts.viewer.id, () => encodeCursor({ o: offset + size }));
+    result = await page(rows, size, 'general', opts.viewer.id, () =>
+      encodeCursor({ o: offset + size }),
+    );
+  } else {
+    const oldest = opts.sort === 'old';
+    const after =
+      c && 't' in c
+        ? oldest
+          ? Prisma.sql`AND (p."createdAt", p.id) > (${new Date(c.t)}::timestamptz, ${c.id}::uuid)`
+          : Prisma.sql`AND (p."createdAt", p.id) < (${new Date(c.t)}::timestamptz, ${c.id}::uuid)`
+        : Prisma.empty;
+    const rows = oldest
+      ? await db.$queryRaw<PostRow[]>`${base} ${after}
+          ORDER BY p."createdAt" ASC, p.id ASC LIMIT ${size + 1}`
+      : await db.$queryRaw<PostRow[]>`${base} ${after}
+          ORDER BY p."createdAt" DESC, p.id DESC LIMIT ${size + 1}`;
+    result = await page(rows, size, 'general', opts.viewer.id, (l) =>
+      encodeCursor({ t: l.createdAt.toISOString(), id: l.id }),
+    );
   }
-  const after =
-    c && 't' in c
-      ? Prisma.sql`AND (p."createdAt", p.id) < (${new Date(c.t)}::timestamptz, ${c.id}::uuid)`
-      : Prisma.empty;
-  const rows = await db.$queryRaw<PostRow[]>`${base} ${after}
-    ORDER BY p."createdAt" DESC, p.id DESC LIMIT ${size + 1}`;
-  const result = await page(rows, size, 'general', opts.viewer.id, (l) =>
-    encodeCursor({ t: l.createdAt.toISOString(), id: l.id }),
-  );
   if (c) return result;
   // D242: with the first page, how many posts the feed holds (Home's "n posts").
-  const [count] = await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM (${base}) x`;
+  const [count] = await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM (${scoped}) x`;
   return { ...result, total: count?.n ?? result.posts.length };
 }
 

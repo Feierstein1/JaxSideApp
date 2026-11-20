@@ -263,6 +263,28 @@ describe('general posts and feed (P3.1, P3.1a)', () => {
     expect(bodies(await feed(bob, FIVE_POINTS, { sort: 'top' }))).toEqual(['great', 'meh']);
   });
 
+  // D270: Home's filter button: oldest, most up-votes, most down-votes, most comments.
+  it('the Home filter orders by age, up-votes, down-votes and comments (D270)', async () => {
+    const first = (await post(alice, 'first')).body.post.id;
+    const second = (await post(alice, 'second')).body.post.id;
+    // "first" is the older one with more comments and down-votes; "second" has the up-votes.
+    await db.generalPost.update({
+      where: { id: first },
+      data: { commentCount: 5, downCount: 3, score: -3 },
+    });
+    await db.generalPost.update({ where: { id: second }, data: { upCount: 4, score: 4 } });
+    const order = async (sort: string) => bodies(await feed(bob, FIVE_POINTS, { sort }));
+    expect(await order('new')).toEqual(['second', 'first']);
+    expect(await order('old')).toEqual(['first', 'second']);
+    expect(await order('top')).toEqual(['second', 'first']);
+    expect(await order('down')).toEqual(['first', 'second']);
+    expect(await order('comments')).toEqual(['first', 'second']);
+    expect((await feed(bob, FIVE_POINTS, { sort: 'bogus' })).status).toBe(400);
+    // the count of posts is the same under every order
+    expect((await feed(bob, FIVE_POINTS, { sort: 'old' })).body.total).toBe(2);
+    expect((await feed(bob, FIVE_POINTS, { sort: 'comments' })).body.total).toBe(2);
+  });
+
   // P3.10: stored and returned as plain text, never transformed into markup.
   it('keeps text exactly as typed (plain text) and rejects control characters', async () => {
     const text = '<script>alert(1)</script> & <b>bold</b>';

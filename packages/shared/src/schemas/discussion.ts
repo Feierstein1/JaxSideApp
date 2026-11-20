@@ -33,6 +33,12 @@ const cursorSchema = z.string().max(200).optional();
 
 export const FEED_SORTS = ['new', 'top'] as const;
 export type FeedSort = (typeof FEED_SORTS)[number];
+/**
+ * D270: Home's filter button: newest, oldest, most up-voted, most down-voted, most comments.
+ * (The last three look only at the recent window, `feed.topWindowDays`.)
+ */
+export const HOME_SORTS = ['new', 'old', 'top', 'down', 'comments'] as const;
+export type HomeSort = (typeof HOME_SORTS)[number];
 
 /** D75: what a post carries, decided by the server from its attachments. */
 export const POST_TYPES = ['text', 'media', 'voice', 'video'] as const;
@@ -44,7 +50,7 @@ export type PostTypeFilter = (typeof POST_TYPE_FILTERS)[number];
 export const feedRequestSchema = z.strictObject({
   reading: locationReadingSchema,
   cursor: cursorSchema,
-  sort: z.enum(FEED_SORTS).default('new'),
+  sort: z.enum(HOME_SORTS).default('new'),
   /** D75: only posts of one type. */
   type: z.enum(POST_TYPE_FILTERS).default('all'),
   /** D74: search the area feed by username ("@name" for names only) or post text. */

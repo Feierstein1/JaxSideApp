@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { DARK, type PostTypeFilter } from '@jax/shared';
+import { DARK, type HomeSort, type PostTypeFilter } from '@jax/shared';
 import { Text } from '@/text';
 import { useAuth } from '@/auth/AuthContext';
 import { useGuest } from '@/auth/guest';
@@ -17,13 +18,38 @@ import { StepEdge } from '@/deco';
 import { HomeSlot } from '@/home/HomeSlot';
 import { refreshLimiter } from '@/refresh-limit';
 import { Banner, FloatingButton, RefreshButton, SearchField, SectionTitle } from '@/ui';
-import { showAlert } from '@/dialog';
+import { showAlert, showMenu } from '@/dialog';
+
+/** D270: the filter button's choices. */
+const SORT_LABELS: Record<HomeSort, string> = {
+  new: 'Newest first',
+  old: 'Oldest first',
+  top: 'Most up-votes',
+  down: 'Most down-votes',
+  comments: 'Most comments',
+};
+const SORT_ICONS: Record<
+  HomeSort,
+  | 'time-outline'
+  | 'hourglass-outline'
+  | 'arrow-up-circle-outline'
+  | 'arrow-down-circle-outline'
+  | 'chatbubble-outline'
+> = {
+  new: 'time-outline',
+  old: 'hourglass-outline',
+  top: 'arrow-up-circle-outline',
+  down: 'arrow-down-circle-outline',
+  comments: 'chatbubble-outline',
+};
 
 /** P3.11: the default landing screen, the feed for the area around you. */
 export default function HomeFeed() {
   const { state } = useAuth();
   const [type, setType] = useState<PostTypeFilter>('all'); // D75
   const [area, setArea] = useState<string | null>(null);
+  /** D270: the filter button's order (newest first until changed). */
+  const [sort, setSort] = useState<HomeSort>('new');
   /** D242: "n posts" beside the refresh button. */
   const [total, setTotal] = useState<number | null>(null);
   // D73: reload on the refresh button, or when the app is reopened somewhere new.
@@ -59,9 +85,9 @@ export default function HomeFeed() {
   }, [typed]);
   const load = useCallback(
     async (cursor?: string) => {
-      // D140: Home is always newest first (no Latest / Top switch).
+      // D140: newest first until the filter button (D270) picks another order.
       try {
-        const page = await fetchFeed('new', cursor, q || undefined, type);
+        const page = await fetchFeed(sort, cursor, q || undefined, type);
         if (!cursor) {
           setArea(page.area ?? null); // D72: refreshed with the first page
           setTotal(page.total ?? null);
@@ -72,7 +98,7 @@ export default function HomeFeed() {
         markBootReady(); // D267: the loading screen can go (a failure shows in the list)
       }
     },
-    [q, type],
+    [q, type, sort],
   );
   const verified = state.status === 'signedIn' && state.user.emailVerified;
   const { isGuest, promptAccount } = useGuest();
@@ -152,21 +178,54 @@ export default function HomeFeed() {
         {/* D126: the poll, or once answered Citywide topics (hidden while searching). */}
         {q ? null : <HomeSlot reloadKey={String(reloads)} />}
         <AreaStrip area={area} label="Your area" />
-        <SearchField
-          label="Search posts"
-          placeholder="Search posts or @username"
-          value={typed}
-          onChangeText={setTyped}
-          maxLength={50}
-          compact
-        />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <SearchField
+            label="Search posts"
+            placeholder="Search posts or @username"
+            value={typed}
+            onChangeText={setTyped}
+            maxLength={50}
+            compact
+          />
+          {/* D270: order the feed: newest, oldest, most up-voted, most down-voted, most comments. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Sort posts, now ${SORT_LABELS[sort]}`}
+            onPress={() =>
+              showMenu(
+                'Sort posts',
+                (Object.keys(SORT_LABELS) as HomeSort[]).map((s) => ({
+                  label: SORT_LABELS[s],
+                  icon: s === sort ? 'checkmark' : SORT_ICONS[s],
+                  onPress: () => setSort(s),
+                })),
+              )
+            }
+            hitSlop={6}
+            style={({ pressed }) => ({
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: sort === 'new' ? DARK.raised : DARK.accent,
+              opacity: pressed ? 0.8 : 1,
+            })}
+          >
+            <Ionicons
+              name="filter"
+              size={18}
+              color={sort === 'new' ? DARK.accent : DARK.onAccent}
+            />
+          </Pressable>
+        </View>
         <PostTypeTabs value={type} onChange={setType} />
       </View>
       {/* D127: the icon's stepped edge. */}
       <StepEdge />
       <PostList
         load={load}
-        reloadKey={`${reloads}:${q}:${type}`}
+        reloadKey={`${reloads}:${q}:${type}:${sort}`}
         onOpen={(p) => router.push(`/post/${p.id}`)}
         // D206: ads between posts (not in search results).
         adContext={q ? undefined : { kind: 'feed' }}

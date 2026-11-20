@@ -1,4 +1,10 @@
-import type { CommentView, DiscussionKind, FeedSort, PostTypeFilter, PostView } from '@jax/shared';
+import type {
+  CommentView,
+  DiscussionKind,
+  HomeSort,
+  PostTypeFilter,
+  PostView,
+} from '@jax/shared';
 import { api } from '@/api';
 import { getFreshReading } from '@/location/device';
 import type { HeldResponse } from './screening';
@@ -21,7 +27,7 @@ const base = (kind: DiscussionKind) =>
   kind === 'general' ? '/api/v1/posts' : '/api/v1/business-posts';
 
 export async function fetchFeed(
-  sort: FeedSort,
+  sort: HomeSort,
   cursor?: string,
   q?: string,
   type: PostTypeFilter = 'all',
