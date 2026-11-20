@@ -32,11 +32,16 @@ export default function AdminLogin() {
     setBusy(true);
     setError(undefined);
     try {
-      const r = await post<{ challenge: string; enroll: Enroll }>('/api/v1/admin/login', {
-        identifier,
-        password,
-      });
+      const r = await post<{ challenge: string; enroll: Enroll; signedIn?: boolean }>(
+        '/api/v1/admin/login',
+        { identifier, password },
+      );
       setPassword('');
+      // D274: two-step is switched off on this computer: already signed in.
+      if (r.signedIn) {
+        window.location.href = '/admin';
+        return;
+      }
       setChallenge(r.challenge);
       setEnroll(r.enroll);
       setStep('code');

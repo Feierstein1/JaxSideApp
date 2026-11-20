@@ -43,6 +43,18 @@ export function adminPortalEnabled(): boolean {
   return getEnv().NODE_ENV !== 'production';
 }
 
+/**
+ * D274: two-step sign-in can be switched off for the portal on the owner's own computer
+ * (`ADMIN_2FA_DISABLED=true`, set by `npm run admin:staging`). Never in production: a
+ * production server always asks for the code, whatever the setting says. An admin who never set
+ * up an authenticator still has to (the session guard needs it), so turning it back on later
+ * just works.
+ */
+export function adminTwoStepRequired(nodeEnv = getEnv().NODE_ENV): boolean {
+  if (nodeEnv === 'production') return true;
+  return process.env.ADMIN_2FA_DISABLED !== 'true';
+}
+
 export function assertAdminPortalEnabled() {
   if (!adminPortalEnabled()) throw new ApiError(404, 'NOT_FOUND', 'Not found');
 }
@@ -125,7 +137,17 @@ export async function startAdminLogin(
   const challenge = makeChallenge(user.id, now);
   // D108: 2FA lives in AdminCredential, not on the User row.
   const cred = await db.adminCredential.findUnique({ where: { userId: user.id } });
-  if (cred?.totpEnabledAt) return { challenge, enroll: null };
+  if (cred?.totpEnabledAt) {
+    // D274: two-step switched off on this computer: the password was enough.
+    if (!adminTwoStepRequired()) {
+      return {
+        challenge: null,
+        enroll: null,
+        session: await openAdminSession(user.id, now, false),
+      };
+    }
+    return { challenge, enroll: null, session: null };
+  }
 
   // First sign-in: a new secret, stored encrypted until the first code confirms it.
   const secret = generateTotpSecret();
@@ -140,6 +162,7 @@ export async function startAdminLogin(
   const url = otpauthUrl(secret, user.username);
   return {
     challenge,
+    session: null,
     enroll: {
       secret,
       otpauthUrl: url,
@@ -195,14 +218,18 @@ export async function completeAdminLogin(
   if (claimed.count !== 1) {
     throw new ApiError(401, 'INVALID_CODE', 'That code didn’t work. Check your authenticator app.');
   }
+  return openAdminSession(user.id, now, true, !cred.totpEnabledAt);
+}
 
+/** A new admin session (cookie token + CSRF token), audited. */
+async function openAdminSession(userId: string, now: Date, twoStep: boolean, enrolled = false) {
   const hours = await getConfig('session.adminHours');
   const token = generateToken();
   const csrfToken = generateToken();
   const expiresAt = new Date(now.getTime() + hours * 3_600_000);
   await db.session.create({
     data: {
-      userId: user.id,
+      userId,
       kind: 'ADMIN',
       tokenHash: hashToken(token),
       csrfTokenHash: hashToken(csrfToken),
@@ -213,10 +240,12 @@ export async function completeAdminLogin(
   });
   await db.adminAuditLog.create({
     data: {
-      adminId: user.id,
-      action: cred.totpEnabledAt ? 'ADMIN_SIGN_IN' : 'ADMIN_2FA_ENROLLED',
+      adminId: userId,
+      action: enrolled ? 'ADMIN_2FA_ENROLLED' : 'ADMIN_SIGN_IN',
       targetType: 'user',
-      targetId: user.id,
+      targetId: userId,
+      // D274: say so when two-step was switched off.
+      ...(twoStep ? {} : { metadata: { twoStep: false } }),
       createdAt: now,
     },
   });

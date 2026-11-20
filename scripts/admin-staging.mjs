@@ -41,6 +41,9 @@ const env = {
   // Through the tunnel instead of the server's internal network.
   DATABASE_URL: `postgresql://${settings.POSTGRES_USER}:${settings.POSTGRES_PASSWORD}@127.0.0.1:${LOCAL_DB_PORT}/${settings.POSTGRES_DB}`,
   ADMIN_PORTAL_ENABLED: 'true',
+  // D274: two-step sign-in off for now (owner's choice; only you use the portal). Delete this
+  // line to ask for the authenticator code again. A production server always asks.
+  ADMIN_2FA_DISABLED: 'true',
   TRUST_PROXY: 'false',
   NEXT_DIST_DIR: '.next-admin',
 };
