@@ -351,6 +351,30 @@ export const CONFIG_DEFAULTS = {
    * message offers a review sign-in; 0 = off (they're treated like anyone else).
    */
   'review.enabled': 1,
+  /**
+   * D275: server health alerts (emailed to HEALTH_ALERT_EMAIL, else SUPPORT_INBOX). Each fires
+   * once, reminds at most daily, and says "all clear" when it ends.
+   */
+  'health.diskUsedPercent': 80,
+  /** Memory the server has left (MB), on two snapshots in a row. */
+  'health.memAvailableMb': 400,
+  /** A container using this much of its own memory cap (the website's is 768 MB). */
+  'health.containerMemPercent': 90,
+  /** The last good backup / nightly maintenance run is older than this. */
+  'health.backupMaxHours': 26,
+  'health.maintenanceMaxHours': 26,
+  /** No snapshot for this long: the collector on the server stopped. */
+  'health.sampleMaxMinutes': 30,
+  /** "Jumped too quickly": the database grew this % in a day (and by at least 50 MB). */
+  'health.dbJumpPercent': 50,
+  /** Pictures and videos in S3 grew by this many GB in a day. */
+  'health.s3JumpGb': 1,
+  /** Snapshots are kept this many days. */
+  'health.keepDays': 30,
+  /** D275: the dashboard's cost estimate (US dollars). Lightsail's 4 GB plan; S3; SES. */
+  'costs.serverMonthlyUsd': 24,
+  'costs.s3PerGbMonthUsd': 0.023,
+  'costs.sesPer1000Usd': 0.1,
 } as const;
 
 /**

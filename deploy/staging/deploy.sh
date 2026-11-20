@@ -24,7 +24,7 @@ fi
 
 echo "Deploying $REV…"
 git archive --format=tar HEAD | gzip | $SSH "rm -rf /opt/jaxside/src.new && mkdir -p /opt/jaxside/src.new && tar -xzf - -C /opt/jaxside/src.new && echo $REV > /opt/jaxside/src.new/REVISION"
-scp -i "$KEY" -q deploy/staging/docker-compose.yml deploy/staging/Caddyfile deploy/staging/backup.sh deploy/staging/cron deploy/staging/website-role.sql "$HOST:/opt/jaxside/"
+scp -i "$KEY" -q deploy/staging/docker-compose.yml deploy/staging/Caddyfile deploy/staging/backup.sh deploy/staging/health.sh deploy/staging/cron deploy/staging/website-role.sql "$HOST:/opt/jaxside/"
 if [ "${1:-}" = "--env" ]; then
   scp -i "$KEY" -q deploy/staging/secrets/staging.env "$HOST:/opt/jaxside/.env"
   $SSH "chmod 600 /opt/jaxside/.env"
@@ -55,7 +55,7 @@ mkdir -p sites
 test -n "$(ls sites/*.caddy 2>/dev/null)" || echo '# Placeholder: Caddy imports sites/*.caddy (D245).' > sites/00-none.caddy
 docker compose up -d
 sudo install -m 644 cron /etc/cron.d/jaxside
-chmod 755 backup.sh
+chmod 755 backup.sh health.sh
 docker image prune -f >/dev/null
 # Each build leaves cache behind (36 GB had piled up by 2026-11-05, 40 GB by 2026-11-20 even with
 # a 7-day rule, as there are several deploys a day). Keep only the newest 3 GB, enough for the next

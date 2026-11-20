@@ -7,3 +7,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 0 4 * * * ubuntu cd /opt/jaxside && docker compose exec -T app npm run jobs:maintenance >> /opt/jaxside/jobs.log 2>&1
 # Expired rate-limit counters, every 10 minutes (P13.3).
 */10 * * * * ubuntu cd /opt/jaxside && docker compose exec -T app npm run jobs:counters >> /opt/jaxside/jobs.log 2>&1
+# D275: health snapshot for the admin dashboard every 10 minutes (5 past, so it doesn't overlap
+# the counters job), then the alert check (emails HEALTH_ALERT_EMAIL / SUPPORT_INBOX).
+5-55/10 * * * * ubuntu /opt/jaxside/health.sh >> /opt/jaxside/health.log 2>&1; cd /opt/jaxside && docker compose exec -T app npm run jobs:health >> /opt/jaxside/health.log 2>&1
+# The S3 sizes once a day, after the backup (3:15).
+45 3 * * * ubuntu /opt/jaxside/health.sh --s3 >> /opt/jaxside/health.log 2>&1

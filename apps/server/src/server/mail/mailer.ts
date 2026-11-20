@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { db } from '../db';
 import { getEnv } from '../env';
 import { logger } from '../logger';
 import { EMAIL_LOGO } from './logo';
@@ -65,5 +66,18 @@ export async function sendSafely(mail: OutgoingMail, purpose: string): Promise<v
     await getMailer().send(mail);
   } catch (err) {
     logger.error({ err, purpose }, 'email send failed');
+    return;
+  }
+  await countEmail();
+}
+
+/** D275: one more email today (the dashboard's cost estimate). Never fails the send. */
+async function countEmail() {
+  try {
+    await db.$executeRaw`
+      INSERT INTO "EmailDailyCount" (day, count) VALUES (CURRENT_DATE, 1)
+      ON CONFLICT (day) DO UPDATE SET count = "EmailDailyCount".count + 1`;
+  } catch (err) {
+    logger.warn({ err }, 'email count not saved');
   }
 }

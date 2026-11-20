@@ -1,6 +1,7 @@
 import { adminSummary } from '@/server/admin/summary';
 import { requireAdminPage } from '../require-admin-page';
 import { StatGrid, StatTile } from './admin-table';
+import { ServerHealth } from './server-health';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ const TILES = [
   { key: 'loginBursts', label: 'Blocked sign-in bursts (24 h)', href: '/admin/security' },
 ] as const;
 
-/** P5.11: what's waiting, with links to each queue. */
+/** P5.11: what's waiting, with links to each queue; D275: the server's health below. */
 export default async function Dashboard() {
   await requireAdminPage();
   const counts = await adminSummary();
@@ -31,6 +32,8 @@ export default async function Dashboard() {
           />
         ))}
       </StatGrid>
+      {/* D275: is the server healthy, did the backup work, what's running out, what it costs. */}
+      <ServerHealth />
     </>
   );
 }

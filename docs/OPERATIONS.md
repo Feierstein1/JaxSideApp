@@ -94,6 +94,18 @@ Each job holds its own database lock, so a job never overlaps with itself (a sec
 prints that one is in progress), but the two can run at the same time. If a job crashes, the lock
 is released automatically.
 
+**Server health (D275).** Every 10 minutes (5 past) cron runs `/opt/jaxside/health.sh`: memory,
+disk, load, each container's memory, the database size and whether `api.jaxside.com` and
+`jaxside.com` answer, saved to `ServerHealthSample`; at 3:45 am `health.sh --s3` adds the S3
+sizes. Then `npm run jobs:health` checks the alert rules (thresholds in Settings, `health.*`) and
+emails `HEALTH_ALERT_EMAIL` (else `SUPPORT_INBOX`): a new problem once, a reminder at most daily,
+and "all clear" when it ends; it also drops snapshots older than `health.keepDays` (30). Backups
+(`backup.sh`) and nightly maintenance record each run in `JobRun`. All of it shows on the admin
+dashboard under Server health, with a monthly cost estimate (`costs.*` settings). Log:
+`/opt/jaxside/health.log`. To check the script without saving: `DRY_RUN=1 ./health.sh --s3`.
+A server that is completely down can't send its own alert: an outside uptime checker covers
+that (not set up).
+
 ## 5. Admin portal on a public server
 
 Off by default in production (`ADMIN_PORTAL_ENABLED` unset → every `/admin` page and

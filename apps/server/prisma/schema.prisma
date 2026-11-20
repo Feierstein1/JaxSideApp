@@ -3031,3 +3031,55 @@ model AdServeStats {
   @@id([adId, day, zip])
   @@index([zip, adId])
 }
+
+// ──────────────────────── D275: server health ────────────────────────
+
+/// A snapshot every 10 minutes from the server itself (deploy/staging/health.sh); kept 30 days.
+model ServerHealthSample {
+  id               BigInt   @id @default(autoincrement())
+  takenAt          DateTime @default(now()) @db.Timestamptz(3)
+  memTotalMb       Int
+  memAvailableMb   Int
+  swapUsedMb       Int
+  diskTotalMb      Int
+  diskUsedMb       Int
+  load1            Float    @db.Real
+  load15           Float    @db.Real
+  dbBytes          BigInt
+  appUp            Boolean
+  webUp            Boolean
+  /// [{ name, memMb, limitMb }]
+  containers       Json     @default("[]")
+  /// Once a day (S3 listing); null on the other samples.
+  s3MediaBytes     BigInt?
+  s3MediaObjects   Int?
+  s3BackupsBytes   BigInt?
+  s3BackupsObjects Int?
+
+  @@index([takenAt(sort: Desc)])
+}
+
+/// Each backup and nightly maintenance run: when, and whether it worked.
+model JobRun {
+  id         BigInt   @id @default(autoincrement())
+  job        String   @db.VarChar(40)
+  finishedAt DateTime @default(now()) @db.Timestamptz(3)
+  ok         Boolean
+  note       String?  @db.VarChar(500)
+
+  @@index([job, finishedAt(sort: Desc)])
+}
+
+/// An alert that's firing: emailed once, reminded at most daily, "all clear" when it ends.
+model HealthAlert {
+  key        String    @id @db.VarChar(60)
+  since      DateTime  @db.Timestamptz(3)
+  lastSentAt DateTime? @db.Timestamptz(3)
+  detail     String    @db.VarChar(300)
+}
+
+/// Emails sent per day (the cost estimate; Amazon SES bills per email).
+model EmailDailyCount {
+  day   DateTime @id @db.Date
+  count Int      @default(0)
+}
