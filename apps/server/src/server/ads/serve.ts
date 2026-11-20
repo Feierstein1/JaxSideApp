@@ -327,6 +327,7 @@ export async function pickAdsFor(
   ]);
   const [boost, sharePercent, hideDays, interestDays, promotedWeight] = cfg;
   const onlyAccount = context.kind === 'place' ? await placeOwnerWithPlan(context.id, now) : null;
+  const onlyPlace = context.kind === 'place' ? context.id : null;
   const seenSet = new Set([...seen, ...inList]);
   // D240: what this list already shows: a business at most twice and never twice in a row.
   const placed = inList.length
@@ -368,7 +369,7 @@ export async function pickAdsFor(
 
   const inListSet = new Set(inList);
   // D265 (owner): on the page of a place whose business has a current plan, show ALL of that
-  // business's live ads (the page is theirs): whatever their kind, however many (the plan's
+  // business's live ads FOR THIS PLACE (the page is theirs): whatever their kind, however many (the plan's
   // live limit already applies), oldest first, without the per-list variety limits, the
   // phone's cooldown or area targeting (the reader is standing at the place). Still left out:
   // a business the reader marked Not interested, 21+ ads for guests, and ads already in the list.
@@ -376,6 +377,9 @@ export async function pickAdsFor(
     const own = all.filter(
       (ad) =>
         ad.accountId === onlyAccount &&
+        // D271: by place, not just by business. A business that runs several places (and
+        // event ads with no place) shows on each place's page only that place's own ads.
+        ad.place?.id === onlyPlace &&
         !hidden.has(ad.accountId) &&
         !(ad.adultsOnly && !reader.userId) &&
         !inListSet.has(ad.id),

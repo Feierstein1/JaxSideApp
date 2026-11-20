@@ -522,6 +522,20 @@ describe("a business's own place page shows all of its ads (D265)", () => {
     expect(r.body.showcase).toBe(true);
   });
 
+  // D271: a business that runs several places shows each page only that place's ads.
+  it("shows only this place's ads when the business runs other places", async () => {
+    const t = Date.now();
+    await ad(owner.id, cafe, { headline: 'Cafe one', approvedAt: new Date(t - 3000) });
+    await ad(owner.id, cafe, { headline: 'Cafe two', approvedAt: new Date(t - 2000) });
+    await ad(owner.id, bar, {
+      headline: 'Same owner, other place',
+      approvedAt: new Date(t - 1000),
+    });
+    const r = await atCafe(user.token);
+    expect(heads(r)).toEqual(['Cafe one', 'Cafe two']);
+    expect(r.body.showcase).toBe(true);
+  });
+
   it('asks for no more than the slots until the list is complete (extra 0)', async () => {
     await fourAds();
     expect(heads(await atCafe(user.token, { extra: 0, count: 2 }))).toEqual(['One', 'Two']);
