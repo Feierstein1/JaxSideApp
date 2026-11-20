@@ -158,6 +158,8 @@ model User {
   /// `review.enabled` is on, the server uses REVIEW_POINT instead of the phone's location for
   /// it, and it skips the new-account waits.
   reviewAccount      Boolean       @default(false)
+  /// D272: added by an admin in the portal (confirmed at once; may have no email).
+  adminCreated       Boolean       @default(false)
   status             AccountStatus @default(ACTIVE)
   suspendedUntil     DateTime?     @db.Timestamptz(3)
   deletedAt          DateTime?     @db.Timestamptz(3)
@@ -2525,7 +2527,8 @@ model GiveawayWinner {
 // ───────────────────── D218: live area chat (temporary text) ─────────────────────
 
 /// One chat room per map cell (about 1 mile square, server/chat/cells.ts), created the first
-/// time a verified person's location falls in the cell. Off until an admin turns it on.
+/// time a verified person's location falls in the cell. D272: on from the start (it opens by itself
+/// when 2 or more people are about); an admin can switch a room off.
 model ChatRoom {
   id             String         @id @default(uuid(7)) @db.Uuid
   /// "row:col" of the cell. Never changes (the cell sizes are fixed).
@@ -2536,7 +2539,7 @@ model ChatRoom {
   direction      String?        @db.VarChar(2)
   /// An admin's own name for the room; shown instead of the neighbourhood when set.
   displayName    String?        @db.VarChar(80)
-  enabled        Boolean        @default(false)
+  enabled        Boolean        @default(true)
   createdAt      DateTime       @default(now()) @db.Timestamptz(3)
   /// Last message sent here; rooms idle for 7 days with nobody present are deleted.
   lastActivityAt DateTime       @default(now()) @db.Timestamptz(3)

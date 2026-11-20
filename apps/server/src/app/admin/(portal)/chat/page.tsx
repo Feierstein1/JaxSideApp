@@ -9,9 +9,8 @@ export const dynamic = 'force-dynamic';
 
 /**
  * D218: live area chat rooms. A room appears here the first time a confirmed account opens the
- * feed in that map cell (about a mile square). Every room starts off: switch on the areas you
- * want to try. A room only opens for people once at least 2 are about (seen in the last 10
- * minutes).
+ * feed in that map cell (about a mile square). D272: rooms are on from the start and open by themselves once at
+ * least 2 people are about (seen in the last 10 minutes); switch a room off here if it needs to close.
  */
 export default async function ChatRoomsPage({
   searchParams,

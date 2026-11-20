@@ -27,8 +27,6 @@ export const CONFIG_DESCRIPTIONS: Partial<Record<keyof typeof CONFIG_DEFAULTS, s
   'rateLimit.login.per15MinPerAccount': 'Failed logins allowed per account per 15 minutes (D29)',
   'rateLimit.message.perDay': 'Private messages per person per day (D176)',
   'rateLimit.message.burstPer10s': 'Private messages per person per 10 seconds (D176)',
-  'chat.testAlwaysOpen':
-    'TEMPORARY test switch: 1 = every area chat room is open for confirmed accounts (D218)',
   'topics.requireApproval':
     'Topics people start wait for admin approval: 1 = yes, 0 = they appear at once (D222)',
   'rateLimit.chat.burstPer3s': 'Live area chat: lines per person per 3 seconds (D218)',

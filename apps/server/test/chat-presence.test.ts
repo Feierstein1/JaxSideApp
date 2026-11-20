@@ -49,13 +49,13 @@ const feed = (token: string, at = FIVE_POINTS) =>
   call(feedPOST as H, 'POST', { token, body: { reading: reading(at) } });
 
 describe('chat rooms and presence (D218)', () => {
-  it('the first verified person in a cell creates its room, switched off, with ZIP and a name', async () => {
+  it('the first verified person in a cell creates its room, switched on, with ZIP and a name', async () => {
     expect(await db.chatRoom.count()).toBe(0);
     expect((await feed(alice.token)).status).toBe(200);
     const rooms = await db.chatRoom.findMany();
     expect(rooms).toHaveLength(1);
     expect(rooms[0]!.cellKey).toBe(cellKeyOf(FIVE_POINTS));
-    expect(rooms[0]!.enabled).toBe(false);
+    expect(rooms[0]!.enabled).toBe(true);
     expect(rooms[0]!.zip).toBe('32204');
     expect(rooms[0]!.neighborhood).toBeTruthy();
   });
@@ -90,16 +90,17 @@ describe('chat rooms and presence (D218)', () => {
     expect(Object.keys(rows[0]!).sort()).toEqual(['lastSeenAt', 'roomId', 'userId']);
   });
 
-  it('counts people seen in the last 10 minutes; chat opens at 2 only if an admin switched it on', async () => {
+  it('counts people seen in the last 10 minutes; chat opens at 2 unless an admin switched the room off', async () => {
     const t0 = new Date();
     const room = await notePresence(alice.id, FIVE_POINTS, t0);
     expect(await countPresent(room.id, t0)).toBe(1);
     await notePresence(bob.id, FIVE_POINTS, t0);
     expect(await countPresent(room.id, t0)).toBe(2);
-    expect(await chatIsOpen(room, t0)).toBe(false); // switched off
-    await db.chatRoom.update({ where: { id: room.id }, data: { enabled: true } });
     const on = await db.chatRoom.findUniqueOrThrow({ where: { id: room.id } });
-    expect(await chatIsOpen(on, t0)).toBe(true);
+    expect(await chatIsOpen(on, t0)).toBe(true); // 2 people, nobody switched it off
+    await db.chatRoom.update({ where: { id: room.id }, data: { enabled: false } });
+    const off = await db.chatRoom.findUniqueOrThrow({ where: { id: room.id } });
+    expect(await chatIsOpen(off, t0)).toBe(false); // an admin's off switch wins
     const later = new Date(t0.getTime() + PRESENT_WITHIN_MS + 1_000);
     expect(await countPresent(room.id, later)).toBe(0);
     expect(await chatIsOpen(on, later)).toBe(false);
