@@ -156,6 +156,12 @@ in a password manager). Review mode (D268) is built.
    App Review Information: username `review_apple`, its password, and the same note about
    Jacksonville. Build with `eas build --platform ios --profile production` and submit.
 
+**Every submission, including app updates:** reviewers sometimes test Delete account on the review
+account. First check `review_google` / `review_apple` still exist and are flagged (admin portal →
+Users); if one is gone, recreate it with the same username and password (secrets file) and flag it
+again, so the login in the store's review notes works. Also try report, block and the Delete
+account screen (without confirming) once before the first submission.
+
 ## Before submitting (checklist)
 
 Company and accounts (details in `docs/LLC_PROCESS.md`):
@@ -170,7 +176,7 @@ Company and accounts (details in `docs/LLC_PROCESS.md`):
       enrollment ID UJ7U66A486**, waiting for Apple to verify signing authority (may phone the
       904 cell); then pay. Apple's confirmation email (2026-11-19, to kenny@jaxside.com) lists:
       legal entity JaxSide LLC, address `7901 4TH St N # 35372, Saint Petersburg, Florida
-    33702-4305` (taken from D&B), email and work email kenny@jaxside.com
+  33702-4305` (taken from D&B), email and work email kenny@jaxside.com
 - [x] Google Play Console, organization ($25 once): account `JaxSide LLC`, ID
       5262362696067233378, owner kenfeier@gmail.com; identity, website (Search Console TXT on
       jaxside.com), trader status and both phones verified (2026-11-19). Public phone is a Google
