@@ -124,6 +124,12 @@ Developer Distribution Agreement and Play Console Terms of Service, as they appl
 
 ## Submission day (Google first, Apple once enrolled)
 
+**2026-11-21: steps 1-4 are done.** Review mode is live (deployed with `b838dbf`). The owner made
+`review_google` and `review_apple` with the admin portal's new-user form (username and password
+only, no email) and flagged both. Checked from outside Florida: both sign in with the saved
+passwords, the server places them at Five Points, and their account shows `reviewAccount`. Next:
+step 5 (build, upload, submit to Google).
+
 Ready as of 2026-11-19; the owner plans Google for the week of 2026-11-23. Passwords for both
 review accounts are in the git-ignored `deploy/staging/secrets/test-accounts.txt` (also keep them
 in a password manager). Review mode (D268) is built.
