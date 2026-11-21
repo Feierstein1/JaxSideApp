@@ -168,7 +168,9 @@ Company and accounts (details in `docs/LLC_PROCESS.md`):
       sign-up kept failing; the old Yahoo account is abandoned)
 - [ ] Apple Developer Program, organization ($99/year, **you**): **submitted 2026-11-19,
       enrollment ID UJ7U66A486**, waiting for Apple to verify signing authority (may phone the
-      904 cell); then pay
+      904 cell); then pay. Apple's confirmation email (2026-11-19, to kenny@jaxside.com) lists:
+      legal entity JaxSide LLC, address `7901 4TH St N # 35372, Saint Petersburg, Florida
+    33702-4305` (taken from D&B), email and work email kenny@jaxside.com
 - [x] Google Play Console, organization ($25 once): account `JaxSide LLC`, ID
       5262362696067233378, owner kenfeier@gmail.com; identity, website (Search Console TXT on
       jaxside.com), trader status and both phones verified (2026-11-19). Public phone is a Google
