@@ -19,15 +19,16 @@ export interface Policy {
 export const POLICY_KEYS = ['terms', 'privacy', 'guidelines', 'retention'] as const;
 export type PolicyKey = (typeof POLICY_KEYS)[number];
 
-const DRAFT: PolicySection = {
-  heading: 'Beta',
-  body: 'JaxSide is in beta. These policies may change as the app grows; we’ll update the date above when they do.',
+/** No "beta" wording: Apple 2.2 keeps demos and betas off the App Store (store plan 3a). */
+const CHANGES: PolicySection = {
+  heading: 'Changes',
+  body: 'These policies may change as JaxSide grows; we’ll update the date above when they do.',
 };
 const CONTACT: PolicySection = {
   heading: 'Contact us',
   body: 'JaxSide is run by JaxSide LLC, a Florida company. Questions about these policies or your account: use Contact us in the app (Account → Contact us) or email support@jaxside.com. Mail: JaxSide LLC, 7901 4th St N #35372, St Petersburg, FL 33702.',
 };
-const UPDATED = '2026-11-17';
+const UPDATED = '2026-11-22';
 
 export const POLICIES: Record<PolicyKey, Policy> = {
   terms: {
@@ -35,7 +36,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
     title: 'Terms of Service',
     updated: UPDATED,
     sections: [
-      DRAFT,
+      CHANGES,
       {
         heading: 'Who can use JaxSide',
         body: 'JaxSide is for adults 18 and older. When you sign up, you confirm you meet that age. We check your birth year at signup but do not verify identity.',
@@ -73,7 +74,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
     title: 'Privacy Policy',
     updated: UPDATED,
     sections: [
-      DRAFT,
+      CHANGES,
       {
         heading: 'What other people see',
         body: 'Your username, your bio, your join date, and what you post. Never your email, your exact location, or anything you didn’t post.',
@@ -147,7 +148,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
     title: 'Community Guidelines',
     updated: UPDATED,
     sections: [
-      DRAFT,
+      CHANGES,
       {
         heading: 'Be a good neighbor',
         body: 'JaxSide is for real conversations about Jacksonville. Disagreement and the occasional swear word are fine. Making it unpleasant for others is not.',
@@ -198,7 +199,7 @@ export const POLICIES: Record<PolicyKey, Policy> = {
     title: 'Data Retention',
     updated: UPDATED,
     sections: [
-      DRAFT,
+      CHANGES,
       {
         heading: 'Location readings',
         body: 'Exact location readings are saved only for actions that add or change something, and are deleted after 30 days. Readings used only to show you content are never saved. For area statistics, only your ZIP code and the part of the day are noted, under a code that can’t be traced back to you; these entries are deleted after the month (sooner for weekly counts), and only totals are kept.',
