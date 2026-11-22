@@ -55,7 +55,7 @@ each store form are in `STORE_PREP.md`.
 - [x] **3b. "Why am I seeing this?"** in every ad's menu (D276, 2026-11-22).
 - [x] **3c. Two-way review privacy** (D276): review accounts see only review accounts' content
       (plus business posts and ads), and nobody else sees theirs.
-- [ ] **3d. Deploy** the above (Claude, after a backup).
+- [x] **3d. Deployed** `df224c6` (2026-11-22, after a backup); healthy.
 - [ ] **3e. Pre-review wipe** (owner's choice, 2026-11-22): everything staged goes. Steps: 1. Owner: admin portal → Maintenance on. 2. Claude: back up and download a copy, run `deploy/staging/wipe-for-launch.sql` (all
       people, admins and review accounts included; all business and organizer accounts with
       their ads, events, posts and tickets; places, settings, screening rules and plans stay),
