@@ -87,6 +87,24 @@ export interface AdCard {
   link: { url: string; label: string } | null;
   /** The reader's own choice on this ad, if any. */
   myChoice: 'INTERESTED' | 'NOT_INTERESTED' | null;
+  /** D276 (Apple 2.5.18): everything that decided this reader was shown this ad. */
+  why: AdWhy;
+}
+
+/** D276: why an ad reached the reader ("Why am I seeing this?" in the ad's menu). */
+export interface AdWhy {
+  /** Who the business aimed it at: all of Jacksonville, near its place or event, or ZIP codes. */
+  reach: 'citywide' | 'near' | 'zip';
+  /** For `near`: how close (meters). */
+  nearMeters: number | null;
+  /** For `zip`: the reader's ZIP code it matched. */
+  zip: string | null;
+  /** The business boosted it (shown more, across Jacksonville). */
+  boosted: boolean;
+  /** The reader favorited the place it's for. */
+  favorite: boolean;
+  /** The reader marked this business's ads Interested. */
+  interested: boolean;
 }
 
 /** D206: the admin's ad spacing and cooldown, sent with every `POST /ads` answer. */

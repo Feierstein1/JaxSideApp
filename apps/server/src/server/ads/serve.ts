@@ -490,6 +490,39 @@ async function handOut(
       })
     : [];
   const myChoice = new Map(mine.map((m) => [m.adId, m.choice]));
+  // D276: what the "Why am I seeing this?" sheet shows (the same facts the picking used).
+  const [favorites, interested] = reader.userId
+    ? await Promise.all([
+        db.favoritePlace.findMany({
+          where: {
+            userId: reader.userId,
+            placeId: { in: picked.flatMap((a) => (a.place ? [a.place.id] : [])) },
+          },
+          select: { placeId: true },
+        }),
+        db.adInterest.findMany({
+          where: {
+            userId: reader.userId,
+            choice: 'INTERESTED',
+            accountId: { in: picked.map((a) => a.accountId) },
+            updatedAt: {
+              gt: new Date(now.getTime() - (await getConfig('ads.interestedDays')) * DAY_MS),
+            },
+          },
+          select: { accountId: true },
+        }),
+      ])
+    : [[], []];
+  const favoriteIds = new Set(favorites.map((f) => f.placeId));
+  const likedIds = new Set(interested.map((i) => i.accountId));
+  const why = (ad: LiveAd): AdCard['why'] => ({
+    reach: ad.cityWide ? 'citywide' : ad.radiusMeters !== null ? 'near' : 'zip',
+    nearMeters: ad.cityWide ? null : ad.radiusMeters,
+    zip: !ad.cityWide && ad.radiusMeters === null && zipKey ? zipKey : null,
+    boosted: ad.promoted,
+    favorite: ad.place !== null && favoriteIds.has(ad.place.id),
+    interested: likedIds.has(ad.accountId),
+  });
   return picked.map((ad) => ({
     id: ad.id,
     headline: ad.headline,
@@ -502,6 +535,7 @@ async function handOut(
     event: ad.event,
     link: ad.link,
     myChoice: myChoice.get(ad.id) ?? null,
+    why: why(ad),
   }));
 }
 

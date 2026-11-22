@@ -39,15 +39,17 @@ export async function withReviewReading<T>(req: Request, data: T): Promise<T> {
 // ───────────── Part 2: review accounts' content stays among review accounts ─────────────
 
 /**
- * SQL to add to a list's WHERE: hides what a review account wrote from everyone who isn't a
- * review account (reviewers still see each other's, and their own). Always on, whatever
- * `review.enabled` says, so test posts never reach real people. `authorColumn` may be null
- * (a guest or a business wrote it): those always show.
+ * SQL to add to a list's WHERE: the two sides never see each other's content. What a review
+ * account wrote is hidden from everyone else, and (owner, 2026-11-22) review accounts see only
+ * what review accounts wrote, so the owner's own testing never reaches reviewers. Always on,
+ * whatever `review.enabled` says. `authorColumn` may be null (a guest or a business wrote it):
+ * those show to both sides.
  */
 export function hideReviewContent(viewerId: string, authorColumn: Prisma.Sql): Prisma.Sql {
-  return Prisma.sql`AND (
-    NOT EXISTS (SELECT 1 FROM "User" ra WHERE ra.id = ${authorColumn} AND ra."reviewAccount")
-    OR EXISTS (SELECT 1 FROM "User" rv WHERE rv.id = ${viewerId}::uuid AND rv."reviewAccount"))`;
+  const viewerSide = Prisma.sql`COALESCE((SELECT rv."reviewAccount" FROM "User" rv
+    WHERE rv.id = ${viewerId}::uuid), false)`;
+  return Prisma.sql`AND COALESCE((SELECT ra."reviewAccount" FROM "User" ra
+    WHERE ra.id = ${authorColumn}), ${viewerSide}) = ${viewerSide}`;
 }
 
 /** Are these two accounts on different sides (one a review account, the other not)? */

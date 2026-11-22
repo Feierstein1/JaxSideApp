@@ -42,12 +42,12 @@ export async function getPublicProfile(username: string, viewerUserId: string | 
     include: { profile: true },
   });
   if (!user || user.status === 'DELETED' || user.status === 'BANNED') throw NOT_FOUND();
-  // D268: a store review account is invisible to everyone but other review accounts.
-  if (user.reviewAccount && user.id !== viewerUserId) {
+  // D268: review accounts and everyone else can't see each other's profiles.
+  if (user.id !== viewerUserId) {
     const viewer = viewerUserId
       ? await db.user.findUnique({ where: { id: viewerUserId }, select: { reviewAccount: true } })
       : null;
-    if (!viewer?.reviewAccount) throw NOT_FOUND();
+    if (user.reviewAccount !== (viewer?.reviewAccount ?? false)) throw NOT_FOUND();
   }
   let blockedByMe = false;
   if (viewerUserId && viewerUserId !== user.id) {

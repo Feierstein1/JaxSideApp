@@ -191,7 +191,7 @@ describe('review accounts’ content stays among review accounts (D268 part 2)',
     await setReviewAccount(apple.id, true);
   });
 
-  it('a review account’s posts show only to review accounts, even on the same corner', async () => {
+  it('the two sides never see each other’s posts, even on the same corner', async () => {
     await call(postsPOST as H, 'POST', {
       token: local.token,
       body: { reading: here(), body: 'Real post at Five Points' },
@@ -199,13 +199,23 @@ describe('review accounts’ content stays among review accounts (D268 part 2)',
     const test = (await post(reviewer.token, 'Review test post')).body.post.id as string;
 
     expect(await feedBodies(local.token)).toEqual(['Real post at Five Points']);
-    expect(await feedBodies(apple.token)).toEqual(['Review test post', 'Real post at Five Points']);
+    // Two-way (owner, 2026-11-22): reviewers see only review accounts' posts.
+    expect(await feedBodies(apple.token)).toEqual(['Review test post']);
     const hidden = await call(postDetailPOST as H, 'POST', {
       token: local.token,
       id: test,
       body: { reading: here() },
     });
     expect(hidden.status).toBe(404);
+    const real = (
+      await call(feedPOST as H, 'POST', { token: local.token, body: { reading: here() } })
+    ).body.posts[0].id as string;
+    const unseen = await call(postDetailPOST as H, 'POST', {
+      token: apple.token,
+      id: real,
+      body: { reading: here() },
+    });
+    expect(unseen.status).toBe(404);
   });
 
   it('a review account’s comment on a real post is hidden and sends no notification', async () => {
@@ -226,7 +236,13 @@ describe('review accounts’ content stays among review accounts (D268 part 2)',
         r.body.comments.map((x: { body: string }) => x.body),
       );
     expect(await seen(local.token)).toEqual([]);
-    expect(await seen(apple.token)).toEqual(['Testing a comment']);
+    // The reviewers can't open the real post at all (two-way).
+    const forReviewer = await call(postDetailPOST as H, 'POST', {
+      token: apple.token,
+      id: real,
+      body: { reading: here() },
+    });
+    expect(forReviewer.status).toBe(404);
     expect(await db.notification.count({ where: { userId: local.id } })).toBe(0);
   });
 
@@ -256,7 +272,8 @@ describe('review accounts’ content stays among review accounts (D268 part 2)',
       call(profilePOST as H, 'POST', { token, params: { username }, body: { reading: here() } });
     expect((await profile(local.token, 'review_google')).status).toBe(404);
     expect((await profile(apple.token, 'review_google')).status).toBe(200);
-    expect((await profile(reviewer.token, 'local_rv')).status).toBe(200);
+    expect((await profile(reviewer.token, 'local_rv')).status).toBe(404); // two-way
+    expect((await profile(reviewer.token, 'review_google')).status).toBe(200); // their own
   });
 
   it('content stays hidden even with review mode off', async () => {

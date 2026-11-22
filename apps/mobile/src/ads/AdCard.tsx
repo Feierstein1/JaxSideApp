@@ -20,7 +20,9 @@ import { IconButton, openMenu } from '@/ui';
 import { hostOf, openOutsideLink } from '@/links';
 import { HostedAt } from '@/events/EventCard';
 import { openEvent, openPlace } from '@/events/open';
+import { showAlert } from '@/dialog';
 import { adLinkTapped, setAdInterest } from './api';
+import { adWhyText } from './why';
 
 type Choice = 'INTERESTED' | 'NOT_INTERESTED' | null;
 
@@ -43,9 +45,22 @@ export function AdCard({ ad }: { ad: Ad }) {
     openOutsideLink(link.url, () => void adLinkTapped(ad.id));
   }
 
-  /** D209: the ad's own menu (top right); Report first, room for more later. */
+  /** D209: the ad's own menu (top right). D276: why you're seeing it, then Report. */
   function openAdMenu() {
     openMenu('Ad', [
+      {
+        label: 'Why am I seeing this?',
+        icon: 'information-circle-outline',
+        onPress: () =>
+          showAlert(
+            'Why you’re seeing this ad',
+            adWhyText(ad.why, sponsor || 'This business'),
+            undefined,
+            {
+              icon: 'information-circle-outline',
+            },
+          ),
+      },
       {
         label: 'Report this ad',
         icon: 'flag-outline',

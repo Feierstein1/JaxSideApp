@@ -29,52 +29,54 @@ each store form are in `STORE_PREP.md`.
 
 ## 2. What reviewers check (from the rules)
 
-| #   | Check                                                            | Rule                                                                                    | JaxSide today                                                 |
-| --- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| 1   | Sign in with the given login, from outside Florida               | Apple Before You Submit, 2.1; Google Sign-in details                                    | ✅ review mode; checked 2026-11-21                            |
-| 2   | App doesn't crash, freeze or show errors                         | Apple 2.1; Google broken functionality, pre-review crash checks                         | Test on a phone before each build                             |
-| 3   | Terms accepted before posting; they forbid objectionable content | Google UGC; Apple 1.2                                                                   | ✅ sign-up checkbox, zero-tolerance Terms                     |
-| 4   | Filter objectionable content                                     | Apple 1.2                                                                               | ✅ text screening, held posts                                 |
-| 5   | Report content and users (separate from block)                   | Apple 1.2; Google UGC                                                                   | ✅ posts, comments, photos, profiles, messages, ads           |
-| 6   | Block users                                                      | Apple 1.2; Google UGC                                                                   | ✅                                                            |
-| 7   | Act on reports in good time                                      | Apple 1.2 "timely responses"; Google UGC                                                | You: check the admin queue daily                              |
-| 8   | Published contact info                                           | Apple 1.2; Google privacy contact                                                       | ✅ Contact us, support@jaxside.com                            |
-| 9   | Delete account inside the app, plus a web page                   | Apple 5.1.1(v); Google account deletion                                                 | ✅ in app; jaxside.com/delete-account                         |
-| 10  | Privacy policy linked in the store and in the app                | Apple 5.1.1(i); Google                                                                  | ✅ (store field: jaxside.com/app/privacy)                     |
-| 11  | Location, camera, mic and photo prompts explain why              | Apple 5.1.1, 5.1.5                                                                      | ✅ app.json wording                                           |
-| 12  | Ads can be reported                                              | Apple 2.5.18                                                                            | ✅ "Report this ad"                                           |
-| 13  | **Ads: user can see why they were shown that ad, in the app**    | Apple 2.5.18                                                                            | ❌ **missing** (see 3b)                                       |
-| 14  | **No "beta" wording**                                            | Apple 2.2                                                                               | ❌ **every policy page starts "JaxSide is in beta"** (see 3a) |
-| 15  | Store answers match the app (data safety, ads, rating)           | Google; Apple 2.3                                                                       | ✅ answered 2026-11-19                                        |
-| 16  | Restricting by location must not look arbitrary                  | Apple 3.2.2(v) lists "Arbitrarily restricting who may use the app, such as by location" | Explain in review notes: a local community for one county     |
-| 17  | Sign in with Apple                                               | Apple 4.8: only if the app offers Google/Facebook-style login                           | ✅ not needed (username and password only)                    |
+| #   | Check                                                            | Rule                                                                                    | JaxSide today                                             |
+| --- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 1   | Sign in with the given login, from outside Florida               | Apple Before You Submit, 2.1; Google Sign-in details                                    | ✅ review mode; checked 2026-11-21                        |
+| 2   | App doesn't crash, freeze or show errors                         | Apple 2.1; Google broken functionality, pre-review crash checks                         | Test on a phone before each build                         |
+| 3   | Terms accepted before posting; they forbid objectionable content | Google UGC; Apple 1.2                                                                   | ✅ sign-up checkbox, zero-tolerance Terms                 |
+| 4   | Filter objectionable content                                     | Apple 1.2                                                                               | ✅ text screening, held posts                             |
+| 5   | Report content and users (separate from block)                   | Apple 1.2; Google UGC                                                                   | ✅ posts, comments, photos, profiles, messages, ads       |
+| 6   | Block users                                                      | Apple 1.2; Google UGC                                                                   | ✅                                                        |
+| 7   | Act on reports in good time                                      | Apple 1.2 "timely responses"; Google UGC                                                | You: check the admin queue daily                          |
+| 8   | Published contact info                                           | Apple 1.2; Google privacy contact                                                       | ✅ Contact us, support@jaxside.com                        |
+| 9   | Delete account inside the app, plus a web page                   | Apple 5.1.1(v); Google account deletion                                                 | ✅ in app; jaxside.com/delete-account                     |
+| 10  | Privacy policy linked in the store and in the app                | Apple 5.1.1(i); Google                                                                  | ✅ (store field: jaxside.com/app/privacy)                 |
+| 11  | Location, camera, mic and photo prompts explain why              | Apple 5.1.1, 5.1.5                                                                      | ✅ app.json wording                                       |
+| 12  | Ads can be reported                                              | Apple 2.5.18                                                                            | ✅ "Report this ad"                                       |
+| 13  | Ads: user can see why they were shown that ad, in the app        | Apple 2.5.18                                                                            | ✅ "Why am I seeing this?" in the ad menu (D276)          |
+| 14  | No "beta" wording                                                | Apple 2.2                                                                               | ✅ removed 2026-11-22 (now "Changes")                     |
+| 15  | Store answers match the app (data safety, ads, rating)           | Google; Apple 2.3                                                                       | ✅ answered 2026-11-19                                    |
+| 16  | Restricting by location must not look arbitrary                  | Apple 3.2.2(v) lists "Arbitrarily restricting who may use the app, such as by location" | Explain in review notes: a local community for one county |
+| 17  | Sign in with Apple                                               | Apple 4.8: only if the app offers Google/Facebook-style login                           | ✅ not needed (username and password only)                |
 
 ## 3. To do before submitting (in order)
 
-- **3a. Remove "beta"** from the app's policy pages (`packages/shared/src/policies.ts`, the
-  "Beta" section). Claude, small change.
-- **3b. "Why this ad"** in the ad menu: the area it was aimed at (your ZIP / near the place /
-  city-wide) and that it's from that business's plan. Claude, about half a day with tests.
-- **3c. Decide on test posts (your call):**
-  - **Option 1 (recommended): make review accounts see only review content.** Today the sandbox is
-    one-way: real people can't see review posts, but reviewers can see real posts near Five
-    Points, including your test posts. Making it two-way means reviewers only ever see the sample
-    accounts' posts (plus business posts and ads), and **you keep all your test posts** for your
-    own testing. Claude, small change with tests.
-  - Option 2: delete or tidy your test posts near Five Points (within about half a mile).
-- **3d. Seed enough sample content** for reviewers: done (rachel_rvsd, jaxfoodie904, dmoore_jax,
-  7 posts, 2026-11-21). Optionally add photos and colors to those accounts.
-- **3e. Deploy** the above, after a backup.
-- **3f. Re-check both review accounts** (section 5).
-- **3g. Review notes** (section 6) go into each store.
+- [x] **3a. "Beta" removed** from the app's policy pages (2026-11-22, now "Changes").
+- [x] **3b. "Why am I seeing this?"** in every ad's menu (D276, 2026-11-22).
+- [x] **3c. Two-way review privacy** (D276): review accounts see only review accounts' content
+      (plus business posts and ads), and nobody else sees theirs.
+- [ ] **3d. Deploy** the above (Claude, after a backup).
+- [ ] **3e. Pre-review wipe** (owner's choice, 2026-11-22): everything staged goes. Steps: 1. Owner: admin portal → Maintenance on. 2. Claude: back up and download a copy, run `deploy/staging/wipe-for-launch.sql` (all
+      people, admins and review accounts included; all business and organizer accounts with
+      their ads, events, posts and tickets; places, settings, screening rules and plans stay),
+      clear the media and quarantine buckets (never the backups bucket). 3. Owner: sign up in the app; Claude makes it an admin (`admin:promote`). 4. Owner: recreate the 5 review accounts in the admin portal (same usernames and passwords
+      as the secrets file, review account ticked); Claude re-adds the sample posts; owner adds
+      photos and colors. 5. Owner: Maintenance off; run the testing sheet (section 4).
+      After both stores approve: the **final wipe for launch** the same way (with fresh keys, per
+      `PRODUCTION_SWITCHOVER.md`), then recreate the admin and review accounts again.
+- [ ] **3f. Review notes** (section 6) go into each store.
 
-**Later, not before this review:** if JaxSide ever **charges businesses** for ads or boosts, Apple
-3.1.3(g) says "buying advertisements to display in the same app (such as sales of 'boosts' for
-posts in a social media app) must use in-app purchase". Paying on the website may still count.
-Ask Apple before taking any payment. Nothing is charged today, so it doesn't affect this review.
+**Ads and Apple's in-app purchase rule:** JaxSide stays outside it. Apple's in-app purchase rule
+covers buying inside the app (3.1.1, and the "boosts" example in 3.1.3(g) is about buying ads in
+the app that shows them). JaxSide's app never asks for money and businesses can't sign in to it;
+ads are free to post, and anything paid is bought on jaxside.com. The app is US-only, where Apple's
+rule against pointing to outside purchases doesn't apply (3.1.1(a), 3.1.3). Keep it that way:
+**never add buy, upgrade, boost or price screens to the app**, and say in the review notes that
+the app sells nothing. Only Apple decides, but nothing in its written rules says otherwise.
 
 **Possible questions from Apple (no change needed now):** 1.2 says "random or anonymous chat"
-doesn't belong. Area chat is with named accounts and moderated, but a reviewer could ask.
+doesn't belong. Area chat is with named accounts and moderated, but a reviewer could ask. 3.2.2
+lists restricting by location "arbitrarily"; the review notes explain it's one county's community.
 
 ## 4. Testing sheet (do this on a phone before each submission)
 
@@ -126,7 +128,8 @@ logins out; turn review mode off while a review is open.
 > (Five Points, Riverside) wherever your device is, so you can use every feature from anywhere.
 > What review accounts post is only visible to other review accounts, never to the public, so
 > please feel free to post, comment, vote, report, block and message. Sign in with the username
-> and password below; no code is needed.
+> and password below; no code is needed. JaxSide sells nothing in the app: local businesses
+> manage their posts, events and ads on a separate website, jaxside.com.
 
 Google: Play Console → App content → Sign in details (done for review_google). Apple: App Store
 Connect → App Review Information (when enrolled).

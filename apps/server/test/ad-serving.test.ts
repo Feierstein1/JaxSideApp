@@ -136,6 +136,12 @@ describe('which ads a reader gets (D206)', () => {
     expect(r.body.ads.map((a: { id: string }) => a.id).sort()).toEqual([city.id, here.id].sort());
     expect(r.body.ads[0]).toMatchObject({ myChoice: null });
     expect(r.body.ads[0].template).toBeUndefined(); // D265: one layout, nothing to choose
+    // D276: each ad says why it reached this reader.
+    const byId = new Map(r.body.ads.map((a: { id: string }) => [a.id, a]));
+    expect(byId.get(city.id)).toMatchObject({
+      why: { reach: 'citywide', zip: null, boosted: false, favorite: false, interested: false },
+    });
+    expect(byId.get(here.id)).toMatchObject({ why: { reach: 'zip', zip: cafeZip } });
     expect(r.body.layout).toEqual({ first: 4, every: 8, cooldownHours: 3 });
     expect(JSON.stringify(r.body)).not.toContain('owner@'); // never who made it
   });
