@@ -176,7 +176,9 @@ Company and accounts (details in `docs/LLC_PROCESS.md`):
       enrollment ID UJ7U66A486**, waiting for Apple to verify signing authority (may phone the
       904 cell); then pay. Apple's confirmation email (2026-11-19, to kenny@jaxside.com) lists:
       legal entity JaxSide LLC, address `7901 4TH St N # 35372, Saint Petersburg, Florida
-33702-4305` (taken from D&B), email and work email kenny@jaxside.com
+      33702-4305` (taken from D&B), email and work email kenny@jaxside.com. **Accepted
+      2026-11-24** (Apple's email): next, sign in at developer.apple.com, accept the Program
+      License Agreement and pay the $99 membership
 - [x] Google Play Console, organization ($25 once): account `JaxSide LLC`, ID
       5262362696067233378, owner kenfeier@gmail.com; identity, website (Search Console TXT on
       jaxside.com), trader status and both phones verified (2026-11-19). Public phone is a Google
