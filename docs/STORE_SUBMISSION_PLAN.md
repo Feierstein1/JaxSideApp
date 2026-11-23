@@ -56,14 +56,27 @@ each store form are in `STORE_PREP.md`.
 - [x] **3c. Two-way review privacy** (D276): review accounts see only review accounts' content
       (plus business posts and ads), and nobody else sees theirs.
 - [x] **3d. Deployed** `df224c6` (2026-11-22, after a backup); healthy.
-- [ ] **3e. Pre-review wipe** (owner's choice, 2026-11-22): everything staged goes. Steps: 1. Owner: admin portal → Maintenance on. 2. Claude: back up and download a copy, run `deploy/staging/wipe-for-launch.sql` (all
-      people, admins and review accounts included; all business and organizer accounts with
-      their ads, events, posts and tickets; places, settings, screening rules and plans stay),
-      clear the media and quarantine buckets (never the backups bucket). 3. Owner: sign up in the app; Claude makes it an admin (`admin:promote`). 4. Owner: recreate the 5 review accounts in the admin portal (same usernames and passwords
-      as the secrets file, review account ticked); Claude re-adds the sample posts; owner adds
-      photos and colors. 5. Owner: Maintenance off; run the testing sheet (section 4).
-      After both stores approve: the **final wipe for launch** the same way (with fresh keys, per
-      `PRODUCTION_SWITCHOVER.md`), then recreate the admin and review accounts again.
+- [~] **3e. Pre-review wipe** (owner's choice, 2026-11-22).
+
+  **Done 2026-11-23:** backup on the server plus a copy at
+  `C:\Users\kenfe\JaxSide-backups\before-review-wipe-2026-11-23.dump`; ran
+  `deploy/staging/wipe-for-launch.sql` (no maintenance mode: nobody else uses the app yet).
+  Before: 24 users, 9 business accounts, 64 area and 39 place posts, 79 comments, 16 events,
+  15 ads. After: 0 people, 0 business accounts, 0 events; 4,609 places, 212 settings, 112
+  screening rules and 4 plans kept (5 dev sample places removed). Media bucket emptied (73
+  uploads); backups untouched. App and website healthy.
+
+  **Still to do:**
+
+  1. Owner: sign up in the app; Claude makes it an admin (`admin:promote`).
+  2. Owner: recreate the 5 review accounts in the admin portal (same usernames and passwords as
+     the secrets file, "review account" ticked); Claude re-adds the sample posts; owner adds
+     photos and colors.
+  3. Owner: run the testing sheet (section 4).
+
+  After both stores approve: the **final wipe for launch** the same way (with fresh keys, per
+  `PRODUCTION_SWITCHOVER.md`), then recreate the admin and review accounts again.
+
 - [ ] **3f. Review notes** (section 6) go into each store.
 
 **Ads and Apple's in-app purchase rule:** JaxSide stays outside it. Apple's in-app purchase rule
