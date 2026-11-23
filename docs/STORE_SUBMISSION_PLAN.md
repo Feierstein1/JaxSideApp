@@ -91,6 +91,35 @@ the app sells nothing. Only Apple decides, but nothing in its written rules says
 doesn't belong. Area chat is with named accounts and moderated, but a reviewer could ask. 3.2.2
 lists restricting by location "arbitrarily"; the review notes explain it's one county's community.
 
+## 3b. Apple Developer Program License Agreement (read 2026-11-23)
+
+Sections 1-14 and parts of Attachments 1-2 read on Apple's site (no version date shown;
+Schedule 1, the free-app delivery terms, not read). Nothing in it blocks JaxSide as built.
+
+**One fix before the iOS build:** the installation ID is kept in the iPhone Keychain, which
+survives deleting the app. The Privacy Policy says it "resets if you reinstall", and 3.3.3(B)
+bars "any permanent, device-based identifier ... for purposes of uniquely identifying a device".
+Fix: on the first launch after an install, clear any leftover ID and get a new one (Claude, small).
+
+**Check at the first iOS build:** Expo's privacy manifest (3.3.3(B) "permitted reasons" for
+certain APIs); the build reports anything missing.
+
+**What JaxSide LLC agrees to (keep in mind):**
+- Apps follow the App Review Guidelines and Apple's documentation (3.2, 6.1); Apple may reject
+  "for any reason" (6.9) and either side may end the agreement on 30 days' notice (11.2).
+- Privacy: consent before collecting data, a privacy policy, ask before location, stop if consent
+  is withdrawn, **tell users of a data breach** as the law requires (3.3.3).
+- Service providers (AWS) count as you; their terms must protect Apple's interests at least as much (2.9).
+- No promotional push notifications without opt-in (Attachment 1, 2.2); JaxSide has no push today.
+- **Keep information current and tell Apple of changes** (3.1), e.g. a new address.
+- **Selling or merging the company:** the agreement can't move to a new owner without Apple's
+  written consent (14.3).
+- No press releases about the agreement or the relationship without Apple's approval (9.4).
+- You defend Apple against claims from your app, including harmful user content and scams
+  (10); Apple's liability to you is capped at $50 (13).
+- California law; courts in the Northern District of California (14.10).
+- The fee is non-refundable; the membership renews yearly if auto-renew is on (8, 11.1).
+
 ## 4. Testing sheet (do this on a phone before each submission)
 
 Sign in as `review_google` (Android) and later `review_apple` (iPhone):
