@@ -46,9 +46,9 @@ export function adminPortalEnabled(): boolean {
 /**
  * D274: two-step sign-in can be switched off for the portal on the owner's own computer
  * (`ADMIN_2FA_DISABLED=true`, set by `npm run admin:staging`). Never in production: a
- * production server always asks for the code, whatever the setting says. An admin who never set
- * up an authenticator still has to (the session guard needs it), so turning it back on later
- * just works.
+ * production server always asks for the code, whatever the setting says. While it's off, no
+ * authenticator is needed at all, not even a first setup (owner, 2026-11-23); when it's turned
+ * back on, an admin without one sets it up at the next sign-in.
  */
 export function adminTwoStepRequired(nodeEnv = getEnv().NODE_ENV): boolean {
   if (nodeEnv === 'production') return true;
@@ -136,18 +136,12 @@ export async function startAdminLogin(
   if (user.role !== 'ADMIN') throw notAdmin();
   const challenge = makeChallenge(user.id, now);
   // D108: 2FA lives in AdminCredential, not on the User row.
-  const cred = await db.adminCredential.findUnique({ where: { userId: user.id } });
-  if (cred?.totpEnabledAt) {
-    // D274: two-step switched off on this computer: the password was enough.
-    if (!adminTwoStepRequired()) {
-      return {
-        challenge: null,
-        enroll: null,
-        session: await openAdminSession(user.id, now, false),
-      };
-    }
-    return { challenge, enroll: null, session: null };
+  // D274: two-step switched off on this computer: the password is enough, authenticator or not.
+  if (!adminTwoStepRequired()) {
+    return { challenge: null, enroll: null, session: await openAdminSession(user.id, now, false) };
   }
+  const cred = await db.adminCredential.findUnique({ where: { userId: user.id } });
+  if (cred?.totpEnabledAt) return { challenge, enroll: null, session: null };
 
   // First sign-in: a new secret, stored encrypted until the first code confirms it.
   const secret = generateTotpSecret();
@@ -294,7 +288,9 @@ export async function adminFromToken(
     throw signedOut();
   }
   const user = session.user;
-  if (user.role !== 'ADMIN' || !user.adminCredential?.totpEnabledAt) throw notAdmin();
+  if (user.role !== 'ADMIN') throw notAdmin();
+  // An admin session needs a set-up authenticator, unless two-step is switched off here (D274).
+  if (!user.adminCredential?.totpEnabledAt && adminTwoStepRequired()) throw notAdmin();
 
   assertAccountUsable(user, now);
   if (opts.mutation) {

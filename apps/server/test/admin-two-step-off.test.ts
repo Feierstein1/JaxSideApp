@@ -88,11 +88,21 @@ describe('two-step sign-in switched off (D274)', () => {
     expect((await step1('plain_2s')).status).toBe(403);
   });
 
-  it('an admin who never set up an authenticator still sets it up first', async () => {
+  it('an admin who never set up an authenticator gets in with the password too', async () => {
     process.env.ADMIN_2FA_DISABLED = 'true';
-    const body = await (await step1()).json();
-    expect(body).toMatchObject({ signedIn: false });
-    expect(body.enroll.secret).toEqual(expect.any(String));
+    const res = await step1();
+    expect(await res.json()).toMatchObject({ signedIn: true, enroll: null });
+    const set = res.headers.getSetCookie();
+    const get = (name: string) =>
+      set
+        .find((c) => c.startsWith(`${name}=`))!
+        .split(';')[0]!
+        .slice(name.length + 1);
+    const cookie = `${ADMIN_COOKIE}=${get(ADMIN_COOKIE)}; ${CSRF_COOKIE}=${get(CSRF_COOKIE)}`;
+    expect((await call(adminSummaryGET as H, 'GET', { headers: { cookie } })).status).toBe(200);
+    // 🔒 Switched back on, that session no longer works until an authenticator is set up.
+    delete process.env.ADMIN_2FA_DISABLED;
+    expect((await call(adminSummaryGET as H, 'GET', { headers: { cookie } })).status).toBe(403);
   });
 
   it('with the switch unset, the code is asked for as before', async () => {
