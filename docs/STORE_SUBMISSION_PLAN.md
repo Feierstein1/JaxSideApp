@@ -66,12 +66,18 @@ each store form are in `STORE_PREP.md`.
   screening rules and 4 plans kept (5 dev sample places removed). Media bucket emptied (73
   uploads); backups untouched. App and website healthy.
 
+  **Accounts back 2026-11-24:** admin restored; the owner made `review_google`, `review_apple` and
+  the sample accounts `DustyDustin890`, `JaxLady86`, `morganAPX` (review accounts) in the admin
+  portal; Claude added 8 posts and 3 comments around Five Points (area feed, Al's Pizza, Sushi
+  Cafe, Tijuana Flats). Checked from San Francisco: both reviewer logins work with the saved
+  passwords, and the reviewer feed shows only the sample posts.
+
   **Still to do:**
 
-  1. Owner: sign up in the app; Claude makes it an admin (`admin:promote`).
-  2. Owner: recreate the 5 review accounts in the admin portal (same usernames and passwords as
+  1. ~~Owner: sign up in the app; Claude makes it an admin (`admin:promote`).~~ Done.
+  2. ~~Owner: recreate the 5 review accounts in the admin portal (same usernames and passwords as
      the secrets file, "review account" ticked); Claude re-adds the sample posts; owner adds
-     photos and colors.
+     photos and colors.~~ Done; photos and colors optional.
   3. Owner: run the testing sheet (section 4).
 
   After both stores approve: the **final wipe for launch** the same way (with fresh keys, per
@@ -144,7 +150,7 @@ Sign in as `review_google` (Android) and later `review_apple` (iPhone):
 | ------------------------------------- | ----------------------------------------- | ------------------- |
 | review_google                         | Given to Google                           | in the secrets file |
 | review_apple                          | Given to Apple                            | in the secrets file |
-| rachel_rvsd, jaxfoodie904, dmoore_jax | Sample people with posts; never given out | in the secrets file |
+| DustyDustin890, JaxLady86, morganAPX | Sample people with posts; never given out | in the secrets file |
 
 Secrets file: `deploy/staging/secrets/test-accounts.txt` (git-ignored; keep a copy in a password
 manager). All five are made in the admin portal (no email) and flagged **review account**.
