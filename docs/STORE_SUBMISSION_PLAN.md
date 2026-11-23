@@ -96,7 +96,7 @@ lists restricting by location "arbitrarily"; the review notes explain it's one c
 Sections 1-14 and parts of Attachments 1-2 read on Apple's site (no version date shown;
 Schedule 1, the free-app delivery terms, not read). Nothing in it blocks JaxSide as built.
 
-**One fix before the iOS build:** the installation ID is kept in the iPhone Keychain, which
+**Fixed 2026-11-23 (D277), was needed before the iOS build:** the installation ID is kept in the iPhone Keychain, which
 survives deleting the app. The Privacy Policy says it "resets if you reinstall", and 3.3.3(B)
 bars "any permanent, device-based identifier ... for purposes of uniquely identifying a device".
 Fix: on the first launch after an install, clear any leftover ID and get a new one (Claude, small).

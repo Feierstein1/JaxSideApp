@@ -1,4 +1,5 @@
 import { createApiClient } from './client';
+import { documentDirectory, getInfoAsync, writeAsStringAsync } from 'expo-file-system/legacy';
 import { installationStore, secureTokenStore } from '@/auth/secure-token-store';
 
 /**
@@ -32,10 +33,29 @@ export const api = createApiClient({
 });
 
 /**
+ * D277: a file in the app's own folder, which the phone deletes with the app. The iPhone
+ * Keychain is NOT deleted with the app, so without this a reinstall would keep the old
+ * installation ID (and session): the Privacy Policy promises a new ID, and Apple's agreement
+ * (3.3.3(B)) bars permanent device identifiers.
+ */
+const INSTALL_MARKER = `${documentDirectory}jax-installed`;
+
+async function isFreshInstall(): Promise<boolean> {
+  if (!documentDirectory) return false;
+  return !(await getInfoAsync(INSTALL_MARKER)).exists;
+}
+
+/**
  * P2.7: registers this app install with the server once and keeps the token in the
- * keychain/keystore. Not a hardware ID; reinstalling the app creates a new one.
+ * keychain/keystore. Not a hardware ID; reinstalling the app creates a new one (D277).
  */
 export async function ensureInstallation(): Promise<void> {
+  if (await isFreshInstall()) {
+    // Leftovers from an earlier install of the app on this phone: start clean.
+    await installationStore.clear();
+    await secureTokenStore.clear();
+    await writeAsStringAsync(INSTALL_MARKER, '1');
+  }
   if (await installationStore.get()) return;
   const { installationToken } = await api.post<{ installationToken: string }>(
     '/api/v1/installations',
