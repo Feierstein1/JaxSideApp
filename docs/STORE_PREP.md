@@ -172,7 +172,9 @@ Company and accounts (details in `docs/LLC_PROCESS.md`):
       placeholder or minimal sites; the D-U-N-S request is done, so this is the next blocker
 - [x] Apple Account on `kenny@jaxside.com` (2026-11-18, made with Apple Support's help after
       sign-up kept failing; the old Yahoo account is abandoned)
-- [ ] Apple Developer Program, organization ($99/year, **you**): **submitted 2026-11-19,
+- [x] Apple Developer Program, organization ($99/year, **you**): **paid 2026-11-25** (failed on the
+      home network with both cards and support couldn't explain it; worked from another network,
+      like the Apple Account sign-up did). **Submitted 2026-11-19,
       enrollment ID UJ7U66A486**, waiting for Apple to verify signing authority (may phone the
       904 cell); then pay. Apple's confirmation email (2026-11-19, to kenny@jaxside.com) lists:
       legal entity JaxSide LLC, address `7901 4TH St N # 35372, Saint Petersburg, Florida
